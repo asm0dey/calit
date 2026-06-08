@@ -210,4 +210,5 @@ body.admin-canvas { background: var(--calit-canvas); }
 .loc-tiles .tile:has(input:checked) {
   border-color: var(--pico-primary); background: var(--pico-primary-background); color: var(--pico-primary-inverse);
 }
+.loc-tiles .tile:has(input:focus-visible) { outline: 2px solid var(--pico-primary); outline-offset: 2px; }
 .loc-note { display: block; color: var(--pico-muted-color); margin-bottom: .6rem; }
