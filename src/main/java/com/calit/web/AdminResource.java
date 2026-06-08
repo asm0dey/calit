@@ -4,6 +4,7 @@ import com.calit.booking.Booking;
 import com.calit.domain.AvailabilityRule;
 import com.calit.domain.MeetingType;
 import com.calit.domain.MeetingType.LocationType;
+import com.calit.domain.OwnerSettings;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.annotation.security.RolesAllowed;
@@ -15,6 +16,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestForm;
 
 import java.time.DayOfWeek;
@@ -34,7 +36,13 @@ public class AdminResource {
 
         public static native TemplateInstance availability(
                 List<AvailabilityRule> rules, List<MeetingType> types, String css);
+
+        public static native TemplateInstance settings(
+                OwnerSettings settings, int reminderLeadMinutes, String css);
     }
+
+    @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "120")
+    int reminderLeadMinutes;
 
     @GET
     @Produces(MediaType.TEXT_HTML)
@@ -149,5 +157,32 @@ public class AdminResource {
         return Templates.availability(
                 AvailabilityRule.<AvailabilityRule>listAll(),
                 MeetingType.listAll(), Layout.CSS);
+    }
+
+    @GET
+    @Path("/settings")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance settings() {
+        return Templates.settings(OwnerSettings.get(), reminderLeadMinutes, Layout.CSS);
+    }
+
+    @POST
+    @Path("/settings")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance updateSettings(@RestForm String ownerName,
+                                           @RestForm String ownerEmail,
+                                           @RestForm String timezone,
+                                           @RestForm String ownerNotificationsEnabled) {
+        OwnerSettings s = OwnerSettings.get();
+        if (s == null) { s = new OwnerSettings(); s.id = OwnerSettings.SINGLETON_ID; }
+        s.ownerName = ownerName;
+        s.ownerEmail = ownerEmail;
+        s.timezone = timezone;
+        // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
+        s.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
+        s.persist();
+        return Templates.settings(s, reminderLeadMinutes, Layout.CSS);
     }
 }

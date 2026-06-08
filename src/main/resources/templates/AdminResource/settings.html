@@ -1,0 +1,45 @@
+{@com.calit.domain.OwnerSettings settings}
+{@java.lang.Integer reminderLeadMinutes}
+{@java.lang.String css}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin — Settings</title>
+  <style>{css}</style>
+</head>
+<body>
+  <nav>
+    <a href="/admin">Dashboard</a>
+    <a href="/admin/pending">Pending</a>
+    <a href="/admin/meeting-types">Meeting types</a>
+    <a href="/admin/availability">Availability</a>
+    <a href="/admin/date-overrides">Date overrides</a>
+    <a href="/admin/settings">Settings</a>
+    <a href="/admin/google">Google</a>
+  </nav>
+  <h1>Owner settings</h1>
+  <form method="post" action="/admin/settings">
+    <label>Name
+      <input type="text" name="ownerName" required
+             value="{#if settings}{settings.ownerName}{/if}"></label>
+    <label>Email
+      <input type="email" name="ownerEmail" required
+             value="{#if settings}{settings.ownerEmail}{/if}"></label>
+    <label>Timezone (IANA id)
+      <input type="text" name="timezone" required
+             value="{#if settings}{settings.timezone}{#else}Europe/Amsterdam{/if}"></label>
+    {! Owner-notify opt-out (overview: OwnerSettings.ownerNotificationsEnabled). Unchecked → OFF. !}
+    <label><input type="checkbox" name="ownerNotificationsEnabled"
+             {#if settings && settings.ownerNotificationsEnabled}checked{/if}>
+      Send me (the owner) email notifications for bookings</label>
+    <button type="submit">Save</button>
+  </form>
+
+  {! Reminder lead-time is config-backed (calit.reminder.lead-minutes), consumed by the Plan 6
+     scheduler. Shown read-only here; change it via the REMINDER_LEAD_MINUTES env var (12-factor). !}
+  <p><strong>Reminder lead:</strong> {reminderLeadMinutes} minutes before the meeting
+     <em>(set via the REMINDER_LEAD_MINUTES environment variable)</em></p>
+</body>
+</html>
