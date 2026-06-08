@@ -6,42 +6,44 @@
 {@java.lang.String tzScript}
 {@java.lang.String calScript}
 {#include base title="Manage booking"}
-  <h1>Manage your booking</h1>
-  {tzBar.raw}
-  <article>
-    <p><strong>Currently:</strong> <time data-utc="{currentUtcIso}">{currentLabel}</time></p>
-    <p><strong>For:</strong> {booking.inviteeName} ({booking.inviteeEmail})</p>
-  </article>
+  <article class="calit-card">
+    <h1>Manage your booking</h1>
+    {tzBar.raw}
+    <div class="card-detail">
+      <p><strong>Currently:</strong> <time data-utc="{currentUtcIso}">{currentLabel}</time></p>
+      <p><strong>For:</strong> {booking.inviteeName} ({booking.inviteeEmail})</p>
+    </div>
 
-  <h2>Reschedule</h2>
-  {#if days.isEmpty()}
-    <p>No alternative times available.</p>
-  {#else}
-    <form method="post" action="/booking/{booking.manageToken}/reschedule">
-      <div class="booking-grid">
-        <div id="calendar" class="calendar"></div>
-        <div class="time-column">
-          {#for day in days}
-            <section class="day-slots" data-date="{day.isoDate}">
-              <h3>{day.label}</h3>
-              {#for slot in day.slots}
-                <label class="slot">
-                  <input type="radio" name="startUtc" value="{slot.startUtc}" required>
-                  <time data-utc="{slot.startUtc}" data-time-only="1">{slot.label}</time>
-                </label>
-              {/for}
-            </section>
-          {/for}
+    <h2>Reschedule</h2>
+    {#if days.isEmpty()}
+      <p>No alternative times available.</p>
+    {#else}
+      <form method="post" action="/booking/{booking.manageToken}/reschedule">
+        <div class="booking-grid">
+          <div id="calendar" class="calendar"></div>
+          <div class="time-column">
+            {#for day in days}
+              <section class="day-slots" data-date="{day.isoDate}">
+                <h3>{day.label}</h3>
+                {#for slot in day.slots}
+                  <label class="slot">
+                    <input type="radio" name="startUtc" value="{slot.startUtc}" required>
+                    <time data-utc="{slot.startUtc}" data-time-only="1">{slot.label}</time>
+                  </label>
+                {/for}
+              </section>
+            {/for}
+          </div>
         </div>
-      </div>
-      <button type="submit">Reschedule to selected time</button>
-    </form>
-  {/if}
+        <button type="submit">Reschedule to selected time</button>
+      </form>
+    {/if}
 
-  <h2>Cancel</h2>
-  <form method="post" action="/booking/{booking.manageToken}/cancel">
-    <button type="submit" class="secondary">Cancel this booking</button>
-  </form>
-  {tzScript.raw}
-  {calScript.raw}
+    <h2>Cancel</h2>
+    <form method="post" action="/booking/{booking.manageToken}/cancel">
+      <button type="submit" class="secondary">Cancel this booking</button>
+    </form>
+    {tzScript.raw}
+    {calScript.raw}
+  </article>
 {/include}

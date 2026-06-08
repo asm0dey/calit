@@ -7,27 +7,29 @@
 {@java.lang.String tzBar}
 {@java.lang.String tzScript}
 {#include base title="{#if pending}Request sent{#else}Booking confirmed{/if}"}
-  {#if pending}
-    <hgroup>
-      <h1>Request sent — pending owner approval</h1>
-      <p>Thanks, {booking.inviteeName}. Your requested time is held while {type.name}'s owner reviews it.
-         You'll get an email once it's approved or declined.</p>
-    </hgroup>
-  {#else}
-    <h1>You're booked, {booking.inviteeName}!</h1>
-  {/if}
-  {tzBar.raw}
-  <article>
-    <p><strong>When:</strong> <time data-utc="{startUtcIso}">{whenLabel}</time></p>
-    {#if !pending}
-      {#if type.locationType.name == 'GOOGLE_MEET'}
-        <p><strong>Google Meet:</strong> <a href="{location}">{location}</a></p>
-      {#else}
-        <p><strong>Location:</strong> {location}</p>
-      {/if}
+  <article class="calit-card">
+    {#if pending}
+      <hgroup>
+        <h1>Request sent — pending owner approval</h1>
+        <p>Thanks, {booking.inviteeName}. Your requested time is held while {type.name}'s owner reviews it.
+           You'll get an email once it's approved or declined.</p>
+      </hgroup>
+    {#else}
+      <h1>You're booked, {booking.inviteeName}!</h1>
     {/if}
+    {tzBar.raw}
+    <div class="card-detail">
+      <p><strong>When:</strong> <time data-utc="{startUtcIso}">{whenLabel}</time></p>
+      {#if !pending}
+        {#if type.locationType.name == 'GOOGLE_MEET'}
+          <p><strong>Google Meet:</strong> <a href="{location}">{location}</a></p>
+        {#else}
+          <p><strong>Location:</strong> {location}</p>
+        {/if}
+      {/if}
+    </div>
+    <p>{#if pending}A request confirmation{#else}A confirmation{/if} email is on its way to {booking.inviteeEmail}.</p>
+    <p><a href="/booking/{booking.manageToken}/manage">Need to change or cancel this booking?</a></p>
+    {tzScript.raw}
   </article>
-  <p>{#if pending}A request confirmation{#else}A confirmation{/if} email is on its way to {booking.inviteeEmail}.</p>
-  <p><a href="/booking/{booking.manageToken}/manage">Need to change or cancel this booking?</a></p>
-  {tzScript.raw}
 {/include}
