@@ -64,6 +64,11 @@ google.oauth.scope=https://www.googleapis.com/auth/calendar
 google.oauth.state-secret=${GOOGLE_OAUTH_STATE_SECRET:dev-only-insecure-state-secret-change-me}
 # Application name sent to the Google Calendar client.
 google.application-name=calit
+# %test placeholders: SmallRye @ConfigMapping treats client-id/client-secret as required and rejects
+# the empty env defaults at startup, so the test profile supplies non-functional dummies. No test makes
+# a real OAuth call (requestToken is stubbed), so these values are never exercised.
+%test.google.oauth.client-id=test-client-id
+%test.google.oauth.client-secret=test-client-secret
 ```
 
 - [ ] **Step 3: Confirm the project still builds with the new deps**
@@ -1447,7 +1452,7 @@ git commit -m "feat: add GoogleCalendarPort (freeBusy merge, Meet-link event cre
 package com.calit.google;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.InjectMock;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
@@ -1560,7 +1565,7 @@ git commit -m "test: prove CalendarPort @InjectMock seam with example consumer"
 package com.calit.google;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.InjectMock;
 import io.restassured.RestAssured;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -1734,7 +1739,7 @@ git commit -m "feat: add Google OAuth connect/callback endpoints"
 package com.calit.google;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectMock;
+import io.quarkus.test.InjectMock;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -1993,7 +1998,7 @@ Out of scope here (later plans): bookable-slot subtraction of busy/buffers (Plan
 - `public record BusyInterval(java.time.Instant start, java.time.Instant end) {}` — Task 5. ✔ matches the cross-plan contract verbatim.
 - `public record CreatedEvent(String googleEventId, String meetLink, String htmlLink) {}` — Task 5. ✔ verbatim.
 - `public interface CalendarPort { boolean isConnected(); List<BusyInterval> freeBusy(Instant, Instant); CreatedEvent createEvent(String summary, String description, Instant start, Instant end, List<String> attendeeEmails, boolean createMeetLink, String locationText); void updateEvent(String eventId, Instant start, Instant end); void deleteEvent(String eventId); }` — Task 5. ✔ all five signatures match the overview's "Defined in Plan 2" bullet **verbatim** (including the new `isConnected()` and the `createEvent` `boolean createMeetLink, String locationText` parameters).
-- `GoogleCalendarPort implements CalendarPort`, `@ApplicationScoped` — Task 8. ✔ replaceable by `@io.quarkus.test.junit.mockito.InjectMock CalendarPort` (proven in Task 9). `isConnected()` reads the singleton `GoogleCredential` (degraded-mode seam); `createEvent` honors `createMeetLink`/`locationText` per the per-type-location requirement; all three mutating methods set `sendUpdates="all"`. Per the overview time model, `createEvent`/`updateEvent` stamp each event's `start.timeZone`/`end.timeZone` with the owner's IANA zone (`OwnerSettings.get().timezone`, read inside the port — no signature change), so the Google event carries the owner's timezone.
+- `GoogleCalendarPort implements CalendarPort`, `@ApplicationScoped` — Task 8. ✔ replaceable by `@io.quarkus.test.InjectMock CalendarPort` (proven in Task 9). `isConnected()` reads the singleton `GoogleCredential` (degraded-mode seam); `createEvent` honors `createMeetLink`/`locationText` per the per-type-location requirement; all three mutating methods set `sendUpdates="all"`. Per the overview time model, `createEvent`/`updateEvent` stamp each event's `start.timeZone`/`end.timeZone` with the owner's IANA zone (`OwnerSettings.get().timezone`, read inside the port — no signature change), so the Google event carries the owner's timezone.
 
 These are the only types downstream plans bind to; entities (`GoogleCredential`, `GoogleCalendar`), services (`GoogleTokenService`, factory, `*ListPort`), and resources are internal to Plan 2.
 
