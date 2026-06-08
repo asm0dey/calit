@@ -84,6 +84,9 @@ public class PublicResource {
     /** One selectable slot: human label + the UTC instant string used as the form value. */
     public record SlotView(String label, String startUtc) {}
 
+    /** One day's worth of selectable slots: ISO date (for the JS calendar), a human label, and the slots. */
+    public record DaySlots(String isoDate, String label, java.util.List<SlotView> slots) {}
+
     @GET
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance landing() {
@@ -230,5 +233,21 @@ public class PublicResource {
                                     slot.start().toInstant().toString()));
         }
         return byDate;
+    }
+
+    /** Available slots as an ordered per-day list (ISO date + label), chronological. */
+    private List<DaySlots> daySlots(MeetingType type) {
+        ZoneId zone = ZoneId.of(OwnerSettings.get().timezone);
+        LocalDate from = LocalDate.now(zone);
+        LocalDate to = from.plusDays(BOOK_WINDOW_DAYS);
+        Map<String, DaySlots> byIso = new LinkedHashMap<>();
+        for (TimeSlot slot : bookingService.availableSlots(type, from, to)) {
+            String isoDate = slot.start().toLocalDate().toString();
+            DaySlots day = byIso.computeIfAbsent(isoDate,
+                    k -> new DaySlots(k, slot.start().format(DATE_FMT), new java.util.ArrayList<>()));
+            day.slots().add(new SlotView(slot.start().format(TIME_FMT),
+                                         slot.start().toInstant().toString()));
+        }
+        return new java.util.ArrayList<>(byIso.values());
     }
 }
