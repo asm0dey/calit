@@ -102,9 +102,10 @@ public class ReminderScheduler {
     @Scheduled(every = "60s")
     void dispatchDueReminders() {
         List<Long> bookingIds = claimAndMarkDueReminders();
-        // Fire AFTER the claim transaction commits (rows are durably marked sent). Each fire
-        // runs in its own committed transaction so the AFTER_SUCCESS email observer is delivered
-        // (an out-of-transaction AFTER_SUCCESS fire is NOT delivered by Quarkus ArC). Plan 6 deviation.
+        // Fire AFTER the claim transaction commits (rows are durably marked sent). Each fire runs
+        // in its own committed transaction to GUARANTEE delivery of the AFTER_SUCCESS email observer
+        // across Quarkus versions. (Verified: on Quarkus 3.36.1 an out-of-transaction fire is also
+        // delivered, but the in-tx fire is the spec-safe contract -- AFTER_SUCCESS needs a tx phase.)
         for (Long bookingId : bookingIds) {
             QuarkusTransaction.requiringNew().run(() -> reminderDueEvent.fire(new ReminderDue(bookingId)));
         }
