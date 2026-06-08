@@ -1,4 +1,83 @@
-/* calit custom layer — sits on top of Pico v2. */
+/* calit custom layer — sits on top of Pico v2 (pico.jade.min.css). */
 :root {
-  --calit-container: 48rem;
+  --calit-container: 48rem;        /* narrower than Pico default — Calendly-like column */
+  --pico-form-element-spacing-vertical: .6rem;
 }
+
+/* Tighter reading column for the public/invitee pages. */
+main.container { max-width: var(--calit-container); }
+
+/* --- Status badges (secret / inactive / approval / pending count) --- */
+.badge {
+  display: inline-block;
+  font-size: .7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: .25rem .5rem;
+  border-radius: 1rem;
+  background: var(--pico-primary-background);
+  color: var(--pico-primary-inverse);
+  vertical-align: middle;
+}
+
+/* --- Landing: meeting-type cards as a responsive grid --- */
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1rem;
+}
+.type-grid article { margin: 0; }
+.type-grid article a[role="button"] { width: 100%; }
+
+/* --- Timezone bar (invitee pages) --- */
+.tz-bar {
+  font-size: .85rem;
+  color: var(--pico-muted-color);
+  margin: .5rem 0 1rem;
+}
+.tz-bar select { display: inline; width: auto; margin: 0 0 0 .25rem; }
+
+/* --- Two-pane booking grid: calendar on the left, times on the right --- */
+.booking-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 48rem) {
+  .booking-grid { grid-template-columns: minmax(18rem, 1fr) minmax(12rem, 16rem); }
+}
+
+/* Calendar widget (built by CALENDAR_SCRIPT). */
+.calendar { border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 1rem; }
+.calendar__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+.calendar__title { font-weight: 600; }
+.calendar__nav { background: none; border: none; color: var(--pico-primary); font-size: 1.2rem; padding: .2rem .6rem; width: auto; margin: 0; }
+.calendar__nav[disabled] { color: var(--pico-muted-color); cursor: not-allowed; }
+.calendar__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .25rem; text-align: center; }
+.calendar__dow { font-size: .7rem; color: var(--pico-muted-color); padding: .25rem 0; }
+.calendar__day { aspect-ratio: 1; border: none; border-radius: 50%; background: none; color: var(--pico-color); padding: 0; margin: 0; width: 100%; font-size: .9rem; cursor: pointer; }
+.calendar__day[disabled] { color: var(--pico-muted-color); opacity: .4; cursor: default; }
+.calendar__day--available { font-weight: 600; background: var(--pico-primary-background); color: var(--pico-primary-inverse); }
+.calendar__day--selected { outline: 2px solid var(--pico-primary); outline-offset: 1px; }
+.calendar__day--empty { visibility: hidden; }
+
+/* Time column: a day's slots as a vertical list of pill buttons. */
+.time-column h3 { font-size: .95rem; margin: 0 0 .75rem; }
+.day-slots { margin: 0; }
+.day-slots[hidden] { display: none; }
+.slot { display: block; margin: 0 0 .5rem; }
+.slot input[type="radio"] { position: absolute; opacity: 0; }
+.slot time {
+  display: block;
+  text-align: center;
+  padding: .55rem .75rem;
+  border: 1px solid var(--pico-primary);
+  border-radius: var(--pico-border-radius);
+  color: var(--pico-primary);
+  cursor: pointer;
+}
+.slot input[type="radio"]:checked + time { background: var(--pico-primary); color: var(--pico-primary-inverse); }
+.slot input[type="radio"]:focus-visible + time { outline: 2px solid var(--pico-primary); outline-offset: 2px; }
+
+/* Keep the honeypot invisible regardless of framework resets. */
+input[name="website"] { display: none !important; }
