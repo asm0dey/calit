@@ -2,6 +2,7 @@ package com.calit.api;
 
 import com.calit.availability.SlotService;
 import com.calit.availability.TimeSlot;
+import com.calit.booking.BookingService;
 import com.calit.domain.BookingField;
 import com.calit.domain.MeetingType;
 import jakarta.inject.Inject;
@@ -27,6 +28,9 @@ public class MeetingTypeResource {
 
     @Inject
     SlotService slotService;
+
+    @Inject
+    BookingService bookingService;
 
     public record CreateMeetingTypeRequest(
             String name, String slug, int durationMinutes,
@@ -72,6 +76,19 @@ public class MeetingTypeResource {
             throw new NotFoundException("No meeting type with slug " + slug);
         }
         return slotService.generateRawSlots(t, LocalDate.parse(from), LocalDate.parse(to));
+    }
+
+    /** Available bookable slots for a meeting type in [from, to] (feature 11 + busy-interval checks). */
+    @GET
+    @Path("/{slug}/available")
+    public List<TimeSlot> available(@PathParam("slug") String slug,
+                                    @QueryParam("from") String from,
+                                    @QueryParam("to") String to) {
+        MeetingType t = MeetingType.findBySlug(slug);
+        if (t == null) {
+            throw new NotFoundException("No meeting type with slug " + slug);
+        }
+        return bookingService.availableSlots(t, LocalDate.parse(from), LocalDate.parse(to));
     }
 
     /** Resolved invitee form (excludes the always-present full name + email built-ins). */
