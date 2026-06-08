@@ -25,7 +25,7 @@ class AdminMeetingTypesTest {
         seedSecret();
         // Admin sees it (listAll) ...
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .when().get("/admin/meeting-types")
             .then()
                 .statusCode(200)
@@ -44,7 +44,7 @@ class AdminMeetingTypesTest {
     void createFormExposesNewFields() {
         // The create form must offer the Plan 1b fields: min-notice, horizon, location, approval.
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .when().get("/admin/meeting-types")
             .then()
                 .statusCode(200)
@@ -61,7 +61,7 @@ class AdminMeetingTypesTest {
     void createMeetingTypeViaFormPersistsNewFields() {
         String slug = "admin-created-" + System.nanoTime();
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
             .formParam("name", "Created Via Admin")
             .formParam("slug", slug)
@@ -91,7 +91,7 @@ class AdminMeetingTypesTest {
     void blankSlotIntervalPersistsAsNull() {
         String slug = "admin-blank-interval-" + System.nanoTime();
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
             .formParam("name", "Blank Interval")
             .formParam("slug", slug)

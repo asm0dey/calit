@@ -71,7 +71,7 @@ class AdminPendingTest {
         Long id = seedPendingBooking();
 
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .when().get("/admin/pending")
             .then()
                 .statusCode(200)
@@ -91,7 +91,7 @@ class AdminPendingTest {
         Long id = seedPendingBooking();
 
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
             .when().post("/admin/bookings/" + id + "/approve")
             .then().statusCode(200);
@@ -107,7 +107,7 @@ class AdminPendingTest {
         Long id = seedPendingBooking();
 
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
             .when().post("/admin/bookings/" + id + "/decline")
             .then().statusCode(200);
@@ -118,6 +118,6 @@ class AdminPendingTest {
 
     @Test
     void pendingPageRequiresAuth() {
-        given().when().get("/admin/pending").then().statusCode(401);
+        given().redirects().follow(false).when().get("/admin/pending").then().statusCode(302);
     }
 }

@@ -26,7 +26,7 @@ class AdminDateOverridesTest {
     void pageRendersExistingOverridesAndCreateForm() {
         seedOverride();
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .when().get("/admin/date-overrides")
             .then()
                 .statusCode(200)
@@ -42,7 +42,7 @@ class AdminDateOverridesTest {
     void createOverrideWithWindowsViaForm() {
         long before = DateOverride.count();
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
             .formParam("date", "2026-07-01")
             .formParam("meetingTypeId", "")          // empty = global
@@ -61,7 +61,7 @@ class AdminDateOverridesTest {
     void createDayOffOverrideWithNoWindows() {
         // No windowStart/windowEnd at all → an override with zero windows (day off / blocked).
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
             .formParam("date", "2026-08-15")
             .formParam("meetingTypeId", "")
@@ -74,6 +74,6 @@ class AdminDateOverridesTest {
 
     @Test
     void dateOverridesPageRequiresAuth() {
-        given().when().get("/admin/date-overrides").then().statusCode(401);
+        given().redirects().follow(false).when().get("/admin/date-overrides").then().statusCode(302);
     }
 }

@@ -37,7 +37,7 @@ class AdminBookingFieldsTest {
     void pageRendersExistingFieldsAndCreateForm() {
         seedField();
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .when().get("/admin/booking-fields")
             .then()
                 .statusCode(200)
@@ -51,7 +51,7 @@ class AdminBookingFieldsTest {
     void createFieldViaForm() {
         String key = "field-" + System.nanoTime();
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
             .formParam("label", "Dietary Needs")
             .formParam("fieldKey", key)
@@ -68,6 +68,6 @@ class AdminBookingFieldsTest {
 
     @Test
     void bookingFieldsPageRequiresAuth() {
-        given().when().get("/admin/booking-fields").then().statusCode(401);
+        given().redirects().follow(false).when().get("/admin/booking-fields").then().statusCode(302);
     }
 }

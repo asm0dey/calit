@@ -1,0 +1,15 @@
+{@java.lang.Boolean error}
+{#include base title="Sign in"}
+  <article>
+    <hgroup>
+      <h1>Sign in</h1>
+      <p>Owner access to calit admin.</p>
+    </hgroup>
+    {#if error}<p class="err">Invalid credentials — try again.</p>{/if}
+    <form method="post" action="/j_security_check">
+      <label>Username <input type="text" name="j_username" required autofocus></label>
+      <label>Password <input type="password" name="j_password" required></label>
+      <button type="submit">Sign in</button>
+    </form>
+  </article>
+{/include}

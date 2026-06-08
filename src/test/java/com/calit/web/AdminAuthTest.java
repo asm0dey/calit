@@ -11,18 +11,27 @@ class AdminAuthTest {
 
     @Test
     void dashboardRequiresAuth() {
-        given()
+        given().redirects().follow(false)
             .when().get("/admin")
-            .then().statusCode(401);
+            .then().statusCode(302)
+                .header("Location", org.hamcrest.Matchers.containsString("/login"));
     }
 
     @Test
-    void dashboardServedWithBasicAuth() {
+    void dashboardServedWhenLoggedIn() {
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .when().get("/admin")
             .then()
                 .statusCode(200)
                 .body(containsString("Dashboard"));
+    }
+
+    @Test
+    void loginPageRenders() {
+        given().when().get("/login")
+            .then().statusCode(200)
+                .body(containsString("j_username"))
+                .body(containsString("Sign in"));
     }
 }

@@ -14,7 +14,7 @@ class AdminAvailabilityTest {
     void createGlobalRuleViaForm() {
         long before = AvailabilityRule.count();
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
             .formParam("dayOfWeek", "TUESDAY")
             .formParam("startTime", "10:00")
@@ -28,6 +28,6 @@ class AdminAvailabilityTest {
 
     @Test
     void availabilityPageRequiresAuth() {
-        given().when().get("/admin/availability").then().statusCode(401);
+        given().redirects().follow(false).when().get("/admin/availability").then().statusCode(302);
     }
 }

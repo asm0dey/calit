@@ -33,8 +33,8 @@ mvn quarkus:dev
 ```
 
 - Public booking site: <http://localhost:8080/>
-- Owner admin: <http://localhost:8080/admin> (HTTP Basic — user `admin`, password `changeme` by default;
-  override with `ADMIN_PASSWORD`).
+- Owner admin: <http://localhost:8080/admin> (form login at `/login` — user `admin`, password `changeme`
+  by default; override with `ADMIN_PASSWORD`).
 - Health: `/q/health/live`, `/q/health/ready`.
 
 In dev/test the mailer is mocked (no real email is sent) and Google/Turnstile are disabled by default,
@@ -92,7 +92,8 @@ the same values must be present on every replica.
 | Variable | Purpose |
 |---|---|
 | `DB_PASSWORD` | Postgres password. |
-| `ADMIN_PASSWORD` | Password for the single `admin` owner login (HTTP Basic). **Change it.** |
+| `ADMIN_PASSWORD` | Password for the single `admin` owner login (form login at `/login`). **Change it.** |
+| `SESSION_ENCRYPTION_KEY` | Encrypts the admin login cookie (>=16 chars). Must be the same on every replica. Generate with `openssl rand -hex 32`. **Required in prod.** |
 | `APP_BASE_URL` | Public origin, e.g. `https://book.example.com`. Used to build invitee manage links in emails and the Google OAuth redirect; must match what users hit. |
 | `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | SMTP server + the "from" address. |
 

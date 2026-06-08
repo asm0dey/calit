@@ -30,7 +30,7 @@ class AdminSettingsTest {
     @Test
     void settingsPageHasNotifyToggleAndReminderLead() {
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .when().get("/admin/settings")
             .then()
                 .statusCode(200)
@@ -44,7 +44,7 @@ class AdminSettingsTest {
     void updateSettingsTogglesOwnerNotifications() {
         // Save with the notify checkbox OFF (omitted → unchecked) and assert it persists false.
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
             .formParam("ownerName", "New Owner")
             .formParam("ownerEmail", "new@example.com")
@@ -62,7 +62,7 @@ class AdminSettingsTest {
 
         // Now save with it ON and assert it flips back to true.
         given()
-            .auth().preemptive().basic("admin", "testpass")
+            .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
             .formParam("ownerName", "New Owner")
             .formParam("ownerEmail", "new@example.com")
