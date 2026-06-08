@@ -1,0 +1,8 @@
+# Build output and local state — never copy into the build context.
+target/
+.quarkus/
+.git/
+.idea/
+*.iml
+.env
+docs/

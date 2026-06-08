@@ -44,6 +44,29 @@ Run the tests (Docker required):
 mvn test
 ```
 
+## Run with Docker Compose (recommended for self-hosting)
+
+The repo ships a `Dockerfile` (multi-stage, BellSoft **Liberica JDK 25**) and a `docker-compose.yml`
+that runs the app plus its Postgres.
+
+```bash
+cp .env.example .env          # then edit .env — at minimum set DB_PASSWORD, ADMIN_PASSWORD,
+                              # APP_BASE_URL, and the MAIL_* values
+docker compose up --build -d
+```
+
+The app image builds from source (tests are skipped in the image — run `mvn test` on the host with
+Docker first), waits for a healthy Postgres, and Flyway applies the `V1…V6` migrations at boot. The
+DB is persisted in the `calit-db` volume. Reach it at `http://localhost:${APP_PORT:-8080}/`.
+
+Scale the stateless app behind your own load balancer:
+
+```bash
+docker compose up -d --scale app=3
+```
+
+(Everything below also applies to the compose deployment — the same env vars, set in `.env`.)
+
 ## Build & run for production
 
 ```bash

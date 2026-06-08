@@ -1,0 +1,43 @@
+# Self-hosted calit: the app + its Postgres. Copy .env.example to .env, fill it in, then:
+#   docker compose up --build -d
+# The app builds from the local Dockerfile (Liberica JDK 25), waits for a healthy DB, and Flyway
+# applies the V1..V6 migrations at boot. Scale the app with `docker compose up -d --scale app=3`
+# behind your own load balancer — it is stateless (all shared state is in Postgres).
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: ${DB_NAME:-calit}
+      POSTGRES_USER: ${DB_USER:-calit}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - calit-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-calit} -d ${DB_NAME:-calit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    # All secrets/config come from .env (see .env.example for the full list).
+    # Optional so `docker compose config` works on a fresh checkout; copy .env.example to .env to fill it.
+    env_file:
+      - path: .env
+        required: false
+    # The in-network DB coordinates are derived here so .env only carries the password.
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-calit}
+      DB_USER: ${DB_USER:-calit}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  calit-db:
