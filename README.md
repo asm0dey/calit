@@ -15,6 +15,8 @@ multi-node-safe via Postgres `SELECT … FOR UPDATE SKIP LOCKED` with no leader 
 ## Requirements
 
 - **Java 25** and **Maven** to build.
+- The UI is styled with **Pico CSS v2**, bundled as a Maven WebJar (`org.webjars.npm:picocss__pico`)
+  and served locally via `quarkus-web-dependency-locator` — there is **no runtime CDN dependency**.
 - **PostgreSQL** at runtime. (For local dev/tests, Quarkus Dev Services starts a throwaway Postgres in
   **Docker** automatically — Docker must be running to run the test suite or `quarkus:dev`.)
 - An **SMTP** account for outbound email.
