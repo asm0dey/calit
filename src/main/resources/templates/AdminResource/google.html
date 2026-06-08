@@ -1,31 +1,13 @@
-{@java.lang.String css}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin — Google</title>
-  <style>{css}</style>
-</head>
-<body>
-  <nav>
-    <a href="/admin">Dashboard</a>
-    <a href="/admin/pending">Pending</a>
-    <a href="/admin/meeting-types">Meeting types</a>
-    <a href="/admin/availability">Availability</a>
-    <a href="/admin/date-overrides">Date overrides</a>
-    <a href="/admin/booking-fields">Booking fields</a>
-    <a href="/admin/settings">Settings</a>
-    <a href="/admin/google">Google</a>
-  </nav>
+{@java.lang.Long pendingCount}
+{#include base title="Admin — Google"}
+  {#include adminNav pendingCount=pendingCount /}
   <h1>Google Calendar</h1>
   <p>Connect your Google account so calit can read your busy times and create Meet events.</p>
-  <p><a href="/api/google/connect"><button type="button">Connect Google</button></a></p>
+  <p><a role="button" href="/api/google/connect">Connect Google</a></p>
 
   <h2>Calendars</h2>
   <p>After connecting, choose which calendars to read for conflicts and which one to write events to.</p>
   <ul>
     <li><a href="/api/google/calendars">List my calendars</a></li>
   </ul>
-</body>
-</html>
+{/include}

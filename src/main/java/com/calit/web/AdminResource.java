@@ -48,7 +48,7 @@ public class AdminResource {
         public static native TemplateInstance settings(
                 OwnerSettings settings, int reminderLeadMinutes, String css);
 
-        public static native TemplateInstance google(String css);
+        public static native TemplateInstance google(Long pendingCount);
 
         public static native TemplateInstance bookingFields(
                 List<BookingField> fields, List<MeetingType> types, String css);
@@ -56,7 +56,7 @@ public class AdminResource {
         public static native TemplateInstance dateOverrides(
                 List<DateOverride> overrides, List<MeetingType> types, String css);
 
-        public static native TemplateInstance pending(List<Booking> pending, String css);
+        public static native TemplateInstance pending(List<Booking> pending);
     }
 
     @Inject
@@ -211,7 +211,8 @@ public class AdminResource {
     @Path("/google")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance google() {
-        return Templates.google(Layout.CSS);
+        long pendingCount = Booking.count("status = ?1", com.calit.booking.BookingStatus.PENDING);
+        return Templates.google(pendingCount);
     }
 
     @GET
@@ -328,7 +329,7 @@ public class AdminResource {
     public TemplateInstance pending() {
         List<Booking> pending = Booking.list(
                 "status = ?1 order by startUtc", com.calit.booking.BookingStatus.PENDING);
-        return Templates.pending(pending, Layout.CSS);
+        return Templates.pending(pending);
     }
 
     @POST
@@ -339,7 +340,7 @@ public class AdminResource {
         bookingService.approve(id); // PENDING→CONFIRMED (+ Google event if connected)
         List<Booking> pending = Booking.list(
                 "status = ?1 order by startUtc", com.calit.booking.BookingStatus.PENDING);
-        return Templates.pending(pending, Layout.CSS);
+        return Templates.pending(pending);
     }
 
     @POST
@@ -350,6 +351,6 @@ public class AdminResource {
         bookingService.decline(id); // PENDING→DECLINED
         List<Booking> pending = Booking.list(
                 "status = ?1 order by startUtc", com.calit.booking.BookingStatus.PENDING);
-        return Templates.pending(pending, Layout.CSS);
+        return Templates.pending(pending);
     }
 }

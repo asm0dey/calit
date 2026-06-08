@@ -1,42 +1,21 @@
 {@java.util.List<com.calit.booking.Booking> pending}
-{@java.lang.String css}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin — Pending approvals</title>
-  <style>{css}</style>
-</head>
-<body>
-  <nav>
-    <a href="/admin">Dashboard</a>
-    <a href="/admin/pending">Pending</a>
-    <a href="/admin/meeting-types">Meeting types</a>
-    <a href="/admin/availability">Availability</a>
-    <a href="/admin/date-overrides">Date overrides</a>
-    <a href="/admin/booking-fields">Booking fields</a>
-    <a href="/admin/settings">Settings</a>
-    <a href="/admin/google">Google</a>
-  </nav>
+{#include base title="Admin — Pending approvals"}
+  {#include adminNav pendingCount=pending.size() /}
   <h1>Pending approvals</h1>
-
   {#if pending.isEmpty()}
     <p>No requests are awaiting approval.</p>
   {#else}
     {#for b in pending}
-      <div class="card">
+      <article>
         <p><strong>{b.inviteeName}</strong> ({b.inviteeEmail})</p>
-        {! Owner-tz instant; admin pages intentionally do NOT do viewer-local conversion. !}
         <p>{b.startUtc} UTC</p>
         <form method="post" action="/admin/bookings/{b.id}/approve" style="display:inline">
           <button type="submit">Approve</button>
         </form>
         <form method="post" action="/admin/bookings/{b.id}/decline" style="display:inline">
-          <button type="submit">Decline</button>
+          <button type="submit" class="secondary">Decline</button>
         </form>
-      </div>
+      </article>
     {/for}
   {/if}
-</body>
-</html>
+{/include}
