@@ -4,6 +4,7 @@ import com.calit.domain.BookingField;
 import com.calit.domain.BookingField.FieldType;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
@@ -11,6 +12,18 @@ import static org.hamcrest.Matchers.containsString;
 
 @QuarkusTest
 class AdminBookingFieldsTest {
+
+    /**
+     * These tests COMMIT BookingField rows (form POSTs run in their own committed
+     * transaction). A leaked GLOBAL required field would make every later test that
+     * books a meeting type without per-type fields fail validateRequiredFields.
+     * So delete everything this class created after each test.
+     */
+    @AfterEach
+    @Transactional
+    void cleanUp() {
+        BookingField.delete("fieldKey = ?1 or fieldKey like ?2", "linkedin", "field-%");
+    }
 
     @Transactional
     void seedField() {
