@@ -88,6 +88,19 @@ class AdminMeetingTypesTest {
     }
 
     @Test
+    void createFormUsesAccordionSectionsAndLocationTiles() {
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when().get("/admin/meeting-types")
+            .then()
+                .statusCode(200)
+                .body(containsString("<details"))                 // accordion sections
+                .body(containsString("class=\"loc-tiles\""))      // location picker tiles
+                .body(containsString("type=\"radio\" name=\"locationType\"")) // tiles are radios
+                .body(containsString("value=\"GOOGLE_MEET\""));   // a tile per LocationType
+    }
+
+    @Test
     void blankSlotIntervalPersistsAsNull() {
         String slug = "admin-blank-interval-" + System.nanoTime();
         given()

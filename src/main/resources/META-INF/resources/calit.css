@@ -181,3 +181,33 @@ body.admin-canvas { background: var(--calit-canvas); }
   .admin-nav { flex-direction: row; }
   .admin-logout { margin: 0 0 0 auto; border: 0; padding: 0; }
 }
+
+/* --- Meeting-type editor: native <details> accordion (Calendly-style) --- */
+.editor details {
+  border: 1px solid var(--pico-muted-border-color); border-radius: 12px;
+  margin-bottom: .75rem; background: var(--pico-card-background-color);
+}
+.editor summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: .6rem;
+  padding: 1rem 1.1rem; font-weight: 700;
+}
+.editor summary::-webkit-details-marker { display: none; }
+.editor summary::after { content: '⌄'; margin-left: auto; color: var(--pico-muted-color); transition: transform .15s; }
+.editor details[open] summary::after { transform: rotate(180deg); }
+.editor summary .sec-ic { width: 1.15rem; height: 1.15rem; color: var(--pico-muted-color); }
+.editor .sec-body { padding: 0 1.1rem 1.1rem; }
+.editor .sec-body > label { margin-top: .5rem; }
+
+/* Location picker tiles (radios styled via :has — Pico v2 targets modern browsers). */
+.loc-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); gap: .6rem; margin-bottom: .6rem; }
+.loc-tiles .tile {
+  border: 1px solid var(--pico-muted-border-color); border-radius: 10px; padding: .85rem .5rem;
+  text-align: center; cursor: pointer; font-size: .85rem; font-weight: 600;
+  display: flex; flex-direction: column; align-items: center; gap: .4rem; margin: 0;
+}
+.loc-tiles .tile svg { width: 1.4rem; height: 1.4rem; color: currentColor; }
+.loc-tiles .tile input { position: absolute; opacity: 0; width: 0; height: 0; }
+.loc-tiles .tile:has(input:checked) {
+  border-color: var(--pico-primary); background: var(--pico-primary-background); color: var(--pico-primary-inverse);
+}
+.loc-note { display: block; color: var(--pico-muted-color); margin-bottom: .6rem; }
