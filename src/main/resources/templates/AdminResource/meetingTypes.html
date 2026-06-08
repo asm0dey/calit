@@ -1,0 +1,68 @@
+{@java.util.List<com.calit.domain.MeetingType> types}
+{@com.calit.domain.MeetingType.LocationType[] locationTypes}
+{@java.lang.String css}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin — Meeting types</title>
+  <style>{css}</style>
+</head>
+<body>
+  <nav>
+    <a href="/admin">Dashboard</a>
+    <a href="/admin/pending">Pending</a>
+    <a href="/admin/meeting-types">Meeting types</a>
+    <a href="/admin/availability">Availability</a>
+    <a href="/admin/date-overrides">Date overrides</a>
+    <a href="/admin/settings">Settings</a>
+    <a href="/admin/google">Google</a>
+  </nav>
+  <h1>Meeting types</h1>
+
+  {#for t in types}
+    <div class="card">
+      <h3>{t.name}
+        {#if t.secret}<span class="badge">secret</span>{/if}
+        {#if !t.active}<span class="badge">inactive</span>{/if}
+        {#if t.requiresApproval}<span class="badge">approval</span>{/if}
+      </h3>
+      <p>/{t.slug} &middot; {t.durationMinutes} min &middot; {t.locationType}{#if t.locationDetail} ({t.locationDetail}){/if}</p>
+      <p>min notice {t.minNoticeMinutes} min &middot; horizon {t.horizonDays} days{#if t.slotIntervalMinutes} &middot; slot interval {t.slotIntervalMinutes} min{/if}</p>
+      <form method="post" action="/admin/meeting-types/{t.id}/toggle" style="display:inline">
+        <button type="submit">{#if t.active}Deactivate{#else}Activate{/if}</button>
+      </form>
+      <form method="post" action="/admin/meeting-types/{t.id}/delete" style="display:inline">
+        <button type="submit">Delete</button>
+      </form>
+    </div>
+  {/for}
+
+  <h2>Create meeting type</h2>
+  <form method="post" action="/admin/meeting-types">
+    <label>Name <input type="text" name="name" required></label>
+    <label>Slug <input type="text" name="slug" required></label>
+    <label>Duration (minutes) <input type="number" name="durationMinutes" value="30" required></label>
+    <label><input type="checkbox" name="secret"> Secret (hidden from public landing)</label>
+
+    {! Plan 1b fields (features 11/13/14a). !}
+    <label>Min scheduling notice (minutes)
+      <input type="number" name="minNoticeMinutes" value="0" required></label>
+    <label>Booking horizon (days)
+      <input type="number" name="horizonDays" value="60" required></label>
+    <label>Location type
+      <select name="locationType">
+        {#for lt in locationTypes}<option value="{lt}">{lt}</option>{/for}
+      </select>
+    </label>
+    <label>Location detail (phone number / address / custom text; ignored for Google Meet)
+      <input type="text" name="locationDetail"></label>
+    {! Slot cadence (Calendly-style). Blank = back-to-back (falls back to duration). !}
+    <label>Slot interval (minutes, blank = back-to-back)
+      <input type="number" name="slotIntervalMinutes"></label>
+    <label><input type="checkbox" name="requiresApproval"> Requires owner approval (hold as pending)</label>
+    <button type="submit">Create</button>
+  </form>
+</body>
+</html>

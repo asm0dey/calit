@@ -1,0 +1,111 @@
+package com.calit.web;
+
+import com.calit.domain.MeetingType;
+import com.calit.domain.MeetingType.LocationType;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.Test;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+
+@QuarkusTest
+class AdminMeetingTypesTest {
+
+    @Transactional
+    void seedSecret() {
+        MeetingType secret = new MeetingType();
+        secret.name = "Admin Visible Secret"; secret.slug = "admin-secret";
+        secret.durationMinutes = 30; secret.secret = true;
+        secret.persist();
+    }
+
+    @Test
+    void adminListShowsSecretTypeUnlikePublicLanding() {
+        seedSecret();
+        // Admin sees it (listAll) ...
+        given()
+            .auth().preemptive().basic("admin", "testpass")
+            .when().get("/admin/meeting-types")
+            .then()
+                .statusCode(200)
+                .body(containsString("Admin Visible Secret"))
+                .body(containsString("secret")); // the "secret" badge
+
+        // ... but the public landing (listPublic) does not.
+        given()
+            .when().get("/")
+            .then()
+                .statusCode(200)
+                .body(org.hamcrest.Matchers.not(containsString("Admin Visible Secret")));
+    }
+
+    @Test
+    void createFormExposesNewFields() {
+        // The create form must offer the Plan 1b fields: min-notice, horizon, location, approval.
+        given()
+            .auth().preemptive().basic("admin", "testpass")
+            .when().get("/admin/meeting-types")
+            .then()
+                .statusCode(200)
+                .body(containsString("name=\"minNoticeMinutes\""))
+                .body(containsString("name=\"horizonDays\""))
+                .body(containsString("name=\"locationType\""))   // GOOGLE_MEET/PHONE/IN_PERSON/CUSTOM dropdown
+                .body(containsString("GOOGLE_MEET"))
+                .body(containsString("name=\"locationDetail\""))
+                .body(containsString("name=\"slotIntervalMinutes\"")) // slot cadence (blank = back-to-back)
+                .body(containsString("name=\"requiresApproval\"")); // approval checkbox
+    }
+
+    @Test
+    void createMeetingTypeViaFormPersistsNewFields() {
+        String slug = "admin-created-" + System.nanoTime();
+        given()
+            .auth().preemptive().basic("admin", "testpass")
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Created Via Admin")
+            .formParam("slug", slug)
+            .formParam("durationMinutes", "45")
+            .formParam("secret", "on")
+            .formParam("minNoticeMinutes", "120")
+            .formParam("horizonDays", "30")
+            .formParam("locationType", "PHONE")
+            .formParam("locationDetail", "Call +1-555-0100")
+            .formParam("slotIntervalMinutes", "15")
+            .formParam("requiresApproval", "on")
+            .when().post("/admin/meeting-types")
+            .then().statusCode(200).body(containsString(slug));
+
+        // Persisted with the new fields (resolves via findBySlug).
+        MeetingType created = MeetingType.findBySlug(slug);
+        org.junit.jupiter.api.Assertions.assertNotNull(created);
+        org.junit.jupiter.api.Assertions.assertEquals(120, created.minNoticeMinutes);
+        org.junit.jupiter.api.Assertions.assertEquals(30, created.horizonDays);
+        org.junit.jupiter.api.Assertions.assertEquals(LocationType.PHONE, created.locationType);
+        org.junit.jupiter.api.Assertions.assertEquals("Call +1-555-0100", created.locationDetail);
+        org.junit.jupiter.api.Assertions.assertEquals(Integer.valueOf(15), created.slotIntervalMinutes);
+        org.junit.jupiter.api.Assertions.assertTrue(created.requiresApproval);
+    }
+
+    @Test
+    void blankSlotIntervalPersistsAsNull() {
+        String slug = "admin-blank-interval-" + System.nanoTime();
+        given()
+            .auth().preemptive().basic("admin", "testpass")
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Blank Interval")
+            .formParam("slug", slug)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "GOOGLE_MEET")
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            .when().post("/admin/meeting-types")
+            .then().statusCode(200);
+
+        MeetingType created = MeetingType.findBySlug(slug);
+        org.junit.jupiter.api.Assertions.assertNotNull(created);
+        org.junit.jupiter.api.Assertions.assertNull(created.slotIntervalMinutes);
+    }
+}
