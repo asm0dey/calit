@@ -53,7 +53,12 @@ public class AdminResource {
 
         public static native TemplateInstance dateOverrides(
                 List<DateOverride> overrides, List<MeetingType> types, String css);
+
+        public static native TemplateInstance pending(List<Booking> pending, String css);
     }
+
+    @jakarta.inject.Inject
+    com.calit.booking.BookingService bookingService;
 
     @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "120")
     int reminderLeadMinutes;
@@ -313,5 +318,36 @@ public class AdminResource {
         DateOverride.deleteById(id);
         return Templates.dateOverrides(
                 overridesWithWindows(), MeetingType.listAll(), Layout.CSS);
+    }
+
+    @GET
+    @Path("/pending")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance pending() {
+        List<Booking> pending = Booking.list(
+                "status = ?1 order by startUtc", com.calit.booking.BookingStatus.PENDING);
+        return Templates.pending(pending, Layout.CSS);
+    }
+
+    @POST
+    @Path("/bookings/{id}/approve")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance approveBooking(@PathParam("id") Long id) {
+        bookingService.approve(id); // PENDING→CONFIRMED (+ Google event if connected)
+        List<Booking> pending = Booking.list(
+                "status = ?1 order by startUtc", com.calit.booking.BookingStatus.PENDING);
+        return Templates.pending(pending, Layout.CSS);
+    }
+
+    @POST
+    @Path("/bookings/{id}/decline")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance declineBooking(@PathParam("id") Long id) {
+        bookingService.decline(id); // PENDING→DECLINED
+        List<Booking> pending = Booking.list(
+                "status = ?1 order by startUtc", com.calit.booking.BookingStatus.PENDING);
+        return Templates.pending(pending, Layout.CSS);
     }
 }
