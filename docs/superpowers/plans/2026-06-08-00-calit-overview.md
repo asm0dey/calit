@@ -29,7 +29,8 @@ The app must run as N identical stateless replicas behind a load balancer. Enfor
 - **Display timezone:**
   - **Invitee-facing pages render times in the *viewer's* local timezone** (detected via the browser, with a timezone picker to override) — Calendly-standard. The slot/booking REST responses serialize instants as ISO-8601 with offset (e.g. `2026-06-08T09:00:00+02:00`), which are absolute points in time, so the invitee frontend converts them to the chosen display zone client-side. No backend change is needed for this — it is a Plan 5 frontend concern.
   - **Owner/admin pages render in the owner's timezone** (`OwnerSettings.timezone`) — it is the owner's own schedule.
-  - Emails render in the owner's timezone (server-rendered, no viewer context); where an invitee's zone is known it may also be shown — Plan 4 detail.
+  - Emails render in the owner's timezone (server-rendered, no viewer context).
+  - **Canonical rule: "for the invitee, their tz; for us, our tz."** The invitee's timezone is **never persisted** — viewer-local rendering is purely a client-side display aid on invitee browser pages. The owner's timezone is the single authoritative zone for all stored-instant interpretation, every server-rendered surface (emails, owner/admin pages), and **Google Calendar events** — Plan 2 sets each event's `start.timeZone`/`end.timeZone` to the owner's IANA zone (read from `OwnerSettings.timezone`), so the event carries the owner's zone and each attendee's own Google client displays it in their local zone automatically. No `book()`/`CalendarPort` signature change is needed (the port reads `OwnerSettings`).
 
 ---
 

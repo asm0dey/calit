@@ -1200,8 +1200,8 @@ git commit -m "feat: add GoogleCalendarClientFactory for authorized Calendar cli
 > **Design:** `GoogleCalendarPort implements CalendarPort` and is `@ApplicationScoped`. It composes `GoogleTokenService`, `GoogleCalendarClientFactory`, the `GoogleCalendar` selection entity, and the pure `BusyIntervals.merge`. Because every Google call requires a valid access token + a built `Calendar` client (both of which need live Google or HTTP), this class is **not** unit-tested against Google; downstream plans mock the `CalendarPort` interface (Task 9 proves the seam). The mapping rules it implements:
 > - `isConnected`: returns `GoogleCredential.get() != null` — true iff the singleton credential (with refresh token) is present. Wrapped in `@Transactional` so it can read the row. This is the degraded-mode seam Plan 3 branches on; no Google call.
 > - `freeBusy`: build a `FreeBusyRequest` listing every `GoogleCalendar.readForBusy()` id; collect each calendar's `busy` ranges into `BusyInterval`s; return `BusyIntervals.merge(...)`.
-> - `createEvent`: build an `Event` on `GoogleCalendar.writeTarget()`; **when `createMeetLink` is true** attach a `ConferenceData` `createRequest` with a random `requestId` and Hangouts-Meet solution and call `events().insert(...).setConferenceDataVersion(1)`; **when false** set the event `location` to `locationText` (when non-null) and insert without conference data (no `meetLink`). Always set `setSendUpdates("all")` on the insert so Google emails the attendees. Map `getHangoutLink()` (falling back to the conference entry point) → `meetLink`, `getId()` → `googleEventId`, `getHtmlLink()` → `htmlLink`; add attendees.
-> - `updateEvent`: patch only `start`/`end` on the write-target calendar, with `setSendUpdates("all")` so Google emails the change.
+> - `createEvent`: build an `Event` on `GoogleCalendar.writeTarget()`; **when `createMeetLink` is true** attach a `ConferenceData` `createRequest` with a random `requestId` and Hangouts-Meet solution and call `events().insert(...).setConferenceDataVersion(1)`; **when false** set the event `location` to `locationText` (when non-null) and insert without conference data (no `meetLink`). Always set `setSendUpdates("all")` on the insert so Google emails the attendees. Map `getHangoutLink()` (falling back to the conference entry point) → `meetLink`, `getId()` → `googleEventId`, `getHtmlLink()` → `htmlLink`; add attendees. **Owner-timezone stamping (overview time model):** both the start and end `EventDateTime` carry the OWNER's IANA zone — `eventTime(...)` calls `new EventDateTime().setDateTime(...).setTimeZone(ownerZoneId)` where `ownerZoneId = OwnerSettings.get().timezone` (read inside the port; no `createEvent` signature change). The absolute instant is already unambiguous, but setting `start.timeZone`/`end.timeZone` to the owner's zone makes the Google event **own** the owner's timezone (cleaner for attendees + DST handling on Google's side); each attendee's Google client still renders it in their own local zone, and the invitee's timezone is never stored.
+> - `updateEvent`: patch only `start`/`end` on the write-target calendar (the rebuilt `EventDateTime`s likewise carry the owner's IANA zone via `eventTime(...)`), with `setSendUpdates("all")` so Google emails the change.
 > - `deleteEvent`: delete by id on the write-target calendar, with `setSendUpdates("all")` so Google emails the cancellation.
 >
 > **Invitee-notification policy:** `sendUpdates="all"` on insert/patch/delete is the **chosen path** for notifying invitees when Google is connected — Google sends the invite/change/cancel emails. The app only emails invitees itself as a fallback when `isConnected()` is false (Plan 4). Owner-side emails are always sent by the app (Plan 4, opt-out-able).
@@ -1213,6 +1213,7 @@ git commit -m "feat: add GoogleCalendarClientFactory for authorized Calendar cli
 ```java
 package com.calit.google;
 
+import com.calit.domain.OwnerSettings;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.ConferenceData;
@@ -1381,10 +1382,19 @@ public class GoogleCalendarPort implements CalendarPort {
         return target;
     }
 
+    /**
+     * Build the Google EventDateTime for a start/end instant. The absolute instant
+     * (epoch-millis DateTime) is already unambiguous, but we additionally stamp the event's
+     * start.timeZone / end.timeZone with the OWNER's IANA zone (read from the OwnerSettings
+     * singleton) so the Google event "owns" the owner's timezone — cleaner for attendees and for
+     * DST handling on Google's side. Each attendee's Google client still displays the event in
+     * their own local zone automatically; the invitee's timezone is never stored.
+     */
     private static EventDateTime eventTime(Instant instant) {
+        String ownerZoneId = OwnerSettings.get().timezone;
         return new EventDateTime()
                 .setDateTime(new DateTime(instant.toEpochMilli()))
-                .setTimeZone("UTC");
+                .setTimeZone(ownerZoneId);
     }
 
     /** Prefer the top-level hangoutLink; fall back to the first video conference entry point. */
@@ -1983,10 +1993,10 @@ Out of scope here (later plans): bookable-slot subtraction of busy/buffers (Plan
 - `public record BusyInterval(java.time.Instant start, java.time.Instant end) {}` — Task 5. ✔ matches the cross-plan contract verbatim.
 - `public record CreatedEvent(String googleEventId, String meetLink, String htmlLink) {}` — Task 5. ✔ verbatim.
 - `public interface CalendarPort { boolean isConnected(); List<BusyInterval> freeBusy(Instant, Instant); CreatedEvent createEvent(String summary, String description, Instant start, Instant end, List<String> attendeeEmails, boolean createMeetLink, String locationText); void updateEvent(String eventId, Instant start, Instant end); void deleteEvent(String eventId); }` — Task 5. ✔ all five signatures match the overview's "Defined in Plan 2" bullet **verbatim** (including the new `isConnected()` and the `createEvent` `boolean createMeetLink, String locationText` parameters).
-- `GoogleCalendarPort implements CalendarPort`, `@ApplicationScoped` — Task 8. ✔ replaceable by `@io.quarkus.test.junit.mockito.InjectMock CalendarPort` (proven in Task 9). `isConnected()` reads the singleton `GoogleCredential` (degraded-mode seam); `createEvent` honors `createMeetLink`/`locationText` per the per-type-location requirement; all three mutating methods set `sendUpdates="all"`.
+- `GoogleCalendarPort implements CalendarPort`, `@ApplicationScoped` — Task 8. ✔ replaceable by `@io.quarkus.test.junit.mockito.InjectMock CalendarPort` (proven in Task 9). `isConnected()` reads the singleton `GoogleCredential` (degraded-mode seam); `createEvent` honors `createMeetLink`/`locationText` per the per-type-location requirement; all three mutating methods set `sendUpdates="all"`. Per the overview time model, `createEvent`/`updateEvent` stamp each event's `start.timeZone`/`end.timeZone` with the owner's IANA zone (`OwnerSettings.get().timezone`, read inside the port — no signature change), so the Google event carries the owner's timezone.
 
 These are the only types downstream plans bind to; entities (`GoogleCredential`, `GoogleCalendar`), services (`GoogleTokenService`, factory, `*ListPort`), and resources are internal to Plan 2.
 
 **4. Horizontal scalability (overview NFR):** Plan 2 satisfies the overview's "run as N identical stateless replicas" requirement for Google handling. All credential state lives in shared Postgres (`GoogleCredential` singleton), never in instance memory: `validAccessToken` re-reads the row each call and **writes refreshed tokens back to the shared row inside its `@Transactional`** (Task 6), so any replica picks up another's refresh and none caches a stale token. A concurrent refresh from two replicas is safe — last-write-wins, either fresh token is valid until its own expiry, and a rotated refresh token is persisted when Google returns one — so **no distributed lock is required**. The OAuth `/connect` and `/callback` endpoints are stateless: the CSRF `state` is a signed, short-lived HMAC token (`issueState`/`validateState`, Task 6), **not an `HttpSession`**, so the two requests may be served by different replicas and any replica validates the state with only the shared secret (Task 10). Therefore any replica can serve OAuth callbacks and make Calendar API calls.
 
-**Known assumptions (carried forward):** all event times are written/compared in UTC (`EventDateTime` time zone "UTC"), consistent with the overview's time model; the owner connects Google and selects calendars once via the Plan 5 admin UI before booking flows run; `freeBusy` returns an empty list when no read calendars are configured (Plan 3 then treats the whole work-hour window as free).
+**Known assumptions (carried forward):** all event times are stored/compared as absolute UTC instants, while each Google `EventDateTime` is stamped with the owner's IANA zone (`OwnerSettings.get().timezone`) so the event carries the owner's timezone per the overview's time model (the absolute instant stays unambiguous; the invitee's zone is never stored); the owner connects Google and selects calendars once via the Plan 5 admin UI before booking flows run; `freeBusy` returns an empty list when no read calendars are configured (Plan 3 then treats the whole work-hour window as free).
