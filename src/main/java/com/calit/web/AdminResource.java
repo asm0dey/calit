@@ -1,6 +1,7 @@
 package com.calit.web;
 
 import com.calit.booking.Booking;
+import com.calit.booking.BookingService;
 import com.calit.domain.AvailabilityRule;
 import com.calit.domain.BookingField;
 import com.calit.domain.BookingField.FieldType;
@@ -12,6 +13,7 @@ import com.calit.domain.OwnerSettings;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -35,7 +37,7 @@ public class AdminResource {
 
     @CheckedTemplate
     public static class Templates {
-        public static native TemplateInstance dashboard(List<Booking> upcoming, long pendingCount, String css);
+        public static native TemplateInstance dashboard(List<Booking> upcoming, long pendingCount);
 
         public static native TemplateInstance meetingTypes(
                 List<MeetingType> types, LocationType[] locationTypes, String css);
@@ -57,8 +59,8 @@ public class AdminResource {
         public static native TemplateInstance pending(List<Booking> pending, String css);
     }
 
-    @jakarta.inject.Inject
-    com.calit.booking.BookingService bookingService;
+    @Inject
+    BookingService bookingService;
 
     @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440")
     int reminderLeadMinutes;
@@ -72,7 +74,7 @@ public class AdminResource {
                 "status = ?1 and startUtc >= ?2 order by startUtc",
                 com.calit.booking.BookingStatus.CONFIRMED, java.time.Instant.now());
         long pendingCount = Booking.count("status = ?1", com.calit.booking.BookingStatus.PENDING);
-        return Templates.dashboard(upcoming, pendingCount, Layout.CSS);
+        return Templates.dashboard(upcoming, pendingCount);
     }
 
     @GET
@@ -141,7 +143,7 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance availability() {
         return Templates.availability(
-                AvailabilityRule.<AvailabilityRule>listAll(),
+                AvailabilityRule.listAll(),
                 MeetingType.listAll(), Layout.CSS);
     }
 
