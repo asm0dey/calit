@@ -289,8 +289,14 @@ class OwnerSettingsTest {
     @Test
     @TestTransaction
     void persistsAndReadsSingleton() {
-        OwnerSettings s = new OwnerSettings();
-        s.id = OwnerSettings.SINGLETON_ID;
+        // Upsert: the RestAssured tests (Task 7) hit the running server over HTTP, so their
+        // server-side commits of owner_settings id=1 are NOT rolled back by @TestTransaction
+        // and persist in the shared Dev Services DB. Get-or-create tolerates that pre-existing row.
+        OwnerSettings s = OwnerSettings.get();
+        if (s == null) {
+            s = new OwnerSettings();
+            s.id = OwnerSettings.SINGLETON_ID;
+        }
         s.ownerName = "Pavel";
         s.ownerEmail = "p@example.com";
         s.timezone = "Europe/Amsterdam";
@@ -543,19 +549,27 @@ class AvailabilityRuleTest {
     @Test
     @TestTransaction
     void separatesGlobalRulesFromMeetingTypeRules() {
+        // A typed rule's meeting_type_id is a real FK, so persist a MeetingType first
+        // and use its generated id (a literal id would violate the FK constraint).
+        MeetingType type = new MeetingType();
+        type.name = "Sep Test";
+        type.slug = "avail-sep-type";
+        type.durationMinutes = 30;
+        type.persist();
+
         AvailabilityRule global = rule(DayOfWeek.MONDAY, "09:00", "12:00", null);
         global.persist();
-        AvailabilityRule typed = rule(DayOfWeek.MONDAY, "13:00", "14:00", 42L);
+        AvailabilityRule typed = rule(DayOfWeek.MONDAY, "13:00", "14:00", type.id);
         typed.persist();
 
         List<AvailabilityRule> globals = AvailabilityRule.globalFor(DayOfWeek.MONDAY);
-        List<AvailabilityRule> typedRules = AvailabilityRule.forMeetingType(42L, DayOfWeek.MONDAY);
+        List<AvailabilityRule> typedRules = AvailabilityRule.forMeetingType(type.id, DayOfWeek.MONDAY);
 
         assertEquals(1, globals.size());
         assertEquals(LocalTime.of(9, 0), globals.get(0).startTime);
         assertEquals(1, typedRules.size());
         assertEquals(LocalTime.of(13, 0), typedRules.get(0).startTime);
-        assertTrue(AvailabilityRule.forMeetingType(42L, DayOfWeek.TUESDAY).isEmpty());
+        assertTrue(AvailabilityRule.forMeetingType(type.id, DayOfWeek.TUESDAY).isEmpty());
     }
 
     private AvailabilityRule rule(DayOfWeek dow, String start, String end, Long meetingTypeId) {
@@ -759,8 +773,13 @@ class SlotServiceTest {
     // --- helpers ---
 
     private void seedSettings(String zone) {
-        OwnerSettings s = new OwnerSettings();
-        s.id = OwnerSettings.SINGLETON_ID;
+        // Upsert (get-or-create): Task 7's RestAssured tests commit owner_settings id=1 to the
+        // shared Dev Services DB (not rolled back), so a plain INSERT here would hit a duplicate PK.
+        OwnerSettings s = OwnerSettings.get();
+        if (s == null) {
+            s = new OwnerSettings();
+            s.id = OwnerSettings.SINGLETON_ID;
+        }
         s.ownerName = "Owner";
         s.ownerEmail = "owner@example.com";
         s.timezone = zone;
@@ -915,20 +934,24 @@ class MeetingTypeResourceTest {
                 .when().put("/api/settings")
                 .then().statusCode(200);
 
-        // 2. Create a 60-minute meeting type (unique slug per run).
+        // 2. Create a 60-minute meeting type (unique slug per run), capturing its id.
         String slug = "api-intro-" + System.nanoTime();
-        given().contentType("application/json")
+        Integer typeId = given().contentType("application/json")
                 .body("{\"name\":\"API Intro\",\"slug\":\"" + slug + "\",\"durationMinutes\":60}")
                 .when().post("/api/meeting-types")
-                .then().statusCode(201);
+                .then().statusCode(201)
+                .extract().path("id");
 
-        // 3. Add a global Monday 09:00-11:00 rule.
+        // 3. Add a PER-TYPE Monday 09:00-11:00 rule (scoped to this type's id). A global rule
+        //    (meetingTypeId:null) would commit to the shared Dev Services DB and corrupt the
+        //    global-rule counts in AvailabilityRuleTest / SlotServiceTest; a per-type rule does not.
         given().contentType("application/json")
-                .body("{\"dayOfWeek\":\"MONDAY\",\"startTime\":\"09:00\",\"endTime\":\"11:00\",\"meetingTypeId\":null}")
+                .body("{\"dayOfWeek\":\"MONDAY\",\"startTime\":\"09:00\",\"endTime\":\"11:00\",\"meetingTypeId\":" + typeId + "}")
                 .when().post("/api/availability")
                 .then().statusCode(201);
 
-        // 4. Preview slots over a Monday (2026-06-08 is a Monday) -> expect 2.
+        // 4. Preview slots over a Monday (2026-06-08 is a Monday). The per-type rule overrides
+        //    global for this type, so we still expect 2 back-to-back 60-min slots (09:00, 10:00).
         given().when().get("/api/meeting-types/" + slug + "/slots?from=2026-06-08&to=2026-06-08")
                 .then().statusCode(200).body("size()", is(2));
     }
@@ -1188,14 +1211,22 @@ class BookingFieldTest {
     @Test
     @TestTransaction
     void perTypeFieldsOverrideGlobalAndKeepOrder() {
-        BookingField company = field(12_345L, "company", "Company",
+        // booking_field.meeting_type_id is a real FK, so persist a MeetingType first and use
+        // its generated id (a literal id would violate the FK constraint).
+        MeetingType type = new MeetingType();
+        type.name = "BF Test";
+        type.slug = "bookingfield-override-type";
+        type.durationMinutes = 30;
+        type.persist();
+
+        BookingField company = field(type.id, "company", "Company",
                 BookingField.FieldType.SHORT_TEXT, true, 1);
         company.persist();
-        BookingField vat = field(12_345L, "vat", "VAT ID",
+        BookingField vat = field(type.id, "vat", "VAT ID",
                 BookingField.FieldType.SHORT_TEXT, false, 0);
         vat.persist();
 
-        List<BookingField> form = BookingField.formFor(12_345L);
+        List<BookingField> form = BookingField.formFor(type.id);
 
         assertEquals(2, form.size());
         assertEquals("vat", form.get(0).fieldKey);     // position 0 first
@@ -1330,7 +1361,28 @@ class BookingFieldResourceTest {
 Run: `mvn test -Dtest=BookingFieldResourceTest`
 Expected: FAIL — 404 (no `/api/booking-fields` resource yet).
 
-- [ ] **Step 7: Write the resource**
+- [ ] **Step 7a: Add the resolved-form endpoint to `MeetingTypeResource`**
+
+The resolved form lives at `GET /api/meeting-types/{slug}/form`. It MUST be a method on `MeetingTypeResource` (which owns `@Path("/api/meeting-types")`), NOT on `BookingFieldResource`. JAX-RS root-resource selection routes `/api/meeting-types/...` to the resource with the most specific `@Path` (`MeetingTypeResource`) and does NOT fall back to another root resource (e.g. one at `@Path("/api")`) for sub-paths it doesn't match — so a `form` method placed on `BookingFieldResource` would be unreachable (404).
+
+Add this method to `src/main/java/com/calit/api/MeetingTypeResource.java` (alongside the existing `slots` method; `BookingField` is already importable from `com.calit.domain`):
+
+```java
+    /** Resolved invitee form (excludes the always-present full name + email built-ins). */
+    @GET
+    @Path("/{slug}/form")
+    public List<com.calit.domain.BookingField> form(@PathParam("slug") String slug) {
+        MeetingType t = MeetingType.findBySlug(slug);
+        if (t == null) {
+            throw new NotFoundException("No meeting type with slug " + slug);
+        }
+        return com.calit.domain.BookingField.formFor(t.id);
+    }
+```
+
+(Use a normal `import com.calit.domain.BookingField;` at the top instead of the fully-qualified name if you prefer — either is fine.)
+
+- [ ] **Step 7b: Write the `BookingFieldResource` (create + delete only)**
 
 `src/main/java/com/calit/api/BookingFieldResource.java`:
 
@@ -1338,20 +1390,15 @@ Expected: FAIL — 404 (no `/api/booking-fields` resource yet).
 package com.calit.api;
 
 import com.calit.domain.BookingField;
-import com.calit.domain.MeetingType;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-
-import java.util.List;
 
 @Path("/api")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -1360,17 +1407,6 @@ public class BookingFieldResource {
 
     public record FieldRequest(Long meetingTypeId, String fieldKey, String label,
                                BookingField.FieldType type, Boolean required, Integer position) {}
-
-    /** Resolved invitee form (excludes the always-present full name + email built-ins). */
-    @GET
-    @Path("/meeting-types/{slug}/form")
-    public List<BookingField> form(@PathParam("slug") String slug) {
-        MeetingType t = MeetingType.findBySlug(slug);
-        if (t == null) {
-            throw new NotFoundException("No meeting type with slug " + slug);
-        }
-        return BookingField.formFor(t.id);
-    }
 
     @POST
     @Path("/booking-fields")
@@ -1407,6 +1443,7 @@ Expected: PASS.
 ```bash
 git add src/main/java/com/calit/domain/BookingField.java \
   src/main/java/com/calit/api/BookingFieldResource.java \
+  src/main/java/com/calit/api/MeetingTypeResource.java \
   src/test/java/com/calit/domain/BookingFieldTest.java \
   src/test/java/com/calit/api/BookingFieldResourceTest.java
 git commit -m "feat: add owner-defined custom booking fields (BookingField + resolved form API)"
