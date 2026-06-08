@@ -6,20 +6,33 @@ import com.calit.booking.events.BookingCancelled;
 import com.calit.booking.events.BookingConfirmed;
 import com.calit.booking.events.BookingDeclined;
 import com.calit.booking.events.BookingRescheduled;
+import com.calit.booking.events.ReminderDue;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.TransactionPhase;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 @ApplicationScoped
 public class ReminderScheduler {
 
     @ConfigProperty(name = "calit.reminders.lead-minutes", defaultValue = "1440")
     int leadMinutes;
+
+    @Inject
+    EntityManager em;
+
+    @Inject
+    Event<ReminderDue> reminderDueEvent;
 
     // --- lifecycle observers (creation/recompute/delete side) ---
 
@@ -78,5 +91,49 @@ public class ReminderScheduler {
     /** Drop the future unsent reminder for a cancelled/declined/expired booking. */
     public void onCancelledOrDeclined(Long bookingId) {
         QuarkusTransaction.requiringNew().run(() -> Reminder.deleteUnsentFor(bookingId));
+    }
+
+    /**
+     * Feature 15 dispatch tick. Runs on EVERY replica every 60s. Multi-node-safe with NO
+     * leader: each tick claims due unsent reminders with SELECT ... FOR UPDATE SKIP LOCKED,
+     * so a concurrent replica's identical query skips rows this one already locked. Two
+     * replicas never claim the same reminder -> each reminder is sent exactly once.
+     */
+    @Scheduled(every = "60s")
+    void dispatchDueReminders() {
+        List<Long> bookingIds = claimAndMarkDueReminders();
+        // Fire AFTER the claim transaction commits (rows are durably marked sent). Each fire
+        // runs in its own committed transaction so the AFTER_SUCCESS email observer is delivered
+        // (an out-of-transaction AFTER_SUCCESS fire is NOT delivered by Quarkus ArC). Plan 6 deviation.
+        for (Long bookingId : bookingIds) {
+            QuarkusTransaction.requiringNew().run(() -> reminderDueEvent.fire(new ReminderDue(bookingId)));
+        }
+    }
+
+    /**
+     * Claims up to 50 due unsent reminders FOR UPDATE SKIP LOCKED, stamps sent_at = now()
+     * on each in the SAME transaction (atomic claim+mark), and returns their bookingIds.
+     */
+    List<Long> claimAndMarkDueReminders() {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            @SuppressWarnings("unchecked")
+            List<Number> ids = em.createNativeQuery(
+                    "SELECT id FROM reminder "
+                            + "WHERE sent_at IS NULL AND send_at <= now() "
+                            + "ORDER BY send_at "
+                            + "FOR UPDATE SKIP LOCKED "
+                            + "LIMIT 50")
+                    .getResultList();
+
+            List<Long> bookingIds = new ArrayList<>();
+            Instant now = Instant.now();
+            for (Number n : ids) {
+                Long id = n.longValue();
+                Reminder r = Reminder.findById(id);
+                r.sentAt = now;          // marked within the lock-holding transaction
+                bookingIds.add(r.bookingId);
+            }
+            return bookingIds;
+        });
     }
 }
