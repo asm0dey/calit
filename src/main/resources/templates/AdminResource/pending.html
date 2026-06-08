@@ -1,6 +1,5 @@
 {@java.util.List<com.calit.booking.Booking> pending}
-{#include base title="Admin — Pending approvals"}
-  {#include adminNav pendingCount=pending.size() /}
+{#include adminBase title="Admin — Pending approvals" pendingCount=pending.size() active="pending"}
   <h1>Pending approvals</h1>
   {#if pending.isEmpty()}
     <p>No requests are awaiting approval.</p>

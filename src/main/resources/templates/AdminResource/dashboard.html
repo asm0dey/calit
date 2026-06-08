@@ -1,7 +1,6 @@
 {@java.util.List<com.calit.booking.Booking> upcoming}
 {@java.lang.Long pendingCount}
-{#include base title="Admin — Dashboard"}
-  {#include adminNav pendingCount=pendingCount /}
+{#include adminBase title="Admin — Dashboard" pendingCount=pendingCount active="dashboard"}
   <h1>Dashboard</h1>
   <h2>Upcoming bookings</h2>
   {#if upcoming.isEmpty()}
