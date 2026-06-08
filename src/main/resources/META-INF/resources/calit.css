@@ -42,6 +42,7 @@ main.container { max-width: var(--calit-container); }
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.5rem;
+  align-items: start;   /* don't stretch the calendar box to the time column's height */
 }
 @media (min-width: 48rem) {
   .booking-grid { grid-template-columns: minmax(18rem, 1fr) minmax(12rem, 16rem); }
@@ -107,6 +108,11 @@ body.canvas { background: var(--calit-canvas); }
   box-shadow: 0 8px 30px rgba(16, 24, 40, .08);
   padding: clamp(1.25rem, 3vw, 2.25rem);
   margin-top: 2rem;
+}
+/* In dark mode a near-black shadow is invisible — deepen it so the card still lifts off the canvas. */
+[data-theme="dark"] .calit-card { box-shadow: 0 8px 30px rgba(0, 0, 0, .45); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .calit-card { box-shadow: 0 8px 30px rgba(0, 0, 0, .45); }
 }
 
 /* Booking page wants a wider column than the default 48rem reading width. */
