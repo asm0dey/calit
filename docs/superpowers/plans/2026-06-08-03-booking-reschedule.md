@@ -355,6 +355,12 @@ git add src/main/java/com/calit/booking/BookingStatus.java \
 git commit -m "feat: add Booking entity and BookingStatus enum"
 ```
 
+> **Built deviations (synced to reality):**
+> - `Booking.answers` is initialized at the field (`= new java.util.HashMap<>()`). The column is `NOT NULL DEFAULT '{}'`, but Hibernate inserts an explicit `null` when the Java field is null (bypassing the DB default), so an unset `answers` would violate `NOT NULL`. `book()` always sets it, but the field init keeps test helpers / direct callers safe.
+> - In `BookingTest`, `meeting_type_id` is a hard FK (`REFERENCES meeting_type(id)`), so the test persists a real `MeetingType` and uses its generated id rather than literal `1L`/`7L`.
+> - In `heldOverlappingFindsPendingAndConfirmedInWindow`, the two HELD rows are **adjacent non-overlapping** (07:00–07:15 CONFIRMED, 07:15–07:30 PENDING) — the original overlapping pair would itself trip the `booking_no_overlap_held` EXCLUDE constraint at INSERT. The CANCELLED/DECLINED rows are placed in-window (08:00–08:15, 08:15–08:30) so status-based exclusion is still exercised; the assertion (`count == 2`, all PENDING/CONFIRMED) is unchanged.
+> - `application.properties` gains `quarkus.hibernate-orm.mapping.format.global=ignore` so Hibernate uses its own JSON serializer for `@JdbcTypeCode(SqlTypes.JSON)` columns instead of the REST `ObjectMapper` (Quarkus 3.35 otherwise couples DB-JSON mapping to REST serialization config). Output is identical for the `Map<String,String>` answers column.
+
 ---
 
 ### Task 3: Interval overlap/subtraction helper (pure, unit-testable)
