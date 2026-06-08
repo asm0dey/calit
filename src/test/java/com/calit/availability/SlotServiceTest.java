@@ -94,6 +94,62 @@ class SlotServiceTest {
         assertEquals(2, slots.size());
     }
 
+    @Test
+    @TestTransaction
+    void slotIntervalNullKeepsBackToBack() {
+        seedSettings("Europe/Amsterdam");
+        MeetingType t = meetingType("intro-60", 60);
+        globalRule(WORKDAY.getDayOfWeek(), "09:00", "11:00");
+
+        List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
+
+        assertEquals(2, slots.size());
+        assertEquals(LocalTime.of(9, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(10, 0), slots.get(1).start().toLocalTime());
+    }
+
+    @Test
+    @TestTransaction
+    void slotIntervalSmallerThanDurationOverlaps() {
+        seedSettings("Europe/Amsterdam");
+        MeetingType t = meetingType("intro-60", 60);
+        t.slotIntervalMinutes = 30;
+        t.persist();
+        globalRule(WORKDAY.getDayOfWeek(), "09:00", "11:00");
+
+        List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
+
+        assertEquals(3, slots.size());
+        assertEquals(LocalTime.of(9, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(9, 30), slots.get(1).start().toLocalTime());
+        assertEquals(LocalTime.of(10, 0), slots.get(2).start().toLocalTime());
+    }
+
+    @Test
+    @TestTransaction
+    void slotIntervalLargerThanDurationLeavesGap() {
+        seedSettings("Europe/Amsterdam");
+        MeetingType t = meetingType("intro-60", 60);
+        t.slotIntervalMinutes = 90;
+        t.persist();
+        globalRule(WORKDAY.getDayOfWeek(), "09:00", "12:00");
+
+        List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
+
+        assertEquals(2, slots.size());
+        assertEquals(LocalTime.of(9, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(10, 30), slots.get(1).start().toLocalTime());
+    }
+
+    @Test
+    void effectiveSlotIntervalFallsBackToDurationWhenUnset() {
+        MeetingType t = new MeetingType();
+        t.durationMinutes = 60;
+        assertEquals(60, t.effectiveSlotIntervalMinutes());
+        t.slotIntervalMinutes = 30;
+        assertEquals(30, t.effectiveSlotIntervalMinutes());
+    }
+
     // --- helpers ---
 
     private void seedSettings(String zone) {

@@ -32,12 +32,13 @@ public class SlotService {
         for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
             for (Window window : windowsFor(type.id, date)) {
                 LocalTime start = window.start();
+                int step = type.effectiveSlotIntervalMinutes();
                 while (!start.plusMinutes(type.durationMinutes).isAfter(window.end())) {
                     LocalTime end = start.plusMinutes(type.durationMinutes);
                     slots.add(new TimeSlot(
                             date.atTime(start).atZone(zone),
                             date.atTime(end).atZone(zone)));
-                    start = end;
+                    start = start.plusMinutes(step);
                 }
             }
         }

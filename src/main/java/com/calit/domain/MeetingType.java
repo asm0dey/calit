@@ -68,6 +68,14 @@ public class MeetingType extends PanacheEntityBase {
     @Column(name = "requires_approval", nullable = false)
     public boolean requiresApproval = false;
 
+    @Column(name = "slot_interval_minutes")
+    public Integer slotIntervalMinutes;
+
+    /** Cadence (minutes) between consecutive slot starts; falls back to the duration when unset/non-positive. */
+    public int effectiveSlotIntervalMinutes() {
+        return (slotIntervalMinutes != null && slotIntervalMinutes > 0) ? slotIntervalMinutes : durationMinutes;
+    }
+
     public static MeetingType findBySlug(String slug) {
         return find("slug", slug).firstResult();
     }
