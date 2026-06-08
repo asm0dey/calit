@@ -43,6 +43,7 @@
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-qute</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-rest-qute</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-elytron-security-properties-file</artifactId></dependency>
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-reactive-routes</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-web-dependency-locator</artifactId></dependency>
     <!-- Pico CSS v2 (jade = teal/emerald accent, auto light/dark). Served from the jar at
          /webjars/picocss__pico/css/pico.jade.min.css — version omitted by web-dependency-locator. -->

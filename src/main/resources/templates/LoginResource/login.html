@@ -9,7 +9,20 @@
     <form method="post" action="/j_security_check">
       <label>Username <input type="text" name="j_username" required autofocus></label>
       <label>Password <input type="password" name="j_password" required></label>
+      <label><input type="checkbox" id="remember"> Remember me on this device</label>
       <button type="submit">Sign in</button>
     </form>
   </article>
+  <script>
+    /* When "remember me" is checked, post to /j_security_check?remember=true so the
+       server-side filter makes the credential cookie persistent. No-JS → session cookie. */
+    (function () {
+      var f = document.querySelector('form[action^="/j_security_check"]');
+      var cb = document.getElementById('remember');
+      if (!f || !cb) { return; }
+      f.addEventListener('submit', function () {
+        f.action = '/j_security_check' + (cb.checked ? '?remember=true' : '');
+      });
+    })();
+  </script>
 {/include}
