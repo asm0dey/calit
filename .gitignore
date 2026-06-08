@@ -2,3 +2,6 @@ target/
 .idea/
 *.iml
 .env
+
+# Quarkus build cache
+.quarkus/
