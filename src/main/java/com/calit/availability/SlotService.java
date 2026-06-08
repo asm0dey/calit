@@ -1,6 +1,7 @@
 package com.calit.availability;
 
 import com.calit.domain.AvailabilityRule;
+import com.calit.domain.DateOverride;
 import com.calit.domain.MeetingType;
 import com.calit.domain.OwnerSettings;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -29,9 +30,9 @@ public class SlotService {
         List<TimeSlot> slots = new ArrayList<>();
 
         for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
-            for (AvailabilityRule rule : rulesFor(type.id, date.getDayOfWeek())) {
-                LocalTime start = rule.startTime;
-                while (!start.plusMinutes(type.durationMinutes).isAfter(rule.endTime)) {
+            for (Window window : windowsFor(type.id, date)) {
+                LocalTime start = window.start();
+                while (!start.plusMinutes(type.durationMinutes).isAfter(window.end())) {
                     LocalTime end = start.plusMinutes(type.durationMinutes);
                     slots.add(new TimeSlot(
                             date.atTime(start).atZone(zone),
@@ -41,6 +42,26 @@ public class SlotService {
             }
         }
         return slots;
+    }
+
+    /** A bookable [start, end) time-of-day window for one day, from either an override or a weekly rule. */
+    record Window(LocalTime start, LocalTime end) {}
+
+    /**
+     * Resolves the day's bookable windows. A {@link DateOverride} for the date REPLACES the weekly
+     * hours: its windows are used as-is (empty list => day off => no windows). When no override
+     * exists, the weekly rules apply. (Min-notice/horizon filters are applied in Plan 3, not here.)
+     */
+    List<Window> windowsFor(Long meetingTypeId, LocalDate date) {
+        DateOverride override = DateOverride.resolve(meetingTypeId, date);
+        if (override != null) {
+            return override.windows.stream()
+                    .map(w -> new Window(w.startTime, w.endTime))
+                    .toList();
+        }
+        return rulesFor(meetingTypeId, date.getDayOfWeek()).stream()
+                .map(r -> new Window(r.startTime, r.endTime))
+                .toList();
     }
 
     /** Per-meeting-type rules win for a given day; otherwise fall back to global rules. */
