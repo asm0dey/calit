@@ -3,6 +3,7 @@ package com.calit.google;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.InjectMock;
 import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -19,7 +20,11 @@ class GoogleCalendarResourceTest {
     @InjectMock
     CalendarListPort calendarListPort;
 
+    // POST /api/google/calendars commits rows in its own request transaction (so @TestTransaction
+    // can't roll them back). Clean both before AND after each test so leaked rows never affect this
+    // class or any later test class (e.g. GoogleCalendarTest, which assumes a clean table).
     @BeforeEach
+    @AfterEach
     @Transactional
     void cleanUp() {
         GoogleCalendar.deleteAll();
