@@ -13,10 +13,10 @@ import io.quarkus.test.InjectMock;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
-import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -40,8 +40,9 @@ class ApproveDeclineTest {
     @InjectMock
     CalendarPort calendarPort;
 
-    private static final LocalDate MONDAY = LocalDate.of(2026, 6, 15);
-    private static final Instant SLOT_09 = Instant.parse("2026-06-15T07:00:00Z"); // 09:00 local
+    private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
+    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant(); // 09:00 local
 
     @Test
     @TestTransaction
@@ -80,7 +81,7 @@ class ApproveDeclineTest {
 
         Booking b = bookingService.book("decline", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "");
         // While PENDING, the 09:00 slot is held.
-        assertTrue(bookingService.availableSlots(t, MONDAY, MONDAY).stream()
+        assertTrue(bookingService.availableSlots(t, DAY, DAY).stream()
                 .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
 
         bookingService.decline(b.id);
@@ -89,7 +90,7 @@ class ApproveDeclineTest {
         assertEquals(BookingStatus.DECLINED, loaded.status);
         verify(calendarPort, never()).createEvent(anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
         // DECLINED leaves the partial constraint -> 09:00 is bookable again.
-        List<TimeSlot> avail = bookingService.availableSlots(t, MONDAY, MONDAY);
+        List<TimeSlot> avail = bookingService.availableSlots(t, DAY, DAY);
         assertTrue(avail.stream().anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
     }
 
@@ -121,7 +122,7 @@ class ApproveDeclineTest {
         t.requiresApproval = true; // feature 14
         t.persist();
         AvailabilityRule r = new AvailabilityRule();
-        r.dayOfWeek = DayOfWeek.MONDAY;
+        r.dayOfWeek = DAY.getDayOfWeek();
         r.startTime = LocalTime.of(9, 0);
         r.endTime = LocalTime.of(11, 0);
         r.meetingTypeId = null;

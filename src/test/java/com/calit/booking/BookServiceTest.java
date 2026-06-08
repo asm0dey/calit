@@ -16,9 +16,10 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
-import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -51,8 +52,10 @@ class BookServiceTest {
     void onRequested(@Observes BookingRequested e) { REQUESTED.incrementAndGet(); }
     void onConfirmed(@Observes BookingConfirmed e) { CONFIRMED.incrementAndGet(); }
 
-    // 09:00 Europe/Amsterdam on Monday 2026-06-15 == 07:00Z.
-    private static final Instant SLOT_09 = Instant.parse("2026-06-15T07:00:00Z");
+    // Owner tz Europe/Amsterdam. Derive a future weekday from now() so the slot is never in the past.
+    private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
+    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant(); // 09:00 local
 
     @Test
     @TestTransaction
@@ -282,7 +285,7 @@ class BookServiceTest {
         // 09:13 is not a generated slot start.
         assertThrows(BookingConflictException.class, () ->
                 bookingService.book("book-bad-start",
-                        Instant.parse("2026-06-15T07:13:00Z"), "X", "x@example.com", Map.of(), "tok", ""));
+                        DAY.atTime(9, 13).atZone(ZONE).toInstant(), "X", "x@example.com", Map.of(), "tok", ""));
     }
 
     // --- helpers ---
@@ -308,12 +311,12 @@ class BookServiceTest {
         t.slug = slug;
         t.durationMinutes = 60;
         t.minNoticeMinutes = 0;
-        t.horizonDays = 50_000; // keep the fixed 2026 slot inside the horizon regardless of run date
+        t.horizonDays = 50_000; // keep the DAY slot inside the horizon regardless of run date
         t.locationType = location;
         t.requiresApproval = requiresApproval;
         t.persist();
         AvailabilityRule r = new AvailabilityRule();
-        r.dayOfWeek = DayOfWeek.MONDAY;
+        r.dayOfWeek = DAY.getDayOfWeek();
         r.startTime = LocalTime.of(9, 0);
         r.endTime = LocalTime.of(11, 0);
         r.meetingTypeId = null;

@@ -13,10 +13,10 @@ import io.quarkus.test.InjectMock;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
-import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -40,9 +40,10 @@ class RescheduleCancelTest {
     @InjectMock
     CalendarPort calendarPort;
 
-    private static final LocalDate MONDAY = LocalDate.of(2026, 6, 15);
-    private static final Instant SLOT_09 = Instant.parse("2026-06-15T07:00:00Z"); // 09:00 local
-    private static final Instant SLOT_10 = Instant.parse("2026-06-15T08:00:00Z"); // 10:00 local
+    private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
+    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant(); // 09:00 local
+    private static final Instant SLOT_10 = DAY.atTime(10, 0).atZone(ZONE).toInstant(); // 10:00 local
 
     @Test
     @TestTransaction
@@ -66,7 +67,7 @@ class RescheduleCancelTest {
         verify(calendarPort, times(1)).updateEvent("evt-r", SLOT_10, SLOT_10.plusSeconds(3600));
 
         // Old 09:00 time is free again; new 10:00 time is now taken.
-        List<TimeSlot> avail = bookingService.availableSlots(t, MONDAY, MONDAY);
+        List<TimeSlot> avail = bookingService.availableSlots(t, DAY, DAY);
         assertTrue(avail.stream().anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
         assertTrue(avail.stream().noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(10, 0))));
     }
@@ -109,7 +110,7 @@ class RescheduleCancelTest {
                 .thenReturn(new CreatedEvent("evt-c", "https://meet.google.com/c-c-c", "h"));
 
         Booking b = bookingService.book("cancel", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "");
-        assertTrue(bookingService.availableSlots(t, MONDAY, MONDAY).stream()
+        assertTrue(bookingService.availableSlots(t, DAY, DAY).stream()
                 .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
 
         // Cancel is keyed by the manage-token.
@@ -119,7 +120,7 @@ class RescheduleCancelTest {
         assertEquals(BookingStatus.CANCELLED, loaded.status);
         verify(calendarPort, times(1)).deleteEvent("evt-c");
         // 09:00 slot is bookable again.
-        assertTrue(bookingService.availableSlots(t, MONDAY, MONDAY).stream()
+        assertTrue(bookingService.availableSlots(t, DAY, DAY).stream()
                 .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
     }
 
@@ -151,7 +152,7 @@ class RescheduleCancelTest {
         t.requiresApproval = requiresApproval;
         t.persist();
         AvailabilityRule r = new AvailabilityRule();
-        r.dayOfWeek = DayOfWeek.MONDAY;
+        r.dayOfWeek = DAY.getDayOfWeek();
         r.startTime = LocalTime.of(9, 0);
         r.endTime = LocalTime.of(11, 0);
         r.meetingTypeId = null;
