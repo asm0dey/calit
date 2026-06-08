@@ -3,6 +3,7 @@ package com.calit.scheduler;
 import com.calit.booking.Booking;
 import com.calit.booking.BookingStatus;
 import com.calit.domain.MeetingType;
+import com.calit.domain.OwnerSettings;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -27,7 +28,22 @@ class PendingExpiryTest {
     // (Reminders cascade-delete with their booking.) Plan 6 deviation.
     @org.junit.jupiter.api.BeforeEach
     void clearBookings() {
-        QuarkusTransaction.requiringNew().run(() -> Booking.deleteAll());
+        QuarkusTransaction.requiringNew().run(() -> {
+            Booking.deleteAll();
+            // The expiry tick fires BookingDeclined, which Plan 4's EmailService observes and which
+            // reads the OwnerSettings singleton. In production it always exists; seed it here so the
+            // post-commit observer doesn't NPE (the failure is swallowed, but it pollutes the log).
+            OwnerSettings s = OwnerSettings.get();
+            if (s == null) {
+                s = new OwnerSettings();
+                s.id = OwnerSettings.SINGLETON_ID;
+            }
+            s.ownerName = "Owner";
+            s.ownerEmail = "owner@example.com";
+            s.timezone = "Europe/Amsterdam";
+            s.ownerNotificationsEnabled = true;
+            s.persist();
+        });
     }
 
     // A unique far-future start instant so seeded HELD bookings never overlap one another.
