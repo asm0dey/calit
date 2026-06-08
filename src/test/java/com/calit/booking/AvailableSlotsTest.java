@@ -1,0 +1,277 @@
+package com.calit.booking;
+
+import com.calit.availability.TimeSlot;
+import com.calit.domain.AvailabilityRule;
+import com.calit.domain.MeetingType;
+import com.calit.domain.MeetingType.LocationType;
+import com.calit.domain.OwnerSettings;
+import com.calit.google.BusyInterval;
+import com.calit.google.CalendarPort;
+import io.quarkus.test.TestTransaction;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.InjectMock;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@QuarkusTest
+class AvailableSlotsTest {
+
+    @Inject
+    BookingService bookingService;
+
+    @InjectMock
+    CalendarPort calendarPort;
+
+    // 2026-06-15 is a Monday. Owner tz Europe/Amsterdam (UTC+2 in June -> 09:00 local = 07:00Z).
+    private static final LocalDate MONDAY = LocalDate.of(2026, 6, 15);
+
+    @Test
+    @TestTransaction
+    void noBusyLeavesAllRawSlotsIntact() {
+        seedSettings();
+        MeetingType t = meetingType("avail-nobusy", 60, 0, 0);
+        globalRule(DayOfWeek.MONDAY, "09:00", "11:00"); // two 60-min raw slots
+        when(calendarPort.isConnected()).thenReturn(true);
+        when(calendarPort.freeBusy(Instant.parse("2026-06-14T22:00:00Z"),
+                                   Instant.parse("2026-06-15T22:00:00Z")))
+                .thenReturn(List.of());
+
+        List<TimeSlot> slots = bookingService.availableSlots(t, MONDAY, MONDAY);
+
+        assertEquals(2, slots.size());
+    }
+
+    @Test
+    @TestTransaction
+    void busyOverlappingSlotRemovesIt() {
+        seedSettings();
+        MeetingType t = meetingType("avail-overlap", 60, 0, 0);
+        globalRule(DayOfWeek.MONDAY, "09:00", "11:00");
+        when(calendarPort.isConnected()).thenReturn(true);
+        // Busy 09:15-09:45 local = 07:15-07:45Z, overlaps the 09:00 slot only.
+        when(calendarPort.freeBusy(anyMonday(), anyMondayEnd()))
+                .thenReturn(List.of(new BusyInterval(
+                        Instant.parse("2026-06-15T07:15:00Z"),
+                        Instant.parse("2026-06-15T07:45:00Z"))));
+
+        List<TimeSlot> slots = bookingService.availableSlots(t, MONDAY, MONDAY);
+
+        assertEquals(1, slots.size());
+        assertEquals(LocalTime.of(10, 0), slots.get(0).start().toLocalTime());
+    }
+
+    @Test
+    @TestTransaction
+    void busyInsideBufferZoneRemovesAdjacentSlot() {
+        seedSettings();
+        // 60-min slots, 15-min buffer AFTER. 09:00-10:00 slot's buffered end is 10:15 local.
+        MeetingType t = meetingType("avail-buffer", 60, 0, 15);
+        globalRule(DayOfWeek.MONDAY, "09:00", "10:00"); // exactly one raw slot 09:00-10:00
+        when(calendarPort.isConnected()).thenReturn(true);
+        // Busy 10:05-10:10 local = 08:05-08:10Z: outside the slot, INSIDE the 15-min after-buffer.
+        when(calendarPort.freeBusy(anyMonday(), anyMondayEnd()))
+                .thenReturn(List.of(new BusyInterval(
+                        Instant.parse("2026-06-15T08:05:00Z"),
+                        Instant.parse("2026-06-15T08:10:00Z"))));
+
+        List<TimeSlot> slots = bookingService.availableSlots(t, MONDAY, MONDAY);
+
+        assertTrue(slots.isEmpty(), "buffer-zone busy must remove the adjacent slot (feature 6)");
+    }
+
+    @Test
+    @TestTransaction
+    void existingConfirmedBookingBlocksItsSlot() {
+        seedSettings();
+        MeetingType t = meetingType("avail-booked", 60, 0, 0);
+        globalRule(DayOfWeek.MONDAY, "09:00", "11:00");
+        when(calendarPort.isConnected()).thenReturn(true);
+        when(calendarPort.freeBusy(anyMonday(), anyMondayEnd())).thenReturn(List.of());
+        // Confirmed booking 09:00-10:00 local = 07:00-08:00Z blocks the first slot.
+        persistBooking(Instant.parse("2026-06-15T07:00:00Z"),
+                       Instant.parse("2026-06-15T08:00:00Z"), BookingStatus.CONFIRMED);
+
+        List<TimeSlot> slots = bookingService.availableSlots(t, MONDAY, MONDAY);
+
+        assertEquals(1, slots.size());
+        assertEquals(LocalTime.of(10, 0), slots.get(0).start().toLocalTime());
+    }
+
+    @Test
+    @TestTransaction
+    void pendingBookingBlocksItsSlot() {
+        // Feature 14: a PENDING approval hold blocks its slot just like CONFIRMED does.
+        seedSettings();
+        MeetingType t = meetingType("avail-pending", 60, 0, 0);
+        globalRule(DayOfWeek.MONDAY, "09:00", "11:00");
+        when(calendarPort.isConnected()).thenReturn(true);
+        when(calendarPort.freeBusy(anyMonday(), anyMondayEnd())).thenReturn(List.of());
+        // PENDING booking 09:00-10:00 local = 07:00-08:00Z blocks the first slot.
+        persistBooking(Instant.parse("2026-06-15T07:00:00Z"),
+                       Instant.parse("2026-06-15T08:00:00Z"), BookingStatus.PENDING);
+
+        List<TimeSlot> slots = bookingService.availableSlots(t, MONDAY, MONDAY);
+
+        assertEquals(1, slots.size());
+        assertEquals(LocalTime.of(10, 0), slots.get(0).start().toLocalTime());
+    }
+
+    @Test
+    @TestTransaction
+    void degradedModeUsesOnlyBookingBusyAndNeverCallsFreeBusy() {
+        // Degraded mode: Google not connected -> freeBusy is never called; busy is internal bookings only.
+        seedSettings();
+        MeetingType t = meetingType("avail-degraded", 60, 0, 0);
+        globalRule(DayOfWeek.MONDAY, "09:00", "11:00");
+        when(calendarPort.isConnected()).thenReturn(false);
+        persistBooking(Instant.parse("2026-06-15T07:00:00Z"),
+                       Instant.parse("2026-06-15T08:00:00Z"), BookingStatus.CONFIRMED);
+
+        List<TimeSlot> slots = bookingService.availableSlots(t, MONDAY, MONDAY);
+
+        assertEquals(1, slots.size());
+        assertEquals(LocalTime.of(10, 0), slots.get(0).start().toLocalTime());
+        // freeBusy must NOT be consulted when disconnected.
+        verify(calendarPort, never()).freeBusy(any(), any());
+    }
+
+    @Test
+    @TestTransaction
+    void minNoticeDropsNearTermSlots() {
+        // Feature 11: a huge min-notice (relative to now) drops every slot near today.
+        // Use a date derived from "now" in the owner tz so the assertion holds on any run date.
+        seedSettings();
+        ZoneId zone = ZoneId.of("Europe/Amsterdam");
+        LocalDate someday = Instant.now().atZone(zone).toLocalDate().plusDays(3);
+        MeetingType t = meetingType("avail-minnotice", 60, 0, 0);
+        t.minNoticeMinutes = 60 * 24 * 365 * 50; // ~50 years -> well past any near-term slot
+        t.persist();
+        // Pick a weekday rule that covers the chosen date.
+        globalRule(someday.getDayOfWeek(), "09:00", "11:00");
+        when(calendarPort.isConnected()).thenReturn(true);
+        when(calendarPort.freeBusy(any(), any())).thenReturn(List.of());
+
+        List<TimeSlot> slots = bookingService.availableSlots(t, someday, someday);
+
+        assertTrue(slots.isEmpty(), "min-notice must drop slots earlier than now + minNoticeMinutes");
+    }
+
+    @Test
+    @TestTransaction
+    void horizonDropsFarFutureSlots() {
+        // Feature 11: a 1-day horizon drops a slot ~30 days out from "now".
+        seedSettings();
+        ZoneId zone = ZoneId.of("Europe/Amsterdam");
+        LocalDate farDay = Instant.now().atZone(zone).toLocalDate().plusDays(30);
+        MeetingType t = meetingType("avail-horizon", 60, 0, 0);
+        t.horizonDays = 1; // only ~tomorrow is bookable; a 30-day-out slot is past the horizon
+        t.persist();
+        globalRule(farDay.getDayOfWeek(), "09:00", "11:00");
+        when(calendarPort.isConnected()).thenReturn(true);
+        when(calendarPort.freeBusy(any(), any())).thenReturn(List.of());
+
+        List<TimeSlot> slots = bookingService.availableSlots(t, farDay, farDay);
+
+        assertTrue(slots.isEmpty(), "horizon must drop slots later than now + horizonDays");
+    }
+
+    @Test
+    @TestTransaction
+    void excludeBookingIdFreesThatBookingsSlot() {
+        seedSettings();
+        MeetingType t = meetingType("avail-exclude", 60, 0, 0);
+        globalRule(DayOfWeek.MONDAY, "09:00", "11:00");
+        when(calendarPort.isConnected()).thenReturn(true);
+        when(calendarPort.freeBusy(anyMonday(), anyMondayEnd())).thenReturn(List.of());
+        Booking b = persistBooking(Instant.parse("2026-06-15T07:00:00Z"),
+                                   Instant.parse("2026-06-15T08:00:00Z"), BookingStatus.CONFIRMED);
+
+        // Excluding b: both slots available again.
+        List<TimeSlot> slots = bookingService.availableSlots(t, MONDAY, MONDAY, b.id);
+        assertEquals(2, slots.size());
+        assertTrue(slots.stream().anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
+        // Without exclusion the 09:00 slot is blocked.
+        assertFalse(bookingService.availableSlots(t, MONDAY, MONDAY).stream()
+                .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
+    }
+
+    // --- helpers ---
+
+    private static Instant anyMonday() { return Instant.parse("2026-06-14T22:00:00Z"); }
+    private static Instant anyMondayEnd() { return Instant.parse("2026-06-15T22:00:00Z"); }
+
+    private void seedSettings() {
+        OwnerSettings s = new OwnerSettings();
+        s.id = OwnerSettings.SINGLETON_ID;
+        s.ownerName = "Owner";
+        s.ownerEmail = "owner@example.com";
+        s.timezone = "Europe/Amsterdam";
+        s.persist();
+    }
+
+    private MeetingType meetingType(String slug, int minutes, int bufBefore, int bufAfter) {
+        MeetingType t = new MeetingType();
+        t.name = slug;
+        t.slug = slug;
+        t.durationMinutes = minutes;
+        t.bufferBeforeMinutes = bufBefore;
+        t.bufferAfterMinutes = bufAfter;
+        // Plan 1b fields: a wide window so min-notice/horizon do not drop the fixed 2026 test slots.
+        // (The test run date is well within ~136 years of 2026-06-15, in either direction.)
+        t.minNoticeMinutes = 0;
+        t.horizonDays = 50_000; // ~136 years: keeps the fixed 2026 slot inside the horizon
+        t.locationType = LocationType.GOOGLE_MEET;
+        t.requiresApproval = false;
+        t.persist();
+        return t;
+    }
+
+    private void globalRule(DayOfWeek dow, String start, String end) {
+        AvailabilityRule r = new AvailabilityRule();
+        r.dayOfWeek = dow;
+        r.startTime = LocalTime.parse(start);
+        r.endTime = LocalTime.parse(end);
+        r.meetingTypeId = null;
+        r.persist();
+    }
+
+    private Booking persistBooking(Instant start, Instant end, BookingStatus status) {
+        // The booking.meeting_type_id FK requires a real MeetingType row; seed a throwaway one.
+        MeetingType holder = new MeetingType();
+        holder.name = "holder-" + UUID.randomUUID();
+        holder.slug = "holder-" + UUID.randomUUID();
+        holder.durationMinutes = 60;
+        holder.minNoticeMinutes = 0;
+        holder.horizonDays = 50_000;
+        holder.locationType = LocationType.GOOGLE_MEET;
+        holder.requiresApproval = false;
+        holder.persist();
+        Booking b = new Booking();
+        b.meetingTypeId = holder.id;
+        b.inviteeName = "Existing";
+        b.inviteeEmail = "existing@example.com";
+        b.startUtc = start;
+        b.endUtc = end;
+        b.status = status;
+        b.createdAt = Instant.now();
+        b.manageToken = UUID.randomUUID().toString();
+        b.persist();
+        return b;
+    }
+}
