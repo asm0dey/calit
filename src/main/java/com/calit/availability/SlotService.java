@@ -20,7 +20,12 @@ public class SlotService {
      * Conflict/busy/buffer subtraction is applied by Plan 3 on top of this output.
      */
     public List<TimeSlot> generateRawSlots(MeetingType type, LocalDate from, LocalDate to) {
-        ZoneId zone = ZoneId.of(OwnerSettings.get().timezone);
+        OwnerSettings settings = OwnerSettings.get();
+        if (settings == null) {
+            throw new IllegalStateException(
+                    "Owner settings not configured; set them via PUT /api/settings before generating slots.");
+        }
+        ZoneId zone = ZoneId.of(settings.timezone);
         List<TimeSlot> slots = new ArrayList<>();
 
         for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
