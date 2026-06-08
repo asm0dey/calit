@@ -1,6 +1,7 @@
 package com.calit.web;
 
 import com.calit.booking.Booking;
+import com.calit.domain.AvailabilityRule;
 import com.calit.domain.MeetingType;
 import com.calit.domain.MeetingType.LocationType;
 import io.quarkus.qute.CheckedTemplate;
@@ -16,6 +17,8 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import org.jboss.resteasy.reactive.RestForm;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.List;
 
 @Path("/admin")
@@ -28,6 +31,9 @@ public class AdminResource {
 
         public static native TemplateInstance meetingTypes(
                 List<MeetingType> types, LocationType[] locationTypes, String css);
+
+        public static native TemplateInstance availability(
+                List<AvailabilityRule> rules, List<MeetingType> types, String css);
     }
 
     @GET
@@ -101,5 +107,47 @@ public class AdminResource {
     public TemplateInstance deleteMeetingType(@PathParam("id") Long id) {
         MeetingType.deleteById(id);
         return Templates.meetingTypes(MeetingType.listAll(), LocationType.values(), Layout.CSS);
+    }
+
+    @GET
+    @Path("/availability")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance availability() {
+        return Templates.availability(
+                AvailabilityRule.<AvailabilityRule>listAll(),
+                MeetingType.listAll(), Layout.CSS);
+    }
+
+    @POST
+    @Path("/availability")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance createRule(@RestForm String dayOfWeek,
+                                       @RestForm String startTime,
+                                       @RestForm String endTime,
+                                       @RestForm String meetingTypeId) {
+        AvailabilityRule r = new AvailabilityRule();
+        r.dayOfWeek = DayOfWeek.valueOf(dayOfWeek);
+        r.startTime = LocalTime.parse(startTime);
+        r.endTime = LocalTime.parse(endTime);
+        r.meetingTypeId = (meetingTypeId == null || meetingTypeId.isBlank())
+                ? null : Long.valueOf(meetingTypeId); // empty = global
+        r.persist();
+        return Templates.availability(
+                AvailabilityRule.<AvailabilityRule>listAll(),
+                MeetingType.listAll(), Layout.CSS);
+    }
+
+    @POST
+    @Path("/availability/{id}/delete")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance deleteRule(@PathParam("id") Long id) {
+        AvailabilityRule.deleteById(id);
+        return Templates.availability(
+                AvailabilityRule.<AvailabilityRule>listAll(),
+                MeetingType.listAll(), Layout.CSS);
     }
 }

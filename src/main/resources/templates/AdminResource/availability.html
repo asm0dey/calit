@@ -1,0 +1,53 @@
+{@java.util.List<com.calit.domain.AvailabilityRule> rules}
+{@java.util.List<com.calit.domain.MeetingType> types}
+{@java.lang.String css}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin — Availability</title>
+  <style>{css}</style>
+</head>
+<body>
+  <nav>
+    <a href="/admin">Dashboard</a>
+    <a href="/admin/pending">Pending</a>
+    <a href="/admin/meeting-types">Meeting types</a>
+    <a href="/admin/availability">Availability</a>
+    <a href="/admin/date-overrides">Date overrides</a>
+    <a href="/admin/settings">Settings</a>
+    <a href="/admin/google">Google</a>
+  </nav>
+  <h1>Availability (work hours)</h1>
+
+  {#for r in rules}
+    <div class="card">
+      <p><strong>{r.dayOfWeek}</strong> {r.startTime} &ndash; {r.endTime}
+        &middot; {#if r.meetingTypeId}type #{r.meetingTypeId}{#else}global{/if}</p>
+      <form method="post" action="/admin/availability/{r.id}/delete">
+        <button type="submit">Delete</button>
+      </form>
+    </div>
+  {/for}
+
+  <h2>Add a rule</h2>
+  <form method="post" action="/admin/availability">
+    <label>Day
+      <select name="dayOfWeek">
+        <option>MONDAY</option><option>TUESDAY</option><option>WEDNESDAY</option>
+        <option>THURSDAY</option><option>FRIDAY</option><option>SATURDAY</option><option>SUNDAY</option>
+      </select>
+    </label>
+    <label>Start <input type="time" name="startTime" value="09:00" required></label>
+    <label>End <input type="time" name="endTime" value="17:00" required></label>
+    <label>Applies to
+      <select name="meetingTypeId">
+        <option value="">All (global)</option>
+        {#for t in types}<option value="{t.id}">{t.name}</option>{/for}
+      </select>
+    </label>
+    <button type="submit">Add rule</button>
+  </form>
+</body>
+</html>
