@@ -26,8 +26,8 @@ public final class BusyIntervals {
         sorted.sort(Comparator.comparing(BusyInterval::start).thenComparing(BusyInterval::end));
 
         List<BusyInterval> merged = new ArrayList<>();
-        Instant curStart = sorted.get(0).start();
-        Instant curEnd = sorted.get(0).end();
+        Instant curStart = sorted.getFirst().start();
+        Instant curEnd = sorted.getFirst().end();
 
         for (int i = 1; i < sorted.size(); i++) {
             BusyInterval next = sorted.get(i);

@@ -10,6 +10,7 @@ import java.net.http.HttpResponse;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Feature 16: server-side Cloudflare Turnstile verification. When the flag is off, {@link #verify}
@@ -34,6 +35,9 @@ public class TurnstileVerifier {
 
     private final HttpClient http = HttpClient.newHttpClient();
 
+    /** Matches the success flag in the siteverify JSON, tolerating whitespace: {@code "success" : true}. */
+    private static final Pattern SUCCESS = Pattern.compile("\"success\"\\s*:\\s*true");
+
     /** Throws AbuseException (400) if Turnstile is enabled and the token does not verify. */
     public void verify(String token) {
         if (!enabled) {
@@ -50,9 +54,10 @@ public class TurnstileVerifier {
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-            // Cloudflare returns JSON {"success": true|false, ...}. A naive contains-check is
-            // sufficient for the boolean flag and avoids pulling a JSON dep into this guard.
-            if (resp.statusCode() != 200 || !resp.body().contains("\"success\":true")) {
+            // Cloudflare returns JSON {"success": true|false, ...} (note the space after the colon).
+            // Match with a whitespace-tolerant regex so the real, spaced response is accepted; this
+            // avoids pulling a JSON dependency into this guard.
+            if (resp.statusCode() != 200 || !SUCCESS.matcher(resp.body()).find()) {
                 throw new AbuseException("Turnstile verification failed");
             }
         } catch (AbuseException ae) {
