@@ -57,6 +57,13 @@ public class PublicResource {
                 com.calit.booking.Booking booking, com.calit.domain.MeetingType type,
                 boolean pending, String location, String whenLabel, String startUtcIso,
                 String css, String tzBar, String tzScript);
+
+        public static native TemplateInstance manage(
+                com.calit.booking.Booking booking, String currentLabel, String currentUtcIso,
+                Map<String, java.util.List<PublicResource.SlotView>> slotsByDate, String css,
+                String tzBar, String tzScript);
+
+        public static native TemplateInstance cancelled(String css);
     }
 
     @Inject
@@ -167,6 +174,47 @@ public class PublicResource {
                 ? booking.meetLink : type.locationDetail;
         return Templates.confirmation(booking, type, pending, location, when, startUtcIso,
                                       Layout.CSS, Layout.TZ_BAR, Layout.TZ_SCRIPT);
+    }
+
+    @GET
+    @Path("/booking/{manageToken}/manage")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance manage(@PathParam("manageToken") String manageToken) {
+        Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
+        if (booking == null) {
+            throw new NotFoundException("No booking for token " + manageToken); // unknown token → 404
+        }
+        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        ZoneId zone = ZoneId.of(OwnerSettings.get().timezone);
+        Map<String, java.util.List<SlotView>> byDate = slotsByDate(type);
+        String current = booking.startUtc.atZone(zone)
+                .format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
+        String currentUtcIso = booking.startUtc.toString(); // absolute instant for data-utc
+        return Templates.manage(booking, current, currentUtcIso, byDate, Layout.CSS,
+                                Layout.TZ_BAR, Layout.TZ_SCRIPT);
+    }
+
+    @POST
+    @Path("/booking/{manageToken}/reschedule")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance rescheduleBooking(@PathParam("manageToken") String manageToken,
+                                              @RestForm String startUtc) {
+        // startUtc is the absolute UTC instant the invitee chose; the viewer's display zone
+        // never altered it (the picker only relabels). reschedule(...) is keyed by the token.
+        // For approval types Plan 3 returns the booking to PENDING; auto types stay CONFIRMED.
+        Booking booking = bookingService.reschedule(manageToken, Instant.parse(startUtc));
+        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        return confirmationPage(booking, type);
+    }
+
+    @POST
+    @Path("/booking/{manageToken}/cancel")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance cancelBooking(@PathParam("manageToken") String manageToken) {
+        bookingService.cancel(manageToken); // keyed by the token
+        return Templates.cancelled(Layout.CSS);
     }
 
     /** Group available slots by owner-tz date label, preserving chronological order. */

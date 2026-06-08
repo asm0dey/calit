@@ -1,0 +1,52 @@
+{@com.calit.booking.Booking booking}
+{@java.lang.String currentLabel}
+{@java.lang.String currentUtcIso}
+{@java.util.Map<java.lang.String,java.util.List<com.calit.web.PublicResource$SlotView>> slotsByDate}
+{@java.lang.String css}
+{@java.lang.String tzBar}
+{@java.lang.String tzScript}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manage booking</title>
+  <style>{css}</style>
+</head>
+<body>
+  <h1>Manage your booking</h1>
+  {tzBar.raw}
+  <div class="card">
+    {! Current time + each reschedule slot carry data-utc so the script relabels them to the viewer's zone. !}
+    <p><strong>Currently:</strong> <time data-utc="{currentUtcIso}">{currentLabel}</time></p>
+    <p><strong>For:</strong> {booking.inviteeName} ({booking.inviteeEmail})</p>
+  </div>
+
+  <h2>Reschedule</h2>
+  {#if slotsByDate.isEmpty()}
+    <p>No alternative times available.</p>
+  {#else}
+    <form method="post" action="/booking/{booking.manageToken}/reschedule">
+      {#each slotsByDate}
+        <div class="card">
+          <h3>{it.key}</h3>
+          {#for slot in it.value}
+            {! value = absolute UTC instant (submitted, tz-independent); data-utc = same instant, reformatted client-side. !}
+            <label class="slot">
+              <input type="radio" name="startUtc" value="{slot.startUtc}" required>
+              <time data-utc="{slot.startUtc}" data-time-only="1">{slot.label}</time>
+            </label>
+          {/for}
+        </div>
+      {/each}
+      <button type="submit">Reschedule to selected time</button>
+    </form>
+  {/if}
+
+  <h2>Cancel</h2>
+  <form method="post" action="/booking/{booking.manageToken}/cancel">
+    <button type="submit">Cancel this booking</button>
+  </form>
+  {tzScript.raw}
+</body>
+</html>
