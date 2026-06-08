@@ -2,7 +2,9 @@ package com.calit.api;
 
 import com.calit.availability.SlotService;
 import com.calit.availability.TimeSlot;
+import com.calit.domain.BookingField;
 import com.calit.domain.MeetingType;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
@@ -42,7 +44,7 @@ public class MeetingTypeResource {
     @GET
     @Path("/all")
     public List<MeetingType> listAllAdmin() {
-        return MeetingType.listAll();
+        return PanacheEntityBase.listAll();
     }
 
     @POST
@@ -70,5 +72,16 @@ public class MeetingTypeResource {
             throw new NotFoundException("No meeting type with slug " + slug);
         }
         return slotService.generateRawSlots(t, LocalDate.parse(from), LocalDate.parse(to));
+    }
+
+    /** Resolved invitee form (excludes the always-present full name + email built-ins). */
+    @GET
+    @Path("/{slug}/form")
+    public List<BookingField> form(@PathParam("slug") String slug) {
+        MeetingType t = MeetingType.findBySlug(slug);
+        if (t == null) {
+            throw new NotFoundException("No meeting type with slug " + slug);
+        }
+        return BookingField.formFor(t.id);
     }
 }
