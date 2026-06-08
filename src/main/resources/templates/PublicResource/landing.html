@@ -1,0 +1,25 @@
+{@java.util.List<com.calit.domain.MeetingType> types}
+{@java.lang.String css}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book a meeting</title>
+  <style>{css}</style>
+</head>
+<body>
+  <h1>Book a meeting</h1>
+  {#if types.isEmpty()}
+    <p>No meeting types are currently available.</p>
+  {#else}
+    {#for t in types}
+      <div class="card">
+        <h2>{t.name}</h2>
+        <p>{t.durationMinutes} minutes</p>
+        <a href="/book/{t.slug}">Choose a time &rarr;</a>
+      </div>
+    {/for}
+  {/if}
+</body>
+</html>
