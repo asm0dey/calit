@@ -1,0 +1,4 @@
+/* calit custom layer — sits on top of Pico v2. */
+:root {
+  --calit-container: 48rem;
+}
