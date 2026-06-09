@@ -55,11 +55,11 @@ class ReminderEmailEndToEndTest {
 
         scheduler.dispatchDueReminders();
 
-        assertEquals(1, mailbox.getMessagesSentTo(INVITEE_EMAIL).size(),
+        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
                 "invitee reminder must arrive (Google disconnected -> fallback)");
-        assertEquals(1, mailbox.getMessagesSentTo(OWNER_EMAIL).size(),
+        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size(),
                 "owner reminder must arrive (ownerNotificationsEnabled=true)");
-        assertTrue(mailbox.getMessagesSentTo(INVITEE_EMAIL).get(0).getSubject()
+        assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL).get(0).getSubject()
                 .toLowerCase().contains("reminder"), "subject identifies the reminder email");
 
         // Cleanup committed rows so they don't leak to other tests.

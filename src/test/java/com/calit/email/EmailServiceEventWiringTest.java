@@ -84,8 +84,8 @@ class EmailServiceEventWiringTest {
             confirmedEvent.fire(new BookingConfirmed(b.id));
         });
 
-        assertEquals(1, mailbox.getMessagesSentTo(INVITEE_EMAIL).size());
-        assertEquals(1, mailbox.getMessagesSentTo(OWNER_EMAIL).size());
+        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size());
+        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
         assertEquals(2, mailbox.getTotalMessagesSent());
     }
 }
