@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # --- Build stage: BellSoft Liberica JDK 25 + the Maven wrapper (no Maven in the image) ---
-FROM bellsoft/liberica-openjdk-debian:25 AS build
+FROM bellsoft/liberica-runtime-container:jdk-26-musl AS build
 WORKDIR /build
 
 # Warm the dependency cache on the POM first so source-only edits don't re-download everything.

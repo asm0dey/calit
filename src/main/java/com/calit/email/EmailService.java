@@ -16,6 +16,7 @@ import com.calit.google.CalendarPort;
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.Mailer;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -31,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
 
 @ApplicationScoped
 public class EmailService {
@@ -39,6 +41,15 @@ public class EmailService {
             DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm", Locale.ENGLISH);
     private static final String ICS_CONTENT_TYPE = "text/calendar; charset=UTF-8; method=REQUEST";
     private static final String ICS_FILENAME = "invite.ics";
+    public static final String RECIPIENT_ROLE = "recipientRole";
+    public static final String INVITEE_NAME = "inviteeName";
+    public static final String MEETING_TYPE_NAME = "meetingTypeName";
+    public static final String START_TIME = "startTime";
+    public static final String DURATION_MINUTES = "durationMinutes";
+    public static final String LOCATION = "location";
+    public static final String IS_MEET_LINK = "isMeetLink";
+    public static final String MANAGE_URL = "manageUrl";
+    public static final String ANSWERS = "answers";
 
     @Inject
     Mailer mailer;
@@ -50,27 +61,27 @@ public class EmailService {
     String baseUrl;
 
     @Inject
-    @io.quarkus.qute.Location("email/requested.html")
+    @Location("email/requested.html")
     Template requested;
 
     @Inject
-    @io.quarkus.qute.Location("email/confirmation.html")
+    @Location("email/confirmation.html")
     Template confirmation;
 
     @Inject
-    @io.quarkus.qute.Location("email/declined.html")
+    @Location("email/declined.html")
     Template declined;
 
     @Inject
-    @io.quarkus.qute.Location("email/reschedule.html")
+    @Location("email/reschedule.html")
     Template reschedule;
 
     @Inject
-    @io.quarkus.qute.Location("email/cancellation.html")
+    @Location("email/cancellation.html")
     Template cancellation;
 
     @Inject
-    @io.quarkus.qute.Location("email/reminder.html")
+    @Location("email/reminder.html")
     Template reminder;
 
     /** Which invitee-delivery rule a kind follows. */
@@ -120,15 +131,15 @@ public class EmailService {
         String start = format(l.booking.startUtc, l.zone);
         sendForKind(InviteeRule.ALWAYS, "Booking request received: " + l.meetingType.name, l, location,
                 role -> requested
-                        .data("recipientRole", role)
-                        .data("inviteeName", l.booking.inviteeName)
-                        .data("meetingTypeName", l.meetingType.name)
-                        .data("startTime", start)
-                        .data("durationMinutes", l.meetingType.durationMinutes)
-                        .data("location", location)
-                        .data("isMeetLink", isMeet(l))
-                        .data("manageUrl", manageUrl(l.booking))
-                        .data("answers", l.answers)
+                        .data(RECIPIENT_ROLE, role)
+                        .data(INVITEE_NAME, l.booking.inviteeName)
+                        .data(MEETING_TYPE_NAME, l.meetingType.name)
+                        .data(START_TIME, start)
+                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                        .data(LOCATION, location)
+                        .data(IS_MEET_LINK, isMeet(l))
+                        .data(MANAGE_URL, manageUrl(l.booking))
+                        .data(ANSWERS, l.answers)
                         .render());
     }
 
@@ -139,15 +150,15 @@ public class EmailService {
         String start = format(l.booking.startUtc, l.zone);
         sendForKind(InviteeRule.FALLBACK, "Booking confirmed: " + l.meetingType.name, l, location,
                 role -> confirmation
-                        .data("recipientRole", role)
-                        .data("inviteeName", l.booking.inviteeName)
-                        .data("meetingTypeName", l.meetingType.name)
-                        .data("startTime", start)
-                        .data("durationMinutes", l.meetingType.durationMinutes)
-                        .data("location", location)
-                        .data("isMeetLink", isMeet(l))
-                        .data("manageUrl", manageUrl(l.booking))
-                        .data("answers", l.answers)
+                        .data(RECIPIENT_ROLE, role)
+                        .data(INVITEE_NAME, l.booking.inviteeName)
+                        .data(MEETING_TYPE_NAME, l.meetingType.name)
+                        .data(START_TIME, start)
+                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                        .data(LOCATION, location)
+                        .data(IS_MEET_LINK, isMeet(l))
+                        .data(MANAGE_URL, manageUrl(l.booking))
+                        .data(ANSWERS, l.answers)
                         .render());
     }
 
@@ -159,15 +170,15 @@ public class EmailService {
         // Same body as confirmed (now confirmed after approval); only subject differs.
         sendForKind(InviteeRule.FALLBACK, "Booking approved: " + l.meetingType.name, l, location,
                 role -> confirmation
-                        .data("recipientRole", role)
-                        .data("inviteeName", l.booking.inviteeName)
-                        .data("meetingTypeName", l.meetingType.name)
-                        .data("startTime", start)
-                        .data("durationMinutes", l.meetingType.durationMinutes)
-                        .data("location", location)
-                        .data("isMeetLink", isMeet(l))
-                        .data("manageUrl", manageUrl(l.booking))
-                        .data("answers", l.answers)
+                        .data(RECIPIENT_ROLE, role)
+                        .data(INVITEE_NAME, l.booking.inviteeName)
+                        .data(MEETING_TYPE_NAME, l.meetingType.name)
+                        .data(START_TIME, start)
+                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                        .data(LOCATION, location)
+                        .data(IS_MEET_LINK, isMeet(l))
+                        .data(MANAGE_URL, manageUrl(l.booking))
+                        .data(ANSWERS, l.answers)
                         .render());
     }
 
@@ -178,11 +189,11 @@ public class EmailService {
         // No Google event ever existed -> always notify the invitee. No answers, no location link.
         sendForKind(InviteeRule.ALWAYS, "Booking declined: " + l.meetingType.name, l, resolveLocation(l),
                 role -> declined
-                        .data("recipientRole", role)
-                        .data("inviteeName", l.booking.inviteeName)
-                        .data("meetingTypeName", l.meetingType.name)
-                        .data("startTime", start)
-                        .data("durationMinutes", l.meetingType.durationMinutes)
+                        .data(RECIPIENT_ROLE, role)
+                        .data(INVITEE_NAME, l.booking.inviteeName)
+                        .data(MEETING_TYPE_NAME, l.meetingType.name)
+                        .data(START_TIME, start)
+                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                         .render());
     }
 
@@ -194,16 +205,16 @@ public class EmailService {
         String oldStart = format(e.oldStartUtc(), l.zone);
         sendForKind(InviteeRule.FALLBACK, "Booking rescheduled: " + l.meetingType.name, l, location,
                 role -> reschedule
-                        .data("recipientRole", role)
-                        .data("inviteeName", l.booking.inviteeName)
-                        .data("meetingTypeName", l.meetingType.name)
-                        .data("startTime", newStart)
+                        .data(RECIPIENT_ROLE, role)
+                        .data(INVITEE_NAME, l.booking.inviteeName)
+                        .data(MEETING_TYPE_NAME, l.meetingType.name)
+                        .data(START_TIME, newStart)
                         .data("oldStartTime", oldStart)
-                        .data("durationMinutes", l.meetingType.durationMinutes)
-                        .data("location", location)
-                        .data("isMeetLink", isMeet(l))
-                        .data("manageUrl", manageUrl(l.booking))
-                        .data("answers", l.answers)
+                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                        .data(LOCATION, location)
+                        .data(IS_MEET_LINK, isMeet(l))
+                        .data(MANAGE_URL, manageUrl(l.booking))
+                        .data(ANSWERS, l.answers)
                         .render());
     }
 
@@ -214,11 +225,11 @@ public class EmailService {
         // No location/meet link in the cancellation body; .ics still attached describing the removed event.
         sendForKind(InviteeRule.FALLBACK, "Booking cancelled: " + l.meetingType.name, l, resolveLocation(l),
                 role -> cancellation
-                        .data("recipientRole", role)
-                        .data("inviteeName", l.booking.inviteeName)
-                        .data("meetingTypeName", l.meetingType.name)
-                        .data("startTime", start)
-                        .data("durationMinutes", l.meetingType.durationMinutes)
+                        .data(RECIPIENT_ROLE, role)
+                        .data(INVITEE_NAME, l.booking.inviteeName)
+                        .data(MEETING_TYPE_NAME, l.meetingType.name)
+                        .data(START_TIME, start)
+                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                         .render());
     }
 
@@ -229,15 +240,15 @@ public class EmailService {
         String start = format(l.booking.startUtc, l.zone);
         sendForKind(InviteeRule.FALLBACK, "Reminder: " + l.meetingType.name, l, location,
                 role -> reminder
-                        .data("recipientRole", role)
-                        .data("inviteeName", l.booking.inviteeName)
-                        .data("meetingTypeName", l.meetingType.name)
-                        .data("startTime", start)
-                        .data("durationMinutes", l.meetingType.durationMinutes)
-                        .data("location", location)
-                        .data("isMeetLink", isMeet(l))
-                        .data("manageUrl", manageUrl(l.booking))
-                        .data("answers", l.answers)
+                        .data(RECIPIENT_ROLE, role)
+                        .data(INVITEE_NAME, l.booking.inviteeName)
+                        .data(MEETING_TYPE_NAME, l.meetingType.name)
+                        .data(START_TIME, start)
+                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                        .data(LOCATION, location)
+                        .data(IS_MEET_LINK, isMeet(l))
+                        .data(MANAGE_URL, manageUrl(l.booking))
+                        .data(ANSWERS, l.answers)
                         .render());
     }
 
@@ -249,7 +260,7 @@ public class EmailService {
      * {@code calendarPort.isConnected()}. No mail is sent if the recipient set is empty.
      */
     private void sendForKind(InviteeRule rule, String subject, Loaded l, String icsLocation,
-                             java.util.function.Function<String, String> bodyForRole) {
+                             Function<String, String> bodyForRole) {
         boolean sendInvitee = rule == InviteeRule.ALWAYS || !calendarPort.isConnected();
         boolean sendOwner = l.owner.ownerNotificationsEnabled;
 
