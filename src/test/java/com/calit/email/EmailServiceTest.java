@@ -73,8 +73,8 @@ class EmailServiceTest {
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
-        List<Mail> toInvitee = mailbox.getMessagesSentTo(INVITEE_EMAIL);
-        List<Mail> toOwner = mailbox.getMessagesSentTo(OWNER_EMAIL);
+        List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
+        List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
         assertEquals(1, toInvitee.size(), "disconnected -> invitee fallback mail");
         assertEquals(1, toOwner.size(), "owner always (enabled)");
         assertEquals(2, mailbox.getTotalMessagesSent());
@@ -109,12 +109,12 @@ class EmailServiceTest {
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
-        assertTrue(mailbox.getMessagesSentTo(INVITEE_EMAIL).isEmpty(),
+        assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL).isEmpty(),
                 "connected -> Google emails the invitee, app must not");
-        assertEquals(1, mailbox.getMessagesSentTo(OWNER_EMAIL).size(),
+        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size(),
                 "owner still gets the app mail");
         assertEquals(1, mailbox.getTotalMessagesSent());
-        assertHasIcsAttachment(mailbox.getMessagesSentTo(OWNER_EMAIL).get(0));
+        assertHasIcsAttachment(mailbox.getMailsSentTo(OWNER_EMAIL).get(0));
     }
 
     // ---- BookingRequested (PENDING): always to invitee + owner, regardless of Google ----
@@ -130,11 +130,11 @@ class EmailServiceTest {
 
         emailService.handleRequested(new BookingRequested(bookingId));
 
-        assertEquals(1, mailbox.getMessagesSentTo(INVITEE_EMAIL).size(),
+        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
                 "requested is an always-send exception (no Google event)");
-        assertEquals(1, mailbox.getMessagesSentTo(OWNER_EMAIL).size());
+        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
         assertEquals(2, mailbox.getTotalMessagesSent());
-        Mail m = mailbox.getMessagesSentTo(INVITEE_EMAIL).get(0);
+        Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).get(0);
         assertTrue(m.getSubject().toLowerCase().contains("request"));
         assertTrue(m.getHtml().contains("Need a demo"));
         assertHasIcsAttachment(m);
@@ -152,10 +152,10 @@ class EmailServiceTest {
 
         emailService.handleDeclined(new BookingDeclined(bookingId));
 
-        assertEquals(1, mailbox.getMessagesSentTo(INVITEE_EMAIL).size(),
+        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
                 "declined is an always-send exception (no Google event)");
-        assertEquals(1, mailbox.getMessagesSentTo(OWNER_EMAIL).size());
-        Mail m = mailbox.getMessagesSentTo(INVITEE_EMAIL).get(0);
+        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
+        Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).get(0);
         assertTrue(m.getSubject().toLowerCase().contains("declin"));
     }
 
@@ -171,8 +171,8 @@ class EmailServiceTest {
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
-        assertTrue(mailbox.getMessagesSentTo(OWNER_EMAIL).isEmpty(), "owner opted out -> no owner mail");
-        assertEquals(1, mailbox.getMessagesSentTo(INVITEE_EMAIL).size(),
+        assertTrue(mailbox.getMailsSentTo(OWNER_EMAIL).isEmpty(), "owner opted out -> no owner mail");
+        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
                 "invitee still gets fallback (disconnected)");
         assertEquals(1, mailbox.getTotalMessagesSent());
     }
@@ -203,7 +203,7 @@ class EmailServiceTest {
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
-        Mail m = mailbox.getMessagesSentTo(INVITEE_EMAIL).get(0);
+        Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).get(0);
         assertTrue(m.getHtml().contains("+1 555 0100"), "phone locationDetail rendered");
         assertFalse(m.getHtml().contains("meet.google.com"), "no meet link for PHONE type");
     }
@@ -222,9 +222,9 @@ class EmailServiceTest {
 
         emailService.handleRescheduled(new BookingRescheduled(bookingId, oldStart));
 
-        assertTrue(mailbox.getMessagesSentTo(INVITEE_EMAIL).isEmpty());
-        assertEquals(1, mailbox.getMessagesSentTo(OWNER_EMAIL).size());
-        assertTrue(mailbox.getMessagesSentTo(OWNER_EMAIL).get(0).getSubject()
+        assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL).isEmpty());
+        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
+        assertTrue(mailbox.getMailsSentTo(OWNER_EMAIL).get(0).getSubject()
                 .toLowerCase().contains("reschedul"));
     }
 
@@ -240,9 +240,9 @@ class EmailServiceTest {
 
         emailService.handleCancelled(new BookingCancelled(bookingId));
 
-        assertEquals(1, mailbox.getMessagesSentTo(INVITEE_EMAIL).size());
-        assertEquals(1, mailbox.getMessagesSentTo(OWNER_EMAIL).size());
-        Mail m = mailbox.getMessagesSentTo(INVITEE_EMAIL).get(0);
+        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size());
+        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
+        Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).get(0);
         assertTrue(m.getSubject().toLowerCase().contains("cancel"));
         assertFalse(m.getHtml().contains("will-not-appear"),
                 "cancellation body must not include a meet link");
@@ -260,9 +260,9 @@ class EmailServiceTest {
 
         emailService.handleReminder(new ReminderDue(bookingId));
 
-        assertEquals(1, mailbox.getMessagesSentTo(INVITEE_EMAIL).size());
-        assertEquals(1, mailbox.getMessagesSentTo(OWNER_EMAIL).size());
-        assertTrue(mailbox.getMessagesSentTo(INVITEE_EMAIL).get(0).getSubject()
+        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size());
+        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
+        assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL).get(0).getSubject()
                 .toLowerCase().contains("reminder"));
     }
 
