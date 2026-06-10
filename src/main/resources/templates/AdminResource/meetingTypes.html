@@ -31,8 +31,9 @@
         Basics
       </summary>
       <div class="sec-body">
-        <label>Name <input type="text" name="name" required></label>
-        <label>Slug <input type="text" name="slug" required></label>
+        <label>Name <input type="text" name="name" data-slug-name required></label>
+        <label>Slug <small>(leave blank to auto-generate from the name)</small>
+          <input type="text" name="slug" data-slug-autofill></label>
         <label><input type="checkbox" name="secret"> Secret (hidden from public landing)</label>
         <label><input type="checkbox" name="requiresApproval"> Requires owner approval (hold as pending)</label>
       </div>
@@ -99,6 +100,22 @@
       </div>
     </details>
 
+    <script>
+    (function () {
+      var form = document.currentScript.closest('form');
+      var name = form.querySelector('[data-slug-name]');
+      var slug = form.querySelector('[data-slug-autofill]');
+      var edited = false;
+      slug.addEventListener('input', function () { edited = true; });
+      name.addEventListener('input', function () {
+        if (edited) { return; }
+        slug.value = name.value.toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+      });
+    })();
+    </script>
     <button type="submit">Create</button>
   </form>
 {/include}

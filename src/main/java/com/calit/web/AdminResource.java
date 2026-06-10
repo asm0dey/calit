@@ -9,6 +9,7 @@ import com.calit.domain.DateOverride;
 import com.calit.domain.DateOverrideWindow;
 import com.calit.domain.MeetingType;
 import com.calit.domain.MeetingType.LocationType;
+import com.calit.domain.Slugs;
 import com.calit.domain.OwnerSettings;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
@@ -111,7 +112,8 @@ public class AdminResource {
                                               @RestForm String requiresApproval) {
         MeetingType t = new MeetingType();
         t.name = name;
-        t.slug = slug;
+        String slugBase = (slug == null || slug.isBlank()) ? Slugs.slugify(name) : Slugs.slugify(slug);
+        t.slug = Slugs.uniqueMeetingTypeSlug(slugBase, null);
         t.durationMinutes = durationMinutes;
         t.bufferBeforeMinutes = bufferBeforeMinutes;
         t.bufferAfterMinutes = bufferAfterMinutes;
