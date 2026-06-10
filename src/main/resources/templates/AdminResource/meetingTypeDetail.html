@@ -54,7 +54,28 @@
   </form>
 
   <h2>Booking fields</h2>
-  <p>Per-type booking fields appear here (added in a later task).</p>
+  <p>These are asked only for this meeting type, in addition to the always-present name and email.</p>
+  {#for f in fields}
+    <article>
+      <h3>{f.label}{#if f.required} <span class="badge">required</span>{/if}</h3>
+      <p><code>{f.fieldKey}</code> &middot; {f.type.display} &middot; position {f.position}</p>
+      <form method="post" action="/admin/meeting-types/{type.id}/booking-fields/{f.id}/delete" style="display:inline">
+        <button type="submit" class="secondary">Delete</button>
+      </form>
+    </article>
+  {/for}
+  <form method="post" action="/admin/meeting-types/{type.id}/booking-fields">
+    <label>Label <input type="text" name="label" required></label>
+    <label>Field key <input type="text" name="fieldKey" required></label>
+    <label>Type
+      <select name="type">
+        {#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}
+      </select>
+    </label>
+    <label><input type="checkbox" name="required"> Required</label>
+    <label>Position <input type="number" name="position" value="0" required></label>
+    <button type="submit">Add field</button>
+  </form>
 
   <h2>Working hours</h2>
   <p>Per-type weekly working hours appear here (added in a later task).</p>

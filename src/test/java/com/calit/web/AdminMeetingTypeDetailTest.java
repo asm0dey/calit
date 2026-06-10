@@ -1,7 +1,10 @@
 package com.calit.web;
 
+import com.calit.domain.BookingField;
 import com.calit.domain.MeetingType;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +14,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @QuarkusTest
 class AdminMeetingTypeDetailTest {
+
+    @Inject
+    EntityManager em;
+
+    /**
+     * Looks up a BookingField straight from the DB, bypassing the test thread's first-level
+     * cache. The delete POST commits in its own request transaction; a plain findById here
+     * would return the stale entity cached by the earlier {@code find(...)} read in the same
+     * non-transactional test method, so we clear the context and re-query.
+     */
+    @Transactional
+    BookingField reloadField(Long id) {
+        em.clear();
+        return BookingField.findById(id);
+    }
 
     @Transactional
     Long seedType(String slug) {
@@ -70,5 +88,47 @@ class AdminMeetingTypeDetailTest {
         assertEquals(5, t.bufferBeforeMinutes);
         assertEquals(20, t.bufferAfterMinutes);
         assertEquals(MeetingType.LocationType.PHONE, t.locationType);
+    }
+
+    @Test
+    void addsBookingFieldScopedToThisType() {
+        Long id = seedType("detail-fields-" + System.nanoTime());
+        String key = "linkedin-" + System.nanoTime();
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("label", "LinkedIn")
+            .formParam("fieldKey", key)
+            .formParam("type", "SHORT_TEXT")
+            .formParam("required", "on")
+            .formParam("position", "1")
+            .when().post("/admin/meeting-types/" + id + "/booking-fields")
+            .then().statusCode(200).body(containsString("LinkedIn"));
+
+        BookingField f = BookingField.find("fieldKey", key).firstResult();
+        org.junit.jupiter.api.Assertions.assertNotNull(f);
+        assertEquals(id, f.meetingTypeId); // scoped to THIS type, not global
+    }
+
+    @Test
+    void deletesBookingFieldFromThisType() {
+        Long id = seedType("detail-fielddel-" + System.nanoTime());
+        String key = "todelete-" + System.nanoTime();
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("label", "Temp").formParam("fieldKey", key)
+            .formParam("type", "SHORT_TEXT").formParam("position", "1")
+            .when().post("/admin/meeting-types/" + id + "/booking-fields")
+            .then().statusCode(200);
+
+        BookingField f = BookingField.find("fieldKey", key).firstResult();
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when().post("/admin/meeting-types/" + id + "/booking-fields/" + f.id + "/delete")
+            .then().statusCode(200);
+
+        org.junit.jupiter.api.Assertions.assertNull(reloadField(f.id));
     }
 }

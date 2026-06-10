@@ -229,6 +229,38 @@ public class AdminResource {
         return detailInstance(id); // managed entity flushes on commit
     }
 
+    @POST
+    @Path("/meeting-types/{id}/booking-fields")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance addTypeField(@PathParam("id") Long id,
+                                         @RestForm String label,
+                                         @RestForm String fieldKey,
+                                         @RestForm String type,
+                                         @RestForm String required,
+                                         @RestForm @DefaultValue("0") int position) {
+        BookingField f = new BookingField();
+        f.meetingTypeId = id;
+        f.label = label;
+        f.fieldKey = fieldKey;
+        f.type = FieldType.valueOf(type);
+        f.required = "on".equals(required);
+        f.position = position;
+        f.persist();
+        return detailInstance(id);
+    }
+
+    @POST
+    @Path("/meeting-types/{id}/booking-fields/{fid}/delete")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance deleteTypeField(@PathParam("id") Long id, @PathParam("fid") Long fid) {
+        BookingField.deleteById(fid);
+        return detailInstance(id);
+    }
+
     @GET
     @Path("/availability")
     @Produces(MediaType.TEXT_HTML)
@@ -316,7 +348,7 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance bookingFields() {
         return Templates.bookingFields(
-                BookingField.<BookingField>listAll(),
+                BookingField.list("meetingTypeId is null order by position"),
                 FieldType.values(), pendingCount());
     }
 
@@ -329,19 +361,17 @@ public class AdminResource {
                                                @RestForm String fieldKey,
                                                @RestForm String type,
                                                @RestForm String required,
-                                               @RestForm int position,
-                                               @RestForm String meetingTypeId) {
+                                               @RestForm int position) {
         BookingField f = new BookingField();
         f.label = label;
         f.fieldKey = fieldKey;
         f.type = FieldType.valueOf(type);
         f.required = "on".equals(required); // unchecked checkbox sends no value
         f.position = position;
-        f.meetingTypeId = (meetingTypeId == null || meetingTypeId.isBlank())
-                ? null : Long.valueOf(meetingTypeId); // empty = global
+        f.meetingTypeId = null; // standalone page manages global defaults only
         f.persist();
         return Templates.bookingFields(
-                BookingField.<BookingField>listAll(),
+                BookingField.list("meetingTypeId is null order by position"),
                 FieldType.values(), pendingCount());
     }
 
@@ -353,7 +383,7 @@ public class AdminResource {
     public TemplateInstance deleteBookingField(@PathParam("id") Long id) {
         BookingField.deleteById(id);
         return Templates.bookingFields(
-                BookingField.<BookingField>listAll(),
+                BookingField.list("meetingTypeId is null order by position"),
                 FieldType.values(), pendingCount());
     }
 
