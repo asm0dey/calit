@@ -78,8 +78,49 @@
   </form>
 
   <h2>Working hours</h2>
-  <p>Per-type weekly working hours appear here (added in a later task).</p>
+  <p>Weekly hours for this meeting type. When set, they replace the global default hours for this type.</p>
+  {#for r in rules}
+    <article>
+      <p><strong>{r.dayOfWeek.display}</strong> {r.startTime} &ndash; {r.endTime}</p>
+      <form method="post" action="/admin/meeting-types/{type.id}/availability/{r.id}/delete" style="display:inline">
+        <button type="submit" class="secondary">Delete</button>
+      </form>
+    </article>
+  {/for}
+  <form method="post" action="/admin/meeting-types/{type.id}/availability">
+    <label>Day
+      <select name="dayOfWeek">
+        {#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}
+      </select>
+    </label>
+    <label>Start <input type="time" name="startTime" value="09:00" required></label>
+    <label>End <input type="time" name="endTime" value="17:00" required></label>
+    <button type="submit">Add rule</button>
+  </form>
 
   <h2>Date overrides</h2>
-  <p>Per-type date overrides appear here (added in a later task).</p>
+  <p>An override REPLACES this date's normal hours for this meeting type. Leave the windows blank to mark the date as a day off.</p>
+  {#for o in overrides}
+    <article>
+      <p><strong>{o.overrideDate}</strong></p>
+      {#if o.windows.isEmpty()}
+        <p><span class="badge">day off</span> (blocked)</p>
+      {#else}
+        <ul>{#for w in o.windows}<li>{w.startTime} &ndash; {w.endTime}</li>{/for}</ul>
+      {/if}
+      <form method="post" action="/admin/meeting-types/{type.id}/date-overrides/{o.id}/delete" style="display:inline">
+        <button type="submit" class="secondary">Delete</button>
+      </form>
+    </article>
+  {/for}
+  <form method="post" action="/admin/meeting-types/{type.id}/date-overrides">
+    <label>Date <input type="date" name="date" required></label>
+    <fieldset>
+      <legend>Bookable windows (leave all blank = day off)</legend>
+      <label>Window 1 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
+      <label>Window 2 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
+      <label>Window 3 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
+    </fieldset>
+    <button type="submit">Save override</button>
+  </form>
 {/include}

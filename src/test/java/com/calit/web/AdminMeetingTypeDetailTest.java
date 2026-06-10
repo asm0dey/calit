@@ -1,6 +1,8 @@
 package com.calit.web;
 
+import com.calit.domain.AvailabilityRule;
 import com.calit.domain.BookingField;
+import com.calit.domain.DateOverride;
 import com.calit.domain.MeetingType;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -130,5 +132,37 @@ class AdminMeetingTypeDetailTest {
             .then().statusCode(200);
 
         org.junit.jupiter.api.Assertions.assertNull(reloadField(f.id));
+    }
+
+    @Test
+    void addsWorkingHourRuleScopedToThisType() {
+        Long id = seedType("detail-hours-" + System.nanoTime());
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("dayOfWeek", "WEDNESDAY")
+            .formParam("startTime", "09:00")
+            .formParam("endTime", "12:00")
+            .when().post("/admin/meeting-types/" + id + "/availability")
+            .then().statusCode(200).body(containsString("Wednesday")); // humanized label
+
+        long count = AvailabilityRule.count("meetingTypeId = ?1", id);
+        assertEquals(1, count);
+    }
+
+    @Test
+    void addsDateOverrideScopedToThisType() {
+        Long id = seedType("detail-override-" + System.nanoTime());
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("date", "2026-12-24")
+            .formParam("windowStart", "09:00")
+            .formParam("windowEnd", "11:00")
+            .when().post("/admin/meeting-types/" + id + "/date-overrides")
+            .then().statusCode(200).body(containsString("2026-12-24"));
+
+        long count = DateOverride.count("meetingTypeId = ?1", id);
+        assertEquals(1, count);
     }
 }

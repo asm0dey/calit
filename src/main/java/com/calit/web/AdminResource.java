@@ -261,6 +261,70 @@ public class AdminResource {
         return detailInstance(id);
     }
 
+    @POST
+    @Path("/meeting-types/{id}/availability")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance addTypeRule(@PathParam("id") Long id,
+                                        @RestForm String dayOfWeek,
+                                        @RestForm String startTime,
+                                        @RestForm String endTime) {
+        AvailabilityRule r = new AvailabilityRule();
+        r.meetingTypeId = id;
+        r.dayOfWeek = DayOfWeek.valueOf(dayOfWeek);
+        r.startTime = LocalTime.parse(startTime);
+        r.endTime = LocalTime.parse(endTime);
+        r.persist();
+        return detailInstance(id);
+    }
+
+    @POST
+    @Path("/meeting-types/{id}/availability/{rid}/delete")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance deleteTypeRule(@PathParam("id") Long id, @PathParam("rid") Long rid) {
+        AvailabilityRule.deleteById(rid);
+        return detailInstance(id);
+    }
+
+    @POST
+    @Path("/meeting-types/{id}/date-overrides")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance addTypeOverride(@PathParam("id") Long id,
+                                            @RestForm String date,
+                                            MultivaluedMap<String, String> form) {
+        DateOverride o = new DateOverride();
+        o.meetingTypeId = id;
+        o.overrideDate = LocalDate.parse(date);
+        o.persist(); // need the generated id before persisting child windows
+        List<String> starts = form.getOrDefault("windowStart", List.of());
+        List<String> ends = form.getOrDefault("windowEnd", List.of());
+        for (int i = 0; i < starts.size() && i < ends.size(); i++) {
+            if (starts.get(i).isBlank() || ends.get(i).isBlank()) { continue; }
+            DateOverrideWindow w = new DateOverrideWindow();
+            w.dateOverrideId = o.id;
+            w.startTime = LocalTime.parse(starts.get(i));
+            w.endTime = LocalTime.parse(ends.get(i));
+            w.persist();
+        }
+        return detailInstance(id);
+    }
+
+    @POST
+    @Path("/meeting-types/{id}/date-overrides/{oid}/delete")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance deleteTypeOverride(@PathParam("id") Long id, @PathParam("oid") Long oid) {
+        DateOverrideWindow.delete("dateOverrideId = ?1", oid);
+        DateOverride.deleteById(oid);
+        return detailInstance(id);
+    }
+
     @GET
     @Path("/availability")
     @Produces(MediaType.TEXT_HTML)
