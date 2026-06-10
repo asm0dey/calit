@@ -1,0 +1,64 @@
+{@com.calit.domain.MeetingType type}
+{@java.util.List<com.calit.domain.BookingField> fields}
+{@java.util.List<com.calit.domain.AvailabilityRule> rules}
+{@java.util.List<com.calit.domain.DateOverride> overrides}
+{@com.calit.domain.MeetingType.LocationType[] locationTypes}
+{@com.calit.domain.BookingField.FieldType[] fieldTypes}
+{@java.time.DayOfWeek[] daysOfWeek}
+{@java.lang.Long pendingCount}
+{#include adminBase title="Admin — {type.name}" pendingCount=pendingCount active="meetingTypes"}
+  <p><a href="/admin/meeting-types">&larr; All meeting types</a></p>
+  <h1>{type.name}</h1>
+  <p>/{type.slug} &middot; {type.durationMinutes} min &middot; {type.locationType.display}</p>
+
+  <h2>Basics</h2>
+  <form method="post" action="/admin/meeting-types/{type.id}/edit" class="editor">
+    <label>Name <input type="text" name="name" data-slug-name value="{type.name}" required></label>
+    <label>Slug <small>(leave blank to auto-generate from the name)</small>
+      <input type="text" name="slug" data-slug-autofill value="{type.slug}"></label>
+    <label>Duration (minutes) <input type="number" name="durationMinutes" value="{type.durationMinutes}" required></label>
+    <label>Buffer before (minutes) <input type="number" name="bufferBeforeMinutes" value="{type.bufferBeforeMinutes}" min="0"></label>
+    <label>Buffer after (minutes) <input type="number" name="bufferAfterMinutes" value="{type.bufferAfterMinutes}" min="0"></label>
+    <label>Slot interval (minutes, blank = back-to-back)
+      <input type="number" name="slotIntervalMinutes" value="{#if type.slotIntervalMinutes}{type.slotIntervalMinutes}{/if}"></label>
+    <label>Min scheduling notice (minutes) <input type="number" name="minNoticeMinutes" value="{type.minNoticeMinutes}" required></label>
+    <label>Booking horizon (days) <input type="number" name="horizonDays" value="{type.horizonDays}" required></label>
+    <label>Location
+      <select name="locationType">
+        {#for loc in locationTypes}
+          <option value="{loc}"{#if type.locationType == loc} selected{/if}>{display:of(loc)}</option>
+        {/for}
+      </select>
+    </label>
+    <label>Location detail (phone / address / custom; ignored for Google Meet)
+      <input type="text" name="locationDetail" value="{#if type.locationDetail}{type.locationDetail}{/if}"></label>
+    <label><input type="checkbox" name="secret"{#if type.secret} checked{/if}> Secret (hidden from public landing)</label>
+    <label><input type="checkbox" name="requiresApproval"{#if type.requiresApproval} checked{/if}> Requires owner approval</label>
+    <script>
+    (function () {
+      var form = document.currentScript.closest('form');
+      var name = form.querySelector('[data-slug-name]');
+      var slug = form.querySelector('[data-slug-autofill]');
+      var edited = slug.value.length > 0;
+      slug.addEventListener('input', function () { edited = true; });
+      name.addEventListener('input', function () {
+        if (edited) { return; }
+        slug.value = name.value.toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+      });
+    })();
+    </script>
+    <button type="submit">Save changes</button>
+  </form>
+
+  <h2>Booking fields</h2>
+  <p>Per-type booking fields appear here (added in a later task).</p>
+
+  <h2>Working hours</h2>
+  <p>Per-type weekly working hours appear here (added in a later task).</p>
+
+  <h2>Date overrides</h2>
+  <p>Per-type date overrides appear here (added in a later task).</p>
+{/include}

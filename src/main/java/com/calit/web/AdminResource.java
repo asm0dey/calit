@@ -44,6 +44,16 @@ public class AdminResource {
         public static native TemplateInstance meetingTypes(
                 List<MeetingType> types, LocationType[] locationTypes, Long pendingCount);
 
+        public static native TemplateInstance meetingTypeDetail(
+                MeetingType type,
+                List<BookingField> fields,
+                List<AvailabilityRule> rules,
+                List<DateOverride> overrides,
+                LocationType[] locationTypes,
+                BookingField.FieldType[] fieldTypes,
+                DayOfWeek[] daysOfWeek,
+                Long pendingCount);
+
         public static native TemplateInstance availability(
                 List<AvailabilityRule> rules, List<MeetingType> types,
                 DayOfWeek[] daysOfWeek, Long pendingCount);
@@ -149,6 +159,74 @@ public class AdminResource {
     public TemplateInstance deleteMeetingType(@PathParam("id") Long id) {
         MeetingType.deleteById(id);
         return Templates.meetingTypes(MeetingType.listAll(), LocationType.values(), pendingCount());
+    }
+
+    /** Date overrides scoped to one meeting type, each with its (transient) windows loaded. */
+    private List<DateOverride> overridesForType(Long typeId) {
+        List<DateOverride> all = DateOverride.list("meetingTypeId = ?1 order by overrideDate", typeId);
+        for (DateOverride o : all) {
+            o.windows = DateOverrideWindow.list("dateOverrideId = ?1 order by startTime asc", o.id);
+        }
+        return all;
+    }
+
+    /** Re-render the detail page for one meeting type (shared by every detail-scoped handler). */
+    private TemplateInstance detailInstance(Long id) {
+        MeetingType t = MeetingType.findById(id);
+        List<BookingField> fields = BookingField.list("meetingTypeId = ?1 order by position", id);
+        List<AvailabilityRule> rules = AvailabilityRule.list("meetingTypeId = ?1 order by dayOfWeek", id);
+        List<DateOverride> overrides = overridesForType(id);
+        return Templates.meetingTypeDetail(t, fields, rules, overrides,
+                LocationType.values(), BookingField.FieldType.values(),
+                DayOfWeek.values(), pendingCount());
+    }
+
+    @GET
+    @Path("/meeting-types/{id}")
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance meetingTypeDetail(@PathParam("id") Long id) {
+        MeetingType t = MeetingType.findById(id);
+        if (t == null) {
+            throw new jakarta.ws.rs.NotFoundException("No meeting type " + id);
+        }
+        return detailInstance(id);
+    }
+
+    @POST
+    @Path("/meeting-types/{id}/edit")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance editMeetingType(@PathParam("id") Long id,
+                                            @RestForm String name,
+                                            @RestForm String slug,
+                                            @RestForm int durationMinutes,
+                                            @RestForm @DefaultValue("0") int bufferBeforeMinutes,
+                                            @RestForm @DefaultValue("0") int bufferAfterMinutes,
+                                            @RestForm String secret,
+                                            @RestForm int minNoticeMinutes,
+                                            @RestForm int horizonDays,
+                                            @RestForm String locationType,
+                                            @RestForm String locationDetail,
+                                            @RestForm String slotIntervalMinutes,
+                                            @RestForm String requiresApproval) {
+        MeetingType t = MeetingType.findById(id);
+        t.name = name;
+        String slugBase = (slug == null || slug.isBlank()) ? Slugs.slugify(name) : Slugs.slugify(slug);
+        t.slug = Slugs.uniqueMeetingTypeSlug(slugBase, id);
+        t.durationMinutes = durationMinutes;
+        t.bufferBeforeMinutes = bufferBeforeMinutes;
+        t.bufferAfterMinutes = bufferAfterMinutes;
+        t.secret = "on".equals(secret);
+        t.minNoticeMinutes = minNoticeMinutes;
+        t.horizonDays = horizonDays;
+        t.locationType = LocationType.valueOf(locationType);
+        t.locationDetail = (locationDetail == null || locationDetail.isBlank()) ? null : locationDetail;
+        t.slotIntervalMinutes = (slotIntervalMinutes == null || slotIntervalMinutes.isBlank())
+                ? null : Integer.valueOf(slotIntervalMinutes);
+        t.requiresApproval = "on".equals(requiresApproval);
+        return detailInstance(id); // managed entity flushes on commit
     }
 
     @GET

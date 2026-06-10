@@ -14,6 +14,7 @@
       <p>/{t.slug} &middot; {t.durationMinutes} min &middot; {t.locationType.display}{#if t.locationDetail} ({t.locationDetail}){/if}</p>
       <p>min notice {t.minNoticeMinutes} min &middot; horizon {t.horizonDays} days{#if t.slotIntervalMinutes} &middot; slot interval {t.slotIntervalMinutes} min{/if}
         &middot; buffer {t.bufferBeforeMinutes}/{t.bufferAfterMinutes} min</p>
+      <a href="/admin/meeting-types/{t.id}" role="button" class="secondary" style="display:inline">Edit</a>
       <form method="post" action="/admin/meeting-types/{t.id}/toggle" style="display:inline">
         <button type="submit" class="secondary">{#if t.active}Deactivate{#else}Activate{/if}</button>
       </form>
