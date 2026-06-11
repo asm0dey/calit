@@ -56,6 +56,17 @@ class SetupFlowTest {
     }
 
     @Test
+    void publicLandingStaysOpenWhenNoUsers() {
+        // The marketing landing at / is exempt from the first-run redirect — it must render even
+        // before the instance is bootstrapped, not 302 to /setup.
+        deleteAllUsers();
+        given().redirects().follow(false)
+                .when().get("/")
+                .then().statusCode(200)
+                .body(containsString("actually own"));
+    }
+
+    @Test
     void setupCreatesFirstAdminUserThenRedirectsToLogin() {
         deleteAllUsers();
         given().redirects().follow(false)

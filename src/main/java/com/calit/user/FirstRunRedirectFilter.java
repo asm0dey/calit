@@ -37,7 +37,9 @@ public class FirstRunRedirectFilter {
     }
 
     private boolean isAllowedWhileUnbootstrapped(String path) {
-        return path.equals("/setup")
+        return path.equals("/")                  // public marketing landing stays open pre-bootstrap
+                || path.startsWith("/img/")       // ...and its screenshots
+                || path.equals("/setup")
                 || path.equals("/login")
                 || path.equals("/j_security_check")
                 || path.startsWith("/q/")
