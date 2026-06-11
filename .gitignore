@@ -14,3 +14,7 @@ node_modules/
 
 # Generated stylesheet (built by `bun run css:build`)
 src/main/resources/META-INF/resources/calit.css
+
+# Playwright MCP artifacts
+.playwright-mcp/
+working-hours-*.png

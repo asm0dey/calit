@@ -204,6 +204,15 @@ src/main/resources/META-INF/resources/calit.css
 
   /* Honeypot stays invisible regardless of resets. */
   input[name="website"] { display: none !important; }
+
+  /* daisyUI's .input (in a later @layer) sets appearance:none + width:clamp(...20rem...),
+     which strips the native date/time picker and makes the field 320px wide. !important
+     is required to override across layers. */
+  .input[type="time"], .input[type="date"] {
+    appearance: auto !important;
+    -webkit-appearance: auto !important;
+    width: auto !important;
+  }
 }
 ```
 
