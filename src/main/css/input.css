@@ -120,4 +120,21 @@
 
   /* Honeypot stays invisible regardless of resets. */
   input[name="website"] { display: none !important; }
+
+  /* Admin shell: sticky left sidebar. */
+  body.admin-canvas { background: var(--color-base-200); color: var(--color-base-content); }
+  .admin-shell { display: grid; grid-template-columns: 1fr; min-height: 100vh; }
+  @media (min-width: 48rem) {
+    .admin-shell { grid-template-columns: 250px 1fr; }
+    .admin-side { position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  }
+  .admin-side { background: var(--color-base-100); border-right: 1px solid var(--color-base-300); padding: 1rem .75rem; display: flex; flex-direction: column; }
+  .admin-brand { display: flex; align-items: center; gap: .5rem; font-weight: 800; padding: .4rem .6rem 1rem; }
+  .admin-brand .chip { width: 1.7rem; height: 1.7rem; border-radius: .5rem; background: var(--color-primary); color: var(--color-primary-content); display: flex; align-items: center; justify-content: center; font-size: .85rem; }
+  .admin-main { min-width: 0; }
+  .admin-main .container { max-width: 60rem; }
+  @media (max-width: 47.99rem) {
+    .admin-side { flex-direction: row; align-items: center; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--color-base-300); }
+    .admin-brand, .admin-create { display: none; }
+  }
 }
