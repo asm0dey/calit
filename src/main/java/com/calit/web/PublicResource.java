@@ -11,6 +11,9 @@ import com.calit.booking.RateLimitException;
 import com.calit.domain.BookingField;
 import com.calit.domain.MeetingType;
 import com.calit.domain.OwnerSettings;
+import com.calit.user.AppUser;
+import com.calit.user.CurrentOwner;
+import com.calit.user.Usernames;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.inject.Inject;
@@ -75,6 +78,9 @@ public class PublicResource {
     @Inject
     BookingService bookingService;
 
+    @Inject
+    CurrentOwner currentOwner;
+
     @jakarta.inject.Inject
     com.calit.google.CalendarPort calendarPort;
 
@@ -108,6 +114,19 @@ public class PublicResource {
     public TemplateInstance index() {
         // Root is a generic product page — NOT any owner's landing. Per-owner landings live at /{user}.
         return Templates.index();
+    }
+
+    @GET
+    @Path("/{user}")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance userLanding(@PathParam("user") String user) {
+        AppUser owner = resolveOwner(user);
+        OwnerSettings settings = OwnerSettings.forOwner(owner.id);
+        if (settings == null) {
+            return Templates.notReady();
+        }
+        // listPublic(ownerId) = that owner's active && !secret types.
+        return Templates.landing(MeetingType.listPublic(owner.id), owner.username, settings.ownerName);
     }
 
     @GET
@@ -250,6 +269,16 @@ public class PublicResource {
     public TemplateInstance cancelBooking(@PathParam("manageToken") String manageToken) {
         bookingService.cancel(manageToken); // keyed by the token
         return Templates.cancelled();
+    }
+
+    /** Resolve the {user} segment to an owner, 404 if unknown, and bind CurrentOwner for the request. */
+    private AppUser resolveOwner(String user) {
+        AppUser owner = AppUser.findByUsername(Usernames.normalize(user));
+        if (owner == null) {
+            throw new NotFoundException("No user " + user);
+        }
+        currentOwner.set(owner);
+        return owner;
     }
 
     /** Available slots as an ordered per-day list (ISO date + label), chronological. */
