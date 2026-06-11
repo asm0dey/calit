@@ -2,6 +2,7 @@ package com.calit.user;
 
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
@@ -12,6 +13,20 @@ class SetupFlowTest {
 
     private void deleteAllUsers() {
         QuarkusTransaction.requiringNew().run(() -> AppUser.deleteAll());
+    }
+
+    /**
+     * Restore the bootstrapped baseline after each method so this class never leaves the shared
+     * test DB at zero users — otherwise a later test class's public/admin request would be
+     * redirected to /setup by FirstRunRedirectFilter. Mirrors {@code TestUserBootstrap}'s seed.
+     */
+    @AfterEach
+    void restoreBaseline() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            if (AppUser.count() == 0) {
+                AppUser.create("admin", new PasswordHasher().hash("testpass"), true).persist();
+            }
+        });
     }
 
     private void seedOneUser() {

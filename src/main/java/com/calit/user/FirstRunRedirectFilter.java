@@ -1,5 +1,6 @@
 package com.calit.user;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.vertx.web.RouteFilter;
 import io.vertx.ext.web.RoutingContext;
 
@@ -9,7 +10,10 @@ import io.vertx.ext.web.RoutingContext;
  * Once any user exists this filter is a no-op (the common case, one count() per request).
  *
  * Uses Vert.x @RouteFilter (priority 10000, runs before security) with executeBlocking so
- * the Panache count() call does not block the event loop.
+ * the Panache count() call does not block the event loop. The count runs inside
+ * {@link QuarkusTransaction#requiringNew()} so its Hibernate session/JDBC connection is opened
+ * and released each call — without it the worker-thread Panache call leaks a pooled connection
+ * per request and exhausts the datasource pool under load.
  */
 public class FirstRunRedirectFilter {
 
@@ -20,7 +24,8 @@ public class FirstRunRedirectFilter {
             rc.next();
             return;
         }
-        rc.vertx().executeBlocking(() -> AppUser.count() == 0, false)
+        rc.vertx().executeBlocking(
+                        () -> QuarkusTransaction.requiringNew().call(() -> AppUser.count() == 0), false)
                 .onSuccess(noUsers -> {
                     if (Boolean.TRUE.equals(noUsers)) {
                         rc.redirect("/setup");
