@@ -53,6 +53,10 @@ public class AppUser extends PanacheEntityBase {
         return admin ? "user,admin" : "user";
     }
 
+    /**
+     * Factory for a new user. Normalizes the username, syncs roles with isAdmin, and stamps
+     * created_at. Lifecycle flags default to false (caller sets them as needed before persist).
+     */
     public static AppUser create(String username, String passwordHash, boolean admin) {
         AppUser u = new AppUser();
         u.username = Usernames.normalize(username);
