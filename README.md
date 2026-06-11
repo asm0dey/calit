@@ -1,14 +1,50 @@
 # calit — self-hosted Calendly alternative
 
-A single-owner scheduling app built on Quarkus. You publish bookable meeting types; invitees pick a
-slot and book. Bookings sync to Google Calendar (optional), auto-create a Google Meet link, and email
-both parties. Includes per-type buffers, min-notice/booking-horizon, date-specific availability
+A **multi-user** scheduling app built on Quarkus — each user runs their own independent
+"Calendly": isolated meeting types, availability, bookings, settings, and Google account, served
+from a personal public URL `/<username>/<slug>`. You publish bookable meeting types; invitees pick
+a slot and book. Bookings sync to Google Calendar (optional), auto-create a Google Meet link, and
+email both parties. Includes per-type buffers, min-notice/booking-horizon, date-specific availability
 overrides, an approval workflow, custom booking-form fields, reminders, and public-form abuse
 protection (Cloudflare Turnstile + honeypot + per-email daily cap).
+
+**Users & isolation.** Every user is an `app_user` row (passwords hashed with **argon2id**). All
+tenant data carries an `owner_id`, and every query is owner-scoped — one user can never see or edit
+another's meeting types, bookings, settings, or calendar. Site admins (`is_admin`) manage users at
+`/me/users`: create users (with a one-time temporary password), grant/revoke admin, and lock/unlock
+accounts (a locked account can no longer log in, and its existing session cookie stops working).
 
 It runs as **N identical stateless replicas** behind a load balancer — there is no in-process session
 state, all shared state lives in Postgres, and background work (reminders, pending-booking expiry) is
 multi-node-safe via Postgres `SELECT … FOR UPDATE SKIP LOCKED` with no leader election.
+
+---
+
+## User accounts & onboarding
+
+- **First run (bootstrap).** When the database has no users, every request redirects to `/setup`,
+  which creates the first user as a **site admin**. Once any user exists, `/setup` returns 404.
+- **Admin-created users.** A site admin creates accounts at `/me/users` with a username and a
+  temporary password. The new user must change that password and complete the settings wizard on
+  first login.
+- **Opt-in self-service sign-up.** Public `/signup` is **off by default**. Set `SIGNUP_ENABLED=true`
+  to let anyone register (username + their own password); when off, `/signup` returns 404. Changing
+  the flag requires a restart — there is no runtime toggle.
+- **First-login wizard (`/me/setup`).** On first login a user is sent to `/me/setup` and kept there
+  until onboarding is done: set a new password (only for admin-created temp-password accounts) and
+  fill in display name, email, and timezone. After that they land on `/me`.
+
+### URL scheme
+
+| Path | Audience |
+|---|---|
+| `/me`, `/me/meeting-types`, `/me/availability`, `/me/settings`, … | The logged-in user's own management UI. |
+| `/me/users` | Site admins only — user management. |
+| `/me/setup` | First-login onboarding wizard. |
+| `/{username}` | A user's public landing page (their active meeting types). |
+| `/{username}/{slug}` | Public booking page for one meeting type. |
+| `/setup` | First-run bootstrap (404 once a user exists). |
+| `/signup` | Self-service registration (404 unless `SIGNUP_ENABLED=true`). |
 
 ---
 
@@ -20,7 +56,7 @@ multi-node-safe via Postgres `SELECT … FOR UPDATE SKIP LOCKED` with no leader 
 - **PostgreSQL** at runtime. (For local dev/tests, Quarkus Dev Services starts a throwaway Postgres in
   **Docker** automatically — Docker must be running to run the test suite or `quarkus:dev`.)
 - An **SMTP** account for outbound email.
-- *(Optional)* A **Google Cloud** OAuth client to sync the owner's calendar + create Meet links.
+- *(Optional)* A **Google Cloud** OAuth client to sync each user's calendar + create Meet links.
 - *(Optional)* A **Cloudflare Turnstile** widget to harden the public booking form.
 
 ---
@@ -33,8 +69,9 @@ mvn quarkus:dev
 ```
 
 - Public booking site: <http://localhost:8080/>
-- Owner admin: <http://localhost:8080/admin> (form login at `/login` — user `admin`, password `changeme`
-  by default; override with `ADMIN_PASSWORD`).
+- Management UI: <http://localhost:8080/me> (form login at `/login`). On a fresh database, visit any
+  page and you'll be redirected to `/setup` to create the first (admin) user — there is **no** default
+  password.
 - Health: `/q/health/live`, `/q/health/ready`.
 
 In dev/test the mailer is mocked (no real email is sent) and Google/Turnstile are disabled by default,
@@ -52,13 +89,13 @@ The repo ships a `Dockerfile` (multi-stage, BellSoft **Liberica JDK 25**) and a 
 that runs the app plus its Postgres.
 
 ```bash
-cp .env.example .env          # then edit .env — at minimum set DB_PASSWORD, ADMIN_PASSWORD,
+cp .env.example .env          # then edit .env — at minimum set DB_PASSWORD, SESSION_ENCRYPTION_KEY,
                               # APP_BASE_URL, and the MAIL_* values
 docker compose up --build -d
 ```
 
 The app image builds from source (tests are skipped in the image — run `mvn test` on the host with
-Docker first), waits for a healthy Postgres, and Flyway applies the `V1…V6` migrations at boot. The
+Docker first), waits for a healthy Postgres, and Flyway applies the `V1…V8` migrations at boot. The
 DB is persisted in the `calit-db` volume. Reach it at `http://localhost:${APP_PORT:-8080}/`.
 
 Scale the stateless app behind your own load balancer:
@@ -76,7 +113,7 @@ mvn package
 java -Dquarkus.profile=prod -jar target/quarkus-app/quarkus-run.jar
 ```
 
-The schema is created and kept up to date automatically: **Flyway runs the `V1…V6` migrations at
+The schema is created and kept up to date automatically: **Flyway runs the `V1…V8` migrations at
 boot** (`quarkus.flyway.migrate-at-start=true`), and Hibernate validates the entities against it.
 Point all replicas at the same database; each can serve any request.
 
@@ -92,8 +129,7 @@ the same values must be present on every replica.
 | Variable | Purpose |
 |---|---|
 | `DB_PASSWORD` | Postgres password. |
-| `ADMIN_PASSWORD` | Password for the single `admin` owner login (form login at `/login`). **Change it.** |
-| `SESSION_ENCRYPTION_KEY` | Encrypts the admin login cookie (>=16 chars). Must be the same on every replica. Generate with `openssl rand -hex 32`. **Required in prod.** |
+| `SESSION_ENCRYPTION_KEY` | Encrypts the login cookie (>=16 chars). Must be the same on every replica. Generate with `openssl rand -hex 32`. **Required in prod.** |
 | `APP_BASE_URL` | Public origin, e.g. `https://book.example.com`. Used to build invitee manage links in emails and the Google OAuth redirect; must match what users hit. |
 | `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | SMTP server + the "from" address. |
 
@@ -105,9 +141,10 @@ the same values must be present on every replica.
 | `DB_USER` | `calit` | Postgres user. |
 | `MAIL_PORT` | `587` | SMTP port. |
 | `MAIL_START_TLS` | `REQUIRED` | STARTTLS policy (`REQUIRED`/`OPTIONAL`/`DISABLED`). |
-| `REMINDER_LEAD_MINUTES` | `1440` | How long before a meeting the reminder email fires (24h). Also shown on the admin settings page. |
+| `REMINDER_LEAD_MINUTES` | `1440` | How long before a meeting the reminder email fires (24h). Also shown on the `/me/settings` page. |
 | `APPROVAL_HOLD_HOURS` | `24` | How long an approval-mode booking is held as PENDING before it auto-declines (or until its start, whichever comes first). |
 | `PER_EMAIL_DAILY_CAP` | `10` | Max bookings one invitee email may create per day (abuse guard). |
+| `SIGNUP_ENABLED` | `false` | Allow public self-service sign-up at `/signup`. When `false`, `/signup` returns 404. |
 
 ### Google Calendar sync (optional)
 
@@ -140,7 +177,7 @@ One switch turns on **both** the booking-form widget and server-side verificatio
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and create (or pick) a project.
 2. **APIs & Services → Library → enable the "Google Calendar API"**.
-3. **APIs & Services → OAuth consent screen**: configure it (External or Internal), add your owner
+3. **APIs & Services → OAuth consent screen**: configure it (External or Internal), add each user's
    Google account as a test user if the app stays in "testing", and add the scope
    `https://www.googleapis.com/auth/calendar`.
 4. **APIs & Services → Credentials → Create Credentials → OAuth client ID → Web application**.
@@ -148,9 +185,9 @@ One switch turns on **both** the booking-form widget and server-side verificatio
    (e.g. `https://book.example.com/api/google/callback`).
 6. Copy the **Client ID** and **Client secret** into `GOOGLE_OAUTH_CLIENT_ID` /
    `GOOGLE_OAUTH_CLIENT_SECRET`.
-7. After deploy, the owner connects the calendar **once** from the admin UI (Admin → Google → Connect
-   Google), grants offline access, and selects which calendars to read for busy time and which one to
-   write events to. The refresh token is stored in Postgres, so any replica can call Google.
+7. After deploy, each user connects their calendar **once** from the management UI (`/me/google` →
+   Connect Google), grants offline access, and selects which calendars to read for busy time and which
+   one to write events to. The refresh token is stored in Postgres, so any replica can call Google.
 
 ### Cloudflare Turnstile
 
@@ -168,33 +205,44 @@ Use any provider (e.g. a transactional-email service or your own server). Set `M
 
 ## First-run checklist
 
-1. Deploy with at least the **required** env vars set (a strong `ADMIN_PASSWORD`, DB, SMTP, `APP_BASE_URL`).
-2. Log in to `/admin`.
-3. **Settings**: set the owner name, email, and IANA **timezone** (this is the canonical zone for all
-   stored-time interpretation, emails, admin pages, and Google events), and the owner-notification
-   opt-out + reminder lead.
-4. *(Optional)* **Google**: connect the calendar and choose read/write calendars.
+1. Deploy with at least the **required** env vars set (DB, `SESSION_ENCRYPTION_KEY`, SMTP, `APP_BASE_URL`).
+2. Visit any page; you'll be redirected to `/setup`. Create the first user — they become a **site admin**.
+   There is no default password.
+3. On first login you're sent to the **`/me/setup`** wizard: set your password (if applicable) and fill
+   in display name, email, and IANA **timezone** (the canonical zone for all stored-time interpretation,
+   emails, your management pages, and Google events). Then you land on `/me`.
+4. *(Optional)* **Google** (`/me/google`): connect the calendar and choose read/write calendars.
 5. **Availability**: set weekly work hours (global and/or per meeting type); add date-specific overrides.
 6. **Meeting types**: create your bookable types (duration, buffers, min-notice, horizon, slot interval,
    location type — Google Meet / phone / in-person / custom, approval-required, and `secret` for
    link-only types).
 7. *(Optional)* **Booking fields**: add custom questions to the booking form.
-8. Share your booking links. Public types appear on `/`; secret types are reachable only by direct link
-   `/book/{slug}`.
+8. *(Admins)* Add more users at **`/me/users`** (each with a temporary password), or enable public
+   `/signup` with `SIGNUP_ENABLED=true`.
+9. Share your booking links. Your public types appear on `/{username}`; secret types are reachable only
+   by direct link `/{username}/{slug}`.
 
 ---
 
 ## Notes & operational details
 
-- **Timezones:** the owner timezone is authoritative for storage interpretation, emails, and Google
+- **Authentication:** users live in the `app_user` table with **argon2id**-hashed passwords — there is
+  **no** `ADMIN_PASSWORD` or embedded/env user. Login is via the `/login` form; the session is an
+  encrypted **stateless cookie** (no server-side session store), so any replica can validate it. Account
+  locks are enforced at authentication time — a locked user can't log in and their existing cookie stops
+  working.
+- **Per-user isolation:** every tenant table carries an `owner_id` and all queries are owner-scoped, so
+  no user can see or edit another's data. `meeting_type.slug` is unique **per user**, so two users can
+  both have e.g. `intro-call`.
+- **Timezones:** each user's timezone is authoritative for storage interpretation, emails, and Google
   events. Invitee-facing pages additionally relabel times into the *viewer's* local timezone in the
   browser (the booked instant is unchanged). Invitee timezones are never stored.
 - **Degraded mode:** with Google not connected, bookings are confirmed without a calendar event/Meet
   link and the app emails the invitee directly. When connected, Google emails the invite/change/cancel
-  (`sendUpdates=all`) and the app suppresses the duplicate invitee mail; the owner always gets the app
+  (`sendUpdates=all`) and the app suppresses the duplicate invitee mail; the user always gets the app
   email (unless opted out).
 - **Background jobs** run on every replica every 60s and are single-delivery via `FOR UPDATE SKIP
   LOCKED` — reminder dispatch and pending-booking auto-expiry. No clustered scheduler is needed.
 - **Double-booking** is prevented at the database level by a Postgres exclusion constraint covering
   PENDING+CONFIRMED bookings, so concurrent replicas cannot both win the same slot.
-- **Migrations** are plain SQL under `src/main/resources/db/migration` (`V1`…`V6`) and run at boot.
+- **Migrations** are plain SQL under `src/main/resources/db/migration` (`V1`…`V8`) and run at boot.
