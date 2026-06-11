@@ -94,26 +94,23 @@ class AdminMeetingTypesTest {
             .when().get("/admin/meeting-types")
             .then()
                 .statusCode(200)
-                .body(containsString("<details"))                 // accordion sections
-                .body(containsString("class=\"loc-tiles\""))      // location picker tiles
+                .body(containsString("class=\"collapse"))         // daisyUI accordion sections
+                .body(containsString("has-[:checked]:btn-primary")) // location picker tiles
                 .body(containsString("type=\"radio\" name=\"locationType\"")) // tiles are radios
                 .body(containsString("value=\"GOOGLE_MEET\""));   // a tile per LocationType
     }
 
     @Test
     void locationTilesHaveEqualFixedHeight() {
-        String css = given()
-            .when().get("/calit.css")
-            .then().statusCode(200)
-            .extract().asString();
-        // Assert the .loc-tiles .tile rule block itself sizes the tiles equally
-        // (scoped to the block so it can't be satisfied by unrelated rules elsewhere).
-        org.junit.jupiter.api.Assertions.assertTrue(
-            css.matches("(?s).*\\.loc-tiles \\.tile \\{[^}]*min-height[^}]*\\}.*"),
-            "min-height must be set inside the .loc-tiles .tile rule");
-        org.junit.jupiter.api.Assertions.assertTrue(
-            css.matches("(?s).*\\.loc-tiles \\.tile \\{[^}]*justify-content: center[^}]*\\}.*"),
-            "justify-content: center must be set inside the .loc-tiles .tile rule");
+        // daisyUI 5: location tiles are equal-size grid items — a fixed-column grid of
+        // btn labels with identical padding (grid stretch + uniform btn shape = equal height).
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when().get("/admin/meeting-types")
+            .then()
+                .statusCode(200)
+                .body(containsString("grid grid-cols-2 sm:grid-cols-4"))      // fixed-column tile grid
+                .body(containsString("btn btn-outline h-auto py-3 flex-col")); // uniform tile shape
     }
 
     @Test

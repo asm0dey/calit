@@ -39,7 +39,7 @@ public class AdminResource {
 
     @CheckedTemplate
     public static class Templates {
-        public static native TemplateInstance dashboard(List<Booking> upcoming, long pendingCount);
+        public static native TemplateInstance dashboard(List<Booking> upcoming, long pendingCount, String tzScript);
 
         public static native TemplateInstance meetingTypes(
                 List<MeetingType> types, LocationType[] locationTypes,
@@ -70,7 +70,7 @@ public class AdminResource {
         public static native TemplateInstance dateOverrides(
                 List<DateOverride> overrides, List<MeetingType> types, Long pendingCount);
 
-        public static native TemplateInstance pending(List<Booking> pending);
+        public static native TemplateInstance pending(List<Booking> pending, String tzScript);
     }
 
     @Inject
@@ -93,7 +93,7 @@ public class AdminResource {
                 "status = ?1 and startUtc >= ?2 order by startUtc",
                 com.calit.booking.BookingStatus.CONFIRMED, java.time.Instant.now());
         long pendingCount = Booking.count("status = ?1", com.calit.booking.BookingStatus.PENDING);
-        return Templates.dashboard(upcoming, pendingCount);
+        return Templates.dashboard(upcoming, pendingCount, Layout.TZ_SCRIPT);
     }
 
     @GET
@@ -580,7 +580,7 @@ public class AdminResource {
     public TemplateInstance pending() {
         List<Booking> pending = Booking.list(
                 "status = ?1 order by startUtc", com.calit.booking.BookingStatus.PENDING);
-        return Templates.pending(pending);
+        return Templates.pending(pending, Layout.TZ_SCRIPT);
     }
 
     @POST
@@ -591,7 +591,7 @@ public class AdminResource {
         bookingService.approve(id); // PENDING→CONFIRMED (+ Google event if connected)
         List<Booking> pending = Booking.list(
                 "status = ?1 order by startUtc", com.calit.booking.BookingStatus.PENDING);
-        return Templates.pending(pending);
+        return Templates.pending(pending, Layout.TZ_SCRIPT);
     }
 
     @POST
@@ -602,6 +602,6 @@ public class AdminResource {
         bookingService.decline(id); // PENDING→DECLINED
         List<Booking> pending = Booking.list(
                 "status = ?1 order by startUtc", com.calit.booking.BookingStatus.PENDING);
-        return Templates.pending(pending);
+        return Templates.pending(pending, Layout.TZ_SCRIPT);
     }
 }

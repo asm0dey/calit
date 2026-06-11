@@ -245,7 +245,7 @@ class BookPageTest {
             .when().get("/book/book-page")
             .then()
                 .statusCode(200)
-                .body(containsString("class=\"book-info\""))   // left info panel
+                .body(containsString("Select a Date"))          // picker panel heading
                 .body(containsString("Owner"))                  // host name from OwnerSettings
                 .body(containsString("60 min"))                 // clock-icon duration line
                 .body(containsString("id=\"calendar\""));       // picker still present

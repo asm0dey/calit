@@ -169,7 +169,7 @@ class BookingPostTest {
             .when().post("/book/confirm-type")
             .then()
                 .statusCode(200)
-                .body(containsString("class=\"err\""))      // inline rejection message
+                .body(containsString("alert-error"))         // inline rejection message
                 .body(not(containsString("You're booked"))); // no confirmation
     }
 
@@ -190,7 +190,7 @@ class BookingPostTest {
             .when().post("/book/confirm-type")
             .then()
                 .statusCode(200)
-                .body(containsString("class=\"err\""))   // inline validation message rendered
+                .body(containsString("alert-error"))     // inline validation message rendered
                 .body(containsString("name=\"startUtc\"")); // back on the booking form, not a 500
     }
 }

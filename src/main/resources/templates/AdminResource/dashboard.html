@@ -1,5 +1,6 @@
 {@java.util.List<com.calit.booking.Booking> upcoming}
 {@java.lang.Long pendingCount}
+{@java.lang.String tzScript}
 {#include adminBase title="Admin — Dashboard" pendingCount=pendingCount active="dashboard"}
   <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
 
@@ -22,10 +23,11 @@
     {#for b in upcoming}
       <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 gap-1">
         <p><strong>{b.inviteeName}</strong> ({b.inviteeEmail})</p>
-        <p class="text-sm text-base-content/70">{b.startUtc} UTC</p>
+        <p class="text-sm text-base-content/70"><time data-utc="{b.startUtc}">{b.startUtc} UTC</time></p>
         {#if b.meetLink}<p><a class="link link-primary" href="{b.meetLink}">{b.meetLink}</a></p>{/if}
       </div></div>
     {/for}
     </div>
   {/if}
+  {tzScript.raw}
 {/include}
