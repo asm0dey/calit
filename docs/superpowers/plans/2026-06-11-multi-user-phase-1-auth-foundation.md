@@ -6,7 +6,15 @@
 
 **Architecture:** A new `com.calit.user` package holds the `AppUser` `@UserDefinition` entity, an argon2id `PasswordHasher` (Bouncy Castle), a `Usernames` validation util, a Quarkus `SecurityIdentityAugmentor` that rejects disabled users, and a `SetupResource` first-run flow gated by a request filter. Authentication wires through `quarkus-security-jpa`; password verification is bridged either by a custom Elytron `PasswordProvider` (primary) or a custom `IdentityProvider<UsernamePasswordAuthenticationRequest>` (fallback) — a spike picks whichever passes the login test. Flyway migration `V7__app_user.sql` creates the table. Form login config (`/login`, `/j_security_check`, encrypted-cookie session) and the `/admin` permission path are unchanged.
 
-**Tech Stack:** Quarkus 3.36.1, quarkus-security-jpa, Bouncy Castle argon2id, Hibernate Panache, Flyway, Qute, Postgres.
+**Tech Stack:** Quarkus 3.36.1, quarkus-security (core), Bouncy Castle argon2id, Hibernate Panache, Flyway, Qute, Postgres.
+
+---
+
+> **IMPLEMENTED 2026-06-11 — deviations from the tasks below (this header is authoritative where they conflict; spec §2 is updated):**
+> - **security-jpa was dropped.** Its generated `@UserDefinition` provider raced the custom one and intermittently rejected valid logins, and removing it left `TrustedAuthenticationRequest` (session) unhandled (HTTP 500 after login). Final design: `AppUser` is a **plain Panache entity**; auth = **two custom `IdentityProvider`s over `quarkus-security` core** — `AppUserIdentityProvider` (login, argon2id verify) + `AppUserTrustedIdentityProvider` (per-request session re-establish), sharing `AppUserSecurityIdentities.of(user)` (principal == username). `Argon2PasswordProvider` was removed.
+> - **`FirstRunRedirectFilter` is a Vert.x `@RouteFilter(10000)`** (not a JAX-RS `@PreMatching` filter — that can't run blocking Panache pre-match). Its `count()` is wrapped in `QuarkusTransaction.requiringNew()` to avoid a per-request JDBC connection leak (pool exhaustion under load). `/setup` POST returns explicit 302.
+> - **Test isolation:** `src/test/java/com/calit/user/TestUserBootstrap.java` seeds a baseline admin at startup so the redirect filter never hijacks public/API tests; `SetupFlowTest` restores the baseline in `@AfterEach`.
+> - Result: full suite green (213 tests), confirmed deterministic over two runs.
 
 ---
 

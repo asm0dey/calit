@@ -36,7 +36,8 @@
 - `README.md` — final task: document the multi-user model.
 
 **Assumed present from Phases 1–3 (reference only, do NOT redefine):**
-- `com.calit.user.AppUser` (fields `id, username, passwordHash, roles, isAdmin, enabled, mustChangePassword, settingsComplete, createdAt`; statics `findByUsername(String)`, `usernameTaken(String)`; `roles` synced to `isAdmin`).
+- `com.calit.user.AppUser` (fields `id, username, passwordHash, roles, isAdmin, enabled, mustChangePassword, settingsComplete, createdAt`; statics `findByUsername(String)`, `usernameTaken(String)`, `create(username,passwordHash,admin)`; `roles` synced to `isAdmin`).
+  > **⚠ Phase-1 carry-forward:** `roles` (comma-string used to build the `SecurityIdentity`) and `isAdmin` (boolean) are a DUAL source of truth, synced ONLY inside `AppUser.create()`. The grant/revoke-admin tasks below flip `isAdmin` on an existing row, so they MUST also rewrite `roles`. Add an `AppUser.setAdmin(boolean)` helper (`this.isAdmin = admin; this.roles = admin ? "user,admin" : "user";`) and use it everywhere admin is toggled — never set `isAdmin` alone, or the augmentor/identity roles go stale.
 - `com.calit.user.PasswordHasher` (`hash(String)→String`, `verify(String plain, String hash)→boolean`).
 - `com.calit.user.Usernames` (`normalize`, `isValid`, `isReserved`, `validateNew`).
 - `com.calit.user.CurrentOwner` (`@RequestScoped`: `set`, `get`, `id`, `require`).

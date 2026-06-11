@@ -82,16 +82,21 @@ be owner-attributed (e.g. the V1 global `description` booking_field insert).
 ## 2. Authentication
 
 - Replace `quarkus-elytron-security-properties-file` (embedded env `admin` user) with
-  `quarkus-security-jpa`. `@UserDefinition` on `AppUser` with `@Username` (username),
-  `@Password(PasswordType.CUSTOM, provider = Argon2PasswordProvider.class)`, `@Roles`
-  (derived: every user gets `user`; admins also get `admin`).
+  **two custom `IdentityProvider`s over `quarkus-security` (core)** — security-jpa was
+  evaluated and rejected (its generated `@UserDefinition` provider raced the custom one and
+  intermittently rejected valid logins). `AppUser` is a plain Panache entity (no `@UserDefinition`).
+  Its `roles` column is kept in sync with `isAdmin` (`"user"` / `"user,admin"`).
+  - `AppUserIdentityProvider` (`IdentityProvider<UsernamePasswordAuthenticationRequest>`) verifies
+    the argon2id hash at login and rejects disabled users.
+  - `AppUserTrustedIdentityProvider` (`IdentityProvider<TrustedAuthenticationRequest>`)
+    re-materializes the session identity on every post-login request from the form-auth credential
+    cookie (form auth issues a `TrustedAuthenticationRequest`, no password). Enabled-enforcement is
+    intentionally left to the augmentor below, not duplicated here.
+  - Shared `AppUserSecurityIdentities.of(AppUser)` builds principal + roles for both providers.
 - **Password hashing: argon2id** (OWASP-recommended). Parameters: memory 19456 KiB, iterations
   2, parallelism 1, 16-byte salt, 32-byte output. Hash with Bouncy Castle's
-  `Argon2BytesGenerator`; store as an MCF-style `$argon2id$...` string.
-  - **Spike (first plan task):** confirm a custom `PasswordProvider` can bridge an argon2 hash
-    into Elytron's credential verification. If Elytron has no argon2 password type, fall back to
-    a custom `IdentityProvider<UsernamePasswordAuthenticationRequest>` that verifies the argon2id
-    hash directly. Spec stays the same either way; only the wiring differs.
+  `Argon2BytesGenerator` (`Argon2Parameters.ARGON2_id`, version `ARGON2_VERSION_13`); store as an
+  MCF-style `$argon2id$...` string.
 - Keep form login (`/login`, `/j_security_check`) and the remember-me cookie filter unchanged.
 - **`SecurityIdentityAugmentor`**: on each authenticated request, load the `AppUser` by
   username and (a) reject the request if `enabled = false` — this invalidates the still-valid
