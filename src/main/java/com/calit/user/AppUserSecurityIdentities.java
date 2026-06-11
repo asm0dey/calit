@@ -13,8 +13,13 @@ final class AppUserSecurityIdentities {
     static SecurityIdentity of(AppUser user) {
         QuarkusSecurityIdentity.Builder builder = QuarkusSecurityIdentity.builder()
                 .setPrincipal(() -> user.username);
-        for (String role : user.roles.split(",")) {
-            builder.addRole(role.trim());
+        if (user.roles != null && !user.roles.isBlank()) {
+            for (String role : user.roles.split(",")) {
+                String trimmed = role.trim();
+                if (!trimmed.isEmpty()) {
+                    builder.addRole(trimmed);
+                }
+            }
         }
         return builder.build();
     }
