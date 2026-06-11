@@ -69,11 +69,13 @@ class ReminderTest {
 
     private Long seedBookingAt(Instant start) {
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = "rem-" + System.nanoTime();
         t.slug = "rem-" + System.nanoTime();
         t.durationMinutes = 30;
         t.persist();
         Booking b = new Booking();
+        b.ownerId = 1L;
         b.meetingTypeId = t.id;
         b.inviteeName = "Sam";
         b.inviteeEmail = "sam@example.com";

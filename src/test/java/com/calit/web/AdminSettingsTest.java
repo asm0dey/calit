@@ -31,7 +31,7 @@ class AdminSettingsTest {
     void settingsPageHasNotifyToggleAndReminderLead() {
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/settings")
+            .when().get("/me/settings")
             .then()
                 .statusCode(200)
                 // Owner-notify opt-out toggle (overview: OwnerSettings.ownerNotificationsEnabled).
@@ -50,7 +50,7 @@ class AdminSettingsTest {
             .formParam("ownerEmail", "new@example.com")
             .formParam("timezone", "Europe/Berlin")
             // ownerNotificationsEnabled intentionally omitted → unchecked → false
-            .when().post("/admin/settings")
+            .when().post("/me/settings")
             .then()
                 .statusCode(200)
                 .body(containsString("New Owner"))
@@ -68,7 +68,7 @@ class AdminSettingsTest {
             .formParam("ownerEmail", "new@example.com")
             .formParam("timezone", "Europe/Berlin")
             .formParam("ownerNotificationsEnabled", "on")
-            .when().post("/admin/settings")
+            .when().post("/me/settings")
             .then().statusCode(200);
 
         org.junit.jupiter.api.Assertions.assertTrue(

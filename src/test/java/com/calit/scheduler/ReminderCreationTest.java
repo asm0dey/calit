@@ -100,12 +100,14 @@ class ReminderCreationTest {
         Long[] out = new Long[2];
         Long id = QuarkusTransaction.requiringNew().call(() -> {
             MeetingType t = new MeetingType();
+            t.ownerId = 1L;
             t.name = "create-" + System.nanoTime();
             t.slug = "create-" + System.nanoTime();
             t.durationMinutes = 30;
             t.persist();
             out[0] = t.id;
             Booking b = new Booking();
+            b.ownerId = 1L;
             b.meetingTypeId = t.id;
             b.inviteeName = "Sam";
             b.inviteeEmail = "sam@example.com";

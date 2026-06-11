@@ -35,6 +35,7 @@ class AdminMeetingTypeDetailTest {
     @Transactional
     Long seedType(String slug) {
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = "Detail Seed"; t.slug = slug; t.durationMinutes = 30;
         t.persist();
         return t.id;
@@ -45,7 +46,7 @@ class AdminMeetingTypeDetailTest {
         Long id = seedType("detail-render-" + System.nanoTime());
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/meeting-types/" + id)
+            .when().get("/me/meeting-types/" + id)
             .then()
                 .statusCode(200)
                 .body(containsString("Detail Seed"))
@@ -60,7 +61,7 @@ class AdminMeetingTypeDetailTest {
     void detailPageRequiresAuth() {
         Long id = seedType("detail-auth-" + System.nanoTime());
         given().redirects().follow(false)
-            .when().get("/admin/meeting-types/" + id)
+            .when().get("/me/meeting-types/" + id)
             .then().statusCode(302);
     }
 
@@ -80,7 +81,7 @@ class AdminMeetingTypeDetailTest {
             .formParam("locationType", "PHONE")
             .formParam("locationDetail", "+1-555-0123")
             .formParam("slotIntervalMinutes", "")
-            .when().post("/admin/meeting-types/" + id + "/edit")
+            .when().post("/me/meeting-types/" + id + "/edit")
             .then().statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
@@ -104,7 +105,7 @@ class AdminMeetingTypeDetailTest {
             .formParam("type", "SHORT_TEXT")
             .formParam("required", "on")
             .formParam("position", "1")
-            .when().post("/admin/meeting-types/" + id + "/booking-fields")
+            .when().post("/me/meeting-types/" + id + "/booking-fields")
             .then().statusCode(200).body(containsString("LinkedIn"));
 
         BookingField f = BookingField.find("fieldKey", key).firstResult();
@@ -121,14 +122,14 @@ class AdminMeetingTypeDetailTest {
             .contentType("application/x-www-form-urlencoded")
             .formParam("label", "Temp").formParam("fieldKey", key)
             .formParam("type", "SHORT_TEXT").formParam("position", "1")
-            .when().post("/admin/meeting-types/" + id + "/booking-fields")
+            .when().post("/me/meeting-types/" + id + "/booking-fields")
             .then().statusCode(200);
 
         BookingField f = BookingField.find("fieldKey", key).firstResult();
         given()
             .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
-            .when().post("/admin/meeting-types/" + id + "/booking-fields/" + f.id + "/delete")
+            .when().post("/me/meeting-types/" + id + "/booking-fields/" + f.id + "/delete")
             .then().statusCode(200);
 
         org.junit.jupiter.api.Assertions.assertNull(reloadField(f.id));
@@ -143,7 +144,7 @@ class AdminMeetingTypeDetailTest {
             .formParam("dayOfWeek", "WEDNESDAY")
             .formParam("startTime", "09:00")
             .formParam("endTime", "12:00")
-            .when().post("/admin/meeting-types/" + id + "/availability")
+            .when().post("/me/meeting-types/" + id + "/availability")
             .then().statusCode(200).body(containsString("Wednesday")); // humanized label
 
         long count = AvailabilityRule.count("meetingTypeId = ?1", id);
@@ -159,7 +160,7 @@ class AdminMeetingTypeDetailTest {
             .formParam("date", "2026-12-24")
             .formParam("windowStart", "09:00")
             .formParam("windowEnd", "11:00")
-            .when().post("/admin/meeting-types/" + id + "/date-overrides")
+            .when().post("/me/meeting-types/" + id + "/date-overrides")
             .then().statusCode(200).body(containsString("2026-12-24"));
 
         long count = DateOverride.count("meetingTypeId = ?1", id);
@@ -175,7 +176,7 @@ class AdminMeetingTypeDetailTest {
             .formParam("durationMinutes", "30").formParam("minNoticeMinutes", "0")
             .formParam("horizonDays", "60").formParam("locationType", "GOOGLE_MEET")
             .formParam("locationDetail", "").formParam("slotIntervalMinutes", "")
-            .when().post("/admin/meeting-types/99999999/edit")
+            .when().post("/me/meeting-types/99999999/edit")
             .then().statusCode(404);
     }
 
@@ -186,7 +187,7 @@ class AdminMeetingTypeDetailTest {
             .contentType("application/x-www-form-urlencoded")
             .formParam("label", "X").formParam("fieldKey", "x").formParam("type", "SHORT_TEXT")
             .formParam("position", "0")
-            .when().post("/admin/meeting-types/99999999/booking-fields")
+            .when().post("/me/meeting-types/99999999/booking-fields")
             .then().statusCode(404);
     }
 }

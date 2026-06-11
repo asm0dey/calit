@@ -234,6 +234,7 @@ class AvailableSlotsTest {
 
     private MeetingType meetingType(String slug, int minutes, int bufBefore, int bufAfter) {
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = slug;
         t.slug = slug;
         t.durationMinutes = minutes;
@@ -250,6 +251,7 @@ class AvailableSlotsTest {
 
     private void globalRule(DayOfWeek dow, String start, String end) {
         AvailabilityRule r = new AvailabilityRule();
+        r.ownerId = 1L;
         r.dayOfWeek = dow;
         r.startTime = LocalTime.parse(start);
         r.endTime = LocalTime.parse(end);
@@ -260,6 +262,7 @@ class AvailableSlotsTest {
     private Booking persistBooking(Instant start, Instant end, BookingStatus status) {
         // The booking.meeting_type_id FK requires a real MeetingType row; seed a throwaway one.
         MeetingType holder = new MeetingType();
+        holder.ownerId = 1L;
         holder.name = "holder-" + UUID.randomUUID();
         holder.slug = "holder-" + UUID.randomUUID();
         holder.durationMinutes = 60;
@@ -269,6 +272,7 @@ class AvailableSlotsTest {
         holder.requiresApproval = false;
         holder.persist();
         Booking b = new Booking();
+        b.ownerId = 1L;
         b.meetingTypeId = holder.id;
         b.inviteeName = "Existing";
         b.inviteeEmail = "existing@example.com";

@@ -20,6 +20,7 @@ class AvailabilityRuleTest {
         // A typed rule's meeting_type_id is a real FK, so persist a MeetingType first
         // and use its generated id (a literal id would violate the FK constraint).
         MeetingType type = new MeetingType();
+        type.ownerId = 1L;
         type.name = "Sep Test";
         type.slug = "avail-sep-type";
         type.durationMinutes = 30;

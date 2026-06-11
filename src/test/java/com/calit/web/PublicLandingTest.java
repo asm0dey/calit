@@ -15,10 +15,12 @@ class PublicLandingTest {
     @Transactional
     void seed() {
         MeetingType pub = new MeetingType();
+        pub.ownerId = 1L;
         pub.name = "Public Intro Call"; pub.slug = "pub-landing"; pub.durationMinutes = 30;
         pub.persist();
 
         MeetingType secret = new MeetingType();
+        secret.ownerId = 1L;
         secret.name = "Secret VIP Session"; secret.slug = "secret-landing";
         secret.durationMinutes = 30; secret.secret = true;
         secret.persist();

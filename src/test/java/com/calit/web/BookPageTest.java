@@ -39,6 +39,7 @@ class BookPageTest {
         s.persist();
 
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = "Book Page Type"; t.slug = "book-page"; t.durationMinutes = 60;
         t.locationType = LocationType.GOOGLE_MEET; // auto type, Meet location
         t.persist();
@@ -46,6 +47,7 @@ class BookPageTest {
         // A rule for every weekday so at least one day in the next 14 has slots.
         for (DayOfWeek dow : DayOfWeek.values()) {
             AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = 1L;
             r.dayOfWeek = dow; r.startTime = LocalTime.of(9, 0); r.endTime = LocalTime.of(12, 0);
             r.meetingTypeId = null;
             r.persist();
@@ -53,6 +55,7 @@ class BookPageTest {
 
         // A required custom EXTRA field for this type — must render on the booking form.
         BookingField f = new BookingField();
+        f.ownerId = 1L;
         f.meetingTypeId = t.id; f.fieldKey = "company"; f.label = "Company Name";
         f.type = FieldType.SHORT_TEXT; f.required = true; f.position = 0;
         f.persist();
@@ -67,12 +70,14 @@ class BookPageTest {
         s.persist();
 
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = "Phone Approval Type"; t.slug = "phone-approval"; t.durationMinutes = 60;
         t.locationType = LocationType.PHONE; t.locationDetail = "Call +1-555-0100";
         t.requiresApproval = true;
         t.persist();
         for (DayOfWeek dow : DayOfWeek.values()) {
             AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = 1L;
             r.dayOfWeek = dow; r.startTime = LocalTime.of(9, 0); r.endTime = LocalTime.of(12, 0);
             r.meetingTypeId = null;
             r.persist();

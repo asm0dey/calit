@@ -12,7 +12,7 @@ class AdminAuthTest {
     @Test
     void dashboardRequiresAuth() {
         given().redirects().follow(false)
-            .when().get("/admin")
+            .when().get("/me")
             .then().statusCode(302)
                 .header("Location", org.hamcrest.Matchers.containsString("/login"));
     }
@@ -21,7 +21,7 @@ class AdminAuthTest {
     void dashboardServedWhenLoggedIn() {
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin")
+            .when().get("/me")
             .then()
                 .statusCode(200)
                 .body(containsString("Dashboard"));

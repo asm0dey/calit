@@ -28,6 +28,7 @@ class GoogleOAuthResourceTest {
                 .thenReturn("https://accounts.google.com/o/oauth2/v2/auth?access_type=offline&prompt=consent");
 
         RestAssured.given().redirects().follow(false)
+                .cookie("quarkus-credential", com.calit.web.FormAuth.login())
                 .when().get("/api/google/connect")
                 .then().statusCode(302)
                 .header("Location", containsString("accounts.google.com"))
@@ -41,6 +42,7 @@ class GoogleOAuthResourceTest {
         doNothing().when(tokenService).exchangeCode(any(), eq("the-code"), any(Instant.class));
 
         RestAssured.given().redirects().follow(false)
+                .cookie("quarkus-credential", com.calit.web.FormAuth.login())
                 .when().get("/api/google/callback?code=the-code&state=good-state")
                 .then().statusCode(302)
                 .header("Location", containsString("/me"));
@@ -53,7 +55,8 @@ class GoogleOAuthResourceTest {
         // Forged/expired state is rejected before any code exchange — no session to consult.
         Mockito.when(tokenService.validateState(eq("bad-state"), any(Instant.class))).thenReturn(false);
 
-        given().when().get("/api/google/callback?code=the-code&state=bad-state")
+        given().cookie("quarkus-credential", com.calit.web.FormAuth.login())
+                .when().get("/api/google/callback?code=the-code&state=bad-state")
                 .then().statusCode(400).body(containsString("Invalid or expired OAuth state"));
 
         verify(tokenService, Mockito.never()).exchangeCode(any(), any(), any());
@@ -61,7 +64,8 @@ class GoogleOAuthResourceTest {
 
     @Test
     void callbackWithErrorReturns400() {
-        given().when().get("/api/google/callback?error=access_denied")
+        given().cookie("quarkus-credential", com.calit.web.FormAuth.login())
+                .when().get("/api/google/callback?error=access_denied")
                 .then().statusCode(400).body(containsString("access_denied"));
     }
 }

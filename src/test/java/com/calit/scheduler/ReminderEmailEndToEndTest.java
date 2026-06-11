@@ -83,6 +83,7 @@ class ReminderEmailEndToEndTest {
             s.persist();
 
             MeetingType t = new MeetingType();
+            t.ownerId = 1L;
             t.name = "E2E Reminder Call";
             t.slug = "e2e-" + System.nanoTime();
             t.durationMinutes = 30;
@@ -91,6 +92,7 @@ class ReminderEmailEndToEndTest {
             t.persist();
 
             Booking b = new Booking();
+            b.ownerId = 1L;
             b.meetingTypeId = t.id;
             b.inviteeName = "Sam Invitee";
             b.inviteeEmail = INVITEE_EMAIL;

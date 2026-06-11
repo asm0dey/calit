@@ -36,7 +36,8 @@ class GoogleCalendarResourceTest {
                 new CalendarListPort.RemoteCalendar("work@example.com", "Work"),
                 new CalendarListPort.RemoteCalendar("personal@example.com", "Personal")));
 
-        given().when().get("/api/google/calendars")
+        given().cookie("quarkus-credential", com.calit.web.FormAuth.login())
+                .when().get("/api/google/calendars")
                 .then().statusCode(200)
                 .body("googleCalendarId", hasItem("work@example.com"))
                 .body("summary", hasItem("Personal"));
@@ -52,12 +53,14 @@ class GoogleCalendarResourceTest {
                 + "{\"googleCalendarId\":\"" + writeId + "\",\"summary\":\"Write\",\"readForBusy\":false,\"writeTarget\":true}"
                 + "]}";
 
-        given().contentType("application/json").body(body)
+        given().cookie("quarkus-credential", com.calit.web.FormAuth.login())
+                .contentType("application/json").body(body)
                 .when().post("/api/google/calendars")
                 .then().statusCode(200);
 
         // The write target query returns exactly the one flagged calendar.
-        given().when().get("/api/google/calendars/write-target")
+        given().cookie("quarkus-credential", com.calit.web.FormAuth.login())
+                .when().get("/api/google/calendars/write-target")
                 .then().statusCode(200)
                 .body("googleCalendarId", is(writeId));
     }

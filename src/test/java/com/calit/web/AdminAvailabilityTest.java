@@ -20,7 +20,7 @@ class AdminAvailabilityTest {
             .formParam("startTime", "10:00")
             .formParam("endTime", "16:00")
             .formParam("meetingTypeId", "") // empty = global
-            .when().post("/admin/availability")
+            .when().post("/me/availability")
             .then()
                 .statusCode(200)
                 .body(containsString("TUESDAY"));
@@ -28,6 +28,6 @@ class AdminAvailabilityTest {
 
     @Test
     void availabilityPageRequiresAuth() {
-        given().redirects().follow(false).when().get("/admin/availability").then().statusCode(302);
+        given().redirects().follow(false).when().get("/me/availability").then().statusCode(302);
     }
 }

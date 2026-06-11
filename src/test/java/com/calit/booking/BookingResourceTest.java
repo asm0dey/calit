@@ -108,14 +108,22 @@ class BookingResourceTest {
     }
 
     @Test
-    void availableEndpointReturnsSlots() {
+    void seededSlotIsAvailableForBooking() {
+        // The unauthenticated JSON /api/meeting-types/{slug}/available endpoint was deleted in the
+        // owner-scoping refactor. Availability is now proven directly: the seeded 09:00 slot is free,
+        // so booking it succeeds (a slot that was not available would yield 409 "not available").
         String slug = "rest-avail-" + System.nanoTime();
         seedType(slug);
         when(calendarPort.isConnected()).thenReturn(true);
         when(calendarPort.freeBusy(any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+                .thenReturn(new CreatedEvent("evt-avail", "https://meet.google.com/av-1-2", "h"));
 
-        given().when().get("/api/meeting-types/" + slug + "/available?from=" + DAY + "&to=" + DAY)
-                .then().statusCode(200).body("size()", is(2));
+        given().contentType("application/json")
+                .body("{\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
+                        + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
+                .when().post("/api/bookings")
+                .then().statusCode(201);
     }
 
     @Test
@@ -155,9 +163,13 @@ class BookingResourceTest {
 
         given().when().delete("/api/bookings/" + token).then().statusCode(204);
 
-        // The 09:00 slot is bookable again (so availability now has both 09:00 and 10:00 = size 2).
-        given().when().get("/api/meeting-types/" + slug + "/available?from=" + DAY + "&to=" + DAY)
-                .then().statusCode(200).body("size()", is(2));
+        // The 09:00 slot is bookable again: re-booking the same slot now succeeds (it would 409
+        // "not available" if the cancel had not freed it). Replaces the deleted JSON /available probe.
+        given().contentType("application/json")
+                .body("{\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
+                        + "\"inviteeName\":\"Sam Two\",\"inviteeEmail\":\"sam2@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
+                .when().post("/api/bookings")
+                .then().statusCode(201);
     }
 
     void seedType(String slug) {

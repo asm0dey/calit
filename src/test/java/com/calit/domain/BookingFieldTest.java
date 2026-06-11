@@ -15,7 +15,13 @@ class BookingFieldTest {
     @Test
     @TestTransaction
     void globalFormIncludesSeededDescription() {
-        // No per-type fields for this id -> falls back to the global default form.
+        // Global default fields are now per-owner (the V1 singleton seed was dropped by V8), so seed
+        // owner 1L's global "description" field explicitly, then resolve it via the global form.
+        BookingField desc = field(null, "description", "Description",
+                BookingField.FieldType.LONG_TEXT, false, 0);
+        desc.persist();
+
+        // No per-type fields for this id -> falls back to the owner's global default form.
         List<BookingField> form = BookingField.formFor(1L, 999_999L);
         assertTrue(form.stream().anyMatch(f -> "description".equals(f.fieldKey)));
     }
@@ -26,6 +32,7 @@ class BookingFieldTest {
         // booking_field.meeting_type_id is a real FK, so persist a MeetingType first and use
         // its generated id (a literal id would violate the FK constraint).
         MeetingType type = new MeetingType();
+        type.ownerId = 1L;
         type.name = "BF Test";
         type.slug = "bookingfield-override-type";
         type.durationMinutes = 30;

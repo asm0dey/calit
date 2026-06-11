@@ -27,6 +27,7 @@ class DateOverrideTest {
     void perTypeOverrideWinsOverGlobal() {
         // FK columns reference real rows: persist a real MeetingType for the per-type override.
         MeetingType type = new MeetingType();
+        type.ownerId = 1L;
         type.name = "Override Type";
         type.slug = "do-pertype-wins";
         type.durationMinutes = 30;

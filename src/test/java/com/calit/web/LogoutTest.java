@@ -25,7 +25,7 @@ class LogoutTest {
     @Test
     void adminNavOffersLogout() {
         given().cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin")
+            .when().get("/me")
             .then().statusCode(200)
                 .body(containsString("/logout"))
                 .body(containsString("Log out"));

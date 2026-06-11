@@ -46,11 +46,13 @@ class AdminPendingTest {
         // collide on the meeting_type unique-slug constraint across tests (Plan 5 isolation).
         String slug = "pending-queue-" + System.nanoTime();
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = "Pending Queue Type"; t.slug = slug; t.durationMinutes = 60;
         t.locationType = LocationType.GOOGLE_MEET; t.requiresApproval = true;
         t.persist();
         for (DayOfWeek dow : DayOfWeek.values()) {
             AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = 1L;
             r.dayOfWeek = dow; r.startTime = LocalTime.of(9, 0); r.endTime = LocalTime.of(12, 0);
             r.meetingTypeId = null;
             r.persist();
@@ -72,12 +74,12 @@ class AdminPendingTest {
 
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/pending")
+            .when().get("/me/pending")
             .then()
                 .statusCode(200)
                 .body(containsString("Pending Pat"))                       // the PENDING booking
-                .body(containsString("/admin/bookings/" + id + "/approve")) // approve form
-                .body(containsString("/admin/bookings/" + id + "/decline")) // decline form
+                .body(containsString("/me/bookings/" + id + "/approve")) // approve form
+                .body(containsString("/me/bookings/" + id + "/decline")) // decline form
                 .body(containsString("Approve"))
                 .body(containsString("Decline"));
     }
@@ -93,7 +95,7 @@ class AdminPendingTest {
         given()
             .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
-            .when().post("/admin/bookings/" + id + "/approve")
+            .when().post("/me/bookings/" + id + "/approve")
             .then().statusCode(200);
 
         org.junit.jupiter.api.Assertions.assertEquals(
@@ -109,7 +111,7 @@ class AdminPendingTest {
         given()
             .cookie("quarkus-credential", FormAuth.login())
             .contentType("application/x-www-form-urlencoded")
-            .when().post("/admin/bookings/" + id + "/decline")
+            .when().post("/me/bookings/" + id + "/decline")
             .then().statusCode(200);
 
         org.junit.jupiter.api.Assertions.assertEquals(
@@ -118,6 +120,6 @@ class AdminPendingTest {
 
     @Test
     void pendingPageRequiresAuth() {
-        given().redirects().follow(false).when().get("/admin/pending").then().statusCode(302);
+        given().redirects().follow(false).when().get("/me/pending").then().statusCode(302);
     }
 }

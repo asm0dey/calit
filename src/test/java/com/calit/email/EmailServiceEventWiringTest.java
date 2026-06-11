@@ -62,6 +62,7 @@ class EmailServiceEventWiringTest {
             s.persist();
 
             MeetingType t = new MeetingType();
+            t.ownerId = 1L;
             t.name = "Wiring Call";
             t.slug = "wiring-" + System.nanoTime();
             t.durationMinutes = 45;
@@ -69,6 +70,7 @@ class EmailServiceEventWiringTest {
             t.persist();
 
             Booking b = new Booking();
+            b.ownerId = 1L;
             b.meetingTypeId = t.id;
             b.inviteeName = "Sam";
             b.inviteeEmail = INVITEE_EMAIL;

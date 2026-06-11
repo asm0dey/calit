@@ -15,6 +15,7 @@ class AdminMeetingTypesTest {
     @Transactional
     void seedSecret() {
         MeetingType secret = new MeetingType();
+        secret.ownerId = 1L;
         secret.name = "Admin Visible Secret"; secret.slug = "admin-secret";
         secret.durationMinutes = 30; secret.secret = true;
         secret.persist();
@@ -26,7 +27,7 @@ class AdminMeetingTypesTest {
         // Admin sees it (listAll) ...
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/meeting-types")
+            .when().get("/me/meeting-types")
             .then()
                 .statusCode(200)
                 .body(containsString("Admin Visible Secret"))
@@ -45,7 +46,7 @@ class AdminMeetingTypesTest {
         // The create form must offer the Plan 1b fields: min-notice, horizon, location, approval.
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/meeting-types")
+            .when().get("/me/meeting-types")
             .then()
                 .statusCode(200)
                 .body(containsString("name=\"minNoticeMinutes\""))
@@ -73,7 +74,7 @@ class AdminMeetingTypesTest {
             .formParam("locationDetail", "Call +1-555-0100")
             .formParam("slotIntervalMinutes", "15")
             .formParam("requiresApproval", "on")
-            .when().post("/admin/meeting-types")
+            .when().post("/me/meeting-types")
             .then().statusCode(200).body(containsString(slug));
 
         // Persisted with the new fields (resolves via findBySlug).
@@ -91,7 +92,7 @@ class AdminMeetingTypesTest {
     void createFormUsesAccordionSectionsAndLocationTiles() {
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/meeting-types")
+            .when().get("/me/meeting-types")
             .then()
                 .statusCode(200)
                 .body(containsString("class=\"collapse"))         // daisyUI accordion sections
@@ -106,7 +107,7 @@ class AdminMeetingTypesTest {
         // btn labels with identical padding (grid stretch + uniform btn shape = equal height).
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/meeting-types")
+            .when().get("/me/meeting-types")
             .then()
                 .statusCode(200)
                 .body(containsString("grid grid-cols-2 sm:grid-cols-4"))      // fixed-column tile grid
@@ -127,7 +128,7 @@ class AdminMeetingTypesTest {
             .formParam("locationType", "GOOGLE_MEET")
             .formParam("locationDetail", "")
             .formParam("slotIntervalMinutes", "")
-            .when().post("/admin/meeting-types")
+            .when().post("/me/meeting-types")
             .then().statusCode(200);
 
         MeetingType created = MeetingType.findBySlug(1L, slug);

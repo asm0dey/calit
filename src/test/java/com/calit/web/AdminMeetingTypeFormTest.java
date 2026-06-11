@@ -17,7 +17,7 @@ class AdminMeetingTypeFormTest {
     void createFormExposesBufferInputs() {
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/meeting-types")
+            .when().get("/me/meeting-types")
             .then()
                 .statusCode(200)
                 .body(containsString("name=\"bufferBeforeMinutes\""))
@@ -40,7 +40,7 @@ class AdminMeetingTypeFormTest {
             .formParam("locationType", "GOOGLE_MEET")
             .formParam("locationDetail", "")
             .formParam("slotIntervalMinutes", "")
-            .when().post("/admin/meeting-types")
+            .when().post("/me/meeting-types")
             .then().statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
@@ -63,7 +63,7 @@ class AdminMeetingTypeFormTest {
             .formParam("locationType", "GOOGLE_MEET")
             .formParam("locationDetail", "")
             .formParam("slotIntervalMinutes", "")
-            .when().post("/admin/meeting-types")
+            .when().post("/me/meeting-types")
             .then().statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, Slugs.slugify(name));
@@ -86,7 +86,7 @@ class AdminMeetingTypeFormTest {
                 .formParam("locationType", "GOOGLE_MEET")
                 .formParam("locationDetail", "")
                 .formParam("slotIntervalMinutes", "")
-                .when().post("/admin/meeting-types")
+                .when().post("/me/meeting-types")
                 .then().statusCode(200);
         }
         org.junit.jupiter.api.Assertions.assertNotNull(MeetingType.findBySlug(1L, base));
@@ -97,7 +97,7 @@ class AdminMeetingTypeFormTest {
     void slugInputHasLiveFillScript() {
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/meeting-types")
+            .when().get("/me/meeting-types")
             .then()
                 .statusCode(200)
                 .body(containsString("data-slug-autofill")); // marker the JS hooks onto
@@ -107,7 +107,7 @@ class AdminMeetingTypeFormTest {
     void createFormExposesWorkingHoursAndOverrideInputs() {
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/meeting-types")
+            .when().get("/me/meeting-types")
             .then()
                 .statusCode(200)
                 .body(containsString("name=\"ruleDay\""))
@@ -134,7 +134,7 @@ class AdminMeetingTypeFormTest {
             .formParam("ruleDay", "MONDAY", "TUESDAY")
             .formParam("ruleStart", "09:00", "")
             .formParam("ruleEnd", "17:00", "")
-            .when().post("/admin/meeting-types")
+            .when().post("/me/meeting-types")
             .then().statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
@@ -160,7 +160,7 @@ class AdminMeetingTypeFormTest {
             .formParam("overrideDate", "2026-12-24")
             .formParam("windowStart", "09:00")
             .formParam("windowEnd", "11:00")
-            .when().post("/admin/meeting-types")
+            .when().post("/me/meeting-types")
             .then().statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
@@ -185,7 +185,7 @@ class AdminMeetingTypeFormTest {
             .formParam("locationType", "GOOGLE_MEET")
             .formParam("locationDetail", "")
             .formParam("slotIntervalMinutes", "")
-            .when().post("/admin/meeting-types")
+            .when().post("/me/meeting-types")
             .then().statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);

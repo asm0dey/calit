@@ -35,14 +35,14 @@ class EnabledUserAugmentorTest {
 
         // Sanity: cookie works while enabled.
         given().cookie("quarkus-credential", cookie)
-                .when().get("/admin")
+                .when().get("/me")
                 .then().statusCode(200).body(containsString("Dashboard"));
 
         // Disable the user; the still-valid cookie must now be rejected.
         upsert("lockme", false);
         given().redirects().follow(false)
                 .cookie("quarkus-credential", cookie)
-                .when().get("/admin")
+                .when().get("/me")
                 .then().statusCode(302)
                 .header("Location", containsString("/login"));
     }

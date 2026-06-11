@@ -50,7 +50,7 @@ class SetupFlowTest {
     void requestsRedirectToSetupWhenNoUsers() {
         deleteAllUsers();
         given().redirects().follow(false)
-                .when().get("/admin")
+                .when().get("/me")
                 .then().statusCode(302)
                 .header("Location", containsString("/setup"));
     }

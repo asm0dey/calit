@@ -16,6 +16,7 @@ class AdminDateOverridesTest {
     void seedOverride() {
         // A global day-off override (no windows) for a fixed date.
         DateOverride o = new DateOverride();
+        o.ownerId = 1L;
         o.meetingTypeId = null;
         o.overrideDate = java.time.LocalDate.of(2026, 12, 25); // Christmas — blocked
         o.windows = new java.util.ArrayList<>();        // empty = day off
@@ -27,7 +28,7 @@ class AdminDateOverridesTest {
         seedOverride();
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/date-overrides")
+            .when().get("/me/date-overrides")
             .then()
                 .statusCode(200)
                 .body(containsString("2026-12-25"))           // existing override listed
@@ -48,7 +49,7 @@ class AdminDateOverridesTest {
             .formParam("meetingTypeId", "")          // empty = global
             .formParam("windowStart", "10:00")        // one window 10:00–14:00
             .formParam("windowEnd", "14:00")
-            .when().post("/admin/date-overrides")
+            .when().post("/me/date-overrides")
             .then()
                 .statusCode(200)
                 .body(containsString("2026-07-01"))
@@ -65,7 +66,7 @@ class AdminDateOverridesTest {
             .contentType("application/x-www-form-urlencoded")
             .formParam("date", "2026-08-15")
             .formParam("meetingTypeId", "")
-            .when().post("/admin/date-overrides")
+            .when().post("/me/date-overrides")
             .then()
                 .statusCode(200)
                 .body(containsString("2026-08-15"))
@@ -74,6 +75,6 @@ class AdminDateOverridesTest {
 
     @Test
     void dateOverridesPageRequiresAuth() {
-        given().redirects().follow(false).when().get("/admin/date-overrides").then().statusCode(302);
+        given().redirects().follow(false).when().get("/me/date-overrides").then().statusCode(302);
     }
 }

@@ -44,12 +44,14 @@ class BookingPostTest {
         s.persist();
 
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = "Confirm Type"; t.slug = "confirm-type"; t.durationMinutes = 60;
         t.locationType = LocationType.GOOGLE_MEET; // auto type, Meet link
         t.persist();
 
         for (DayOfWeek dow : DayOfWeek.values()) {
             AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = 1L;
             r.dayOfWeek = dow; r.startTime = LocalTime.of(9, 0); r.endTime = LocalTime.of(12, 0);
             r.meetingTypeId = null;
             r.persist();
@@ -57,6 +59,7 @@ class BookingPostTest {
 
         // A required custom field — its answer must flow through to BookingService.book.
         BookingField f = new BookingField();
+        f.ownerId = 1L;
         f.meetingTypeId = t.id; f.fieldKey = "company"; f.label = "Company Name";
         f.type = FieldType.SHORT_TEXT; f.required = true; f.position = 0;
         f.persist();
@@ -73,11 +76,13 @@ class BookingPostTest {
         s.ownerName = "Owner"; s.ownerEmail = "owner@example.com"; s.timezone = "Europe/Amsterdam";
         s.persist();
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = "Approval Confirm Type"; t.slug = "approval-confirm"; t.durationMinutes = 60;
         t.locationType = LocationType.GOOGLE_MEET; t.requiresApproval = true;
         t.persist();
         for (DayOfWeek dow : DayOfWeek.values()) {
             AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = 1L;
             r.dayOfWeek = dow; r.startTime = LocalTime.of(9, 0); r.endTime = LocalTime.of(12, 0);
             r.meetingTypeId = null;
             r.persist();

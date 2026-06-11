@@ -28,6 +28,7 @@ class AdminBookingFieldsTest {
     @Transactional
     void seedField() {
         BookingField f = new BookingField();
+        f.ownerId = 1L;
         f.meetingTypeId = null; f.fieldKey = "linkedin"; f.label = "LinkedIn URL";
         f.type = FieldType.SHORT_TEXT; f.required = false; f.position = 5;
         f.persist();
@@ -38,7 +39,7 @@ class AdminBookingFieldsTest {
         seedField();
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/booking-fields")
+            .when().get("/me/booking-fields")
             .then()
                 .statusCode(200)
                 .body(containsString("LinkedIn URL"))        // existing field listed
@@ -59,7 +60,7 @@ class AdminBookingFieldsTest {
             .formParam("required", "on")
             .formParam("position", "10")
             .formParam("meetingTypeId", "") // empty = global
-            .when().post("/admin/booking-fields")
+            .when().post("/me/booking-fields")
             .then()
                 .statusCode(200)
                 .body(containsString("Dietary Needs"))
@@ -68,6 +69,6 @@ class AdminBookingFieldsTest {
 
     @Test
     void bookingFieldsPageRequiresAuth() {
-        given().redirects().follow(false).when().get("/admin/booking-fields").then().statusCode(302);
+        given().redirects().follow(false).when().get("/me/booking-fields").then().statusCode(302);
     }
 }

@@ -107,6 +107,7 @@ class PendingExpiryTest {
     private Long seedMeetingType() {
         return QuarkusTransaction.requiringNew().call(() -> {
             MeetingType t = new MeetingType();
+            t.ownerId = 1L;
             t.name = "expiry-" + System.nanoTime();
             t.slug = "expiry-" + System.nanoTime();
             t.durationMinutes = 30;
@@ -118,6 +119,7 @@ class PendingExpiryTest {
     private Long seedBooking(Long meetingTypeId, Instant createdAt, Instant startUtc, BookingStatus status) {
         return QuarkusTransaction.requiringNew().call(() -> {
             Booking b = new Booking();
+            b.ownerId = 1L;
             b.meetingTypeId = meetingTypeId;
             b.inviteeName = "Sam";
             b.inviteeEmail = "sam@example.com";

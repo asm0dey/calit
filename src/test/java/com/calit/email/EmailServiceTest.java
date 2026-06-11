@@ -301,6 +301,7 @@ class EmailServiceTest {
             s.persist();
 
             MeetingType t = new MeetingType();
+            t.ownerId = 1L;
             t.name = "Discovery Call";
             t.slug = "discovery-" + System.nanoTime();
             t.durationMinutes = 30;
@@ -310,6 +311,7 @@ class EmailServiceTest {
 
             // Global custom fields so answers render with labels in order.
             BookingField f1 = new BookingField();
+            f1.ownerId = 1L;
             f1.meetingTypeId = null;
             f1.fieldKey = "description";
             f1.label = "What do you want to discuss?";
@@ -319,6 +321,7 @@ class EmailServiceTest {
             f1.persist();
 
             BookingField f2 = new BookingField();
+            f2.ownerId = 1L;
             f2.meetingTypeId = null;
             f2.fieldKey = "company";
             f2.label = "Company";
@@ -328,6 +331,7 @@ class EmailServiceTest {
             f2.persist();
 
             Booking b = new Booking();
+            b.ownerId = 1L;
             b.meetingTypeId = t.id;
             b.inviteeName = "Sam Invitee";
             b.inviteeEmail = INVITEE_EMAIL;

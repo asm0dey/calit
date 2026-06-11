@@ -45,11 +45,13 @@ class ManageBookingTest {
         s.persist();
 
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = "Manage Type"; t.slug = "manage-type"; t.durationMinutes = 60;
         t.locationType = LocationType.GOOGLE_MEET;
         t.persist();
         for (DayOfWeek dow : DayOfWeek.values()) {
             AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = 1L;
             r.dayOfWeek = dow; r.startTime = LocalTime.of(9, 0); r.endTime = LocalTime.of(12, 0);
             r.meetingTypeId = null;
             r.persist();

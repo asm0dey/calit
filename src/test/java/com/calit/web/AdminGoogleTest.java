@@ -13,7 +13,7 @@ class AdminGoogleTest {
     void googlePageLinksToConnectEndpoint() {
         given()
             .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/admin/google")
+            .when().get("/me/google")
             .then()
                 .statusCode(200)
                 .body(containsString("/api/google/connect"))
@@ -22,6 +22,6 @@ class AdminGoogleTest {
 
     @Test
     void googlePageRequiresAuth() {
-        given().redirects().follow(false).when().get("/admin/google").then().statusCode(302);
+        given().redirects().follow(false).when().get("/me/google").then().statusCode(302);
     }
 }

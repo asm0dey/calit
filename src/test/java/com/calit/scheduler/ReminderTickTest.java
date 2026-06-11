@@ -42,11 +42,13 @@ class ReminderTickTest {
     private Long seedBooking() {
         return QuarkusTransaction.requiringNew().call(() -> {
             MeetingType t = new MeetingType();
+            t.ownerId = 1L;
             t.name = "tick-" + System.nanoTime();
             t.slug = "tick-" + System.nanoTime();
             t.durationMinutes = 30;
             t.persist();
             Booking b = new Booking();
+            b.ownerId = 1L;
             b.meetingTypeId = t.id;
             b.inviteeName = "Sam";
             b.inviteeEmail = "sam@example.com";

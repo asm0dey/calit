@@ -88,6 +88,7 @@ class SlotServiceOverrideTest {
 
     private MeetingType meetingType(String slug, int minutes) {
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = slug;
         t.slug = slug;
         t.durationMinutes = minutes;
@@ -97,6 +98,7 @@ class SlotServiceOverrideTest {
 
     private void globalRule(DayOfWeek dow, String start, String end) {
         AvailabilityRule r = new AvailabilityRule();
+        r.ownerId = 1L;
         r.dayOfWeek = dow;
         r.startTime = LocalTime.parse(start);
         r.endTime = LocalTime.parse(end);
@@ -106,6 +108,7 @@ class SlotServiceOverrideTest {
 
     private DateOverride override(Long meetingTypeId, LocalDate date) {
         DateOverride o = new DateOverride();
+        o.ownerId = 1L;
         o.meetingTypeId = meetingTypeId;
         o.overrideDate = date;
         return o;

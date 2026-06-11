@@ -40,7 +40,12 @@ public class MeOwnerFilter implements ContainerRequestFilter {
 
     /** True for /me, /me/*, /api/google, and /api/google/* (all owner-scoped, authenticated routes). */
     private static boolean matchesMe(UriInfo uriInfo) {
-        String path = uriInfo.getPath(); // no leading slash, e.g. "me" or "me/settings"
+        // UriInfo#getPath may return the path with or without a leading slash depending on the
+        // runtime; normalise by stripping a leading slash before matching.
+        String path = uriInfo.getPath();
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
         return path.equals("me") || path.startsWith("me/")
                 || path.equals("api/google") || path.startsWith("api/google/");
     }
