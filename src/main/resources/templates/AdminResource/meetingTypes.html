@@ -103,12 +103,17 @@
       <div class="collapse-title font-semibold">Working hours</div>
       <div class="collapse-content">
         <p class="text-sm text-base-content/60 mb-2">Weekly hours for this meeting type. Leave a day blank to use the global default; fill a day to override it for this type.</p>
-        {#for d in daysOfWeek}
-          <label class="label">{display:of(d)}
-            <input type="hidden" name="ruleDay" value="{d}">
-            <span class="flex items-center gap-2"><input class="input" type="time" name="ruleStart"> to <input class="input" type="time" name="ruleEnd"></span>
-          </label>
-        {/for}
+        <div class="flex flex-col gap-2">
+          {#for d in daysOfWeek}
+            <div class="flex items-center gap-2">
+              <input type="hidden" name="ruleDay" value="{d}">
+              <span class="w-28 text-sm">{display:of(d)}</span>
+              <input class="input input-sm" type="time" name="ruleStart">
+              <span class="text-sm opacity-70">to</span>
+              <input class="input input-sm" type="time" name="ruleEnd">
+            </div>
+          {/for}
+        </div>
       </div>
     </div>
 
