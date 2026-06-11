@@ -1,0 +1,24 @@
+{@java.lang.String error}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign up — calit</title>
+  <link rel="stylesheet" href="/calit.css">
+</head>
+<body class="min-h-screen flex items-center justify-center bg-base-200">
+  <form method="post" action="/signup" class="fieldset bg-base-100 border border-base-300 rounded-box p-6 w-full max-w-sm">
+    <h1 class="text-xl font-bold mb-2">Sign up</h1>
+    {#if error}
+    <div class="alert alert-error mb-2"><span>{error}</span></div>
+    {/if}
+    <label class="label" for="username">Username</label>
+    <input id="username" class="input w-full" type="text" name="username" required autofocus>
+    <label class="label" for="password">Password</label>
+    <input id="password" class="input w-full" type="password" name="password" required>
+    <button type="submit" class="btn btn-primary mt-3">Create account</button>
+    <a href="/login" class="link link-hover text-sm mt-2">Already have an account? Log in</a>
+  </form>
+</body>
+</html>
