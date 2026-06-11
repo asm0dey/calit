@@ -510,7 +510,7 @@ git commit -m "build: replace Pico with Tailwind v4 + daisyUI (Bun build stage)"
       <p class="text-base-content/70">Pick a meeting type to see available times.</p>
     </header>
     {#if types.isEmpty()}
-      <div role="alert" class="alert">No meeting types are currently available.</div>
+      <div class="alert">No meeting types are currently available.</div>
     {#else}
       <div class="grid gap-4 sm:grid-cols-2">
         {#for t in types}
@@ -1023,7 +1023,7 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
       name.addEventListener('input', function () {
         if (edited) { return; }
         slug.value = name.value.toLowerCase().normalize('NFD')
-          .replace(/[̀-ͯ]/g, '')
+          .replace(/[\u0300-\u036f]/g, '')
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-+|-+$/g, '');
       });
@@ -1101,7 +1101,7 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
             name.addEventListener('input', function () {
               if (edited) { return; }
               slug.value = name.value.toLowerCase().normalize('NFD')
-                .replace(/[̀-ͯ]/g, '')
+                .replace(/[\u0300-\u036f]/g, '')
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/^-+|-+$/g, '');
             });
@@ -1385,7 +1385,7 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
     <button type="submit" class="btn btn-primary mt-2">Save</button>
   </form>
 
-  <div role="alert" class="alert mt-4 max-w-md">
+  <div class="alert mt-4 max-w-md">
     <span><strong>Reminder lead:</strong> {reminderLeadMinutes} minutes before the meeting <em>(set via the REMINDER_LEAD_MINUTES environment variable)</em></span>
   </div>
 {/include}
@@ -1452,7 +1452,7 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
 
   <h2 class="text-xl font-semibold mb-3">Upcoming bookings</h2>
   {#if upcoming.isEmpty()}
-    <div role="alert" class="alert">No upcoming bookings.</div>
+    <div class="alert">No upcoming bookings.</div>
   {#else}
     <div class="space-y-2">
     {#for b in upcoming}
@@ -1485,7 +1485,7 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
 {#include adminBase title="Admin — Pending approvals" pendingCount=pending.size() active="pending"}
   <h1 class="text-2xl font-bold mb-4">Pending approvals</h1>
   {#if pending.isEmpty()}
-    <div role="alert" class="alert">No requests are awaiting approval.</div>
+    <div class="alert">No requests are awaiting approval.</div>
   {#else}
     <div class="space-y-2">
     {#for b in pending}
