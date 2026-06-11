@@ -55,6 +55,15 @@ Child tables stay scoped through their parent FK (no own `owner_id`):
 `meeting_type.slug` changes from globally UNIQUE to UNIQUE per `(owner_id, slug)`. Two
 different users may both have a `intro-call` slug.
 
+### Google calendars per user
+
+One connected Google **account** per user (`google_credential`, one row per owner). From that
+account a user may select **many** calendars (`google_calendar` rows, each `read_for_busy`)
+and **one** `write_target`. The existing global "single write-target" partial unique index
+becomes **per-owner**: `UNIQUE (owner_id) WHERE write_target = TRUE`. `google_calendar.id`'s
+global-unique `google_calendar_id` also relaxes to unique per `(owner_id, google_calendar_id)`
+(two users may sync the same shared calendar).
+
 ### Migration
 
 Single fresh-start Flyway migration `V7__multi_user.sql`: create `app_user`, add `owner_id`
