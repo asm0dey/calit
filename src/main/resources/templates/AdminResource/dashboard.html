@@ -1,17 +1,31 @@
 {@java.util.List<com.calit.booking.Booking> upcoming}
 {@java.lang.Long pendingCount}
 {#include adminBase title="Admin — Dashboard" pendingCount=pendingCount active="dashboard"}
-  <h1>Dashboard</h1>
-  <h2>Upcoming bookings</h2>
+  <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+
+  <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 mb-6">
+    <div class="stat">
+      <div class="stat-title">Upcoming bookings</div>
+      <div class="stat-value text-primary">{upcoming.size()}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Pending approvals</div>
+      <div class="stat-value">{pendingCount}</div>
+    </div>
+  </div>
+
+  <h2 class="text-xl font-semibold mb-3">Upcoming bookings</h2>
   {#if upcoming.isEmpty()}
-    <p>No upcoming bookings.</p>
+    <div class="alert">No upcoming bookings.</div>
   {#else}
+    <div class="space-y-2">
     {#for b in upcoming}
-      <article>
+      <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 gap-1">
         <p><strong>{b.inviteeName}</strong> ({b.inviteeEmail})</p>
-        <p>{b.startUtc} UTC</p>
-        <p><a href="{b.meetLink}">{b.meetLink}</a></p>
-      </article>
+        <p class="text-sm text-base-content/70">{b.startUtc} UTC</p>
+        {#if b.meetLink}<p><a class="link link-primary" href="{b.meetLink}">{b.meetLink}</a></p>{/if}
+      </div></div>
     {/for}
+    </div>
   {/if}
 {/include}

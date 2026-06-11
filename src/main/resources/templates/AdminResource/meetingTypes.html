@@ -3,136 +3,130 @@
 {@java.time.DayOfWeek[] daysOfWeek}
 {@java.lang.Long pendingCount}
 {#include adminBase title="Admin — Meeting types" pendingCount=pendingCount active="meetingTypes"}
-  <h1>Meeting types</h1>
+  <h1 class="text-2xl font-bold mb-4">Meeting types</h1>
 
+  <div class="space-y-3">
   {#for t in types}
-    <article>
-      <h3>{t.name}
-        {#if t.secret}<span class="badge">secret</span>{/if}
-        {#if !t.active}<span class="badge">inactive</span>{/if}
-        {#if t.requiresApproval}<span class="badge">approval</span>{/if}
-      </h3>
-      <p>/{t.slug} &middot; {t.durationMinutes} min &middot; {t.locationType.display}{#if t.locationDetail} ({t.locationDetail}){/if}</p>
-      <p>min notice {t.minNoticeMinutes} min &middot; horizon {t.horizonDays} days{#if t.slotIntervalMinutes} &middot; slot interval {t.slotIntervalMinutes} min{/if}
-        &middot; buffer {t.bufferBeforeMinutes}/{t.bufferAfterMinutes} min</p>
-      <a href="/admin/meeting-types/{t.id}" role="button" class="secondary" style="display:inline">Edit</a>
-      <form method="post" action="/admin/meeting-types/{t.id}/toggle" style="display:inline">
-        <button type="submit" class="secondary">{#if t.active}Deactivate{#else}Activate{/if}</button>
-      </form>
-      <form method="post" action="/admin/meeting-types/{t.id}/delete" style="display:inline">
-        <button type="submit" class="secondary">Delete</button>
-      </form>
-    </article>
+    <div class="card bg-base-100 border border-base-300">
+      <div class="card-body gap-2">
+        <h3 class="text-lg font-semibold flex items-center gap-2">{t.name}
+          {#if t.secret}<span class="badge badge-ghost badge-sm">secret</span>{/if}
+          {#if !t.active}<span class="badge badge-ghost badge-sm">inactive</span>{/if}
+          {#if t.requiresApproval}<span class="badge badge-primary badge-sm">approval</span>{/if}
+        </h3>
+        <p class="text-sm text-base-content/70">/{t.slug} &middot; {t.durationMinutes} min &middot; {t.locationType.display}{#if t.locationDetail} ({t.locationDetail}){/if}</p>
+        <p class="text-sm text-base-content/70">min notice {t.minNoticeMinutes} min &middot; horizon {t.horizonDays} days{#if t.slotIntervalMinutes} &middot; slot interval {t.slotIntervalMinutes} min{/if} &middot; buffer {t.bufferBeforeMinutes}/{t.bufferAfterMinutes} min</p>
+        <div class="flex flex-wrap items-center gap-2 mt-1">
+          <a href="/admin/meeting-types/{t.id}" role="button" class="btn btn-outline btn-sm">Edit</a>
+          <form method="post" action="/admin/meeting-types/{t.id}/toggle">
+            <button type="submit" class="btn btn-ghost btn-sm">{#if t.active}Deactivate{#else}Activate{/if}</button>
+          </form>
+          <form method="post" action="/admin/meeting-types/{t.id}/delete">
+            <button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button>
+          </form>
+        </div>
+      </div>
+    </div>
   {/for}
+  </div>
 
-  <h2>Create meeting type</h2>
-  <form method="post" action="/admin/meeting-types" class="editor">
-    <details open>
-      <summary>
-        <svg class="sec-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
-        Basics
-      </summary>
-      <div class="sec-body">
-        <label>Name <input type="text" name="name" data-slug-name required></label>
-        <label>Slug <small>(leave blank to auto-generate from the name)</small>
-          <input type="text" name="slug" data-slug-autofill></label>
-        <label><input type="checkbox" name="secret"> Secret (hidden from public landing)</label>
-        <label><input type="checkbox" name="requiresApproval"> Requires owner approval (hold as pending)</label>
+  <h2 class="text-xl font-semibold mt-8 mb-3">Create meeting type</h2>
+  <form method="post" action="/admin/meeting-types" class="space-y-3">
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="checkbox" checked>
+      <div class="collapse-title font-semibold">Basics</div>
+      <div class="collapse-content fieldset">
+        <label class="label">Name</label>
+        <input class="input w-full" type="text" name="name" data-slug-name required>
+        <label class="label">Slug <span class="text-base-content/60">(blank = auto from name)</span></label>
+        <input class="input w-full" type="text" name="slug" data-slug-autofill>
+        <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="secret" class="checkbox checkbox-sm"> Secret (hidden from public landing)</label>
+        <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="requiresApproval" class="checkbox checkbox-sm"> Requires owner approval (hold as pending)</label>
       </div>
-    </details>
+    </div>
 
-    <details>
-      <summary>
-        <svg class="sec-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        Duration
-      </summary>
-      <div class="sec-body">
-        <label>Duration (minutes) <input type="number" name="durationMinutes" value="30" required></label>
-        <label>Slot interval (minutes, blank = back-to-back)
-          <input type="number" name="slotIntervalMinutes"></label>
-        <label>Buffer before (minutes) <input type="number" name="bufferBeforeMinutes" value="0" min="0"></label>
-        <label>Buffer after (minutes) <input type="number" name="bufferAfterMinutes" value="0" min="0"></label>
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="checkbox">
+      <div class="collapse-title font-semibold">Duration</div>
+      <div class="collapse-content fieldset">
+        <label class="label">Duration (minutes)</label>
+        <input class="input w-full" type="number" name="durationMinutes" value="30" required>
+        <label class="label">Slot interval (minutes, blank = back-to-back)</label>
+        <input class="input w-full" type="number" name="slotIntervalMinutes">
+        <label class="label">Buffer before (minutes)</label>
+        <input class="input w-full" type="number" name="bufferBeforeMinutes" value="0" min="0">
+        <label class="label">Buffer after (minutes)</label>
+        <input class="input w-full" type="number" name="bufferAfterMinutes" value="0" min="0">
       </div>
-    </details>
+    </div>
 
-    <details>
-      <summary>
-        <svg class="sec-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-        Location
-      </summary>
-      <div class="sec-body">
-        <div class="loc-tiles">
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="checkbox">
+      <div class="collapse-title font-semibold">Location</div>
+      <div class="collapse-content">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
           {#for lt in locationTypes}
-            <label class="tile">
-              <input type="radio" name="locationType" value="{lt}"{#if lt_index == 0} checked{/if}>
+            <label class="btn btn-outline h-auto py-3 flex-col gap-1 has-[:checked]:btn-primary">
+              <input type="radio" name="locationType" value="{lt}" class="hidden"{#if lt_index == 0} checked{/if}>
               {#if lt_index == 0}
-                {! GOOGLE_MEET — video camera !}
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>
               {#else if lt_index == 1}
-                {! PHONE — handset !}
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
               {#else if lt_index == 2}
-                {! IN_PERSON — map pin !}
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
               {#else}
-                {! CUSTOM — pencil/note !}
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6h16M4 12h10M4 18h7"/></svg>
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6h16M4 12h10M4 18h7"/></svg>
               {/if}
-              {display:of(lt)}
+              <span class="text-xs">{display:of(lt)}</span>
             </label>
           {/for}
         </div>
-        <small class="loc-note">Pick where the meeting happens. Google Meet generates a link after booking (requires Google connected); for the others, fill in the detail below.</small>
-        <label>Location detail (phone number / address / custom text; ignored for Google Meet)
-          <input type="text" name="locationDetail"></label>
+        <p class="text-sm text-base-content/60 mb-2">Pick where the meeting happens. Google Meet generates a link after booking (requires Google connected); for the others, fill in the detail below.</p>
+        <label class="label">Location detail (phone / address / custom; ignored for Google Meet)</label>
+        <input class="input w-full" type="text" name="locationDetail">
       </div>
-    </details>
+    </div>
 
-    <details>
-      <summary>
-        <svg class="sec-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
-        Scheduling limits
-      </summary>
-      <div class="sec-body">
-        <label>Min scheduling notice (minutes)
-          <input type="number" name="minNoticeMinutes" value="0" required></label>
-        <label>Booking horizon (days)
-          <input type="number" name="horizonDays" value="60" required></label>
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="checkbox">
+      <div class="collapse-title font-semibold">Scheduling limits</div>
+      <div class="collapse-content fieldset">
+        <label class="label">Min scheduling notice (minutes)</label>
+        <input class="input w-full" type="number" name="minNoticeMinutes" value="0" required>
+        <label class="label">Booking horizon (days)</label>
+        <input class="input w-full" type="number" name="horizonDays" value="60" required>
       </div>
-    </details>
+    </div>
 
-    <details>
-      <summary>
-        <svg class="sec-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        Working hours
-      </summary>
-      <div class="sec-body">
-        <small class="loc-note">Weekly hours for this meeting type. Leave a day blank to use the global default; fill a day to override it for this type.</small>
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="checkbox">
+      <div class="collapse-title font-semibold">Working hours</div>
+      <div class="collapse-content">
+        <p class="text-sm text-base-content/60 mb-2">Weekly hours for this meeting type. Leave a day blank to use the global default; fill a day to override it for this type.</p>
         {#for d in daysOfWeek}
-          <label>{display:of(d)}
+          <label class="label">{display:of(d)}
             <input type="hidden" name="ruleDay" value="{d}">
-            <input type="time" name="ruleStart"> to <input type="time" name="ruleEnd">
+            <span class="flex items-center gap-2"><input class="input" type="time" name="ruleStart"> to <input class="input" type="time" name="ruleEnd"></span>
           </label>
         {/for}
       </div>
-    </details>
+    </div>
 
-    <details>
-      <summary>
-        <svg class="sec-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M9 14l2 2 4-4"/></svg>
-        Date override
-      </summary>
-      <div class="sec-body">
-        <small class="loc-note">Optional. An override REPLACES this date's normal hours for this type. Set a date and leave the windows blank to mark it a day off; add windows to set the only bookable times. (Add more overrides later from the type's Edit page.)</small>
-        <label>Date <input type="date" name="overrideDate"></label>
-        <fieldset>
-          <legend>Bookable windows (leave all blank = day off)</legend>
-          <label>Window 1 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
-          <label>Window 2 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
-          <label>Window 3 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="checkbox">
+      <div class="collapse-title font-semibold">Date override</div>
+      <div class="collapse-content">
+        <p class="text-sm text-base-content/60 mb-2">Optional. An override REPLACES this date's normal hours for this type. Set a date and leave the windows blank to mark it a day off; add windows to set the only bookable times.</p>
+        <label class="label">Date</label>
+        <input class="input" type="date" name="overrideDate">
+        <fieldset class="fieldset border border-base-300 rounded-box p-3 mt-2">
+          <legend class="fieldset-legend">Bookable windows (leave all blank = day off)</legend>
+          <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+          <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+          <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
         </fieldset>
       </div>
-    </details>
+    </div>
 
     <script>
     (function () {
@@ -150,6 +144,6 @@
       });
     })();
     </script>
-    <button type="submit">Create</button>
+    <button type="submit" class="btn btn-primary">Create</button>
   </form>
 {/include}

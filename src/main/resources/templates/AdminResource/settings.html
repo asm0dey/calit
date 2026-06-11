@@ -3,31 +3,29 @@
 {@java.lang.Long pendingCount}
 {@java.util.List<java.lang.String> zones}
 {#include adminBase title="Admin — Settings" pendingCount=pendingCount active="settings"}
-  <h1>Owner settings</h1>
-  <form method="post" action="/admin/settings">
-    <label>Name
-      <input type="text" name="ownerName" required
-             value="{#if settings}{settings.ownerName}{/if}"></label>
-    <label>Email
-      <input type="email" name="ownerEmail" required
-             value="{#if settings}{settings.ownerEmail}{/if}"></label>
-    <label>Timezone
-      <select name="timezone" required>
-        {#for z in zones}
-          {#if settings}
-          <option value="{z}"{#if settings.timezone == z} selected{/if}>{z}</option>
-          {#else}
-          <option value="{z}"{#if z == 'Europe/Amsterdam'} selected{/if}>{z}</option>
-          {/if}
-        {/for}
-      </select>
-    </label>
-    <label><input type="checkbox" name="ownerNotificationsEnabled"
-             {#if settings && settings.ownerNotificationsEnabled}checked{/if}>
+  <h1 class="text-2xl font-bold mb-4">Owner settings</h1>
+  <form method="post" action="/admin/settings" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
+    <label class="label">Name</label>
+    <input class="input w-full" type="text" name="ownerName" required value="{#if settings}{settings.ownerName}{/if}">
+    <label class="label">Email</label>
+    <input class="input w-full" type="email" name="ownerEmail" required value="{#if settings}{settings.ownerEmail}{/if}">
+    <label class="label">Timezone</label>
+    <select class="select w-full" name="timezone" required>
+      {#for z in zones}
+        {#if settings}
+        <option value="{z}"{#if settings.timezone == z} selected{/if}>{z}</option>
+        {#else}
+        <option value="{z}"{#if z == 'Europe/Amsterdam'} selected{/if}>{z}</option>
+        {/if}
+      {/for}
+    </select>
+    <label class="label cursor-pointer justify-start gap-2 mt-2">
+      <input type="checkbox" name="ownerNotificationsEnabled" class="checkbox checkbox-sm"{#if settings && settings.ownerNotificationsEnabled} checked{/if}>
       Send me (the owner) email notifications for bookings</label>
-    <button type="submit">Save</button>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
   </form>
 
-  <p><strong>Reminder lead:</strong> {reminderLeadMinutes} minutes before the meeting
-     <em>(set via the REMINDER_LEAD_MINUTES environment variable)</em></p>
+  <div class="alert mt-4 max-w-md">
+    <span><strong>Reminder lead:</strong> {reminderLeadMinutes} minutes before the meeting <em>(set via the REMINDER_LEAD_MINUTES environment variable)</em></span>
+  </div>
 {/include}

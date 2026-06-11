@@ -2,40 +2,39 @@
 {@java.util.List<com.calit.domain.MeetingType> types}
 {@java.lang.Long pendingCount}
 {#include adminBase title="Admin — Date overrides" pendingCount=pendingCount active="dateOverrides"}
-  <h1>Date-specific overrides</h1>
-  <p>An override REPLACES that date's normal work hours. Adding windows sets the only bookable times;
-     leaving the windows empty marks the whole date as a day off.</p>
+  <h1 class="text-2xl font-bold mb-2">Date-specific overrides</h1>
+  <p class="text-sm text-base-content/70 mb-4">An override REPLACES that date's normal work hours. Adding windows sets the only bookable times; leaving the windows empty marks the whole date as a day off.</p>
 
+  <div class="space-y-2 mb-6">
   {#for o in overrides}
-    <article>
+    <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 gap-1">
       <p><strong>{o.overrideDate}</strong> &middot; {#if o.meetingTypeId}type #{o.meetingTypeId}{#else}global{/if}</p>
       {#if o.windows.isEmpty()}
-        <p><span class="badge">day off</span> (blocked)</p>
+        <p><span class="badge badge-ghost badge-sm">day off</span> (blocked)</p>
       {#else}
-        <ul>{#for w in o.windows}<li>{w.startTime} &ndash; {w.endTime}</li>{/for}</ul>
+        <ul class="list-disc ml-5">{#for w in o.windows}<li>{w.startTime} &ndash; {w.endTime}</li>{/for}</ul>
       {/if}
-      <form method="post" action="/admin/date-overrides/{o.id}/delete">
-        <button type="submit">Delete</button>
-      </form>
-    </article>
+      <form method="post" action="/admin/date-overrides/{o.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+    </div></div>
   {/for}
+  </div>
 
-  <h2>Add an override</h2>
-  <form method="post" action="/admin/date-overrides">
-    <label>Date <input type="date" name="date" required></label>
-    <label>Applies to
-      <select name="meetingTypeId">
-        <option value="">All (global)</option>
-        {#for t in types}<option value="{t.id}">{t.name}</option>{/for}
-      </select>
-    </label>
+  <h2 class="text-xl font-semibold mb-3">Add an override</h2>
+  <form method="post" action="/admin/date-overrides" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
+    <label class="label">Date</label>
+    <input class="input w-full" type="date" name="date" required>
+    <label class="label">Applies to</label>
+    <select class="select w-full" name="meetingTypeId">
+      <option value="">All (global)</option>
+      {#for t in types}<option value="{t.id}">{t.name}</option>{/for}
+    </select>
     {! Up to three window rows; leave all blank for a day off. Repeated names → parallel arrays. !}
-    <fieldset>
-      <legend>Bookable windows (leave all blank = day off)</legend>
-      <label>Window 1 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
-      <label>Window 2 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
-      <label>Window 3 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
+    <fieldset class="fieldset border border-base-300 rounded-box p-3 mt-2">
+      <legend class="fieldset-legend">Bookable windows (leave all blank = day off)</legend>
+      <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+      <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+      <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
     </fieldset>
-    <button type="submit">Save override</button>
+    <button type="submit" class="btn btn-primary mt-2">Save override</button>
   </form>
 {/include}

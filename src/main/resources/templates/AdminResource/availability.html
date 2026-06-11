@@ -3,33 +3,30 @@
 {@java.time.DayOfWeek[] daysOfWeek}
 {@java.lang.Long pendingCount}
 {#include adminBase title="Admin — Availability" pendingCount=pendingCount active="availability"}
-  <h1>Availability (work hours)</h1>
+  <h1 class="text-2xl font-bold mb-4">Availability (work hours)</h1>
 
+  <div class="space-y-2 mb-6">
   {#for r in rules}
-    <article>
-      <p><strong>{r.dayOfWeek.display}</strong> {r.startTime} &ndash; {r.endTime}
-        &middot; {#if r.meetingTypeId}type #{r.meetingTypeId}{#else}global{/if}</p>
-      <form method="post" action="/admin/availability/{r.id}/delete">
-        <button type="submit" class="secondary">Delete</button>
-      </form>
-    </article>
+    <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 flex-row items-center justify-between">
+      <p><strong>{r.dayOfWeek.display}</strong> {r.startTime} &ndash; {r.endTime} &middot; {#if r.meetingTypeId}type #{r.meetingTypeId}{#else}global{/if}</p>
+      <form method="post" action="/admin/availability/{r.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+    </div></div>
   {/for}
+  </div>
 
-  <h2>Add a rule</h2>
-  <form method="post" action="/admin/availability">
-    <label>Day
-      <select name="dayOfWeek">
-        {#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}
-      </select>
-    </label>
-    <label>Start <input type="time" name="startTime" value="09:00" required></label>
-    <label>End <input type="time" name="endTime" value="17:00" required></label>
-    <label>Applies to
-      <select name="meetingTypeId">
-        <option value="">All (global)</option>
-        {#for t in types}<option value="{t.id}">{t.name}</option>{/for}
-      </select>
-    </label>
-    <button type="submit">Add rule</button>
+  <h2 class="text-xl font-semibold mb-3">Add a rule</h2>
+  <form method="post" action="/admin/availability" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
+    <label class="label">Day</label>
+    <select class="select w-full" name="dayOfWeek">{#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}</select>
+    <label class="label">Start</label>
+    <input class="input w-full" type="time" name="startTime" value="09:00" required>
+    <label class="label">End</label>
+    <input class="input w-full" type="time" name="endTime" value="17:00" required>
+    <label class="label">Applies to</label>
+    <select class="select w-full" name="meetingTypeId">
+      <option value="">All (global)</option>
+      {#for t in types}<option value="{t.id}">{t.name}</option>{/for}
+    </select>
+    <button type="submit" class="btn btn-primary mt-2">Add rule</button>
   </form>
 {/include}

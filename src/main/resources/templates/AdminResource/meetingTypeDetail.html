@@ -7,120 +7,147 @@
 {@java.time.DayOfWeek[] daysOfWeek}
 {@java.lang.Long pendingCount}
 {#include adminBase title="Admin — {type.name}" pendingCount=pendingCount active="meetingTypes"}
-  <p><a href="/admin/meeting-types">&larr; All meeting types</a></p>
-  <h1>{type.name}</h1>
-  <p>/{type.slug} &middot; {type.durationMinutes} min &middot; {type.locationType.display}</p>
+  <p class="mb-2"><a class="link link-hover text-sm" href="/admin/meeting-types">&larr; All meeting types</a></p>
+  <h1 class="text-2xl font-bold">{type.name}</h1>
+  <p class="text-sm text-base-content/70 mb-4">/{type.slug} &middot; {type.durationMinutes} min &middot; {type.locationType.display}</p>
 
-  <h2>Basics</h2>
-  <form method="post" action="/admin/meeting-types/{type.id}/edit" class="editor">
-    <label>Name <input type="text" name="name" data-slug-name value="{type.name}" required></label>
-    <label>Slug <small>(leave blank to auto-generate from the name)</small>
-      <input type="text" name="slug" data-slug-autofill value="{type.slug}"></label>
-    <label>Duration (minutes) <input type="number" name="durationMinutes" value="{type.durationMinutes}" required></label>
-    <label>Buffer before (minutes) <input type="number" name="bufferBeforeMinutes" value="{type.bufferBeforeMinutes}" min="0"></label>
-    <label>Buffer after (minutes) <input type="number" name="bufferAfterMinutes" value="{type.bufferAfterMinutes}" min="0"></label>
-    <label>Slot interval (minutes, blank = back-to-back)
-      <input type="number" name="slotIntervalMinutes" value="{#if type.slotIntervalMinutes}{type.slotIntervalMinutes}{/if}"></label>
-    <label>Min scheduling notice (minutes) <input type="number" name="minNoticeMinutes" value="{type.minNoticeMinutes}" required></label>
-    <label>Booking horizon (days) <input type="number" name="horizonDays" value="{type.horizonDays}" required></label>
-    <label>Location
-      <select name="locationType">
-        {#for loc in locationTypes}
-          <option value="{loc}"{#if type.locationType == loc} selected{/if}>{display:of(loc)}</option>
+  <div class="space-y-3">
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="checkbox" checked>
+      <div class="collapse-title font-semibold">Basics</div>
+      <div class="collapse-content">
+        <form method="post" action="/admin/meeting-types/{type.id}/edit" class="fieldset">
+          <label class="label">Name</label>
+          <input class="input w-full" type="text" name="name" data-slug-name value="{type.name}" required>
+          <label class="label">Slug <span class="text-base-content/60">(blank = auto from name)</span></label>
+          <input class="input w-full" type="text" name="slug" data-slug-autofill value="{type.slug}">
+          <label class="label">Duration (minutes)</label>
+          <input class="input w-full" type="number" name="durationMinutes" value="{type.durationMinutes}" required>
+          <label class="label">Buffer before (minutes)</label>
+          <input class="input w-full" type="number" name="bufferBeforeMinutes" value="{type.bufferBeforeMinutes}" min="0">
+          <label class="label">Buffer after (minutes)</label>
+          <input class="input w-full" type="number" name="bufferAfterMinutes" value="{type.bufferAfterMinutes}" min="0">
+          <label class="label">Slot interval (minutes, blank = back-to-back)</label>
+          <input class="input w-full" type="number" name="slotIntervalMinutes" value="{#if type.slotIntervalMinutes}{type.slotIntervalMinutes}{/if}">
+          <label class="label">Min scheduling notice (minutes)</label>
+          <input class="input w-full" type="number" name="minNoticeMinutes" value="{type.minNoticeMinutes}" required>
+          <label class="label">Booking horizon (days)</label>
+          <input class="input w-full" type="number" name="horizonDays" value="{type.horizonDays}" required>
+          <label class="label">Location</label>
+          <select class="select w-full" name="locationType">
+            {#for loc in locationTypes}
+              <option value="{loc}"{#if type.locationType == loc} selected{/if}>{display:of(loc)}</option>
+            {/for}
+          </select>
+          <label class="label">Location detail (phone / address / custom; ignored for Google Meet)</label>
+          <input class="input w-full" type="text" name="locationDetail" value="{#if type.locationDetail}{type.locationDetail}{/if}">
+          <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="secret" class="checkbox checkbox-sm"{#if type.secret} checked{/if}> Secret (hidden from public landing)</label>
+          <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="requiresApproval" class="checkbox checkbox-sm"{#if type.requiresApproval} checked{/if}> Requires owner approval</label>
+          <script>
+          (function () {
+            var form = document.currentScript.closest('form');
+            var name = form.querySelector('[data-slug-name]');
+            var slug = form.querySelector('[data-slug-autofill]');
+            var edited = slug.value.length > 0;
+            slug.addEventListener('input', function () { edited = true; });
+            name.addEventListener('input', function () {
+              if (edited) { return; }
+              slug.value = name.value.toLowerCase().normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            });
+          })();
+          </script>
+          <button type="submit" class="btn btn-primary mt-2">Save changes</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="checkbox">
+      <div class="collapse-title font-semibold">Booking fields</div>
+      <div class="collapse-content">
+        <p class="text-sm text-base-content/70 mb-2">These are asked only for this meeting type, in addition to the always-present name and email.</p>
+        <div class="space-y-2 mb-3">
+        {#for f in fields}
+          <div class="card bg-base-200 border border-base-300"><div class="card-body py-3 gap-1">
+            <h3 class="font-semibold flex items-center gap-2">{f.label}{#if f.required} <span class="badge badge-primary badge-sm">required</span>{/if}</h3>
+            <p class="text-sm text-base-content/70"><code>{f.fieldKey}</code> &middot; {f.type.display} &middot; position {f.position}</p>
+            <form method="post" action="/admin/meeting-types/{type.id}/booking-fields/{f.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+          </div></div>
         {/for}
-      </select>
-    </label>
-    <label>Location detail (phone / address / custom; ignored for Google Meet)
-      <input type="text" name="locationDetail" value="{#if type.locationDetail}{type.locationDetail}{/if}"></label>
-    <label><input type="checkbox" name="secret"{#if type.secret} checked{/if}> Secret (hidden from public landing)</label>
-    <label><input type="checkbox" name="requiresApproval"{#if type.requiresApproval} checked{/if}> Requires owner approval</label>
-    <script>
-    (function () {
-      var form = document.currentScript.closest('form');
-      var name = form.querySelector('[data-slug-name]');
-      var slug = form.querySelector('[data-slug-autofill]');
-      var edited = slug.value.length > 0;
-      slug.addEventListener('input', function () { edited = true; });
-      name.addEventListener('input', function () {
-        if (edited) { return; }
-        slug.value = name.value.toLowerCase().normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '');
-      });
-    })();
-    </script>
-    <button type="submit">Save changes</button>
-  </form>
+        </div>
+        <form method="post" action="/admin/meeting-types/{type.id}/booking-fields" class="fieldset">
+          <label class="label">Label</label>
+          <input class="input w-full" type="text" name="label" required>
+          <label class="label">Field key</label>
+          <input class="input w-full" type="text" name="fieldKey" required>
+          <label class="label">Type</label>
+          <select class="select w-full" name="type">{#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}</select>
+          <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="required" class="checkbox checkbox-sm"> Required</label>
+          <label class="label">Position</label>
+          <input class="input w-full" type="number" name="position" value="0" required>
+          <button type="submit" class="btn btn-primary mt-2">Add field</button>
+        </form>
+      </div>
+    </div>
 
-  <h2>Booking fields</h2>
-  <p>These are asked only for this meeting type, in addition to the always-present name and email.</p>
-  {#for f in fields}
-    <article>
-      <h3>{f.label}{#if f.required} <span class="badge">required</span>{/if}</h3>
-      <p><code>{f.fieldKey}</code> &middot; {f.type.display} &middot; position {f.position}</p>
-      <form method="post" action="/admin/meeting-types/{type.id}/booking-fields/{f.id}/delete" style="display:inline">
-        <button type="submit" class="secondary">Delete</button>
-      </form>
-    </article>
-  {/for}
-  <form method="post" action="/admin/meeting-types/{type.id}/booking-fields">
-    <label>Label <input type="text" name="label" required></label>
-    <label>Field key <input type="text" name="fieldKey" required></label>
-    <label>Type
-      <select name="type">
-        {#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}
-      </select>
-    </label>
-    <label><input type="checkbox" name="required"> Required</label>
-    <label>Position <input type="number" name="position" value="0" required></label>
-    <button type="submit">Add field</button>
-  </form>
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="checkbox">
+      <div class="collapse-title font-semibold">Working hours</div>
+      <div class="collapse-content">
+        <p class="text-sm text-base-content/70 mb-2">Weekly hours for this meeting type. When set, they replace the global default hours for this type.</p>
+        <div class="space-y-2 mb-3">
+        {#for r in rules}
+          <div class="card bg-base-200 border border-base-300"><div class="card-body py-3 flex-row items-center justify-between">
+            <p><strong>{r.dayOfWeek.display}</strong> {r.startTime} &ndash; {r.endTime}</p>
+            <form method="post" action="/admin/meeting-types/{type.id}/availability/{r.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+          </div></div>
+        {/for}
+        </div>
+        <form method="post" action="/admin/meeting-types/{type.id}/availability" class="fieldset">
+          <label class="label">Day</label>
+          <select class="select w-full" name="dayOfWeek">{#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}</select>
+          <label class="label">Start</label>
+          <input class="input w-full" type="time" name="startTime" value="09:00" required>
+          <label class="label">End</label>
+          <input class="input w-full" type="time" name="endTime" value="17:00" required>
+          <button type="submit" class="btn btn-primary mt-2">Add rule</button>
+        </form>
+      </div>
+    </div>
 
-  <h2>Working hours</h2>
-  <p>Weekly hours for this meeting type. When set, they replace the global default hours for this type.</p>
-  {#for r in rules}
-    <article>
-      <p><strong>{r.dayOfWeek.display}</strong> {r.startTime} &ndash; {r.endTime}</p>
-      <form method="post" action="/admin/meeting-types/{type.id}/availability/{r.id}/delete" style="display:inline">
-        <button type="submit" class="secondary">Delete</button>
-      </form>
-    </article>
-  {/for}
-  <form method="post" action="/admin/meeting-types/{type.id}/availability">
-    <label>Day
-      <select name="dayOfWeek">
-        {#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}
-      </select>
-    </label>
-    <label>Start <input type="time" name="startTime" value="09:00" required></label>
-    <label>End <input type="time" name="endTime" value="17:00" required></label>
-    <button type="submit">Add rule</button>
-  </form>
-
-  <h2>Date overrides</h2>
-  <p>An override REPLACES this date's normal hours for this meeting type. Leave the windows blank to mark the date as a day off.</p>
-  {#for o in overrides}
-    <article>
-      <p><strong>{o.overrideDate}</strong></p>
-      {#if o.windows.isEmpty()}
-        <p><span class="badge">day off</span> (blocked)</p>
-      {#else}
-        <ul>{#for w in o.windows}<li>{w.startTime} &ndash; {w.endTime}</li>{/for}</ul>
-      {/if}
-      <form method="post" action="/admin/meeting-types/{type.id}/date-overrides/{o.id}/delete" style="display:inline">
-        <button type="submit" class="secondary">Delete</button>
-      </form>
-    </article>
-  {/for}
-  <form method="post" action="/admin/meeting-types/{type.id}/date-overrides">
-    <label>Date <input type="date" name="date" required></label>
-    <fieldset>
-      <legend>Bookable windows (leave all blank = day off)</legend>
-      <label>Window 1 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
-      <label>Window 2 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
-      <label>Window 3 <input type="time" name="windowStart"> to <input type="time" name="windowEnd"></label>
-    </fieldset>
-    <button type="submit">Save override</button>
-  </form>
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="checkbox">
+      <div class="collapse-title font-semibold">Date overrides</div>
+      <div class="collapse-content">
+        <p class="text-sm text-base-content/70 mb-2">An override REPLACES this date's normal hours for this meeting type. Leave the windows blank to mark the date as a day off.</p>
+        <div class="space-y-2 mb-3">
+        {#for o in overrides}
+          <div class="card bg-base-200 border border-base-300"><div class="card-body py-3 gap-1">
+            <p><strong>{o.overrideDate}</strong></p>
+            {#if o.windows.isEmpty()}
+              <p><span class="badge badge-ghost badge-sm">day off</span> (blocked)</p>
+            {#else}
+              <ul class="list-disc ml-5">{#for w in o.windows}<li>{w.startTime} &ndash; {w.endTime}</li>{/for}</ul>
+            {/if}
+            <form method="post" action="/admin/meeting-types/{type.id}/date-overrides/{o.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+          </div></div>
+        {/for}
+        </div>
+        <form method="post" action="/admin/meeting-types/{type.id}/date-overrides" class="fieldset">
+          <label class="label">Date</label>
+          <input class="input w-full" type="date" name="date" required>
+          <fieldset class="fieldset border border-base-300 rounded-box p-3 mt-2">
+            <legend class="fieldset-legend">Bookable windows (leave all blank = day off)</legend>
+            <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+            <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+            <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+          </fieldset>
+          <button type="submit" class="btn btn-primary mt-2">Save override</button>
+        </form>
+      </div>
+    </div>
+  </div>
 {/include}

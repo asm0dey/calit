@@ -1,20 +1,20 @@
 {@java.util.List<com.calit.booking.Booking> pending}
 {#include adminBase title="Admin — Pending approvals" pendingCount=pending.size() active="pending"}
-  <h1>Pending approvals</h1>
+  <h1 class="text-2xl font-bold mb-4">Pending approvals</h1>
   {#if pending.isEmpty()}
-    <p>No requests are awaiting approval.</p>
+    <div class="alert">No requests are awaiting approval.</div>
   {#else}
+    <div class="space-y-2">
     {#for b in pending}
-      <article>
+      <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 gap-2">
         <p><strong>{b.inviteeName}</strong> ({b.inviteeEmail})</p>
-        <p>{b.startUtc} UTC</p>
-        <form method="post" action="/admin/bookings/{b.id}/approve" style="display:inline">
-          <button type="submit">Approve</button>
-        </form>
-        <form method="post" action="/admin/bookings/{b.id}/decline" style="display:inline">
-          <button type="submit" class="secondary">Decline</button>
-        </form>
-      </article>
+        <p class="text-sm text-base-content/70">{b.startUtc} UTC</p>
+        <div class="flex gap-2">
+          <form method="post" action="/admin/bookings/{b.id}/approve"><button type="submit" class="btn btn-primary btn-sm">Approve</button></form>
+          <form method="post" action="/admin/bookings/{b.id}/decline"><button type="submit" class="btn btn-error btn-outline btn-sm">Decline</button></form>
+        </div>
+      </div></div>
     {/for}
+    </div>
   {/if}
 {/include}

@@ -1,12 +1,15 @@
 {@java.lang.Long pendingCount}
 {#include adminBase title="Admin — Google" pendingCount=pendingCount active="google"}
-  <h1>Google Calendar</h1>
-  <p>Connect your Google account so calit can read your busy times and create Meet events.</p>
-  <p><a role="button" href="/api/google/connect">Connect Google</a></p>
+  <h1 class="text-2xl font-bold mb-2">Google Calendar</h1>
+  <p class="text-base-content/70 mb-4">Connect your Google account so calit can read your busy times and create Meet events.</p>
 
-  <h2>Calendars</h2>
-  <p>After connecting, choose which calendars to read for conflicts and which one to write events to.</p>
-  <ul>
-    <li><a href="/api/google/calendars">List my calendars</a></li>
-  </ul>
+  <div class="card bg-base-100 border border-base-300 max-w-lg">
+    <div class="card-body">
+      <a role="button" class="btn btn-primary" href="/api/google/connect">Connect Google</a>
+      <div class="divider"></div>
+      <h2 class="text-lg font-semibold">Calendars</h2>
+      <p class="text-sm text-base-content/70">After connecting, choose which calendars to read for conflicts and which one to write events to.</p>
+      <a role="button" class="btn btn-outline btn-sm w-fit" href="/api/google/calendars">List my calendars</a>
+    </div>
+  </div>
 {/include}
