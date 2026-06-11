@@ -1,11 +1,6 @@
 package com.calit.user;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
-import io.quarkus.security.jpa.Password;
-import io.quarkus.security.jpa.PasswordType;
-import io.quarkus.security.jpa.Roles;
-import io.quarkus.security.jpa.UserDefinition;
-import io.quarkus.security.jpa.Username;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -15,25 +10,26 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/** DB-backed application user and the security-jpa @UserDefinition identity store. */
+/**
+ * DB-backed application user. Authentication is handled by {@link AppUserIdentityProvider}
+ * (a custom IdentityProvider verifying argon2id hashes via PasswordHasher), so this is a
+ * plain Panache entity — NOT a security-jpa @UserDefinition (that generated a competing
+ * Elytron provider that raced ours and intermittently rejected valid logins).
+ */
 @Entity
 @Table(name = "app_user")
-@UserDefinition
 public class AppUser extends PanacheEntityBase {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
-    @Username
     @Column(unique = true, nullable = false)
     public String username;
 
-    @Password(value = PasswordType.CUSTOM, provider = Argon2PasswordProvider.class)
     @Column(name = "password_hash", nullable = false)
     public String passwordHash;
 
-    @Roles
     @Column(nullable = false)
     public String roles;
 
@@ -57,10 +53,6 @@ public class AppUser extends PanacheEntityBase {
         return admin ? "user,admin" : "user";
     }
 
-    /**
-     * Factory for a new user. Normalizes the username, syncs roles with isAdmin, and stamps
-     * created_at. Lifecycle flags default to false (caller sets them as needed before persist).
-     */
     public static AppUser create(String username, String passwordHash, boolean admin) {
         AppUser u = new AppUser();
         u.username = Usernames.normalize(username);

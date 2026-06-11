@@ -43,7 +43,10 @@
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-qute</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-rest-qute</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-reactive-routes</artifactId></dependency>
-    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-security-jpa</artifactId></dependency>
+    <!-- Core security runtime: provides the IdentityProvider SPI + QuarkusSecurityIdentity
+         for our custom AppUserIdentityProvider. security-jpa was dropped (its generated
+         Elytron provider raced ours and intermittently rejected valid logins). -->
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-security</artifactId></dependency>
 
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-junit5</artifactId><scope>test</scope></dependency>
     <dependency><groupId>io.rest-assured</groupId><artifactId>rest-assured</artifactId><scope>test</scope></dependency>
