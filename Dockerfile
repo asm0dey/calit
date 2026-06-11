@@ -1,5 +1,16 @@
 # syntax=docker/dockerfile:1
 
+# --- CSS stage: compile Tailwind + daisyUI with Bun (no JS ships at runtime) ---
+FROM oven/bun:1 AS css
+WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+# Templates are needed so Tailwind's @source can scan them for class names.
+COPY src/main/css/ src/main/css/
+COPY src/main/resources/templates/ src/main/resources/templates/
+RUN bun run css:build
+# Output: /app/src/main/resources/META-INF/resources/calit.css
+
 # --- Build stage: BellSoft Liberica JDK 25 + the Maven wrapper (no Maven in the image) ---
 FROM bellsoft/liberica-runtime-container:jdk-26-musl AS build
 WORKDIR /build
@@ -13,6 +24,8 @@ RUN ./mvnw -B -q -DskipTests dependency:go-offline
 # (a Docker-managed Postgres), which is not available inside this build. Run `./mvnw test`
 # on the host (with Docker running) before building the image.
 COPY src/ src/
+# Overlay the Bun-compiled stylesheet (gitignored, so not in the COPY above).
+COPY --from=css /app/src/main/resources/META-INF/resources/calit.css src/main/resources/META-INF/resources/calit.css
 RUN ./mvnw -B -q -DskipTests clean package
 
 # --- Runtime stage: BellSoft minimal musl runtime container (production) ---
