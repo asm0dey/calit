@@ -221,10 +221,10 @@ class AvailableSlotsTest {
         // Idempotent upsert: a non-@TestTransaction REST test (MeetingTypeResourceTest PUT /api/settings)
         // may have committed the singleton row before this suite runs, so reuse it if present rather
         // than re-inserting the same primary key (which would violate owner_settings_pkey).
-        OwnerSettings s = OwnerSettings.get();
+        OwnerSettings s = OwnerSettings.forOwner(1L);
         if (s == null) {
             s = new OwnerSettings();
-            s.id = OwnerSettings.SINGLETON_ID;
+            s.ownerId = 1L;
         }
         s.ownerName = "Owner";
         s.ownerEmail = "owner@example.com";

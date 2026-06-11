@@ -33,8 +33,8 @@ class BookPageTest {
         // Idempotent across the multiple seed() calls in this class (committed tx, fixed slug).
         BookingField.delete("meetingTypeId in (select id from MeetingType where slug = ?1)", "book-page");
         MeetingType.delete("slug", "book-page");
-        OwnerSettings s = OwnerSettings.get();
-        if (s == null) { s = new OwnerSettings(); s.id = OwnerSettings.SINGLETON_ID; }
+        OwnerSettings s = OwnerSettings.forOwner(1L);
+        if (s == null) { s = new OwnerSettings(); s.ownerId = 1L; }
         s.ownerName = "Owner"; s.ownerEmail = "owner@example.com"; s.timezone = "Europe/Amsterdam";
         s.persist();
 
@@ -61,8 +61,8 @@ class BookPageTest {
     /** A PHONE-located, approval-requiring type to exercise features 13 + 14a wording. */
     @Transactional
     void seedApprovalPhoneType() {
-        OwnerSettings s = OwnerSettings.get();
-        if (s == null) { s = new OwnerSettings(); s.id = OwnerSettings.SINGLETON_ID; }
+        OwnerSettings s = OwnerSettings.forOwner(1L);
+        if (s == null) { s = new OwnerSettings(); s.ownerId = 1L; }
         s.ownerName = "Owner"; s.ownerEmail = "owner@example.com"; s.timezone = "Europe/Amsterdam";
         s.persist();
 

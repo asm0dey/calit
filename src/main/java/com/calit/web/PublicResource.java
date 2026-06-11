@@ -93,34 +93,45 @@ public class PublicResource {
     /** One day's worth of selectable slots: ISO date (for the JS calendar), a human label, and the slots. */
     public record DaySlots(String isoDate, String label, java.util.List<SlotView> slots) {}
 
+    /**
+     * Resolve a meeting type by slug, globally, regardless of owner.
+     * Phase 3 replaces this global lookup with /{user}/{slug} owner resolution.
+     */
+    private static MeetingType findBySlugGlobal(String slug) {
+        return MeetingType.find("slug", slug).firstResult();
+    }
+
     @GET
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance landing() {
+        // Phase 3 replaces this global lookup with /{user}/{slug} owner resolution.
         // listPublic() = active && !secret — secret types never reach this page.
-        return Templates.landing(MeetingType.listPublic());
+        return Templates.landing(MeetingType.<MeetingType>list("active = true and secret = false"));
     }
 
     @GET
     @Path("/book/{slug}")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance book(@PathParam("slug") String slug) {
-        MeetingType type = MeetingType.findBySlug(slug); // secret types reachable by direct link
+        // Phase 3 replaces this global lookup with /{user}/{slug} owner resolution.
+        MeetingType type = findBySlugGlobal(slug); // secret types reachable by direct link
         if (type == null) {
             throw new NotFoundException("No meeting type with slug " + slug);
         }
-        if (OwnerSettings.get() == null) {
+        OwnerSettings settings = OwnerSettings.forOwner(type.ownerId);
+        if (settings == null) {
             return Templates.notReady();
         }
         List<DaySlots> byDate = daySlots(type);
         // Resolved EXTRA fields (per-type-else-global), already ordered by position.
-        List<BookingField> fields = BookingField.formFor(type.id);
+        List<BookingField> fields = BookingField.formFor(type.ownerId, type.id);
         // turnstileEnabled drives the widget; site key is public (rendered). The approval
         // flag (type.requiresApproval) + locationType/locationDetail are read off `type`
         // directly in the template for the button wording + location line.
         return Templates.book(type, byDate, fields, null,
                               Layout.TZ_BAR, Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT,
                               turnstileEnabled, turnstileSiteKey(), calendarPort.isConnected(),
-                              OwnerSettings.get().ownerName);
+                              settings.ownerName);
     }
 
     private String turnstileSiteKey() {
@@ -138,11 +149,13 @@ public class PublicResource {
                                           @RestForm String website,                 // honeypot
                                           @RestForm("cf-turnstile-response") String turnstileToken,
                                           MultivaluedMap<String, String> form) {
-        MeetingType type = MeetingType.findBySlug(slug);
+        // Phase 3 replaces this global lookup with /{user}/{slug} owner resolution.
+        MeetingType type = findBySlugGlobal(slug);
         if (type == null) {
             throw new NotFoundException("No meeting type with slug " + slug);
         }
-        if (OwnerSettings.get() == null) {
+        OwnerSettings settings = OwnerSettings.forOwner(type.ownerId);
+        if (settings == null) {
             return Templates.notReady();
         }
 
@@ -160,18 +173,18 @@ public class PublicResource {
             // book(...) enforces required fields AND the abuse guards (Turnstile + honeypot +
             // per-email/day cap) server-side; the handler just forwards the two raw inputs.
             booking = bookingService.book(
-                    slug, Instant.parse(startUtc), inviteeName, inviteeEmail, answers,
+                    type.ownerId, slug, Instant.parse(startUtc), inviteeName, inviteeEmail, answers,
                     turnstileToken, website);
         } catch (BookingValidationException | AbuseException | RateLimitException
                  | BookingConflictException be) {
             // Required-field 422 OR an abuse-guard rejection (filled honeypot / failed Turnstile /
             // per-email cap) / slot conflict. Re-render the form inline with the message; do NOT
             // 500, NOT confirm. (Plan 3 has no common BookingException superclass, so catch each.)
-            return Templates.book(type, daySlots(type), BookingField.formFor(type.id),
+            return Templates.book(type, daySlots(type), BookingField.formFor(type.ownerId, type.id),
                                   be.getMessage(),
                                   Layout.TZ_BAR, Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT,
                                   turnstileEnabled, turnstileSiteKey(), calendarPort.isConnected(),
-                                  OwnerSettings.get().ownerName);
+                                  settings.ownerName);
         }
         return confirmationPage(booking, type);
     }
@@ -180,7 +193,7 @@ public class PublicResource {
     private TemplateInstance confirmationPage(Booking booking, MeetingType type) {
         // Server fallback label is owner-tz; the page also carries the booked instant as a
         // data-utc attribute so the shared script can relabel it to the viewer's zone.
-        ZoneId zone = ZoneId.of(OwnerSettings.get().timezone);
+        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         String when = booking.startUtc.atZone(zone)
                 .format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
         String startUtcIso = booking.startUtc.toString(); // absolute instant for data-utc
@@ -201,11 +214,12 @@ public class PublicResource {
         if (booking == null) {
             throw new NotFoundException("No booking for token " + manageToken); // unknown token → 404
         }
-        if (OwnerSettings.get() == null) {
+        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        OwnerSettings settings = OwnerSettings.forOwner(type.ownerId);
+        if (settings == null) {
             return Templates.notReady();
         }
-        MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        ZoneId zone = ZoneId.of(OwnerSettings.get().timezone);
+        ZoneId zone = ZoneId.of(settings.timezone);
         List<DaySlots> byDate = daySlots(type);
         String current = booking.startUtc.atZone(zone)
                 .format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
@@ -239,7 +253,7 @@ public class PublicResource {
 
     /** Available slots as an ordered per-day list (ISO date + label), chronological. */
     private List<DaySlots> daySlots(MeetingType type) {
-        ZoneId zone = ZoneId.of(OwnerSettings.get().timezone);
+        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         LocalDate from = LocalDate.now(zone);
         // Show the full configured booking horizon; availableSlots(...) also clamps to the same
         // horizon (now + horizonDays) and to min-notice, so this only sets the candidate range.

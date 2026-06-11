@@ -18,8 +18,11 @@ public class GoogleCalendar extends PanacheEntityBase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
+    @Column(name = "owner_id", nullable = false)
+    public Long ownerId;
+
     /** The Google-side calendar id (often an email address or an opaque id). */
-    @Column(name = "google_calendar_id", nullable = false, unique = true)
+    @Column(name = "google_calendar_id", nullable = false)
     public String googleCalendarId;
 
     @Column(nullable = false)
@@ -29,22 +32,27 @@ public class GoogleCalendar extends PanacheEntityBase {
     @Column(name = "read_for_busy", nullable = false)
     public boolean readForBusy = false;
 
-    /** Create new booking events on this calendar. At most one row may have this true. */
+    /** Create new booking events on this calendar. At most one row per owner may have this true. */
     @Column(name = "write_target", nullable = false)
     public boolean writeTarget = false;
 
-    /** All calendars whose busy time should be subtracted from availability. */
-    public static List<GoogleCalendar> readForBusy() {
-        return list("readForBusy = true");
+    /** This owner's calendars whose busy time should be subtracted from availability. */
+    public static List<GoogleCalendar> readForBusy(Long ownerId) {
+        return list("ownerId = ?1 and readForBusy = true", ownerId);
     }
 
-    /** The single calendar new events are written to, or null if none is selected yet. */
-    public static GoogleCalendar writeTarget() {
-        return find("writeTarget = true").firstResult();
+    /** This owner's single write-target calendar, or null if none selected yet. */
+    public static GoogleCalendar writeTarget(Long ownerId) {
+        return find("ownerId = ?1 and writeTarget = true", ownerId).firstResult();
     }
 
-    /** Upsert by Google calendar id; returns the managed row. */
-    public static GoogleCalendar findByGoogleId(String googleCalendarId) {
-        return find("googleCalendarId", googleCalendarId).firstResult();
+    /** This owner's calendar with the given Google id, or null. */
+    public static GoogleCalendar findByGoogleId(Long ownerId, String googleCalendarId) {
+        return find("ownerId = ?1 and googleCalendarId = ?2", ownerId, googleCalendarId).firstResult();
+    }
+
+    /** Remove all of this owner's calendar selections (used before re-saving). */
+    public static long deleteForOwner(Long ownerId) {
+        return delete("ownerId", ownerId);
     }
 }

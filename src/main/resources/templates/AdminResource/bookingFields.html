@@ -10,13 +10,13 @@
     <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 gap-1">
       <h3 class="font-semibold flex items-center gap-2">{f.label}{#if f.required}<span class="badge badge-primary badge-sm">required</span>{/if}</h3>
       <p class="text-sm text-base-content/70"><code>{f.fieldKey}</code> &middot; {f.type.display} &middot; position {f.position}</p>
-      <form method="post" action="/admin/booking-fields/{f.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+      <form method="post" action="/me/booking-fields/{f.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
     </div></div>
   {/for}
   </div>
 
   <h2 class="text-xl font-semibold mb-3">Add a field</h2>
-  <form method="post" action="/admin/booking-fields" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
+  <form method="post" action="/me/booking-fields" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
     <label class="label">Label</label>
     <input class="input w-full" type="text" name="label" required>
     <label class="label">Field key</label>

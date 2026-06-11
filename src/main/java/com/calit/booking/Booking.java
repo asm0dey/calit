@@ -24,6 +24,9 @@ public class Booking extends PanacheEntityBase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
+    @Column(name = "owner_id", nullable = false)
+    public Long ownerId;
+
     @Column(name = "meeting_type_id", nullable = false)
     public Long meetingTypeId;
 
@@ -71,13 +74,15 @@ public class Booking extends PanacheEntityBase {
     public Map<String, String> answers = new java.util.HashMap<>();
 
     /**
-     * All HELD (PENDING or CONFIRMED) bookings whose [startUtc, endUtc) overlaps the
-     * window [from, to). These are the bookings that block the calendar (a pending
+     * This owner's HELD (PENDING or CONFIRMED) bookings whose [startUtc, endUtc) overlaps the
+     * window [from, to). These are the bookings that block THIS OWNER's calendar (a pending
      * approval request holds its slot too — feature 14). CANCELLED/DECLINED are excluded.
+     * Owner-scoped: owners are isolated, so another owner's bookings are never in this set.
      * Overlap predicate: startUtc < to AND from < endUtc.
      */
-    public static List<Booking> heldOverlapping(Instant from, Instant to) {
-        return list("status in ?1 and startUtc < ?2 and ?3 < endUtc",
+    public static List<Booking> heldOverlapping(Long ownerId, Instant from, Instant to) {
+        return list("ownerId = ?1 and status in ?2 and startUtc < ?3 and ?4 < endUtc",
+                ownerId,
                 List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED), to, from);
     }
 

@@ -37,8 +37,8 @@ class AdminPendingTest {
     /** Seeds an approval-type meeting and books it → the booking lands PENDING. Returns its id. */
     @Transactional
     Long seedPendingBooking() {
-        OwnerSettings s = OwnerSettings.get();
-        if (s == null) { s = new OwnerSettings(); s.id = OwnerSettings.SINGLETON_ID; }
+        OwnerSettings s = OwnerSettings.forOwner(1L);
+        if (s == null) { s = new OwnerSettings(); s.ownerId = 1L; }
         s.ownerName = "Owner"; s.ownerEmail = "owner@example.com"; s.timezone = "Europe/Amsterdam";
         s.persist();
 
@@ -57,7 +57,7 @@ class AdminPendingTest {
         }
         var slot = bookingService.availableSlots(t, java.time.LocalDate.now(),
                 java.time.LocalDate.now().plusDays(14)).get(0);
-        Booking b = bookingService.book(slug, slot.start().toInstant(),
+        Booking b = bookingService.book(1L, slug, slot.start().toInstant(),
                 "Pending Pat", "pat@example.com", java.util.Map.of(), "", "");
         return b.id; // status == PENDING
     }

@@ -99,6 +99,14 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${surefire-plugin.version}</version>
         <configuration>
+          <!-- QuarkusTest classes each boot a full app + Testcontainers. Running many of them in a
+               single reused fork accumulates Quarkus deployment classloaders and OOMs the JVM during
+               augmentation. Start a fresh fork per test class and give it a generous heap (metaspace
+               is left uncapped — Quarkus augmentation is metaspace-heavy). The exit timeout is raised
+               so a slow Vert.x/Quarkus shutdown is not misreported as a fork error. -->
+          <reuseForks>false</reuseForks>
+          <argLine>-Xms512m -Xmx6g</argLine>
+          <forkedProcessExitTimeoutInSeconds>120</forkedProcessExitTimeoutInSeconds>
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
           </systemPropertyVariables>

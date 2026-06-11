@@ -18,13 +18,13 @@ class AdminSettingsTest {
     /**
      * Reads {@code ownerNotificationsEnabled} straight from the DB, bypassing the test thread's
      * first-level cache. The POST commits in its own request transaction; a plain
-     * {@code OwnerSettings.get()} here would return the stale entity cached by an earlier read in
+     * {@code OwnerSettings.forOwner(1L)} here would return the stale entity cached by an earlier read in
      * the same non-transactional test method, so we clear the context and re-query.
      */
     @Transactional
     boolean readNotificationsEnabled() {
         em.clear();
-        return com.calit.domain.OwnerSettings.get().ownerNotificationsEnabled;
+        return com.calit.domain.OwnerSettings.forOwner(1L).ownerNotificationsEnabled;
     }
 
     @Test

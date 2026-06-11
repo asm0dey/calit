@@ -15,17 +15,20 @@ public class GoogleCalendarListPort implements CalendarListPort {
 
     private final GoogleTokenService tokens;
     private final GoogleCalendarClientFactory clientFactory;
+    private final com.calit.user.CurrentOwner currentOwner;
 
     @Inject
-    public GoogleCalendarListPort(GoogleTokenService tokens, GoogleCalendarClientFactory clientFactory) {
+    public GoogleCalendarListPort(GoogleTokenService tokens, GoogleCalendarClientFactory clientFactory,
+                                  com.calit.user.CurrentOwner currentOwner) {
         this.tokens = tokens;
         this.clientFactory = clientFactory;
+        this.currentOwner = currentOwner;
     }
 
     @Override
     public List<RemoteCalendar> listCalendars() {
         try {
-            var client = clientFactory.build(tokens.validAccessToken(Instant.now()));
+            var client = clientFactory.build(tokens.validAccessToken(currentOwner.id(), Instant.now()));
             List<CalendarListEntry> entries = client.calendarList().list().execute().getItems();
             if (entries == null) {
                 return List.of();

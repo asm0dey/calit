@@ -289,10 +289,10 @@ class EmailServiceTest {
                         boolean ownerNotificationsEnabled, LocationType locationType,
                         String locationDetail) {
         return QuarkusTransaction.requiringNew().call(() -> {
-            OwnerSettings s = OwnerSettings.get();
+            OwnerSettings s = OwnerSettings.forOwner(1L);
             if (s == null) {
                 s = new OwnerSettings();
-                s.id = OwnerSettings.SINGLETON_ID;
+                s.ownerId = 1L;
             }
             s.ownerName = "Owner";
             s.ownerEmail = OWNER_EMAIL;

@@ -59,9 +59,9 @@ class BookingResourceTest {
     @BeforeEach
     @Transactional
     void setup() {
-        if (OwnerSettings.get() == null) {
+        if (OwnerSettings.forOwner(1L) == null) {
             OwnerSettings s = new OwnerSettings();
-            s.id = OwnerSettings.SINGLETON_ID;
+            s.ownerId = 1L;
             s.ownerName = "Owner";
             s.ownerEmail = "owner@example.com";
             s.timezone = "Europe/Amsterdam";
@@ -163,6 +163,7 @@ class BookingResourceTest {
     void seedType(String slug) {
         QuarkusTransaction.requiringNew().run(() -> {
             MeetingType t = new MeetingType();
+            t.ownerId = 1L;
             t.name = slug;
             t.slug = slug;
             t.durationMinutes = 60;
@@ -172,6 +173,7 @@ class BookingResourceTest {
             t.requiresApproval = false;
             t.persist();
             AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = 1L;
             r.dayOfWeek = DAY.getDayOfWeek();
             r.startTime = LocalTime.of(9, 0);
             r.endTime = LocalTime.of(11, 0);
@@ -184,6 +186,7 @@ class BookingResourceTest {
     void seedTypeWithRequiredField(String slug, String fieldKey) {
         QuarkusTransaction.requiringNew().run(() -> {
             MeetingType t = new MeetingType();
+            t.ownerId = 1L;
             t.name = slug;
             t.slug = slug;
             t.durationMinutes = 60;
@@ -193,12 +196,14 @@ class BookingResourceTest {
             t.requiresApproval = false;
             t.persist();
             AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = 1L;
             r.dayOfWeek = DAY.getDayOfWeek();
             r.startTime = LocalTime.of(9, 0);
             r.endTime = LocalTime.of(11, 0);
             r.meetingTypeId = t.id;
             r.persist();
             BookingField f = new BookingField();
+            f.ownerId = 1L;
             f.meetingTypeId = t.id;
             f.fieldKey = fieldKey;
             f.label = "Company";

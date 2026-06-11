@@ -31,7 +31,12 @@ public class BookingResource {
     public Response create(BookRequest req) {
         // All abuse guards (Turnstile + honeypot + per-email/day cap) are enforced inside book().
         // The Plan 5 web layer forwards the cf-turnstile-response (turnstileToken) and website (honeypot) values.
-        Booking b = bookingService.book(req.slug(), Instant.parse(req.startUtc()),
+        // Phase 3 replaces this global lookup with /{user}/{slug} owner resolution.
+        com.calit.domain.MeetingType type = com.calit.domain.MeetingType.find("slug", req.slug()).firstResult();
+        if (type == null) {
+            throw new jakarta.ws.rs.NotFoundException("No meeting type with slug " + req.slug());
+        }
+        Booking b = bookingService.book(type.ownerId, req.slug(), Instant.parse(req.startUtc()),
                 req.inviteeName(), req.inviteeEmail(), req.answers(), req.turnstileToken(), req.honeypot());
         return Response.status(Response.Status.CREATED).entity(b).build();
     }

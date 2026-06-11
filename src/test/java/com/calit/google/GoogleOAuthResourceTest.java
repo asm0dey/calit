@@ -38,14 +38,14 @@ class GoogleOAuthResourceTest {
     void callbackExchangesCodeAndRedirectsToAdmin() {
         // Stateless CSRF: the mocked service accepts this state without any session.
         Mockito.when(tokenService.validateState(eq("good-state"), any(Instant.class))).thenReturn(true);
-        doNothing().when(tokenService).exchangeCode(eq("the-code"), any(Instant.class));
+        doNothing().when(tokenService).exchangeCode(any(), eq("the-code"), any(Instant.class));
 
         RestAssured.given().redirects().follow(false)
                 .when().get("/api/google/callback?code=the-code&state=good-state")
                 .then().statusCode(302)
-                .header("Location", containsString("/admin"));
+                .header("Location", containsString("/me"));
 
-        verify(tokenService).exchangeCode(eq("the-code"), any(Instant.class));
+        verify(tokenService).exchangeCode(any(), eq("the-code"), any(Instant.class));
     }
 
     @Test
@@ -56,7 +56,7 @@ class GoogleOAuthResourceTest {
         given().when().get("/api/google/callback?code=the-code&state=bad-state")
                 .then().statusCode(400).body(containsString("Invalid or expired OAuth state"));
 
-        verify(tokenService, Mockito.never()).exchangeCode(any(), any());
+        verify(tokenService, Mockito.never()).exchangeCode(any(), any(), any());
     }
 
     @Test

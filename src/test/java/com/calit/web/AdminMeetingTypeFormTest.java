@@ -43,7 +43,7 @@ class AdminMeetingTypeFormTest {
             .when().post("/admin/meeting-types")
             .then().statusCode(200);
 
-        MeetingType t = MeetingType.findBySlug(slug);
+        MeetingType t = MeetingType.findBySlug(1L, slug);
         assertNotNull(t);
         assertEquals(10, t.bufferBeforeMinutes);
         assertEquals(15, t.bufferAfterMinutes);
@@ -66,7 +66,7 @@ class AdminMeetingTypeFormTest {
             .when().post("/admin/meeting-types")
             .then().statusCode(200);
 
-        MeetingType t = MeetingType.findBySlug(Slugs.slugify(name));
+        MeetingType t = MeetingType.findBySlug(1L, Slugs.slugify(name));
         org.junit.jupiter.api.Assertions.assertNotNull(t);
     }
 
@@ -89,8 +89,8 @@ class AdminMeetingTypeFormTest {
                 .when().post("/admin/meeting-types")
                 .then().statusCode(200);
         }
-        org.junit.jupiter.api.Assertions.assertNotNull(MeetingType.findBySlug(base));
-        org.junit.jupiter.api.Assertions.assertNotNull(MeetingType.findBySlug(base + "-2"));
+        org.junit.jupiter.api.Assertions.assertNotNull(MeetingType.findBySlug(1L, base));
+        org.junit.jupiter.api.Assertions.assertNotNull(MeetingType.findBySlug(1L, base + "-2"));
     }
 
     @Test
@@ -137,7 +137,7 @@ class AdminMeetingTypeFormTest {
             .when().post("/admin/meeting-types")
             .then().statusCode(200);
 
-        MeetingType t = MeetingType.findBySlug(slug);
+        MeetingType t = MeetingType.findBySlug(1L, slug);
         assertNotNull(t);
         long count = com.calit.domain.AvailabilityRule.count("meetingTypeId = ?1", t.id);
         assertEquals(1, count); // only the Monday row, blank Tuesday skipped
@@ -163,7 +163,7 @@ class AdminMeetingTypeFormTest {
             .when().post("/admin/meeting-types")
             .then().statusCode(200);
 
-        MeetingType t = MeetingType.findBySlug(slug);
+        MeetingType t = MeetingType.findBySlug(1L, slug);
         assertNotNull(t);
         com.calit.domain.DateOverride o =
                 com.calit.domain.DateOverride.find("meetingTypeId = ?1", t.id).firstResult();
@@ -188,7 +188,7 @@ class AdminMeetingTypeFormTest {
             .when().post("/admin/meeting-types")
             .then().statusCode(200);
 
-        MeetingType t = MeetingType.findBySlug(slug);
+        MeetingType t = MeetingType.findBySlug(1L, slug);
         assertNotNull(t);
         assertEquals(0, com.calit.domain.AvailabilityRule.count("meetingTypeId = ?1", t.id));
     }

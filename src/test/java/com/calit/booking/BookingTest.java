@@ -19,6 +19,7 @@ class BookingTest {
     // and use its generated id (a literal id would violate the FK constraint — same pattern as AvailabilityRuleTest).
     private Long createMeetingType(String slug) {
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = slug;
         t.slug = slug;
         t.durationMinutes = 30;
@@ -31,6 +32,7 @@ class BookingTest {
     void persistsAndReadsBackAllFields() {
         Instant start = Instant.parse("2026-06-08T07:00:00Z");
         Booking b = new Booking();
+        b.ownerId = 1L;
         b.meetingTypeId = createMeetingType("all-fields-test");
         b.inviteeName = "Sam";
         b.inviteeEmail = "sam@example.com";
@@ -68,7 +70,7 @@ class BookingTest {
         persistBooking(base.plusSeconds(4500), base.plusSeconds(5400), BookingStatus.DECLINED);  // 08:15-08:30 declined, ignored
 
         // Window 06:00-08:00 catches the CONFIRMED + PENDING holds, not CANCELLED/DECLINED.
-        List<Booking> hits = Booking.heldOverlapping(
+        List<Booking> hits = Booking.heldOverlapping(1L,
                 base.minusSeconds(3600), base.plusSeconds(3600));
 
         assertEquals(2, hits.size());
@@ -93,6 +95,7 @@ class BookingTest {
 
     private void persistBooking(Instant start, Instant end, BookingStatus status, String token) {
         Booking b = new Booking();
+        b.ownerId = 1L;
         // meeting_type_id is a real FK; create a MeetingType using the token as a unique slug suffix.
         b.meetingTypeId = createMeetingType("bk-" + token.replace("-", ""));
         b.inviteeName = "X";

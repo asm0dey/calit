@@ -22,10 +22,13 @@ public class MeetingType extends PanacheEntityBase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
+    @Column(name = "owner_id", nullable = false)
+    public Long ownerId;
+
     @Column(nullable = false)
     public String name;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     public String slug;
 
     @Column(name = "duration_minutes", nullable = false)
@@ -76,12 +79,17 @@ public class MeetingType extends PanacheEntityBase {
         return (slotIntervalMinutes != null && slotIntervalMinutes > 0) ? slotIntervalMinutes : durationMinutes;
     }
 
-    public static MeetingType findBySlug(String slug) {
-        return find("slug", slug).firstResult();
+    public static MeetingType findBySlug(Long ownerId, String slug) {
+        return find("ownerId = ?1 and slug = ?2", ownerId, slug).firstResult();
     }
 
-    /** Active, non-secret types — what the public invitee landing page lists. */
-    public static List<MeetingType> listPublic() {
-        return list("active = true and secret = false");
+    /** Active, non-secret types for this owner — what their public landing page lists. */
+    public static List<MeetingType> listPublic(Long ownerId) {
+        return list("ownerId = ?1 and active = true and secret = false", ownerId);
+    }
+
+    /** Every type for this owner, including secret/inactive — the management listing. */
+    public static List<MeetingType> listForOwner(Long ownerId) {
+        return list("ownerId", ownerId);
     }
 }

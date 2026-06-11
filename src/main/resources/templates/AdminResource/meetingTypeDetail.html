@@ -7,7 +7,7 @@
 {@java.time.DayOfWeek[] daysOfWeek}
 {@java.lang.Long pendingCount}
 {#include adminBase title="Admin — {type.name}" pendingCount=pendingCount active="meetingTypes"}
-  <p class="mb-2"><a class="link link-hover text-sm" href="/admin/meeting-types">&larr; All meeting types</a></p>
+  <p class="mb-2"><a class="link link-hover text-sm" href="/me/meeting-types">&larr; All meeting types</a></p>
   <h1 class="text-2xl font-bold">{type.name}</h1>
   <p class="text-sm text-base-content/70 mb-4">/{type.slug} &middot; {type.durationMinutes} min &middot; {type.locationType.display}</p>
 
@@ -16,7 +16,7 @@
       <input type="checkbox" checked>
       <div class="collapse-title font-semibold">Basics</div>
       <div class="collapse-content">
-        <form method="post" action="/admin/meeting-types/{type.id}/edit" class="fieldset">
+        <form method="post" action="/me/meeting-types/{type.id}/edit" class="fieldset">
           <label class="label">Name</label>
           <input class="input w-full" type="text" name="name" data-slug-name value="{type.name}" required>
           <label class="label">Slug <span class="text-base-content/60">(blank = auto from name)</span></label>
@@ -74,11 +74,11 @@
           <div class="card bg-base-200 border border-base-300"><div class="card-body py-3 gap-1">
             <h3 class="font-semibold flex items-center gap-2">{f.label}{#if f.required} <span class="badge badge-primary badge-sm">required</span>{/if}</h3>
             <p class="text-sm text-base-content/70"><code>{f.fieldKey}</code> &middot; {f.type.display} &middot; position {f.position}</p>
-            <form method="post" action="/admin/meeting-types/{type.id}/booking-fields/{f.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+            <form method="post" action="/me/meeting-types/{type.id}/booking-fields/{f.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
           </div></div>
         {/for}
         </div>
-        <form method="post" action="/admin/meeting-types/{type.id}/booking-fields" class="fieldset">
+        <form method="post" action="/me/meeting-types/{type.id}/booking-fields" class="fieldset">
           <label class="label">Label</label>
           <input class="input w-full" type="text" name="label" required>
           <label class="label">Field key</label>
@@ -102,11 +102,11 @@
         {#for r in rules}
           <div class="card bg-base-200 border border-base-300"><div class="card-body py-3 flex-row items-center justify-between">
             <p><strong>{r.dayOfWeek.display}</strong> {r.startTime} &ndash; {r.endTime}</p>
-            <form method="post" action="/admin/meeting-types/{type.id}/availability/{r.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+            <form method="post" action="/me/meeting-types/{type.id}/availability/{r.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
           </div></div>
         {/for}
         </div>
-        <form method="post" action="/admin/meeting-types/{type.id}/availability" class="fieldset">
+        <form method="post" action="/me/meeting-types/{type.id}/availability" class="fieldset">
           <label class="label">Day</label>
           <select class="select w-full" name="dayOfWeek">{#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}</select>
           <label class="label">Start</label>
@@ -132,11 +132,11 @@
             {#else}
               <ul class="list-disc ml-5">{#for w in o.windows}<li>{w.startTime} &ndash; {w.endTime}</li>{/for}</ul>
             {/if}
-            <form method="post" action="/admin/meeting-types/{type.id}/date-overrides/{o.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+            <form method="post" action="/me/meeting-types/{type.id}/date-overrides/{o.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
           </div></div>
         {/for}
         </div>
-        <form method="post" action="/admin/meeting-types/{type.id}/date-overrides" class="fieldset">
+        <form method="post" action="/me/meeting-types/{type.id}/date-overrides" class="fieldset">
           <label class="label">Date</label>
           <input class="input w-full" type="date" name="date" required>
           <fieldset class="fieldset border border-base-300 rounded-box p-3 mt-2">

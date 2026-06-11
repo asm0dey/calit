@@ -9,13 +9,13 @@
   {#for r in rules}
     <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 flex-row items-center justify-between">
       <p><strong>{r.dayOfWeek.display}</strong> {r.startTime} &ndash; {r.endTime} &middot; {#if r.meetingTypeId}type #{r.meetingTypeId}{#else}global{/if}</p>
-      <form method="post" action="/admin/availability/{r.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+      <form method="post" action="/me/availability/{r.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
     </div></div>
   {/for}
   </div>
 
   <h2 class="text-xl font-semibold mb-3">Add a rule</h2>
-  <form method="post" action="/admin/availability" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
+  <form method="post" action="/me/availability" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
     <label class="label">Day</label>
     <select class="select w-full" name="dayOfWeek">{#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}</select>
     <label class="label">Start</label>

@@ -55,7 +55,7 @@ class RescheduleCancelTest {
         when(calendarPort.createEvent(anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-r", "https://meet.google.com/r-r-r", "h"));
 
-        Booking b = bookingService.book("resched", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "");
+        Booking b = bookingService.book(1L, "resched", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "");
 
         // Reschedule is keyed by the invitee's manage-token, not the numeric id.
         bookingService.reschedule(b.manageToken, SLOT_10);
@@ -85,7 +85,7 @@ class RescheduleCancelTest {
         // Book PENDING, then approve so it has a CONFIRMED Google event to delete on reschedule.
         when(calendarPort.createEvent(anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-ra", "https://meet.google.com/ra-1-2", "h"));
-        Booking b = bookingService.book("resched-approval", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "");
+        Booking b = bookingService.book(1L, "resched-approval", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "");
         bookingService.approve(b.id);
 
         bookingService.reschedule(b.manageToken, SLOT_10);
@@ -109,7 +109,7 @@ class RescheduleCancelTest {
         when(calendarPort.createEvent(anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-c", "https://meet.google.com/c-c-c", "h"));
 
-        Booking b = bookingService.book("cancel", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "");
+        Booking b = bookingService.book(1L, "cancel", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "");
         assertTrue(bookingService.availableSlots(t, DAY, DAY).stream()
                 .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
 
@@ -130,10 +130,10 @@ class RescheduleCancelTest {
         // Idempotent upsert: a non-@TestTransaction REST test (MeetingTypeResourceTest PUT /api/settings)
         // may have committed the singleton row before this suite runs, so reuse it if present rather
         // than re-inserting the same primary key (which would violate owner_settings_pkey).
-        OwnerSettings s = OwnerSettings.get();
+        OwnerSettings s = OwnerSettings.forOwner(1L);
         if (s == null) {
             s = new OwnerSettings();
-            s.id = OwnerSettings.SINGLETON_ID;
+            s.ownerId = 1L;
         }
         s.ownerName = "Owner";
         s.ownerEmail = "owner@example.com";
@@ -143,6 +143,7 @@ class RescheduleCancelTest {
 
     private MeetingType meetingTypeWithMondayWindow(String slug, boolean requiresApproval) {
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = slug;
         t.slug = slug;
         t.durationMinutes = 60;
@@ -152,6 +153,7 @@ class RescheduleCancelTest {
         t.requiresApproval = requiresApproval;
         t.persist();
         AvailabilityRule r = new AvailabilityRule();
+        r.ownerId = 1L;
         r.dayOfWeek = DAY.getDayOfWeek();
         r.startTime = LocalTime.of(9, 0);
         r.endTime = LocalTime.of(11, 0);

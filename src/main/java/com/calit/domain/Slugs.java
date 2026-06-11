@@ -21,23 +21,23 @@ public final class Slugs {
     }
 
     /**
-     * Returns {@code base} (or "meeting" if blank) made unique against existing meeting_type
-     * slugs by appending -2, -3, ... A row with id {@code excludeId} is ignored, so re-saving
-     * a type with its own current slug is allowed.
+     * Returns {@code base} (or "meeting" if blank) made unique against this OWNER's existing
+     * meeting_type slugs by appending -2, -3, ... A row with id {@code excludeId} is ignored, so
+     * re-saving a type with its own current slug is allowed.
      */
-    public static String uniqueMeetingTypeSlug(String base, Long excludeId) {
+    public static String uniqueMeetingTypeSlug(Long ownerId, String base, Long excludeId) {
         String root = (base == null || base.isBlank()) ? "meeting" : base;
         String candidate = root;
         int n = 1;
-        while (slugTaken(candidate, excludeId)) {
+        while (slugTaken(ownerId, candidate, excludeId)) {
             n++;
             candidate = root + "-" + n;
         }
         return candidate;
     }
 
-    private static boolean slugTaken(String slug, Long excludeId) {
-        MeetingType existing = MeetingType.findBySlug(slug);
+    private static boolean slugTaken(Long ownerId, String slug, Long excludeId) {
+        MeetingType existing = MeetingType.findBySlug(ownerId, slug);
         return existing != null && !existing.id.equals(excludeId);
     }
 }

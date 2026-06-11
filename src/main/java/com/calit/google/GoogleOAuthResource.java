@@ -15,10 +15,13 @@ import java.time.Instant;
 public class GoogleOAuthResource {
 
     private final GoogleTokenService tokenService;
+    private final com.calit.user.CurrentOwner currentOwner;
 
     @Inject
-    public GoogleOAuthResource(GoogleTokenService tokenService) {
+    public GoogleOAuthResource(GoogleTokenService tokenService,
+                               com.calit.user.CurrentOwner currentOwner) {
         this.tokenService = tokenService;
+        this.currentOwner = currentOwner;
     }
 
     /** Kick off the owner consent flow: 302 to Google. */
@@ -55,9 +58,9 @@ public class GoogleOAuthResource {
                     .entity("Missing authorization code")
                     .build();
         }
-        tokenService.exchangeCode(code, now);
+        tokenService.exchangeCode(currentOwner.id(), code, now);
         return Response.status(Response.Status.FOUND)
-                .location(URI.create("/admin"))
+                .location(URI.create("/me"))
                 .build();
     }
 }

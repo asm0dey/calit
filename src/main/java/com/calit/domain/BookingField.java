@@ -22,6 +22,9 @@ public class BookingField extends PanacheEntityBase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
+    @Column(name = "owner_id", nullable = false)
+    public Long ownerId;
+
     /** Null = part of the global default form. Otherwise overrides the form for that meeting type. */
     @Column(name = "meeting_type_id")
     public Long meetingTypeId;
@@ -42,11 +45,19 @@ public class BookingField extends PanacheEntityBase {
     @Column(nullable = false)
     public int position = 0;
 
-    /** Per-type fields if the meeting type defines any; otherwise the global default form. */
-    public static List<BookingField> formFor(Long meetingTypeId) {
-        List<BookingField> typed = list("meetingTypeId = ?1 order by position", meetingTypeId);
-        return typed.isEmpty()
-                ? list("meetingTypeId is null order by position")
-                : typed;
+    /** This owner's global default form fields (meeting_type_id IS NULL), ordered by position. */
+    public static List<BookingField> globalForOwner(Long ownerId) {
+        return list("ownerId = ?1 and meetingTypeId is null order by position", ownerId);
+    }
+
+    /**
+     * Per-type fields if the meeting type defines any (still scoped to this owner); otherwise the
+     * owner's global default form. The owner scope is defence-in-depth: meeting-type ids are already
+     * the owner's, but the global fallback MUST be the owner's globals, never another owner's.
+     */
+    public static List<BookingField> formFor(Long ownerId, Long meetingTypeId) {
+        List<BookingField> typed = list(
+                "ownerId = ?1 and meetingTypeId = ?2 order by position", ownerId, meetingTypeId);
+        return typed.isEmpty() ? globalForOwner(ownerId) : typed;
     }
 }

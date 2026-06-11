@@ -72,11 +72,10 @@ class GoogleTokenServiceTest {
                 new GoogleTokenService.TokenResponse("access-1", "refresh-1",
                         now.plusSeconds(3600)));
 
-        svc.exchangeCode("auth-code-123", now);
+        svc.exchangeCode(1L, "auth-code-123", now);
 
-        GoogleCredential c = GoogleCredential.get();
+        GoogleCredential c = GoogleCredential.forOwner(1L);
         assertNotNull(c);
-        assertEquals(GoogleCredential.SINGLETON_ID, c.id);
         assertEquals("refresh-1", c.refreshToken);
         assertEquals("access-1", c.accessToken);
         assertEquals(now.plusSeconds(3600), c.accessTokenExpiry);
@@ -86,14 +85,14 @@ class GoogleTokenServiceTest {
     @TestTransaction
     void validAccessTokenReturnsCachedWhenNotExpired() {
         GoogleCredential c = new GoogleCredential();
-        c.id = GoogleCredential.SINGLETON_ID;
+        c.ownerId = 1L;
         c.refreshToken = "refresh-1";
         c.accessToken = "cached-access";
         c.accessTokenExpiry = Instant.parse("2026-06-08T13:00:00Z");
         c.persist();
 
         StubTokenService svc = new StubTokenService(config, null); // must NOT be used
-        String token = svc.validAccessToken(Instant.parse("2026-06-08T12:00:00Z"));
+        String token = svc.validAccessToken(1L, Instant.parse("2026-06-08T12:00:00Z"));
 
         assertEquals("cached-access", token);
     }
@@ -102,7 +101,7 @@ class GoogleTokenServiceTest {
     @TestTransaction
     void validAccessTokenRefreshesWhenExpired() {
         GoogleCredential c = new GoogleCredential();
-        c.id = GoogleCredential.SINGLETON_ID;
+        c.ownerId = 1L;
         c.refreshToken = "refresh-1";
         c.accessToken = "stale-access";
         c.accessTokenExpiry = Instant.parse("2026-06-08T12:00:00Z");
@@ -113,10 +112,10 @@ class GoogleTokenServiceTest {
                 new GoogleTokenService.TokenResponse("fresh-access", null,
                         now.plusSeconds(3600)));
 
-        String token = svc.validAccessToken(now);
+        String token = svc.validAccessToken(1L, now);
 
         assertEquals("fresh-access", token);
-        GoogleCredential reloaded = GoogleCredential.get();
+        GoogleCredential reloaded = GoogleCredential.forOwner(1L);
         assertEquals("fresh-access", reloaded.accessToken);
         // Refresh responses omit a new refresh token; the original is preserved.
         assertEquals("refresh-1", reloaded.refreshToken);

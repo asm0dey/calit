@@ -35,27 +35,30 @@ public class GoogleCalendarPort implements CalendarPort {
 
     private final GoogleTokenService tokens;
     private final GoogleCalendarClientFactory clientFactory;
+    private final com.calit.user.CurrentOwner currentOwner;
 
     @Inject
-    public GoogleCalendarPort(GoogleTokenService tokens, GoogleCalendarClientFactory clientFactory) {
+    public GoogleCalendarPort(GoogleTokenService tokens, GoogleCalendarClientFactory clientFactory,
+                              com.calit.user.CurrentOwner currentOwner) {
         this.tokens = tokens;
         this.clientFactory = clientFactory;
+        this.currentOwner = currentOwner;
     }
 
     private Calendar client() {
-        return clientFactory.build(tokens.validAccessToken(Instant.now()));
+        return clientFactory.build(tokens.validAccessToken(currentOwner.id(), Instant.now()));
     }
 
     @Override
     @Transactional
     public boolean isConnected() {
-        // Connected iff the singleton OAuth credential (with refresh token) exists. No Google call.
-        return GoogleCredential.get() != null;
+        // Connected iff this owner's OAuth credential (with refresh token) exists. No Google call.
+        return GoogleCredential.forOwner(currentOwner.id()) != null;
     }
 
     @Override
     public List<BusyInterval> freeBusy(Instant from, Instant to) {
-        List<GoogleCalendar> readers = GoogleCalendar.readForBusy();
+        List<GoogleCalendar> readers = GoogleCalendar.readForBusy(currentOwner.id());
         if (readers.isEmpty()) {
             return List.of();
         }
@@ -162,7 +165,7 @@ public class GoogleCalendarPort implements CalendarPort {
     }
 
     private GoogleCalendar requireWriteTarget() {
-        GoogleCalendar target = GoogleCalendar.writeTarget();
+        GoogleCalendar target = GoogleCalendar.writeTarget(currentOwner.id());
         if (target == null) {
             throw new IllegalStateException("No write-target Google calendar selected. POST /api/google/calendars.");
         }
@@ -172,13 +175,13 @@ public class GoogleCalendarPort implements CalendarPort {
     /**
      * Build the Google EventDateTime for a start/end instant. The absolute instant
      * (epoch-millis DateTime) is already unambiguous, but we additionally stamp the event's
-     * start.timeZone / end.timeZone with the OWNER's IANA zone (read from the OwnerSettings
-     * singleton) so the Google event "owns" the owner's timezone — cleaner for attendees and for
+     * start.timeZone / end.timeZone with the OWNER's IANA zone (read from the current owner's
+     * OwnerSettings) so the Google event "owns" the owner's timezone — cleaner for attendees and for
      * DST handling on Google's side. Each attendee's Google client still displays the event in
      * their own local zone automatically; the invitee's timezone is never stored.
      */
-    private static EventDateTime eventTime(Instant instant) {
-        String ownerZoneId = OwnerSettings.get().timezone;
+    private EventDateTime eventTime(Instant instant) {
+        String ownerZoneId = OwnerSettings.forOwner(currentOwner.id()).timezone;
         return new EventDateTime()
                 .setDateTime(new DateTime(instant.toEpochMilli()))
                 .setTimeZone(ownerZoneId);

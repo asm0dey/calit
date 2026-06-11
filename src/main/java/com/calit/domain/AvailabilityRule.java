@@ -22,6 +22,9 @@ public class AvailabilityRule extends PanacheEntityBase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
+    @Column(name = "owner_id", nullable = false)
+    public Long ownerId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "day_of_week", nullable = false, length = 16)
     public DayOfWeek dayOfWeek;
@@ -32,15 +35,21 @@ public class AvailabilityRule extends PanacheEntityBase {
     @Column(name = "end_time", nullable = false)
     public LocalTime endTime;
 
-    /** Null = global default rule. Otherwise this rule overrides for that meeting type. */
+    /**
+     * Null = this owner's global default rule (applies to all of their meeting types).
+     * Otherwise this rule overrides for that meeting type. Either way it carries {@link #ownerId}.
+     */
     @Column(name = "meeting_type_id")
     public Long meetingTypeId;
 
-    public static List<AvailabilityRule> forMeetingType(Long meetingTypeId, DayOfWeek dow) {
-        return list("meetingTypeId = ?1 and dayOfWeek = ?2", meetingTypeId, dow);
+    /** This owner's per-type rules for a weekday. (meetingTypeId is already the owner's; ownerId is
+     *  defence-in-depth and keeps every query uniformly owner-filtered.) */
+    public static List<AvailabilityRule> forMeetingType(Long ownerId, Long meetingTypeId, DayOfWeek dow) {
+        return list("ownerId = ?1 and meetingTypeId = ?2 and dayOfWeek = ?3", ownerId, meetingTypeId, dow);
     }
 
-    public static List<AvailabilityRule> globalFor(DayOfWeek dow) {
-        return list("meetingTypeId is null and dayOfWeek = ?1", dow);
+    /** This owner's GLOBAL default rules (meetingTypeId IS NULL) for a weekday. */
+    public static List<AvailabilityRule> globalForOwner(Long ownerId, DayOfWeek dow) {
+        return list("ownerId = ?1 and meetingTypeId is null and dayOfWeek = ?2", ownerId, dow);
     }
 }

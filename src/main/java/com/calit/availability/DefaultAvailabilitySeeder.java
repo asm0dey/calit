@@ -5,7 +5,6 @@ import io.quarkus.arc.profile.UnlessBuildProfile;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
-import jakarta.transaction.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
@@ -13,21 +12,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * On first boot (empty {@code availability_rule} table) seeds Mon–Fri 09:00–18:00 GLOBAL work
- * hours so the booking calendar isn't empty out of the box. Excluded from the test build profile
- * (tests seed their own rules and assert exact slot counts). Idempotent: only seeds when no rule exists.
+ * Phase 2: boot-time GLOBAL availability seeding is disabled — under owner scoping a rule needs an
+ * owner_id and at boot no {@code app_user} may exist yet. Default-availability seeding becomes a
+ * per-user concern triggered by Phase 4's first-login wizard (which knows the owner id and stamps it),
+ * reusing {@link #weekdayDefaults()}.
  */
 @ApplicationScoped
 @UnlessBuildProfile("test")
 public class DefaultAvailabilitySeeder {
 
-    @Transactional
+    /**
+     * Phase 2: boot-time GLOBAL seeding is disabled — a rule now needs an owner_id and at boot no
+     * app_user may exist. Phase 4's first-login wizard seeds each new owner's default availability
+     * (it knows the owner id and stamps it), reusing {@link #weekdayDefaults()}.
+     */
     void onStart(@Observes StartupEvent ev) {
-        if (AvailabilityRule.count() == 0) {
-            for (AvailabilityRule r : weekdayDefaults()) {
-                r.persist();
-            }
-        }
+        // intentionally no-op until Phase 4 wires per-owner seeding
     }
 
     /** Mon–Fri 09:00–18:00, global (meetingTypeId == null). */

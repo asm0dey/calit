@@ -132,14 +132,14 @@ public class GoogleTokenService {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
-    /** Exchange the callback {@code code} for tokens and persist the singleton credential. */
+    /** Exchange the callback {@code code} for tokens and persist this owner's credential. */
     @Transactional
-    public void exchangeCode(String code, Instant now) {
+    public void exchangeCode(Long ownerId, String code, Instant now) {
         TokenResponse resp = requestToken("authorization_code", code, now);
-        GoogleCredential c = GoogleCredential.get();
+        GoogleCredential c = GoogleCredential.forOwner(ownerId);
         if (c == null) {
             c = new GoogleCredential();
-            c.id = GoogleCredential.SINGLETON_ID;
+            c.ownerId = ownerId;
         }
         if (resp.refreshToken() != null) {
             c.refreshToken = resp.refreshToken();
@@ -161,10 +161,11 @@ public class GoogleTokenService {
      * expiry — so no distributed lock is needed.
      */
     @Transactional
-    public String validAccessToken(Instant now) {
-        GoogleCredential c = GoogleCredential.get();
+    public String validAccessToken(Long ownerId, Instant now) {
+        GoogleCredential c = GoogleCredential.forOwner(ownerId);
         if (c == null) {
-            throw new IllegalStateException("Google is not connected: no GoogleCredential. Run /api/google/connect.");
+            throw new IllegalStateException(
+                    "Google is not connected for owner " + ownerId + ". Run /api/google/connect.");
         }
         if (!c.isAccessTokenExpired(now)) {
             return c.accessToken;

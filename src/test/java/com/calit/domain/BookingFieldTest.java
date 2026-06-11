@@ -16,7 +16,7 @@ class BookingFieldTest {
     @TestTransaction
     void globalFormIncludesSeededDescription() {
         // No per-type fields for this id -> falls back to the global default form.
-        List<BookingField> form = BookingField.formFor(999_999L);
+        List<BookingField> form = BookingField.formFor(1L, 999_999L);
         assertTrue(form.stream().anyMatch(f -> "description".equals(f.fieldKey)));
     }
 
@@ -38,7 +38,7 @@ class BookingFieldTest {
                 BookingField.FieldType.SHORT_TEXT, false, 0);
         vat.persist();
 
-        List<BookingField> form = BookingField.formFor(type.id);
+        List<BookingField> form = BookingField.formFor(1L, type.id);
 
         assertEquals(2, form.size());
         assertEquals("vat", form.get(0).fieldKey);     // position 0 first
@@ -48,6 +48,7 @@ class BookingFieldTest {
     private BookingField field(Long typeId, String key, String label,
                                BookingField.FieldType type, boolean required, int position) {
         BookingField f = new BookingField();
+        f.ownerId = 1L;
         f.meetingTypeId = typeId;
         f.fieldKey = key;
         f.label = label;

@@ -16,12 +16,13 @@ class MeetingTypeExtensionsTest {
     @TestTransaction
     void persistsWithPlan1bDefaults() {
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = "Defaults";
         t.slug = "mt-ext-defaults";
         t.durationMinutes = 30;
         t.persist();
 
-        MeetingType loaded = MeetingType.findBySlug("mt-ext-defaults");
+        MeetingType loaded = MeetingType.findBySlug(1L, "mt-ext-defaults");
         assertEquals(0, loaded.minNoticeMinutes);
         assertEquals(60, loaded.horizonDays);
         assertEquals(MeetingType.LocationType.GOOGLE_MEET, loaded.locationType);
@@ -33,6 +34,7 @@ class MeetingTypeExtensionsTest {
     @TestTransaction
     void roundTripsNonDefaultLocationAndApproval() {
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = "Phone Approval";
         t.slug = "mt-ext-phone";
         t.durationMinutes = 30;
@@ -43,7 +45,7 @@ class MeetingTypeExtensionsTest {
         t.requiresApproval = true;
         t.persist();
 
-        MeetingType loaded = MeetingType.findBySlug("mt-ext-phone");
+        MeetingType loaded = MeetingType.findBySlug(1L, "mt-ext-phone");
         assertEquals(120, loaded.minNoticeMinutes);
         assertEquals(14, loaded.horizonDays);
         assertEquals(MeetingType.LocationType.PHONE, loaded.locationType);

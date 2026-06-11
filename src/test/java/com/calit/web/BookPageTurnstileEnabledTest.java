@@ -40,8 +40,8 @@ class BookPageTurnstileEnabledTest {
 
     @Transactional
     void seed() {
-        OwnerSettings s = OwnerSettings.get();
-        if (s == null) { s = new OwnerSettings(); s.id = OwnerSettings.SINGLETON_ID; }
+        OwnerSettings s = OwnerSettings.forOwner(1L);
+        if (s == null) { s = new OwnerSettings(); s.ownerId = 1L; }
         s.ownerName = "Owner"; s.ownerEmail = "owner@example.com"; s.timezone = "Europe/Amsterdam";
         s.persist();
         MeetingType t = new MeetingType();

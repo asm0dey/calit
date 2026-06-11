@@ -16,9 +16,10 @@ class BookingSettingsGuardTest {
 
     @Transactional
     void removeSettingsAndSeedType() {
-        OwnerSettings.delete("id = ?1", OwnerSettings.SINGLETON_ID);
+        OwnerSettings.delete("ownerId = ?1", 1L);
         MeetingType.delete("slug", "guard-type");
         MeetingType t = new MeetingType();
+        t.ownerId = 1L;
         t.name = "Guard Type"; t.slug = "guard-type"; t.durationMinutes = 30;
         t.locationType = LocationType.GOOGLE_MEET;
         t.persist();
@@ -28,9 +29,9 @@ class BookingSettingsGuardTest {
     @AfterEach
     @Transactional
     void restoreSettings() {
-        if (OwnerSettings.get() == null) {
+        if (OwnerSettings.forOwner(1L) == null) {
             OwnerSettings s = new OwnerSettings();
-            s.id = OwnerSettings.SINGLETON_ID;
+            s.ownerId = 1L;
             s.ownerName = "Owner"; s.ownerEmail = "owner@example.com"; s.timezone = "Europe/Amsterdam";
             s.persist();
         }

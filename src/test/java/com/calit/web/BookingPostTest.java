@@ -38,8 +38,8 @@ class BookingPostTest {
                 "meetingTypeId in (select id from MeetingType where slug = ?1)", "confirm-type");
         BookingField.delete("meetingTypeId in (select id from MeetingType where slug = ?1)", "confirm-type");
         MeetingType.delete("slug", "confirm-type");
-        OwnerSettings s = OwnerSettings.get();
-        if (s == null) { s = new OwnerSettings(); s.id = OwnerSettings.SINGLETON_ID; }
+        OwnerSettings s = OwnerSettings.forOwner(1L);
+        if (s == null) { s = new OwnerSettings(); s.ownerId = 1L; }
         s.ownerName = "Owner"; s.ownerEmail = "owner@example.com"; s.timezone = "Europe/Amsterdam";
         s.persist();
 
@@ -68,8 +68,8 @@ class BookingPostTest {
         com.calit.booking.Booking.delete(
                 "meetingTypeId in (select id from MeetingType where slug = ?1)", "approval-confirm");
         MeetingType.delete("slug", "approval-confirm");
-        OwnerSettings s = OwnerSettings.get();
-        if (s == null) { s = new OwnerSettings(); s.id = OwnerSettings.SINGLETON_ID; }
+        OwnerSettings s = OwnerSettings.forOwner(1L);
+        if (s == null) { s = new OwnerSettings(); s.ownerId = 1L; }
         s.ownerName = "Owner"; s.ownerEmail = "owner@example.com"; s.timezone = "Europe/Amsterdam";
         s.persist();
         MeetingType t = new MeetingType();

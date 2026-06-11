@@ -12,17 +12,17 @@ class OwnerSettingsTest {
     @Test
     @TestTransaction
     void persistsAndReadsSingleton() {
-        OwnerSettings s = OwnerSettings.get();
+        OwnerSettings s = OwnerSettings.forOwner(1L);
         if (s == null) {
             s = new OwnerSettings();
-            s.id = OwnerSettings.SINGLETON_ID;
+            s.ownerId = 1L;
         }
         s.ownerName = "Pavel";
         s.ownerEmail = "p@example.com";
         s.timezone = "Europe/Amsterdam";
         s.persist();
 
-        OwnerSettings loaded = OwnerSettings.get();
+        OwnerSettings loaded = OwnerSettings.forOwner(1L);
         assertNotNull(loaded);
         assertEquals("Europe/Amsterdam", loaded.timezone);
     }

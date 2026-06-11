@@ -314,9 +314,9 @@ public class EmailService {
                 return null;
             }
             MeetingType type = MeetingType.findById(booking.meetingTypeId);
-            OwnerSettings owner = OwnerSettings.get();
+            OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
             ZoneId zone = ZoneId.of(owner.timezone);
-            List<AnswerLine> answers = buildAnswerLines(booking);
+            List<AnswerLine> answers = buildAnswerLines(booking, type);
             return new Loaded(booking, type, owner, zone, answers);
         });
     }
@@ -326,13 +326,13 @@ public class EmailService {
      * {@code booking.answers} by {@code fieldKey}, skipping blank/absent values. Must run inside the
      * {@code requiringNew()} transaction opened by {@link #load}.
      */
-    private static List<AnswerLine> buildAnswerLines(Booking booking) {
+    private static List<AnswerLine> buildAnswerLines(Booking booking, MeetingType type) {
         List<AnswerLine> lines = new ArrayList<>();
         Map<String, String> answers = booking.answers;
         if (answers == null || answers.isEmpty()) {
             return lines;
         }
-        for (BookingField field : BookingField.formFor(booking.meetingTypeId)) {
+        for (BookingField field : BookingField.formFor(type.ownerId, booking.meetingTypeId)) {
             String value = answers.get(field.fieldKey);
             if (value != null && !value.isBlank()) {
                 lines.add(new AnswerLine(field.label, value));

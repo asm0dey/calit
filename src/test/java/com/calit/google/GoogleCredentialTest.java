@@ -17,22 +17,21 @@ class GoogleCredentialTest {
     @Test
     @TestTransaction
     void getReturnsNullWhenNotConnected() {
-        assertNull(GoogleCredential.get());
+        assertNull(GoogleCredential.forOwner(1L));
     }
 
     @Test
     @TestTransaction
     void persistsAndReadsSingletonWithTokens() {
         GoogleCredential c = new GoogleCredential();
-        c.id = GoogleCredential.SINGLETON_ID;
+        c.ownerId = 1L;
         c.refreshToken = "refresh-abc";
         c.accessToken = "access-xyz";
         c.accessTokenExpiry = Instant.parse("2030-01-01T00:00:00Z");
         c.persist();
 
-        GoogleCredential loaded = GoogleCredential.get();
+        GoogleCredential loaded = GoogleCredential.forOwner(1L);
         assertNotNull(loaded);
-        assertEquals(GoogleCredential.SINGLETON_ID, loaded.id);
         assertEquals("refresh-abc", loaded.refreshToken);
         assertEquals("access-xyz", loaded.accessToken);
         assertEquals(Instant.parse("2030-01-01T00:00:00Z"), loaded.accessTokenExpiry);
@@ -42,7 +41,7 @@ class GoogleCredentialTest {
     @TestTransaction
     void accessTokenIsExpiredWhenNullOrPast() {
         GoogleCredential c = new GoogleCredential();
-        c.id = GoogleCredential.SINGLETON_ID;
+        c.ownerId = 1L;
         c.refreshToken = "refresh-abc";
         // No access token yet.
         assertTrue(c.isAccessTokenExpired(Instant.parse("2026-06-08T00:00:00Z")));

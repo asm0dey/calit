@@ -153,10 +153,10 @@ class SlotServiceTest {
     // --- helpers ---
 
     private void seedSettings(String zone) {
-        OwnerSettings s = OwnerSettings.get();
+        OwnerSettings s = OwnerSettings.forOwner(1L);
         if (s == null) {
             s = new OwnerSettings();
-            s.id = OwnerSettings.SINGLETON_ID;
+            s.ownerId = 1L;
         }
         s.ownerName = "Owner";
         s.ownerEmail = "owner@example.com";

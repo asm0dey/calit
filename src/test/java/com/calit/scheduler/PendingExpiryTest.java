@@ -33,10 +33,10 @@ class PendingExpiryTest {
             // The expiry tick fires BookingDeclined, which Plan 4's EmailService observes and which
             // reads the OwnerSettings singleton. In production it always exists; seed it here so the
             // post-commit observer doesn't NPE (the failure is swallowed, but it pollutes the log).
-            OwnerSettings s = OwnerSettings.get();
+            OwnerSettings s = OwnerSettings.forOwner(1L);
             if (s == null) {
                 s = new OwnerSettings();
-                s.id = OwnerSettings.SINGLETON_ID;
+                s.ownerId = 1L;
             }
             s.ownerName = "Owner";
             s.ownerEmail = "owner@example.com";

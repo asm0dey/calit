@@ -34,7 +34,11 @@ public class DateOverride extends PanacheEntityBase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
 
-    /** Null = global override; otherwise scoped to this meeting type. */
+    @Column(name = "owner_id", nullable = false)
+    public Long ownerId;
+
+    /** Null = this owner's global override (all their types); otherwise scoped to this meeting type.
+     *  Either way it carries {@link #ownerId}. */
     @Column(name = "meeting_type_id")
     public Long meetingTypeId;
 
@@ -49,20 +53,24 @@ public class DateOverride extends PanacheEntityBase {
     public List<DateOverrideWindow> windows = new ArrayList<>();
 
     /**
-     * Per-type override for (meetingTypeId, date) if present; else the global
-     * (meeting_type_id IS NULL) override for the date; else null.
+     * This owner's per-type override for (meetingTypeId, date) if present; else this owner's global
+     * (meeting_type_id IS NULL) override for the date; else null. Owner-scoped: another owner's
+     * global override never leaks into this owner's resolution.
      *
      * <p>Windows are loaded via a separate query ordered by start_time, so ordering
      * is correct regardless of insert order.
      */
-    public static DateOverride resolve(Long meetingTypeId, LocalDate date) {
-        DateOverride typed = find("meetingTypeId = ?1 and overrideDate = ?2", meetingTypeId, date).firstResult();
+    public static DateOverride resolve(Long ownerId, Long meetingTypeId, LocalDate date) {
+        DateOverride typed = find(
+                "ownerId = ?1 and meetingTypeId = ?2 and overrideDate = ?3",
+                ownerId, meetingTypeId, date).firstResult();
         if (typed != null) {
             typed.windows = DateOverrideWindow
                     .list("dateOverrideId = ?1 order by startTime asc", typed.id);
             return typed;
         }
-        DateOverride global = find("meetingTypeId is null and overrideDate = ?1", date).firstResult();
+        DateOverride global = find(
+                "ownerId = ?1 and meetingTypeId is null and overrideDate = ?2", ownerId, date).firstResult();
         if (global != null) {
             global.windows = DateOverrideWindow
                     .list("dateOverrideId = ?1 order by startTime asc", global.id);

@@ -77,7 +77,7 @@ class AdminMeetingTypesTest {
             .then().statusCode(200).body(containsString(slug));
 
         // Persisted with the new fields (resolves via findBySlug).
-        MeetingType created = MeetingType.findBySlug(slug);
+        MeetingType created = MeetingType.findBySlug(1L, slug);
         org.junit.jupiter.api.Assertions.assertNotNull(created);
         org.junit.jupiter.api.Assertions.assertEquals(120, created.minNoticeMinutes);
         org.junit.jupiter.api.Assertions.assertEquals(30, created.horizonDays);
@@ -130,7 +130,7 @@ class AdminMeetingTypesTest {
             .when().post("/admin/meeting-types")
             .then().statusCode(200);
 
-        MeetingType created = MeetingType.findBySlug(slug);
+        MeetingType created = MeetingType.findBySlug(1L, slug);
         org.junit.jupiter.api.Assertions.assertNotNull(created);
         org.junit.jupiter.api.Assertions.assertNull(created.slotIntervalMinutes);
     }

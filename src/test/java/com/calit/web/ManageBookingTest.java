@@ -39,8 +39,8 @@ class ManageBookingTest {
         // Idempotent across the multiple seedBooking() calls in this class (committed tx).
         Booking.delete("meetingTypeId in (select id from MeetingType where slug = ?1)", "manage-type");
         MeetingType.delete("slug", "manage-type");
-        OwnerSettings s = OwnerSettings.get();
-        if (s == null) { s = new OwnerSettings(); s.id = OwnerSettings.SINGLETON_ID; }
+        OwnerSettings s = OwnerSettings.forOwner(1L);
+        if (s == null) { s = new OwnerSettings(); s.ownerId = 1L; }
         s.ownerName = "Owner"; s.ownerEmail = "owner@example.com"; s.timezone = "Europe/Amsterdam";
         s.persist();
 
@@ -57,7 +57,7 @@ class ManageBookingTest {
         var slot = bookingService.availableSlots(t, java.time.LocalDate.now(),
                 java.time.LocalDate.now().plusDays(14)).get(0);
         // Auto type, no abuse guards configured → empty Turnstile token + blank honeypot.
-        Booking b = bookingService.book("manage-type", slot.start().toInstant(),
+        Booking b = bookingService.book(1L, "manage-type", slot.start().toInstant(),
                 "Manage Me", "manage@example.com", java.util.Map.of(), "", "");
         return b.manageToken;
     }

@@ -19,7 +19,7 @@ class DateOverrideTest {
     @Test
     @TestTransaction
     void resolveReturnsNullWhenNoOverride() {
-        assertNull(DateOverride.resolve(123_456L, D));
+        assertNull(DateOverride.resolve(1L, 123_456L, D));
     }
 
     @Test
@@ -42,7 +42,7 @@ class DateOverrideTest {
         typed.persist();
         window(typed, "13:00", "14:00");
 
-        DateOverride resolved = DateOverride.resolve(type.id, D);
+        DateOverride resolved = DateOverride.resolve(1L, type.id, D);
         assertEquals(typed.id, resolved.id);
         assertEquals(1, resolved.windows.size());
         assertEquals(LocalTime.of(13, 0), resolved.windows.get(0).startTime);
@@ -56,7 +56,7 @@ class DateOverrideTest {
         window(global, "08:00", "09:00");
 
         // A meeting type with no per-type override falls through to the global one.
-        DateOverride resolved = DateOverride.resolve(987_654L, D);
+        DateOverride resolved = DateOverride.resolve(1L, 987_654L, D);
         assertEquals(global.id, resolved.id);
         assertEquals(LocalTime.of(8, 0), resolved.windows.get(0).startTime);
     }
@@ -67,7 +67,7 @@ class DateOverrideTest {
         DateOverride dayOff = override(null, D);
         dayOff.persist(); // no windows added
 
-        DateOverride resolved = DateOverride.resolve(555L, D);
+        DateOverride resolved = DateOverride.resolve(1L, 555L, D);
         assertEquals(dayOff.id, resolved.id);
         assertTrue(resolved.windows.isEmpty()); // empty = day off (caller blocks the day)
     }
@@ -81,7 +81,7 @@ class DateOverrideTest {
         window(o, "14:00", "15:00");
         window(o, "09:00", "10:00");
 
-        DateOverride resolved = DateOverride.resolve(42L, D);
+        DateOverride resolved = DateOverride.resolve(1L, 42L, D);
         assertEquals(2, resolved.windows.size());
         assertEquals(LocalTime.of(9, 0), resolved.windows.get(0).startTime);
         assertEquals(LocalTime.of(14, 0), resolved.windows.get(1).startTime);
@@ -91,6 +91,7 @@ class DateOverrideTest {
 
     private DateOverride override(Long meetingTypeId, LocalDate date) {
         DateOverride o = new DateOverride();
+        o.ownerId = 1L;
         o.meetingTypeId = meetingTypeId;
         o.overrideDate = date;
         return o;

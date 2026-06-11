@@ -19,10 +19,13 @@ import java.util.List;
 public class GoogleCalendarResource {
 
     private final CalendarListPort calendarListPort;
+    private final com.calit.user.CurrentOwner currentOwner;
 
     @Inject
-    public GoogleCalendarResource(CalendarListPort calendarListPort) {
+    public GoogleCalendarResource(CalendarListPort calendarListPort,
+                                  com.calit.user.CurrentOwner currentOwner) {
         this.calendarListPort = calendarListPort;
+        this.currentOwner = currentOwner;
     }
 
     public record CalendarSelection(String googleCalendarId, String summary,
@@ -46,9 +49,10 @@ public class GoogleCalendarResource {
                     .entity("At most one write-target calendar is allowed").build();
         }
         // Replace prior selection wholesale so removed calendars stop being read.
-        GoogleCalendar.deleteAll();
+        GoogleCalendar.deleteForOwner(currentOwner.id());
         for (CalendarSelection sel : req.calendars()) {
             GoogleCalendar c = new GoogleCalendar();
+            c.ownerId = currentOwner.id();
             c.googleCalendarId = sel.googleCalendarId();
             c.summary = sel.summary();
             c.readForBusy = sel.readForBusy();
@@ -62,7 +66,7 @@ public class GoogleCalendarResource {
     @GET
     @Path("/write-target")
     public GoogleCalendar writeTarget() {
-        GoogleCalendar target = GoogleCalendar.writeTarget();
+        GoogleCalendar target = GoogleCalendar.writeTarget(currentOwner.id());
         if (target == null) {
             throw new NotFoundException("No write-target calendar selected");
         }
