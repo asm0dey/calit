@@ -223,11 +223,26 @@ public class AdminResource {
 
     /** Date overrides scoped to one meeting type, each with its (transient) windows loaded. */
     private List<DateOverride> overridesForType(Long typeId) {
-        List<DateOverride> all = DateOverride.list("meetingTypeId = ?1 order by overrideDate", typeId);
-        for (DateOverride o : all) {
-            o.windows = DateOverrideWindow.list("dateOverrideId = ?1 order by startTime asc", o.id);
+        return withWindows(DateOverride.list("meetingTypeId = ?1 order by overrideDate", typeId));
+    }
+
+    /**
+     * Loads each override's (transient) {@code windows} in ONE query for the whole list instead of
+     * one-per-override (N+1). Preserves the given override ordering and per-override start-time
+     * window ordering. Overrides with no windows get an empty list (day off).
+     */
+    private static List<DateOverride> withWindows(List<DateOverride> overrides) {
+        if (overrides.isEmpty()) {
+            return overrides;
         }
-        return all;
+        List<Long> ids = overrides.stream().map(o -> o.id).toList();
+        java.util.Map<Long, List<DateOverrideWindow>> byOverride = DateOverrideWindow
+                .<DateOverrideWindow>list("dateOverrideId in ?1 order by startTime asc", ids).stream()
+                .collect(java.util.stream.Collectors.groupingBy(w -> w.dateOverrideId));
+        for (DateOverride o : overrides) {
+            o.windows = byOverride.getOrDefault(o.id, List.of());
+        }
+        return overrides;
     }
 
     /** Load a meeting type or 404 — shared guard for detail-scoped GET/POST handlers. */
@@ -553,12 +568,8 @@ public class AdminResource {
      * leaves it empty; we populate each from {@link DateOverrideWindow} by id.
      */
     private List<DateOverride> overridesWithWindows() {
-        List<DateOverride> all = DateOverride.list(
-                "ownerId = ?1 order by meetingTypeId nulls first, overrideDate", currentOwner.id());
-        for (DateOverride o : all) {
-            o.windows = DateOverrideWindow.list("dateOverrideId = ?1 order by startTime asc", o.id);
-        }
-        return all;
+        return withWindows(DateOverride.list(
+                "ownerId = ?1 order by meetingTypeId nulls first, overrideDate", currentOwner.id()));
     }
 
     @GET
