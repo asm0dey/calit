@@ -40,7 +40,9 @@ public class PublicResource {
 
     @CheckedTemplate
     public static class Templates {
-        public static native TemplateInstance landing(List<MeetingType> types);
+        public static native TemplateInstance index();
+
+        public static native TemplateInstance landing(List<MeetingType> types, String user, String ownerName);
 
         public static native TemplateInstance book(
                 MeetingType type,
@@ -103,10 +105,9 @@ public class PublicResource {
 
     @GET
     @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance landing() {
-        // Phase 3 replaces this global lookup with /{user}/{slug} owner resolution.
-        // listPublic() = active && !secret — secret types never reach this page.
-        return Templates.landing(MeetingType.<MeetingType>list("active = true and secret = false"));
+    public TemplateInstance index() {
+        // Root is a generic product page — NOT any owner's landing. Per-owner landings live at /{user}.
+        return Templates.index();
     }
 
     @GET
