@@ -17,6 +17,7 @@ public final class FormAuth {
         QuarkusTransaction.requiringNew().run(() -> {
             if (!AppUser.usernameTaken("admin")) {
                 AppUser u = AppUser.create("admin", HASHER.hash("testpass"), true);
+                u.settingsComplete = true; // baseline admin is onboarded (no first-login wizard in tests)
                 u.persist();
             }
         });

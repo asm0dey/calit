@@ -16,7 +16,10 @@ class AdminNavTest {
     @Transactional
     void seedPlainUser(String username) {
         if (AppUser.findByUsername(username) == null) {
-            AppUser.create(username, "x", false).persist(); // role "user", not admin
+            AppUser u = AppUser.create(username, "x", false); // role "user", not admin
+            u.mustChangePassword = false;
+            u.settingsComplete = true; // onboarded — reaches /me without the wizard redirect
+            u.persist();
         }
     }
 

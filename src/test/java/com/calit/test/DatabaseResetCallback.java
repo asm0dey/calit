@@ -39,7 +39,9 @@ public class DatabaseResetCallback implements QuarkusTestBeforeEachCallback {
         QuarkusTransaction.requiringNew().run(() -> {
             EntityManager em = Arc.container().instance(EntityManager.class).get();
             em.createNativeQuery(TRUNCATE_ALL).executeUpdate();
-            AppUser.create("admin", ADMIN_HASH, true).persist();
+            AppUser admin = AppUser.create("admin", ADMIN_HASH, true);
+            admin.settingsComplete = true; // baseline admin is onboarded (no first-login wizard in tests)
+            admin.persist();
         });
     }
 }

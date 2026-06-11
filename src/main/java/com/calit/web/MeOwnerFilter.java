@@ -6,14 +6,17 @@ import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.ext.Provider;
 
 /**
- * Resolves the request's owner for /me and /me/* from the authenticated SecurityIdentity principal
- * and stashes it in {@link CurrentOwner}. Security (the `user` role requirement) is enforced
- * separately by the HTTP permission policy + @RolesAllowed; by the time this filter runs the
- * identity is already authenticated. Phase 4 adds the first-login wizard redirect here.
+ * Resolves the request's owner for /me, /me/* and /api/google* from the authenticated
+ * SecurityIdentity principal and stashes it in {@link CurrentOwner}. Security (the `user` role
+ * requirement) is enforced separately by the HTTP permission policy + @RolesAllowed; by the time
+ * this filter runs the identity is already authenticated. Phase 4 also forces the first-login
+ * wizard: an authenticated but not-yet-onboarded user is 302'd to /me/setup for /me UI requests
+ * (OAuth /api/google* and the wizard page itself are exempt).
  */
 @Provider
 public class MeOwnerFilter implements ContainerRequestFilter {
@@ -26,27 +29,45 @@ public class MeOwnerFilter implements ContainerRequestFilter {
 
     @Override
     public void filter(ContainerRequestContext ctx) {
-        if (!matchesMe(ctx.getUriInfo())) {
-            return;
+        String path = normalizePath(ctx.getUriInfo().getPath());
+        if (!isOwnerScoped(path)) {
+            return; // not an owner-scoped route
         }
         if (identity == null || identity.isAnonymous() || identity.getPrincipal() == null) {
-            return; // unauthenticated; the permission policy already rejects/redirects this request
+            return; // unauthenticated; the permission policy already handles this
         }
         AppUser user = AppUser.findByUsername(identity.getPrincipal().getName());
-        if (user != null) {
-            currentOwner.set(user);
+        if (user == null) {
+            return; // augmentor should have rejected this; nothing to scope
+        }
+        currentOwner.set(user); // Phase 2 owner resolution — covers /me* AND /api/google*
+
+        // Phase 4: force the first-login wizard until onboarding completes — for the /me UI only.
+        // NOT /api/google (OAuth must not be redirected) and NOT the wizard page itself (no self-loop).
+        boolean onboarded = !user.mustChangePassword && user.settingsComplete;
+        if (isMeUiPath(path) && !isSetupPath(path) && !onboarded) {
+            ctx.abortWith(Response.status(Response.Status.FOUND) // 302
+                    .location(UriBuilder.fromUri("/me/setup").build())
+                    .build());
         }
     }
 
-    /** True for /me, /me/*, /api/google, and /api/google/* (all owner-scoped, authenticated routes). */
-    private static boolean matchesMe(UriInfo uriInfo) {
-        // UriInfo#getPath may return the path with or without a leading slash depending on the
-        // runtime; normalise by stripping a leading slash before matching.
-        String path = uriInfo.getPath();
-        if (path.startsWith("/")) {
-            path = path.substring(1);
-        }
-        return path.equals("me") || path.startsWith("me/")
-                || path.equals("api/google") || path.startsWith("api/google/");
+    /** Path without a leading slash (the runtime may report it either way). */
+    private static String normalizePath(String path) {
+        return path.startsWith("/") ? path.substring(1) : path;
+    }
+
+    /** Routes whose owner must be resolved: the /me UI AND the /api/google integration. */
+    private static boolean isOwnerScoped(String path) {
+        return isMeUiPath(path) || path.equals("api/google") || path.startsWith("api/google/");
+    }
+
+    private static boolean isMeUiPath(String path) {
+        return path.equals("me") || path.startsWith("me/");
+    }
+
+    /** The wizard page must stay reachable while onboarding is incomplete (no self-redirect). */
+    private static boolean isSetupPath(String path) {
+        return path.equals("me/setup");
     }
 }

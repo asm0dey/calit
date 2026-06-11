@@ -19,6 +19,8 @@ class EnabledUserAugmentorTest {
                 u = AppUser.create(username, HASHER.hash("pw12345"), true);
             }
             u.enabled = enabled;
+            u.mustChangePassword = false;
+            u.settingsComplete = true; // onboarded — reaches /me without the wizard redirect
             u.persist();
         });
     }
