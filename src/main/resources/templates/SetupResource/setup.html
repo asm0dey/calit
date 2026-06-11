@@ -1,0 +1,19 @@
+{@java.lang.Boolean error}
+{#include base title="Set up calit"}
+  <div class="card bg-base-100 border border-base-300 shadow-sm max-w-sm mx-auto">
+    <div class="card-body">
+      <h1 class="text-2xl font-bold">Create the first user</h1>
+      <p class="text-base-content/70">This first account is the site administrator.</p>
+      {#if error}<div role="alert" class="alert alert-error mt-2">Username invalid, reserved, or taken — try another.</div>{/if}
+      <form method="post" action="/setup" class="mt-2">
+        <fieldset class="fieldset">
+          <label class="label" for="username">Username</label>
+          <input id="username" class="input w-full" type="text" name="username" required autofocus>
+          <label class="label" for="password">Password</label>
+          <input id="password" class="input w-full" type="password" name="password" required>
+          <button type="submit" class="btn btn-primary btn-block mt-2">Create administrator</button>
+        </fieldset>
+      </form>
+    </div>
+  </div>
+{/include}
