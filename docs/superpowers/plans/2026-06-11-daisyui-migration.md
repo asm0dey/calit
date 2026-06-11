@@ -510,7 +510,7 @@ git commit -m "build: replace Pico with Tailwind v4 + daisyUI (Bun build stage)"
       <p class="text-base-content/70">Pick a meeting type to see available times.</p>
     </header>
     {#if types.isEmpty()}
-      <div class="alert">No meeting types are currently available.</div>
+      <div role="alert" class="alert">No meeting types are currently available.</div>
     {#else}
       <div class="grid gap-4 sm:grid-cols-2">
         {#for t in types}
@@ -589,7 +589,7 @@ git commit -m "build: replace Pico with Tailwind v4 + daisyUI (Bun build stage)"
 
         <div>
           <h2 class="text-lg font-semibold mb-4">Select a Date &amp; Time</h2>
-          {#if error}<div class="alert alert-error mb-4">{error}</div>{/if}
+          {#if error}<div role="alert" class="alert alert-error mb-4">{error}</div>{/if}
           {#if days.isEmpty()}
             <p>No available times right now. Please check back later.</p>
           {#else}
@@ -614,21 +614,21 @@ git commit -m "build: replace Pico with Tailwind v4 + daisyUI (Bun build stage)"
 
               <fieldset class="fieldset">
                 <label class="label" for="inviteeName">Your name</label>
-                <input id="inviteeName" class="input input-bordered w-full" type="text" name="inviteeName" required>
+                <input id="inviteeName" class="input w-full" type="text" name="inviteeName" required>
                 <label class="label" for="inviteeEmail">Your email</label>
-                <input id="inviteeEmail" class="input input-bordered w-full" type="email" name="inviteeEmail" required>
+                <input id="inviteeEmail" class="input w-full" type="email" name="inviteeEmail" required>
                 {#for f in fields}
                   <label class="label" for="f-{f.fieldKey}">{f.label}</label>
                   {#if f.type.name == 'LONG_TEXT'}
-                    <textarea id="f-{f.fieldKey}" class="textarea textarea-bordered w-full" name="answers.{f.fieldKey}" {#if f.required}required{/if}></textarea>
+                    <textarea id="f-{f.fieldKey}" class="textarea w-full" name="answers.{f.fieldKey}" {#if f.required}required{/if}></textarea>
                   {#else if f.type.name == 'EMAIL'}
-                    <input id="f-{f.fieldKey}" class="input input-bordered w-full" type="email" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
+                    <input id="f-{f.fieldKey}" class="input w-full" type="email" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
                   {#else if f.type.name == 'PHONE'}
-                    <input id="f-{f.fieldKey}" class="input input-bordered w-full" type="tel" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
+                    <input id="f-{f.fieldKey}" class="input w-full" type="tel" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
                   {#else if f.type.name == 'NUMBER'}
-                    <input id="f-{f.fieldKey}" class="input input-bordered w-full" type="number" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
+                    <input id="f-{f.fieldKey}" class="input w-full" type="number" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
                   {#else}
-                    <input id="f-{f.fieldKey}" class="input input-bordered w-full" type="text" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
+                    <input id="f-{f.fieldKey}" class="input w-full" type="text" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
                   {/if}
                 {/for}
               </fieldset>
@@ -826,16 +826,18 @@ git commit -m "build: replace Pico with Tailwind v4 + daisyUI (Bun build stage)"
     <div class="card-body">
       <h1 class="text-2xl font-bold">Sign in</h1>
       <p class="text-base-content/70">Owner access to calit admin.</p>
-      {#if error}<div class="alert alert-error mt-2">Invalid credentials — try again.</div>{/if}
-      <form method="post" action="/j_security_check" class="fieldset mt-2">
-        <label class="label" for="j_username">Username</label>
-        <input id="j_username" class="input input-bordered w-full" type="text" name="j_username" required autofocus>
-        <label class="label" for="j_password">Password</label>
-        <input id="j_password" class="input input-bordered w-full" type="password" name="j_password" required>
-        <label class="label cursor-pointer justify-start gap-2 mt-2">
-          <input type="checkbox" id="remember" class="checkbox checkbox-sm"> Remember me on this device
-        </label>
-        <button type="submit" class="btn btn-primary btn-block mt-2">Sign in</button>
+      {#if error}<div role="alert" class="alert alert-error mt-2">Invalid credentials — try again.</div>{/if}
+      <form method="post" action="/j_security_check" class="mt-2">
+        <fieldset class="fieldset">
+          <label class="label" for="j_username">Username</label>
+          <input id="j_username" class="input w-full" type="text" name="j_username" required autofocus>
+          <label class="label" for="j_password">Password</label>
+          <input id="j_password" class="input w-full" type="password" name="j_password" required>
+          <label class="label cursor-pointer justify-start gap-2 mt-2" for="remember">
+            <input type="checkbox" id="remember" class="checkbox checkbox-sm"> Remember me on this device
+          </label>
+          <button type="submit" class="btn btn-primary btn-block mt-2">Sign in</button>
+        </fieldset>
       </form>
     </div>
   </div>
@@ -920,9 +922,9 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
       <div class="collapse-title font-semibold">Basics</div>
       <div class="collapse-content fieldset">
         <label class="label">Name</label>
-        <input class="input input-bordered w-full" type="text" name="name" data-slug-name required>
+        <input class="input w-full" type="text" name="name" data-slug-name required>
         <label class="label">Slug <span class="text-base-content/60">(blank = auto from name)</span></label>
-        <input class="input input-bordered w-full" type="text" name="slug" data-slug-autofill>
+        <input class="input w-full" type="text" name="slug" data-slug-autofill>
         <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="secret" class="checkbox checkbox-sm"> Secret (hidden from public landing)</label>
         <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="requiresApproval" class="checkbox checkbox-sm"> Requires owner approval (hold as pending)</label>
       </div>
@@ -933,13 +935,13 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
       <div class="collapse-title font-semibold">Duration</div>
       <div class="collapse-content fieldset">
         <label class="label">Duration (minutes)</label>
-        <input class="input input-bordered w-full" type="number" name="durationMinutes" value="30" required>
+        <input class="input w-full" type="number" name="durationMinutes" value="30" required>
         <label class="label">Slot interval (minutes, blank = back-to-back)</label>
-        <input class="input input-bordered w-full" type="number" name="slotIntervalMinutes">
+        <input class="input w-full" type="number" name="slotIntervalMinutes">
         <label class="label">Buffer before (minutes)</label>
-        <input class="input input-bordered w-full" type="number" name="bufferBeforeMinutes" value="0" min="0">
+        <input class="input w-full" type="number" name="bufferBeforeMinutes" value="0" min="0">
         <label class="label">Buffer after (minutes)</label>
-        <input class="input input-bordered w-full" type="number" name="bufferAfterMinutes" value="0" min="0">
+        <input class="input w-full" type="number" name="bufferAfterMinutes" value="0" min="0">
       </div>
     </div>
 
@@ -966,7 +968,7 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
         </div>
         <p class="text-sm text-base-content/60 mb-2">Pick where the meeting happens. Google Meet generates a link after booking (requires Google connected); for the others, fill in the detail below.</p>
         <label class="label">Location detail (phone / address / custom; ignored for Google Meet)</label>
-        <input class="input input-bordered w-full" type="text" name="locationDetail">
+        <input class="input w-full" type="text" name="locationDetail">
       </div>
     </div>
 
@@ -975,9 +977,9 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
       <div class="collapse-title font-semibold">Scheduling limits</div>
       <div class="collapse-content fieldset">
         <label class="label">Min scheduling notice (minutes)</label>
-        <input class="input input-bordered w-full" type="number" name="minNoticeMinutes" value="0" required>
+        <input class="input w-full" type="number" name="minNoticeMinutes" value="0" required>
         <label class="label">Booking horizon (days)</label>
-        <input class="input input-bordered w-full" type="number" name="horizonDays" value="60" required>
+        <input class="input w-full" type="number" name="horizonDays" value="60" required>
       </div>
     </div>
 
@@ -989,7 +991,7 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
         {#for d in daysOfWeek}
           <label class="label">{display:of(d)}
             <input type="hidden" name="ruleDay" value="{d}">
-            <span class="flex items-center gap-2"><input class="input input-bordered" type="time" name="ruleStart"> to <input class="input input-bordered" type="time" name="ruleEnd"></span>
+            <span class="flex items-center gap-2"><input class="input" type="time" name="ruleStart"> to <input class="input" type="time" name="ruleEnd"></span>
           </label>
         {/for}
       </div>
@@ -1001,12 +1003,12 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
       <div class="collapse-content">
         <p class="text-sm text-base-content/60 mb-2">Optional. An override REPLACES this date's normal hours for this type. Set a date and leave the windows blank to mark it a day off; add windows to set the only bookable times.</p>
         <label class="label">Date</label>
-        <input class="input input-bordered" type="date" name="overrideDate">
+        <input class="input" type="date" name="overrideDate">
         <fieldset class="fieldset border border-base-300 rounded-box p-3 mt-2">
           <legend class="fieldset-legend">Bookable windows (leave all blank = day off)</legend>
-          <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input input-bordered" type="time" name="windowStart"> to <input class="input input-bordered" type="time" name="windowEnd"></span></label>
-          <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input input-bordered" type="time" name="windowStart"> to <input class="input input-bordered" type="time" name="windowEnd"></span></label>
-          <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input input-bordered" type="time" name="windowStart"> to <input class="input input-bordered" type="time" name="windowEnd"></span></label>
+          <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+          <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+          <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
         </fieldset>
       </div>
     </div>
@@ -1064,29 +1066,29 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
       <div class="collapse-content">
         <form method="post" action="/admin/meeting-types/{type.id}/edit" class="fieldset">
           <label class="label">Name</label>
-          <input class="input input-bordered w-full" type="text" name="name" data-slug-name value="{type.name}" required>
+          <input class="input w-full" type="text" name="name" data-slug-name value="{type.name}" required>
           <label class="label">Slug <span class="text-base-content/60">(blank = auto from name)</span></label>
-          <input class="input input-bordered w-full" type="text" name="slug" data-slug-autofill value="{type.slug}">
+          <input class="input w-full" type="text" name="slug" data-slug-autofill value="{type.slug}">
           <label class="label">Duration (minutes)</label>
-          <input class="input input-bordered w-full" type="number" name="durationMinutes" value="{type.durationMinutes}" required>
+          <input class="input w-full" type="number" name="durationMinutes" value="{type.durationMinutes}" required>
           <label class="label">Buffer before (minutes)</label>
-          <input class="input input-bordered w-full" type="number" name="bufferBeforeMinutes" value="{type.bufferBeforeMinutes}" min="0">
+          <input class="input w-full" type="number" name="bufferBeforeMinutes" value="{type.bufferBeforeMinutes}" min="0">
           <label class="label">Buffer after (minutes)</label>
-          <input class="input input-bordered w-full" type="number" name="bufferAfterMinutes" value="{type.bufferAfterMinutes}" min="0">
+          <input class="input w-full" type="number" name="bufferAfterMinutes" value="{type.bufferAfterMinutes}" min="0">
           <label class="label">Slot interval (minutes, blank = back-to-back)</label>
-          <input class="input input-bordered w-full" type="number" name="slotIntervalMinutes" value="{#if type.slotIntervalMinutes}{type.slotIntervalMinutes}{/if}">
+          <input class="input w-full" type="number" name="slotIntervalMinutes" value="{#if type.slotIntervalMinutes}{type.slotIntervalMinutes}{/if}">
           <label class="label">Min scheduling notice (minutes)</label>
-          <input class="input input-bordered w-full" type="number" name="minNoticeMinutes" value="{type.minNoticeMinutes}" required>
+          <input class="input w-full" type="number" name="minNoticeMinutes" value="{type.minNoticeMinutes}" required>
           <label class="label">Booking horizon (days)</label>
-          <input class="input input-bordered w-full" type="number" name="horizonDays" value="{type.horizonDays}" required>
+          <input class="input w-full" type="number" name="horizonDays" value="{type.horizonDays}" required>
           <label class="label">Location</label>
-          <select class="select select-bordered w-full" name="locationType">
+          <select class="select w-full" name="locationType">
             {#for loc in locationTypes}
               <option value="{loc}"{#if type.locationType == loc} selected{/if}>{display:of(loc)}</option>
             {/for}
           </select>
           <label class="label">Location detail (phone / address / custom; ignored for Google Meet)</label>
-          <input class="input input-bordered w-full" type="text" name="locationDetail" value="{#if type.locationDetail}{type.locationDetail}{/if}">
+          <input class="input w-full" type="text" name="locationDetail" value="{#if type.locationDetail}{type.locationDetail}{/if}">
           <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="secret" class="checkbox checkbox-sm"{#if type.secret} checked{/if}> Secret (hidden from public landing)</label>
           <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="requiresApproval" class="checkbox checkbox-sm"{#if type.requiresApproval} checked{/if}> Requires owner approval</label>
           <script>
@@ -1126,14 +1128,14 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
         </div>
         <form method="post" action="/admin/meeting-types/{type.id}/booking-fields" class="fieldset">
           <label class="label">Label</label>
-          <input class="input input-bordered w-full" type="text" name="label" required>
+          <input class="input w-full" type="text" name="label" required>
           <label class="label">Field key</label>
-          <input class="input input-bordered w-full" type="text" name="fieldKey" required>
+          <input class="input w-full" type="text" name="fieldKey" required>
           <label class="label">Type</label>
-          <select class="select select-bordered w-full" name="type">{#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}</select>
+          <select class="select w-full" name="type">{#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}</select>
           <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="required" class="checkbox checkbox-sm"> Required</label>
           <label class="label">Position</label>
-          <input class="input input-bordered w-full" type="number" name="position" value="0" required>
+          <input class="input w-full" type="number" name="position" value="0" required>
           <button type="submit" class="btn btn-primary mt-2">Add field</button>
         </form>
       </div>
@@ -1154,11 +1156,11 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
         </div>
         <form method="post" action="/admin/meeting-types/{type.id}/availability" class="fieldset">
           <label class="label">Day</label>
-          <select class="select select-bordered w-full" name="dayOfWeek">{#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}</select>
+          <select class="select w-full" name="dayOfWeek">{#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}</select>
           <label class="label">Start</label>
-          <input class="input input-bordered w-full" type="time" name="startTime" value="09:00" required>
+          <input class="input w-full" type="time" name="startTime" value="09:00" required>
           <label class="label">End</label>
-          <input class="input input-bordered w-full" type="time" name="endTime" value="17:00" required>
+          <input class="input w-full" type="time" name="endTime" value="17:00" required>
           <button type="submit" class="btn btn-primary mt-2">Add rule</button>
         </form>
       </div>
@@ -1184,12 +1186,12 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
         </div>
         <form method="post" action="/admin/meeting-types/{type.id}/date-overrides" class="fieldset">
           <label class="label">Date</label>
-          <input class="input input-bordered w-full" type="date" name="date" required>
+          <input class="input w-full" type="date" name="date" required>
           <fieldset class="fieldset border border-base-300 rounded-box p-3 mt-2">
             <legend class="fieldset-legend">Bookable windows (leave all blank = day off)</legend>
-            <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input input-bordered" type="time" name="windowStart"> to <input class="input input-bordered" type="time" name="windowEnd"></span></label>
-            <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input input-bordered" type="time" name="windowStart"> to <input class="input input-bordered" type="time" name="windowEnd"></span></label>
-            <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input input-bordered" type="time" name="windowStart"> to <input class="input input-bordered" type="time" name="windowEnd"></span></label>
+            <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+            <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+            <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
           </fieldset>
           <button type="submit" class="btn btn-primary mt-2">Save override</button>
         </form>
@@ -1230,13 +1232,13 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
   <h2 class="text-xl font-semibold mb-3">Add a rule</h2>
   <form method="post" action="/admin/availability" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
     <label class="label">Day</label>
-    <select class="select select-bordered w-full" name="dayOfWeek">{#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}</select>
+    <select class="select w-full" name="dayOfWeek">{#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}</select>
     <label class="label">Start</label>
-    <input class="input input-bordered w-full" type="time" name="startTime" value="09:00" required>
+    <input class="input w-full" type="time" name="startTime" value="09:00" required>
     <label class="label">End</label>
-    <input class="input input-bordered w-full" type="time" name="endTime" value="17:00" required>
+    <input class="input w-full" type="time" name="endTime" value="17:00" required>
     <label class="label">Applies to</label>
-    <select class="select select-bordered w-full" name="meetingTypeId">
+    <select class="select w-full" name="meetingTypeId">
       <option value="">All (global)</option>
       {#for t in types}<option value="{t.id}">{t.name}</option>{/for}
     </select>
@@ -1281,18 +1283,18 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
   <h2 class="text-xl font-semibold mb-3">Add an override</h2>
   <form method="post" action="/admin/date-overrides" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
     <label class="label">Date</label>
-    <input class="input input-bordered w-full" type="date" name="date" required>
+    <input class="input w-full" type="date" name="date" required>
     <label class="label">Applies to</label>
-    <select class="select select-bordered w-full" name="meetingTypeId">
+    <select class="select w-full" name="meetingTypeId">
       <option value="">All (global)</option>
       {#for t in types}<option value="{t.id}">{t.name}</option>{/for}
     </select>
     {! Up to three window rows; leave all blank for a day off. Repeated names → parallel arrays. !}
     <fieldset class="fieldset border border-base-300 rounded-box p-3 mt-2">
       <legend class="fieldset-legend">Bookable windows (leave all blank = day off)</legend>
-      <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input input-bordered" type="time" name="windowStart"> to <input class="input input-bordered" type="time" name="windowEnd"></span></label>
-      <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input input-bordered" type="time" name="windowStart"> to <input class="input input-bordered" type="time" name="windowEnd"></span></label>
-      <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input input-bordered" type="time" name="windowStart"> to <input class="input input-bordered" type="time" name="windowEnd"></span></label>
+      <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+      <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+      <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
     </fieldset>
     <button type="submit" class="btn btn-primary mt-2">Save override</button>
   </form>
@@ -1331,14 +1333,14 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
   <h2 class="text-xl font-semibold mb-3">Add a field</h2>
   <form method="post" action="/admin/booking-fields" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
     <label class="label">Label</label>
-    <input class="input input-bordered w-full" type="text" name="label" required>
+    <input class="input w-full" type="text" name="label" required>
     <label class="label">Field key</label>
-    <input class="input input-bordered w-full" type="text" name="fieldKey" required>
+    <input class="input w-full" type="text" name="fieldKey" required>
     <label class="label">Type</label>
-    <select class="select select-bordered w-full" name="type">{#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}</select>
+    <select class="select w-full" name="type">{#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}</select>
     <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="required" class="checkbox checkbox-sm"> Required</label>
     <label class="label">Position</label>
-    <input class="input input-bordered w-full" type="number" name="position" value="0" required>
+    <input class="input w-full" type="number" name="position" value="0" required>
     <button type="submit" class="btn btn-primary mt-2">Add field</button>
   </form>
 {/include}
@@ -1364,11 +1366,11 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
   <h1 class="text-2xl font-bold mb-4">Owner settings</h1>
   <form method="post" action="/admin/settings" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
     <label class="label">Name</label>
-    <input class="input input-bordered w-full" type="text" name="ownerName" required value="{#if settings}{settings.ownerName}{/if}">
+    <input class="input w-full" type="text" name="ownerName" required value="{#if settings}{settings.ownerName}{/if}">
     <label class="label">Email</label>
-    <input class="input input-bordered w-full" type="email" name="ownerEmail" required value="{#if settings}{settings.ownerEmail}{/if}">
+    <input class="input w-full" type="email" name="ownerEmail" required value="{#if settings}{settings.ownerEmail}{/if}">
     <label class="label">Timezone</label>
-    <select class="select select-bordered w-full" name="timezone" required>
+    <select class="select w-full" name="timezone" required>
       {#for z in zones}
         {#if settings}
         <option value="{z}"{#if settings.timezone == z} selected{/if}>{z}</option>
@@ -1383,7 +1385,7 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
     <button type="submit" class="btn btn-primary mt-2">Save</button>
   </form>
 
-  <div class="alert mt-4 max-w-md">
+  <div role="alert" class="alert mt-4 max-w-md">
     <span><strong>Reminder lead:</strong> {reminderLeadMinutes} minutes before the meeting <em>(set via the REMINDER_LEAD_MINUTES environment variable)</em></span>
   </div>
 {/include}
@@ -1450,7 +1452,7 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
 
   <h2 class="text-xl font-semibold mb-3">Upcoming bookings</h2>
   {#if upcoming.isEmpty()}
-    <div class="alert">No upcoming bookings.</div>
+    <div role="alert" class="alert">No upcoming bookings.</div>
   {#else}
     <div class="space-y-2">
     {#for b in upcoming}
@@ -1483,7 +1485,7 @@ git commit -m "feat(ui): migrate public + login pages to daisyUI"
 {#include adminBase title="Admin — Pending approvals" pendingCount=pending.size() active="pending"}
   <h1 class="text-2xl font-bold mb-4">Pending approvals</h1>
   {#if pending.isEmpty()}
-    <div class="alert">No requests are awaiting approval.</div>
+    <div role="alert" class="alert">No requests are awaiting approval.</div>
   {#else}
     <div class="space-y-2">
     {#for b in pending}
