@@ -80,7 +80,7 @@ class BookingResourceTest {
                 .thenReturn(new CreatedEvent("evt-rest", "https://meet.google.com/rest-1234-xyz", "h"));
 
         given().contentType("application/json")
-                .body("{\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
+                .body("{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
                         + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\","
                         + "\"answers\":{\"description\":\"Quarterly sync\"},\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
                 .when().post("/api/bookings")
@@ -100,7 +100,7 @@ class BookingResourceTest {
 
         // Body omits the required "company" answer -> 422 (not 409: input is wrong, slot is fine).
         given().contentType("application/json")
-                .body("{\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
+                .body("{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
                         + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\","
                         + "\"answers\":{},\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
                 .when().post("/api/bookings")
@@ -121,10 +121,21 @@ class BookingResourceTest {
                 .thenReturn(new CreatedEvent("evt-avail", "https://meet.google.com/av-1-2", "h"));
 
         given().contentType("application/json")
-                .body("{\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
+                .body("{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
                         + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
                 .when().post("/api/bookings")
                 .then().statusCode(201);
+    }
+
+    @Test
+    void unknownUserReturns404() {
+        String slug = "rest-unknown-" + System.nanoTime();
+        seedType(slug); // belongs to admin (owner 1)
+        given().contentType("application/json")
+                .body("{\"user\":\"ghost\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
+                        + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
+                .when().post("/api/bookings")
+                .then().statusCode(404);
     }
 
     @Test
@@ -136,7 +147,7 @@ class BookingResourceTest {
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-x", "https://meet.google.com/a-b-c", "h"));
 
-        String body = "{\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
+        String body = "{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
                 + "\"inviteeName\":\"First\",\"inviteeEmail\":\"first@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}";
         given().contentType("application/json").body(body)
                 .when().post("/api/bookings").then().statusCode(201);
@@ -157,7 +168,7 @@ class BookingResourceTest {
                 .thenReturn(new CreatedEvent("evt-cancel", "https://meet.google.com/cn-1-2", "h"));
 
         String token = given().contentType("application/json")
-                .body("{\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
+                .body("{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
                         + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
                 .when().post("/api/bookings")
                 .then().statusCode(201).extract().path("manageToken");
@@ -167,7 +178,7 @@ class BookingResourceTest {
         // The 09:00 slot is bookable again: re-booking the same slot now succeeds (it would 409
         // "not available" if the cancel had not freed it). Replaces the deleted JSON /available probe.
         given().contentType("application/json")
-                .body("{\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
+                .body("{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
                         + "\"inviteeName\":\"Sam Two\",\"inviteeEmail\":\"sam2@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
                 .when().post("/api/bookings")
                 .then().statusCode(201);

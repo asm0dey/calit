@@ -21,7 +21,7 @@ public class BookingResource {
     @Inject
     BookingService bookingService;
 
-    public record BookRequest(String slug, String startUtc, String inviteeName, String inviteeEmail,
+    public record BookRequest(String user, String slug, String startUtc, String inviteeName, String inviteeEmail,
                               Map<String, String> answers, String turnstileToken, String honeypot) {}
 
     public record RescheduleRequest(String newStartUtc) {}
@@ -29,14 +29,22 @@ public class BookingResource {
     @POST
     @Path("/bookings")
     public Response create(BookRequest req) {
-        // All abuse guards (Turnstile + honeypot + per-email/day cap) are enforced inside book().
-        // The Plan 5 web layer forwards the cf-turnstile-response (turnstileToken) and website (honeypot) values.
-        // Phase 3 replaces this global lookup with /{user}/{slug} owner resolution.
-        com.calit.domain.MeetingType type = com.calit.domain.MeetingType.find("slug", req.slug()).firstResult();
+        // Owner-scoped (carry-forward M1): the booking targets a specific owner identified by {user};
+        // the meeting type is resolved within that owner so colliding slugs across owners never alias.
+        if (req.user() == null || req.user().isBlank()) {
+            throw new jakarta.ws.rs.NotFoundException("Missing user");
+        }
+        com.calit.user.AppUser owner =
+                com.calit.user.AppUser.findByUsername(com.calit.user.Usernames.normalize(req.user()));
+        if (owner == null) {
+            throw new jakarta.ws.rs.NotFoundException("No user " + req.user());
+        }
+        com.calit.domain.MeetingType type = com.calit.domain.MeetingType.findBySlug(owner.id, req.slug());
         if (type == null) {
             throw new jakarta.ws.rs.NotFoundException("No meeting type with slug " + req.slug());
         }
-        Booking b = bookingService.book(type.ownerId, req.slug(), Instant.parse(req.startUtc()),
+        // All abuse guards (Turnstile + honeypot + per-email/day cap) are enforced inside book().
+        Booking b = bookingService.book(owner.id, req.slug(), Instant.parse(req.startUtc()),
                 req.inviteeName(), req.inviteeEmail(), req.answers(), req.turnstileToken(), req.honeypot());
         return Response.status(Response.Status.CREATED).entity(b).build();
     }
