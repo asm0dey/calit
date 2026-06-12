@@ -3,6 +3,7 @@ package com.calit.google;
 import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeTokenRequest;
 import com.google.api.client.googleapis.auth.oauth2.GoogleRefreshTokenRequest;
+import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -215,12 +216,19 @@ public class GoogleTokenService {
     protected TokenResponse requestToken(String grantType, String codeOrRefreshToken, Instant now) {
         NetHttpTransport transport = new NetHttpTransport();
         GsonFactory json = GsonFactory.getDefaultInstance();
+        // SEC-SSRF-01: bound the OAuth token round-trip so a hung Google token endpoint can't pin a
+        // thread. Fixed destination (no SSRF) — availability hardening.
+        HttpRequestInitializer withTimeouts = request -> {
+            request.setConnectTimeout(5000); // ms
+            request.setReadTimeout(10000);   // ms
+        };
         try {
             if ("authorization_code".equals(grantType)) {
                 var resp = new GoogleAuthorizationCodeTokenRequest(
                         transport, json, TOKEN_ENDPOINT,
                         config.oauth().clientId(), config.oauth().clientSecret(),
                         codeOrRefreshToken, config.oauth().redirectUri())
+                        .setRequestInitializer(withTimeouts)
                         .execute();
                 // The id_token came directly from Google's token endpoint over TLS, so we read its
                 // sub/email claims without re-verifying the signature over the network.
@@ -238,6 +246,7 @@ public class GoogleTokenService {
             var resp = new GoogleRefreshTokenRequest(
                     transport, json, codeOrRefreshToken,
                     config.oauth().clientId(), config.oauth().clientSecret())
+                    .setRequestInitializer(withTimeouts)
                     .execute();
             return new TokenResponse(resp.getAccessToken(), resp.getRefreshToken(),
                     now.plusSeconds(resp.getExpiresInSeconds()), null, null);
