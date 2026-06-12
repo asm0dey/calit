@@ -96,11 +96,13 @@ public class GooglePageResource {
         return Templates.google(accounts, loadError, pendingCount(), isAdmin());
     }
 
+    // NOT @Transactional: this loops N calendarListPort.listCalendars() network calls to re-fetch
+    // live lists, and must not hold a pooled DB connection across that I/O. Reads run on the
+    // request-scoped session; the actual write is one atomic transaction inside selectionService.save.
     @POST
     @Path("/calendars")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public Response saveSelection(MultivaluedMap<String, String> form) {
         Long ownerId = currentOwner.id();
         List<String> readVals = form.getOrDefault("read", List.of());
