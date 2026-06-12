@@ -337,7 +337,33 @@ The port number alone does **not** pick the mode — set `MAIL_TLS` explicitly f
   LOCKED` — reminder dispatch and pending-booking auto-expiry. No clustered scheduler is needed.
 - **Double-booking** is prevented at the database level by a Postgres exclusion constraint covering
   PENDING+CONFIRMED bookings, so concurrent replicas cannot both win the same slot.
-- **Migrations** are plain SQL under `src/main/resources/db/migration` (`V1`…`V11`) and run at boot.
+- **Migrations** are plain SQL under `src/main/resources/db/migration` (`V1`…`V12`) and run at boot.
+
+---
+
+## Upgrading
+
+### ⚠️ BREAKING (token-at-rest encryption release) — set `TOKEN_ENCRYPTION_KEY` before deploying
+
+This release encrypts stored Google OAuth tokens at rest. It adds a **new required production
+secret**, `TOKEN_ENCRYPTION_KEY`. A `%prod` deployment **fails to boot** until it is set (fail-closed,
+by design — the app will not serve traffic with no key).
+
+**Migration steps for existing operators:**
+
+1. Generate a key — **once**, and keep it forever-stable:
+   ```bash
+   openssl rand -hex 32      # 64 hex characters = 32 bytes (AES-256)
+   ```
+2. Set `TOKEN_ENCRYPTION_KEY` to that value in the environment of **every replica** (same value
+   everywhere, exactly like `SESSION_ENCRYPTION_KEY`).
+3. Deploy the new image. On first boot the app transparently **encrypts existing plaintext tokens in
+   place** — no user has to reconnect; every already-connected Google Calendar keeps working.
+
+**Do not rotate this key.** Changing it makes all previously-encrypted tokens undecryptable, which
+disconnects every user's calendar and forces a full reconnect. Treat it as a permanent secret.
+If you do not use Google Calendar at all the key is still required in prod (one fewer way to
+misconfigure), but it is never used.
 
 ---
 
