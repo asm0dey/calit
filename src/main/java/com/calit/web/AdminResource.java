@@ -376,6 +376,20 @@ public class AdminResource {
     }
 
     @POST
+    @Path("/meeting-types/{id}/availability/bulk")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance saveTypeWeeklyRules(@PathParam("id") Long id,
+                                                MultivaluedMap<String, String> form) {
+        requireType(id); // 404 a cross-owner type
+        // Replace-all for this type's schedule only; global rules (meetingTypeId null) are untouched.
+        AvailabilityRule.delete("ownerId = ?1 and meetingTypeId = ?2", currentOwner.id(), id);
+        persistFrames(currentOwner.id(), id, form);
+        return detailInstance(id);
+    }
+
+    @POST
     @Path("/meeting-types/{id}/availability/{rid}/delete")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)

@@ -1,6 +1,7 @@
 package com.calit.web;
 
 import com.calit.domain.AvailabilityRule;
+import com.calit.domain.MeetingType;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
@@ -51,5 +52,36 @@ class AdminAvailabilityBulkTest {
                 .formParam("frameEnd", "12:00", "12:00", "09:00")
                 .when().post("/me/availability/bulk").then().statusCode(200);
         assertEquals(1, globalCount(DayOfWeek.TUESDAY), "only the valid frame persists");
+    }
+
+    @Test
+    void bulkSavePerTypeReplacesOnlyThatTypesRules() {
+        String cred = FormAuth.login();
+
+        // Create a meeting type to scope per-type rules to.
+        given().cookie("quarkus-credential", cred)
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Bulk Type").formParam("slug", "bulk-type")
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0").formParam("horizonDays", "30")
+                .formParam("locationType", "PHONE")
+                .when().post("/me/meeting-types").then().statusCode(200);
+        MeetingType t = MeetingType.find("slug = ?1", "bulk-type").firstResult();
+
+        // Seed a stale per-type rule via the legacy endpoint, then bulk-replace.
+        given().cookie("quarkus-credential", cred)
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("dayOfWeek", "FRIDAY")
+                .formParam("startTime", "08:00").formParam("endTime", "09:00")
+                .when().post("/me/meeting-types/" + t.id + "/availability").then().statusCode(200);
+
+        given().cookie("quarkus-credential", cred)
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("frameDay", "MONDAY")
+                .formParam("frameStart", "10:00").formParam("frameEnd", "14:00")
+                .when().post("/me/meeting-types/" + t.id + "/availability/bulk").then().statusCode(200);
+
+        assertEquals(0, AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.FRIDAY));
+        assertEquals(1, AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY));
     }
 }
