@@ -24,6 +24,8 @@ import java.time.Instant;
 @Path("/api/google/login")
 public class GoogleLoginResource {
 
+    private static final org.jboss.logging.Logger LOG = org.jboss.logging.Logger.getLogger(GoogleLoginResource.class);
+
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance bridge(String username, String token);
@@ -66,7 +68,14 @@ public class GoogleLoginResource {
             return redirectToLogin("google");
         }
 
-        GoogleIdentity identity = loginService.exchangeForIdentity(code, now);
+        GoogleIdentity identity;
+        try {
+            identity = loginService.exchangeForIdentity(code, now);
+        } catch (RuntimeException e) {
+            // Google/network error or malformed token response — recoverable; send the user back to login.
+            LOG.warn("Google sign-in token exchange failed", e);
+            return redirectToLogin("google");
+        }
         AppUser user;
         try {
             user = signInService.resolveOrProvision(identity);
@@ -78,12 +87,16 @@ public class GoogleLoginResource {
         }
 
         String token = loginTickets.issue(user.id, now);
-        return Response.ok(Templates.bridge(user.username, token)).build();
+        // The page carries a single-use login token in its body — never cache it.
+        return Response.ok(Templates.bridge(user.username, token))
+                .header("Cache-Control", "no-store")
+                .build();
     }
 
     private static Response redirectToLogin(String notice) {
         return Response.status(Response.Status.FOUND)
-                .location(URI.create("/login?notice=" + notice))
+                .location(URI.create("/login?notice="
+                        + java.net.URLEncoder.encode(notice, java.nio.charset.StandardCharsets.UTF_8)))
                 .build();
     }
 }
