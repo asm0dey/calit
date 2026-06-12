@@ -48,6 +48,13 @@ public class GoogleCalendarResource {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("At most one write-target calendar is allowed").build();
         }
+        // Resolve the owner's primary credential — required now that calendars belong to an account.
+        // TODO(Task 2+): accept a credentialId in the request body for multi-account selection.
+        GoogleCredential cred = GoogleCredential.forOwner(currentOwner.id());
+        if (cred == null) {
+            return Response.status(Response.Status.CONFLICT)
+                    .entity("No Google account connected. Connect Google first.").build();
+        }
         // Replace prior selection wholesale so removed calendars stop being read.
         GoogleCalendar.deleteForOwner(currentOwner.id());
         for (CalendarSelection sel : req.calendars()) {
@@ -57,6 +64,7 @@ public class GoogleCalendarResource {
             c.summary = sel.summary();
             c.readForBusy = sel.readForBusy();
             c.writeTarget = sel.writeTarget();
+            c.googleCredentialId = cred.id;
             c.persist();
         }
         return Response.ok().build();

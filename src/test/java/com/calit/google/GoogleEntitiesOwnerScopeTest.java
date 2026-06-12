@@ -22,9 +22,9 @@ class GoogleEntitiesOwnerScopeTest {
         TestOwners.ensure(em, 3001L);
         TestOwners.ensure(em, 3002L);
         GoogleCredential a = new GoogleCredential();
-        a.ownerId = 3001L; a.refreshToken = "ra"; a.persist();
+        a.ownerId = 3001L; a.refreshToken = "ra"; a.googleSub = "sub-scope-3001"; a.persist();
         GoogleCredential b = new GoogleCredential();
-        b.ownerId = 3002L; b.refreshToken = "rb"; b.persist();
+        b.ownerId = 3002L; b.refreshToken = "rb"; b.googleSub = "sub-scope-3002"; b.persist();
 
         assertEquals("ra", GoogleCredential.forOwner(3001L).refreshToken);
         assertEquals("rb", GoogleCredential.forOwner(3002L).refreshToken);
@@ -36,12 +36,16 @@ class GoogleEntitiesOwnerScopeTest {
     void calendarReadAndWriteTargetsAreScoped() {
         TestOwners.ensure(em, 3001L);
         TestOwners.ensure(em, 3002L);
+        GoogleCredential credA = new GoogleCredential();
+        credA.ownerId = 3001L; credA.refreshToken = "ra-cal"; credA.googleSub = "sub-cal-3001"; credA.persist();
+        GoogleCredential credB = new GoogleCredential();
+        credB.ownerId = 3002L; credB.refreshToken = "rb-cal"; credB.googleSub = "sub-cal-3002"; credB.persist();
         GoogleCalendar a = new GoogleCalendar();
         a.ownerId = 3001L; a.googleCalendarId = "cal-a"; a.summary = "A";
-        a.readForBusy = true; a.writeTarget = true; a.persist();
+        a.readForBusy = true; a.writeTarget = true; a.googleCredentialId = credA.id; a.persist();
         GoogleCalendar b = new GoogleCalendar();
         b.ownerId = 3002L; b.googleCalendarId = "cal-b"; b.summary = "B";
-        b.readForBusy = true; b.writeTarget = true; b.persist();
+        b.readForBusy = true; b.writeTarget = true; b.googleCredentialId = credB.id; b.persist();
 
         assertEquals(1, GoogleCalendar.readForBusy(3001L).size());
         assertEquals("cal-a", GoogleCalendar.writeTarget(3001L).googleCalendarId);

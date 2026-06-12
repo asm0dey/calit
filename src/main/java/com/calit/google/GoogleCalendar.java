@@ -21,6 +21,10 @@ public class GoogleCalendar extends PanacheEntityBase {
     @Column(name = "owner_id", nullable = false)
     public Long ownerId;
 
+    /** The connected Google account this calendar belongs to. */
+    @Column(name = "google_credential_id", nullable = false)
+    public Long googleCredentialId;
+
     /** The Google-side calendar id (often an email address or an opaque id). */
     @Column(name = "google_calendar_id", nullable = false)
     public String googleCalendarId;
@@ -54,5 +58,11 @@ public class GoogleCalendar extends PanacheEntityBase {
     /** Remove all of this owner's calendar selections (used before re-saving). */
     public static long deleteForOwner(Long ownerId) {
         return delete("ownerId", ownerId);
+    }
+
+    /** This owner's read-for-busy calendars grouped by the credential (account) they belong to. */
+    public static java.util.Map<Long, java.util.List<GoogleCalendar>> readForBusyByCredential(Long ownerId) {
+        return readForBusy(ownerId).stream()
+                .collect(java.util.stream.Collectors.groupingBy(c -> c.googleCredentialId));
     }
 }

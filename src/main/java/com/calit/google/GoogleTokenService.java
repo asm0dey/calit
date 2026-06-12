@@ -43,8 +43,17 @@ public class GoogleTokenService {
         this.config = config;
     }
 
-    /** Normalized token data, independent of the Google client types (keeps the test seam clean). */
-    public record TokenResponse(String accessToken, String refreshToken, Instant expiry) {}
+    /**
+     * Normalized token data, independent of the Google client types (keeps the test seam clean).
+     * {@code googleSub} is extracted from the id_token during authorization_code exchange (Task 2);
+     * it is null for refresh-token responses and for the legacy stub constructor.
+     */
+    public record TokenResponse(String accessToken, String refreshToken, Instant expiry, String googleSub) {
+        /** Convenience constructor for tests and refresh responses that have no id_token. */
+        public TokenResponse(String accessToken, String refreshToken, Instant expiry) {
+            this(accessToken, refreshToken, expiry, null);
+        }
+    }
 
     /**
      * The Google consent URL, carrying a stateless, signed CSRF state bound to {@code ownerId}.
@@ -128,10 +137,19 @@ public class GoogleTokenService {
     @Transactional
     public void exchangeCode(Long ownerId, String code, Instant now) {
         TokenResponse resp = requestToken("authorization_code", code, now);
-        GoogleCredential c = GoogleCredential.forOwner(ownerId);
+        // TODO(Task 2): parse id_token to extract real google_sub + account_email from the response.
+        // For now use a stub sub so the NOT NULL constraint is satisfied; Task 2 replaces this with
+        // the real sub extracted from the id_token returned during authorization_code exchange.
+        String googleSub = resp.googleSub() != null ? resp.googleSub()
+                : "legacy-owner-" + ownerId;
+        GoogleCredential c = GoogleCredential.findByOwnerAndSub(ownerId, googleSub);
+        if (c == null) {
+            c = GoogleCredential.forOwner(ownerId);  // fall back for migration compatibility
+        }
         if (c == null) {
             c = new GoogleCredential();
             c.ownerId = ownerId;
+            c.googleSub = googleSub;
         }
         if (resp.refreshToken() != null) {
             c.refreshToken = resp.refreshToken();

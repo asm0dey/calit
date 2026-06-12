@@ -23,11 +23,24 @@ class GoogleCalendarResourceTest {
     // POST /api/google/calendars commits rows in its own request transaction (so @TestTransaction
     // can't roll them back). Clean both before AND after each test so leaked rows never affect this
     // class or any later test class (e.g. GoogleCalendarTest, which assumes a clean table).
-    @BeforeEach
     @AfterEach
     @Transactional
-    void cleanUp() {
+    void tearDown() {
         GoogleCalendar.deleteAll();
+        GoogleCredential.deleteAll();
+    }
+
+    // Wipe + seed in a single before-each so a connected credential is always present for POST tests.
+    @BeforeEach
+    @Transactional
+    void setUp() {
+        GoogleCalendar.deleteAll();
+        GoogleCredential.deleteAll();
+        GoogleCredential cred = new GoogleCredential();
+        cred.ownerId = 1L;
+        cred.refreshToken = "rt-resource-test";
+        cred.googleSub = "sub-resource-test";
+        cred.persist();
     }
 
     @Test
