@@ -471,6 +471,43 @@ public class AdminResource {
     }
 
     @POST
+    @Path("/availability/bulk")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    @Transactional
+    public TemplateInstance saveWeeklyRules(MultivaluedMap<String, String> form) {
+        // Replace-all for this owner's GLOBAL schedule: wipe the scope, re-insert posted frames.
+        AvailabilityRule.delete("ownerId = ?1 and meetingTypeId is null", currentOwner.id());
+        persistFrames(currentOwner.id(), null, form);
+        return Templates.availability(ownerRules(),
+                MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin());
+    }
+
+    /**
+     * Zip parallel frameDay[]/frameStart[]/frameEnd[] arrays into AvailabilityRule rows for one
+     * scope (meetingTypeId null = global, non-null = per-type). Skips a frame whose start or end is
+     * blank, or whose end is not strictly after its start.
+     */
+    private void persistFrames(Long ownerId, Long meetingTypeId, MultivaluedMap<String, String> form) {
+        List<String> days = form.getOrDefault("frameDay", List.of());
+        List<String> starts = form.getOrDefault("frameStart", List.of());
+        List<String> ends = form.getOrDefault("frameEnd", List.of());
+        for (int i = 0; i < days.size() && i < starts.size() && i < ends.size(); i++) {
+            if (starts.get(i).isBlank() || ends.get(i).isBlank()) { continue; }
+            LocalTime start = LocalTime.parse(starts.get(i));
+            LocalTime end = LocalTime.parse(ends.get(i));
+            if (!end.isAfter(start)) { continue; } // drop zero-length / inverted frames
+            AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = ownerId;
+            r.meetingTypeId = meetingTypeId;
+            r.dayOfWeek = DayOfWeek.valueOf(days.get(i));
+            r.startTime = start;
+            r.endTime = end;
+            r.persist();
+        }
+    }
+
+    @POST
     @Path("/availability/{id}/delete")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
