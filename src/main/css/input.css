@@ -114,7 +114,7 @@
   .day-slots[hidden] { display: none; }
   .slot { display: block; margin: 0 0 .5rem; }
   .slot input[type="radio"] { position: absolute; opacity: 0; }
-  .slot time { display: block; text-align: center; padding: .55rem .75rem; border: 1px solid var(--color-primary); border-radius: var(--radius-field); color: var(--color-primary); cursor: pointer; }
+  .slot time { display: block; text-align: center; padding: .55rem .75rem; border: 1px solid var(--color-primary); border-radius: var(--radius-field); background: var(--color-base-100); color: var(--color-primary); cursor: pointer; }
   .slot input[type="radio"]:checked + time { background: var(--color-primary); color: var(--color-primary-content); }
   .slot input[type="radio"]:focus-visible + time { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
