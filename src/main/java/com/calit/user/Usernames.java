@@ -55,4 +55,40 @@ public final class Usernames {
         }
         return norm;
     }
+
+    /**
+     * Best-effort handle from an email's local-part: lowercase it, drop everything outside
+     * [a-z0-9-], collapse repeated hyphens, trim leading/trailing hyphens. Returns "user" when
+     * the result is not a valid handle (too short, empty, etc.). The result still needs
+     * {@link #uniquify} before use — it may collide with an existing username.
+     */
+    public static String fromEmail(String email) {
+        if (email == null) {
+            return "user";
+        }
+        int at = email.indexOf('@');
+        String local = at > 0 ? email.substring(0, at) : email;
+        String cleaned = normalize(local)
+                .replaceAll("[^a-z0-9-]", "")
+                .replaceAll("-{2,}", "-")
+                .replaceAll("(^-+)|(-+$)", "");
+        return isValid(cleaned) && !isReserved(cleaned) ? cleaned : "user";
+    }
+
+    /**
+     * Return {@code base} if it is a usable, free handle; otherwise replace a reserved/invalid base
+     * with "user" and append "-2", "-3", … until {@code taken} reports the candidate is free.
+     */
+    public static String uniquify(String base, Predicate<String> taken) {
+        String root = (isValid(base) && !isReserved(base)) ? normalize(base) : "user";
+        if (!taken.test(root)) {
+            return root;
+        }
+        for (int n = 2; ; n++) {
+            String candidate = root + "-" + n;
+            if (!taken.test(candidate)) {
+                return candidate;
+            }
+        }
+    }
 }
