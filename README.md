@@ -139,8 +139,9 @@ the same values must be present on every replica.
 |---|---|---|
 | `DB_URL` | `jdbc:postgresql://localhost:5432/calit` | JDBC URL. |
 | `DB_USER` | `calit` | Postgres user. |
-| `MAIL_PORT` | `587` | SMTP port. |
-| `MAIL_START_TLS` | `REQUIRED` | STARTTLS policy (`REQUIRED`/`OPTIONAL`/`DISABLED`). |
+| `MAIL_PORT` | `587` | SMTP port. `587` for STARTTLS, `465` for implicit TLS. |
+| `MAIL_START_TLS` | `REQUIRED` | STARTTLS policy (`REQUIRED`/`OPTIONAL`/`DISABLED`). Use `REQUIRED` on port 587. |
+| `MAIL_TLS` | `false` | Implicit TLS (SMTPS). Set `true` for port 465; keep `false` for STARTTLS on 587. |
 | `REMINDER_LEAD_MINUTES` | `1440` | How long before a meeting the reminder email fires (24h). Also shown on the `/me/settings` page. |
 | `APPROVAL_HOLD_HOURS` | `24` | How long an approval-mode booking is held as PENDING before it auto-declines (or until its start, whichever comes first). |
 | `PER_EMAIL_DAILY_CAP` | `10` | Max bookings one invitee email may create per day (abuse guard). |
@@ -199,7 +200,12 @@ One switch turns on **both** the booking-form widget and server-side verificatio
 ### SMTP
 
 Use any provider (e.g. a transactional-email service or your own server). Set `MAIL_HOST`,
-`MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, and `MAIL_START_TLS` to match it.
+`MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, and the encryption mode to match it:
+
+- **Port 587 (STARTTLS)** — `MAIL_PORT=587`, `MAIL_START_TLS=REQUIRED`, `MAIL_TLS=false`.
+- **Port 465 (implicit TLS / SMTPS)** — `MAIL_PORT=465`, `MAIL_TLS=true`, `MAIL_START_TLS=OPTIONAL`.
+
+The port number alone does **not** pick the mode — set `MAIL_TLS` explicitly for 465.
 
 ---
 
