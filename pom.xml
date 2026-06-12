@@ -7,6 +7,14 @@
   <artifactId>calit</artifactId>
   <version>1.0.0</version>
 
+  <licenses>
+    <license>
+      <name>GNU Affero General Public License v3.0</name>
+      <url>https://www.gnu.org/licenses/agpl-3.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
   <properties>
     <maven.compiler.release>25</maven.compiler.release>
     <!-- Quarkus @CheckedTemplate needs parameter names retained in bytecode. -->

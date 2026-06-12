@@ -1,7 +1,7 @@
 # Self-hosted calit: the app + its Postgres. Copy .env.example to .env, fill it in, then:
 #   docker compose up --build -d
-# The app builds from the local Dockerfile (Liberica JDK 25), waits for a healthy DB, and Flyway
-# applies the V1..V6 migrations at boot. Scale the app with `docker compose up -d --scale app=3`
+# The app builds from the local Dockerfile (Liberica JDK 26), waits for a healthy DB, and Flyway
+# applies the V1..V8 migrations at boot. Scale the app with `docker compose up -d --scale app=3`
 # behind your own load balancer — it is stateless (all shared state is in Postgres).
 
 services:
