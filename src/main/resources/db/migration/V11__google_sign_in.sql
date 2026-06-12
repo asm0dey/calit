@@ -9,7 +9,7 @@ ALTER TABLE app_user ADD CONSTRAINT uq_app_user_google_sub UNIQUE (google_sub);
 CREATE TABLE login_ticket (
     id          BIGSERIAL    PRIMARY KEY,
     user_id     BIGINT       NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
-    token_hash  CHAR(64)     NOT NULL UNIQUE,   -- lowercase hex SHA-256 of the raw token
+    token_hash  VARCHAR(64)  NOT NULL UNIQUE,   -- lowercase hex SHA-256 of the raw token
     expires_at  TIMESTAMPTZ  NOT NULL
 );
 CREATE INDEX idx_login_ticket_user ON login_ticket(user_id);

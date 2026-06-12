@@ -7,9 +7,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.JdbcTypeCode;
-
-import java.sql.Types;
 import java.time.Instant;
 
 /**
@@ -29,7 +26,6 @@ public class LoginTicket extends PanacheEntityBase {
     @Column(name = "user_id", nullable = false)
     public Long userId;
 
-    @JdbcTypeCode(Types.CHAR)
     @Column(name = "token_hash", nullable = false, unique = true, length = 64)
     public String tokenHash;
 
