@@ -46,6 +46,8 @@ public class GoogleCalendarResource {
     @POST
     @Transactional
     public Response save(SaveSelectionRequest req) {
+        // Legacy single-account JSON endpoint: all rows go to the owner's (single) credential.
+        // The multi-account page (/me/google) passes explicit per-account credential ids instead.
         GoogleCredential cred = GoogleCredential.forOwner(currentOwner.id());
         if (cred == null) {
             return Response.status(Response.Status.BAD_REQUEST)

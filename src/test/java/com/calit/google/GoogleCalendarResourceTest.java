@@ -77,4 +77,31 @@ class GoogleCalendarResourceTest {
                 .then().statusCode(200)
                 .body("googleCalendarId", is(writeId));
     }
+
+    @Test
+    void rejectedSaveDoesNotWipeExistingSelection() {
+        // 1) Save a valid selection (one read + one write target).
+        String writeId = "keep-write@example.com";
+        String body = "{\"calendars\":["
+                + "{\"googleCalendarId\":\"" + writeId + "\",\"summary\":\"Write\",\"readForBusy\":true,\"writeTarget\":true}"
+                + "]}";
+        given().cookie("quarkus-credential", com.calit.web.FormAuth.login())
+                .contentType("application/json").body(body)
+                .when().post("/api/google/calendars").then().statusCode(200);
+
+        // 2) A subsequent INVALID save (two write targets) must be rejected...
+        String bad = "{\"calendars\":["
+                + "{\"googleCalendarId\":\"a@example.com\",\"summary\":\"A\",\"readForBusy\":true,\"writeTarget\":true},"
+                + "{\"googleCalendarId\":\"b@example.com\",\"summary\":\"B\",\"readForBusy\":true,\"writeTarget\":true}"
+                + "]}";
+        given().cookie("quarkus-credential", com.calit.web.FormAuth.login())
+                .contentType("application/json").body(bad)
+                .when().post("/api/google/calendars").then().statusCode(400);
+
+        // 3) ...and the original write target must still be there (delete rolled back).
+        given().cookie("quarkus-credential", com.calit.web.FormAuth.login())
+                .when().get("/api/google/calendars/write-target")
+                .then().statusCode(200)
+                .body("googleCalendarId", org.hamcrest.Matchers.is(writeId));
+    }
 }
