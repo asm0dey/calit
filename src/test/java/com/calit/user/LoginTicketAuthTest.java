@@ -63,4 +63,17 @@ class LoginTicketAuthTest {
         SecurityIdentity id = provider.authenticateBlocking(req("pw-user", "s3cret"));
         assertEquals("pw-user", id.getPrincipal().getName());
     }
+
+    @Test
+    @TestTransaction
+    void disabledUserWithValidTicketIsRejected() {
+        AppUser u = AppUser.createGoogleUser("disabled-tkt", "sub-dis");
+        u.enabled = false;
+        u.persistAndFlush();
+        String token = tickets.issue(u.id, Instant.now());
+
+        // A valid ticket must NOT log in a disabled account (the enabled gate).
+        assertThrows(AuthenticationFailedException.class,
+                () -> provider.authenticateBlocking(req("disabled-tkt", token)));
+    }
 }

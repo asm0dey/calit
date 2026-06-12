@@ -12,10 +12,14 @@ import jakarta.inject.Inject;
 import java.time.Instant;
 
 /**
- * Verifies form-login credentials against the DB argon2id hash. Replaces the Elytron
- * credential-comparison path that cannot consume argon2. Loads the AppUser by username,
- * verifies the password with PasswordHasher, and builds a SecurityIdentity carrying the
- * user's roles. Disabled users are rejected here (and again by EnabledUserAugmentor).
+ * Authenticates form-login submissions. Two paths, in order:
+ *   1. Normal login — verify the submitted password against the user's argon2id hash via
+ *      PasswordHasher (skipped for passwordless Google-only users, whose hash is null).
+ *   2. Google sign-in bridge — the submitted "password" may be a single-use login ticket;
+ *      LoginTicketService.consume() validates and consumes it, and the ticket's user must match
+ *      the submitted username.
+ * Replaces the Elytron credential-comparison path that cannot consume argon2. Disabled users are
+ * rejected on both paths here (and again by EnabledUserAugmentor on every request).
  */
 @ApplicationScoped
 public class AppUserIdentityProvider implements IdentityProvider<UsernamePasswordAuthenticationRequest> {
