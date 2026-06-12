@@ -8,7 +8,7 @@
 [![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)](https://bell-sw.com/libericajdk/)
 
 A **multi-user** scheduling app built on Quarkus — each user runs their own independent
-"Calendly": isolated meeting types, availability, bookings, settings, and Google account, served
+scheduling page: isolated meeting types, availability, bookings, settings, and Google account, served
 from a personal public URL `/<username>/<slug>`. You publish bookable meeting types; invitees pick
 a slot and book. Bookings sync to Google Calendar (optional), auto-create a Google Meet link, and
 email both parties. Includes per-type buffers, min-notice/booking-horizon, date-specific availability
@@ -134,7 +134,7 @@ docker compose up -d --scale app=3
 ### Or run the prebuilt image (no local build)
 
 Released versions are published as multi-arch images (linux/amd64 + linux/arm64) to GitHub
-Container Registry: **`ghcr.io/asm0dey/calit`** (tags: `latest`, `1.0.0`, `1.0`). To deploy without
+Container Registry: **`ghcr.io/asm0dey/calit`** (tags: `latest`, `1.0.1`, `1.0`). To deploy without
 building from source, drop the `build:` and pull the image instead. Save this as `compose.yaml`:
 
 ```yaml
@@ -146,7 +146,7 @@ services:
       POSTGRES_USER: ${DB_USER:-calit}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
     volumes:
-      - calit-db:/var/lib/postgresql/data
+      - calit-db:/var/lib/postgresql   # postgres:18 default PGDATA moved under here
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-calit} -d ${DB_NAME:-calit}"]
       interval: 5s
@@ -155,7 +155,7 @@ services:
     restart: unless-stopped
 
   app:
-    image: ghcr.io/asm0dey/calit:1.0.0   # or :latest
+    image: ghcr.io/asm0dey/calit:1.0.1   # or :latest
     depends_on:
       db:
         condition: service_healthy
@@ -336,3 +336,9 @@ The port number alone does **not** pick the mode — set `MAIL_TLS` explicitly f
 Licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0). If you run a modified version
 to provide a network service, you must offer its complete source to that service's users. See
 [LICENSE](LICENSE) for the full text.
+
+### Trademarks
+
+"Calendly" is a trademark of Calendly LLC. calit is an independent, self-hosted project and is **not
+affiliated with, endorsed by, or sponsored by Calendly**. The name is used only descriptively, to
+indicate the category of tool calit replaces.

@@ -12,7 +12,9 @@ services:
       POSTGRES_USER: ${DB_USER:-calit}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
     volumes:
-      - calit-db:/var/lib/postgresql/data
+      # postgres:18 changed the default PGDATA to /var/lib/postgresql/18/docker;
+      # mount the parent dir so data actually persists (was /data, which only works on PG<=17).
+      - calit-db:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-calit} -d ${DB_NAME:-calit}"]
       interval: 5s
