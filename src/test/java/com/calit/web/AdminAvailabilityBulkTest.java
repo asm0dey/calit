@@ -84,4 +84,17 @@ class AdminAvailabilityBulkTest {
         assertEquals(0, AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.FRIDAY));
         assertEquals(1, AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY));
     }
+
+    @Test
+    void availabilityPageRendersSevenDayGridWithCopyButtons() {
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when().get("/me/availability")
+                .then().statusCode(200)
+                .body(org.hamcrest.Matchers.containsString("data-workplan"))
+                .body(org.hamcrest.Matchers.containsString("data-day=\"MONDAY\""))
+                .body(org.hamcrest.Matchers.containsString("data-day=\"SUNDAY\""))
+                .body(org.hamcrest.Matchers.containsString("Copy to all days"))
+                .body(org.hamcrest.Matchers.containsString("Copy to weekdays"))
+                .body(org.hamcrest.Matchers.containsString("/workplan.js"));
+    }
 }
