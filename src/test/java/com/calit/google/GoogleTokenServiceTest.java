@@ -44,6 +44,9 @@ class GoogleTokenServiceTest {
         assertTrue(url.contains("response_type=code"));
         // Scope is URL-encoded (':' -> %3A, '/' -> %2F).
         assertTrue(url.contains("scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar"));
+        // The id_token-enabling scopes are present (raw substrings survive URL-encoding).
+        assertTrue(url.contains("openid"));
+        assertTrue(url.contains("email"));
         // A signed, non-empty CSRF state is present (stateless — no HttpSession).
         assertTrue(url.contains("&state="));
     }

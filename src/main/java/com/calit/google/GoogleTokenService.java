@@ -149,7 +149,9 @@ public class GoogleTokenService {
         if (resp.refreshToken() != null) {
             c.refreshToken = resp.refreshToken();
         }
-        c.accountEmail = resp.accountEmail();
+        if (resp.accountEmail() != null) {
+            c.accountEmail = resp.accountEmail();
+        }
         c.accessToken = resp.accessToken();
         c.accessTokenExpiry = resp.expiry();
         c.needsReconnect = false;
@@ -188,8 +190,18 @@ public class GoogleTokenService {
             c.persist();
             return c.accessToken;
         } catch (RuntimeException ex) {
-            c.needsReconnect = true;
-            c.persist();
+            // The failing refresh rolls back THIS transaction; persist the flag in a separate,
+            // committed transaction so "needs reconnect" survives the rollback and reaches the UI.
+            Long credId = c.id;
+            if (credId != null) {
+                io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
+                    GoogleCredential fresh = GoogleCredential.findById(credId);
+                    if (fresh != null) {
+                        fresh.needsReconnect = true;
+                        fresh.persist();
+                    }
+                });
+            }
             throw ex;
         }
     }
@@ -234,8 +246,7 @@ public class GoogleTokenService {
                     var payload = com.google.api.client.googleapis.auth.oauth2.GoogleIdToken
                             .parse(json, idToken).getPayload();
                     sub = payload.getSubject();
-                    Object e = payload.get("email");
-                    email = e == null ? null : e.toString();
+                    email = payload.getEmail();
                 }
                 return new TokenResponse(resp.getAccessToken(), resp.getRefreshToken(),
                         now.plusSeconds(resp.getExpiresInSeconds()), sub, email);

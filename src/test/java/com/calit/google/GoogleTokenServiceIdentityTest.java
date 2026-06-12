@@ -23,6 +23,35 @@ class GoogleTokenServiceIdentityTest {
         }
     }
 
+    static class FailingRefreshService extends GoogleTokenService {
+        FailingRefreshService(GoogleOAuthConfig config) { super(config); }
+        @Override
+        protected TokenResponse requestToken(String grantType, String codeOrRefreshToken, Instant now) {
+            throw new IllegalStateException("refresh failed");
+        }
+    }
+
+    @Test
+    void failedRefreshFlagsNeedsReconnectInSeparateTransaction() {
+        Instant now = Instant.now();
+        Long credId = io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().call(() -> {
+            GoogleCredential c = new GoogleCredential();
+            c.ownerId = 1L; c.refreshToken = "rt"; c.googleSub = "sub-fail";
+            c.accessToken = "old"; c.accessTokenExpiry = now.minusSeconds(60); // already expired
+            c.persist();
+            return c.id;
+        });
+        FailingRefreshService svc = new FailingRefreshService(config);
+        GoogleCredential c = io.quarkus.narayana.jta.QuarkusTransaction.requiringNew()
+                .call(() -> GoogleCredential.findById(credId));
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                () -> svc.validAccessToken(c, now));
+        GoogleCredential reloaded = io.quarkus.narayana.jta.QuarkusTransaction.requiringNew()
+                .call(() -> GoogleCredential.findById(credId));
+        org.junit.jupiter.api.Assertions.assertTrue(reloaded.needsReconnect,
+                "needsReconnect must be committed despite the rethrow");
+    }
+
     @Test
     @Transactional
     void reconnectingSameAccountUpdatesRowNotDuplicates() {
