@@ -127,7 +127,7 @@ public class GooglePageResource {
                 boolean write = key.equals(writeVal);
                 if (read || write) {
                     selections.add(new CalendarSelectionService.Selection(
-                            cred.id, rc.googleCalendarId(), rc.summary(), read, write));
+                            cred.id, rc.googleCalendarId(), rc.summary(), read, write, rc.meetSupported()));
                 }
             }
         }
@@ -145,7 +145,7 @@ public class GooglePageResource {
             boolean keepWrite = s.writeTarget && !submittedHasWriteTarget;
             selections.add(new CalendarSelectionService.Selection(
                     s.googleCredentialId, s.googleCalendarId, s.summary,
-                    s.readForBusy || keepWrite, keepWrite));
+                    s.readForBusy || keepWrite, keepWrite, s.supportsMeet));
         }
 
         if (selections.stream().noneMatch(CalendarSelectionService.Selection::writeTarget)) {

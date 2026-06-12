@@ -1,7 +1,6 @@
 package com.calit.google;
 
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
@@ -42,9 +41,13 @@ public class GoogleCalendarResource {
         return calendarListPort.listCalendars();
     }
 
-    /** Persist the read/write selection. Replaces any prior selection; enforces one write target. */
+    /**
+     * Persist the read/write selection. Replaces any prior selection; enforces one write target.
+     * NOT @Transactional: it re-fetches the live calendar list (network) to learn each calendar's
+     * Meet capability and must not hold a pooled DB connection across that I/O; the actual write is
+     * one atomic transaction inside {@code selectionService.save} (which also rolls back on reject).
+     */
     @POST
-    @Transactional
     public Response save(SaveSelectionRequest req) {
         // Legacy single-account JSON endpoint: all rows go to the owner's (single) credential.
         // The multi-account page (/me/google) passes explicit per-account credential ids instead.
@@ -53,10 +56,15 @@ public class GoogleCalendarResource {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("Connect a Google account first").build();
         }
+        java.util.Map<String, Boolean> meetByCalendar = calendarListPort.listCalendars(cred).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        CalendarListPort.RemoteCalendar::googleCalendarId,
+                        CalendarListPort.RemoteCalendar::meetSupported, (a, b) -> a));
         try {
             selectionService.save(currentOwner.id(), req.calendars().stream()
                     .map(s -> new CalendarSelectionService.Selection(
-                            cred.id, s.googleCalendarId(), s.summary(), s.readForBusy(), s.writeTarget()))
+                            cred.id, s.googleCalendarId(), s.summary(), s.readForBusy(), s.writeTarget(),
+                            meetByCalendar.getOrDefault(s.googleCalendarId(), false)))
                     .toList());
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();

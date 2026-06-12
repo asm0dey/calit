@@ -48,4 +48,15 @@ public class DisplayExtensions {
     public static String of(Enum<?> e) {
         return display(e);
     }
+
+    /**
+     * Raw enum constant name for value comparisons inside {@code #for} loops over enum arrays, e.g.
+     * {@code {#if display:name(lt) == 'GOOGLE_MEET'}}. Property-style {@code lt.name} can't be used
+     * there (Qute build validation can't resolve the loop element's enum type), same reason as
+     * {@link #of(Enum)}. Null -> "".
+     */
+    @TemplateExtension(namespace = NAMESPACE)
+    public static String name(Enum<?> e) {
+        return e == null ? "" : e.name();
+    }
 }

@@ -139,16 +139,27 @@ public class GoogleCalendarPort implements CalendarPort {
         }
 
         try {
-            // setConferenceDataVersion(1) is required so Google honors the createRequest; harmless when absent.
-            // setSendUpdates("all") makes Google email the attendees the invite (chosen invitee path).
-            Event created = client(cred).events()
-                    .insert(target.googleCalendarId, event)
-                    .setConferenceDataVersion(createMeetLink ? 1 : 0)
-                    .setSendUpdates("all")
-                    .execute();
+            Event created = insert(cred, target, event, createMeetLink);
             String meetLink = createMeetLink ? extractMeetLink(created) : null;
             return new CreatedEvent(created.getId(), meetLink, created.getHtmlLink());
         } catch (GoogleJsonResponseException e) {
+            if (createMeetLink && isInvalidConferenceType(e)) {
+                // This calendar can't mint Meet links (Workspace with Meet API disabled, or a
+                // calendar this account doesn't own). Don't fail the booking: drop the conference,
+                // retry the insert, and remember the capability so the UI stops offering GOOGLE_MEET
+                // for this write target (config-time gate). The booking gets a plain event, no link.
+                org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class).warnf(
+                        "Write-target calendar %s rejected a Meet conference; creating event without one",
+                        target.googleCalendarId);
+                target.supportsMeet = false; // managed entity; flushes with the booking transaction
+                event.setConferenceData(null);
+                try {
+                    Event created = insert(cred, target, event, false);
+                    return new CreatedEvent(created.getId(), null, created.getHtmlLink());
+                } catch (IOException ex) {
+                    throw new UncheckedIOException("createEvent failed", ex);
+                }
+            }
             if (e.getStatusCode() == 404) {
                 // The write-target calendar was deleted on Google since the owner selected it.
                 // Clear the selection + flag the account so the UI prompts a re-select/reconnect.
@@ -239,6 +250,28 @@ public class GoogleCalendarPort implements CalendarPort {
         return new EventDateTime()
                 .setDateTime(new DateTime(instant.toEpochMilli()))
                 .setTimeZone(ownerZoneId);
+    }
+
+    /**
+     * Insert the event. setConferenceDataVersion(1) is required so Google honors a createRequest
+     * (harmless at 0 when there's no conference); setSendUpdates("all") emails the attendees the invite.
+     */
+    private Event insert(GoogleCredential cred, GoogleCalendar target, Event event, boolean withMeet)
+            throws IOException {
+        return client(cred).events()
+                .insert(target.googleCalendarId, event)
+                .setConferenceDataVersion(withMeet ? 1 : 0)
+                .setSendUpdates("all")
+                .execute();
+    }
+
+    /** Google's 400 when the calendar doesn't allow the requested conference solution (e.g. Meet off). */
+    private static boolean isInvalidConferenceType(GoogleJsonResponseException e) {
+        if (e.getStatusCode() != 400) {
+            return false;
+        }
+        String msg = e.getDetails() != null ? e.getDetails().getMessage() : e.getMessage();
+        return msg != null && msg.toLowerCase(java.util.Locale.ROOT).contains("conference type");
     }
 
     /** Prefer the top-level hangoutLink; fall back to the first video conference entry point. */

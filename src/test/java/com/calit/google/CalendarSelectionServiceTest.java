@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -53,6 +54,18 @@ class CalendarSelectionServiceTest {
         other.persist();
         assertThrows(IllegalArgumentException.class, () -> service.save(1L, List.of(
                 new CalendarSelectionService.Selection(other.id, "a", "A", true, false))));
+    }
+
+    @Test
+    @Transactional
+    void persistsMeetCapabilityAndBlocksMeetWhenUnsupported() {
+        GoogleCredential cred = cred(1L, "sub-meet");
+        cred.persist();
+        service.save(1L, List.of(new CalendarSelectionService.Selection(
+                cred.id, "nomeet@example.com", "No Meet", false, true, false)));
+        GoogleCalendar wt = GoogleCalendar.writeTarget(1L);
+        assertFalse(wt.supportsMeet, "capability must persist from the selection");
+        assertTrue(GoogleCalendar.writeTargetBlocksMeet(1L), "a non-Meet write target blocks Meet");
     }
 
     private static GoogleCredential cred(long owner, String sub) {

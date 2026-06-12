@@ -35,7 +35,8 @@ public class GoogleCalendarListPort implements CalendarListPort {
             }
             return entries.stream()
                     .map(e -> new RemoteCalendar(e.getId(),
-                            e.getSummary() == null ? e.getId() : e.getSummary()))
+                            e.getSummary() == null ? e.getId() : e.getSummary(),
+                            meetSupported(e)))
                     .toList();
         } catch (IOException e) {
             throw new UncheckedIOException("calendarList.list failed", e);
@@ -46,5 +47,12 @@ public class GoogleCalendarListPort implements CalendarListPort {
     public List<RemoteCalendar> listCalendars() {
         GoogleCredential c = GoogleCredential.forOwner(currentOwner.id());
         return c == null ? List.of() : listCalendars(c);
+    }
+
+    /** A calendar supports Google Meet iff "hangoutsMeet" is among its allowed conference solutions. */
+    private static boolean meetSupported(CalendarListEntry e) {
+        return e.getConferenceProperties() != null
+                && e.getConferenceProperties().getAllowedConferenceSolutionTypes() != null
+                && e.getConferenceProperties().getAllowedConferenceSolutionTypes().contains("hangoutsMeet");
     }
 }

@@ -11,6 +11,7 @@ import com.calit.domain.MeetingType;
 import com.calit.domain.MeetingType.LocationType;
 import com.calit.domain.Slugs;
 import com.calit.domain.OwnerSettings;
+import com.calit.google.GoogleCalendar;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -113,7 +114,7 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance meetingTypes() {
         // Pass LocationType.values() so the form can render the location dropdown options.
-        return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), LocationType.values(),
+        return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), allowedLocationTypes(),
                 DayOfWeek.values(), pendingCount(), isAdmin()); // includes secret
     }
 
@@ -146,7 +147,7 @@ public class AdminResource {
         t.secret = "on".equals(secret); // unchecked checkbox sends no value
         t.minNoticeMinutes = minNoticeMinutes;
         t.horizonDays = horizonDays;
-        t.locationType = LocationType.valueOf(locationType);
+        t.locationType = parseLocationType(locationType);
         t.locationDetail = (locationDetail == null || locationDetail.isBlank()) ? null : locationDetail;
         // Slot cadence: blank = back-to-back (null → falls back to durationMinutes).
         t.slotIntervalMinutes = (slotIntervalMinutes == null || slotIntervalMinutes.isBlank())
@@ -155,7 +156,7 @@ public class AdminResource {
         t.persist(); // need the generated id before scoping child rules/overrides to it
         createInitialWorkingHours(t.id, t.ownerId, form);
         createInitialDateOverride(t.id, t.ownerId, form);
-        return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), LocationType.values(),
+        return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), allowedLocationTypes(),
                 DayOfWeek.values(), pendingCount(), isAdmin());
     }
 
@@ -213,7 +214,7 @@ public class AdminResource {
     public TemplateInstance toggleActive(@PathParam("id") Long id) {
         MeetingType t = requireType(id);
         t.active = !t.active;
-        return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), LocationType.values(),
+        return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), allowedLocationTypes(),
                 DayOfWeek.values(), pendingCount(), isAdmin());
     }
 
@@ -225,7 +226,7 @@ public class AdminResource {
     public TemplateInstance deleteMeetingType(@PathParam("id") Long id) {
         requireType(id);
         MeetingType.deleteById(id);
-        return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), LocationType.values(),
+        return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), allowedLocationTypes(),
                 DayOfWeek.values(), pendingCount(), isAdmin());
     }
 
@@ -251,6 +252,33 @@ public class AdminResource {
             o.windows = byOverride.getOrDefault(o.id, List.of());
         }
         return overrides;
+    }
+
+    /**
+     * Location types offered on the create form. Drops GOOGLE_MEET when this owner's write-target
+     * calendar can't mint Meet links, so the option is never even shown (it would 400 at booking).
+     */
+    private LocationType[] allowedLocationTypes() {
+        if (GoogleCalendar.writeTargetBlocksMeet(currentOwner.id())) {
+            return java.util.Arrays.stream(LocationType.values())
+                    .filter(lt -> lt != LocationType.GOOGLE_MEET)
+                    .toArray(LocationType[]::new);
+        }
+        return LocationType.values();
+    }
+
+    /**
+     * Enforces the gate behind {@link #allowedLocationTypes()} for the actual write (the edit form
+     * still shows every type so a stale value renders, and crafted POSTs must not slip through):
+     * GOOGLE_MEET is rejected when the write target can't create Meet links.
+     */
+    private LocationType parseLocationType(String locationType) {
+        LocationType lt = LocationType.valueOf(locationType);
+        if (lt == LocationType.GOOGLE_MEET && GoogleCalendar.writeTargetBlocksMeet(currentOwner.id())) {
+            throw new jakarta.ws.rs.BadRequestException(
+                    "The selected write-target calendar can't create Google Meet links; pick another location.");
+        }
+        return lt;
     }
 
     /** Load a meeting type or 404 — shared guard for detail-scoped GET/POST handlers. */
@@ -310,7 +338,7 @@ public class AdminResource {
         t.secret = "on".equals(secret);
         t.minNoticeMinutes = minNoticeMinutes;
         t.horizonDays = horizonDays;
-        t.locationType = LocationType.valueOf(locationType);
+        t.locationType = parseLocationType(locationType);
         t.locationDetail = (locationDetail == null || locationDetail.isBlank()) ? null : locationDetail;
         t.slotIntervalMinutes = (slotIntervalMinutes == null || slotIntervalMinutes.isBlank())
                 ? null : Integer.valueOf(slotIntervalMinutes);

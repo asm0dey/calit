@@ -6,7 +6,12 @@ import java.util.List;
 public interface CalendarListPort {
 
     /** A calendar as reported by Google's calendarList.list. */
-    record RemoteCalendar(String googleCalendarId, String summary) {}
+    record RemoteCalendar(String googleCalendarId, String summary, boolean meetSupported) {
+        /** Convenience for callers/tests that don't care about Meet capability (defaults false). */
+        public RemoteCalendar(String googleCalendarId, String summary) {
+            this(googleCalendarId, summary, false);
+        }
+    }
 
     List<RemoteCalendar> listCalendars();
 

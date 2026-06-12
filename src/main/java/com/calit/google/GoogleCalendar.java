@@ -42,6 +42,14 @@ public class GoogleCalendar extends PanacheEntityBase {
     @Column(name = "write_target", nullable = false)
     public boolean writeTarget = false;
 
+    /**
+     * Whether this calendar can create Google Meet conferences ("hangoutsMeet" allowed). When the
+     * write target can't, GOOGLE_MEET meeting types are forbidden so bookings don't 500 on Google's
+     * "Invalid conference type value". Captured from calendarList at selection time.
+     */
+    @Column(name = "supports_meet", nullable = false)
+    public boolean supportsMeet = true;
+
     /** This owner's calendars whose busy time should be subtracted from availability. */
     public static List<GoogleCalendar> readForBusy(Long ownerId) {
         return list("ownerId = ?1 and readForBusy = true", ownerId);
@@ -50,6 +58,16 @@ public class GoogleCalendar extends PanacheEntityBase {
     /** This owner's single write-target calendar, or null if none selected yet. */
     public static GoogleCalendar writeTarget(Long ownerId) {
         return find("ownerId = ?1 and writeTarget = true", ownerId).firstResult();
+    }
+
+    /**
+     * True when this owner has a write target that CANNOT mint Google Meet links, so GOOGLE_MEET
+     * meeting types must be forbidden. False when there is no write target yet (don't over-block:
+     * an owner may connect/pick a Meet-capable calendar later) or when the target supports Meet.
+     */
+    public static boolean writeTargetBlocksMeet(Long ownerId) {
+        GoogleCalendar wt = writeTarget(ownerId);
+        return wt != null && !wt.supportsMeet;
     }
 
     /** This owner's calendar with the given Google id, or null. */

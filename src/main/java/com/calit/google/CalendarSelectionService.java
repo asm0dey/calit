@@ -17,7 +17,13 @@ public class CalendarSelectionService {
 
     /** One chosen calendar belonging to a specific connected account. */
     public record Selection(Long googleCredentialId, String googleCalendarId, String summary,
-                            boolean readForBusy, boolean writeTarget) {}
+                            boolean readForBusy, boolean writeTarget, boolean meetSupported) {
+        /** Convenience for callers/tests that don't track Meet capability (defaults true, as before). */
+        public Selection(Long googleCredentialId, String googleCalendarId, String summary,
+                         boolean readForBusy, boolean writeTarget) {
+            this(googleCredentialId, googleCalendarId, summary, readForBusy, writeTarget, true);
+        }
+    }
 
     @Transactional
     public void save(Long ownerId, List<Selection> selections) {
@@ -40,6 +46,7 @@ public class CalendarSelectionService {
             // Write target is always read for busy (hard coupling).
             c.readForBusy = sel.readForBusy() || sel.writeTarget();
             c.writeTarget = sel.writeTarget();
+            c.supportsMeet = sel.meetSupported();
             c.persist();
         }
     }
