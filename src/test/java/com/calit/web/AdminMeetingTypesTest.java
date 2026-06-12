@@ -46,6 +46,17 @@ class AdminMeetingTypesTest {
     }
 
     @Test
+    void pageIncludesToastAndClipboardScript() {
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when().get("/me/meeting-types")
+            .then()
+                .statusCode(200)
+                .body(containsString("id=\"copy-toast\""))
+                .body(containsString("navigator.clipboard"));
+    }
+
+    @Test
     void adminListShowsSecretTypeUnlikePublicLanding() {
         seedSecret();
         // Admin sees it (listAll) ...

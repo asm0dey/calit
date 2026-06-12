@@ -157,4 +157,38 @@
     </script>
     <button type="submit" class="btn btn-primary">Create</button>
   </form>
+
+  <div class="toast toast-end z-50" id="copy-toast" style="display:none">
+    <div class="alert alert-success">
+      <span id="copy-toast-msg">Link copied</span>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var toast = document.getElementById('copy-toast');
+      var msg = document.getElementById('copy-toast-msg');
+      var timer = null;
+      function showToast(text) {
+        if (!toast) { return; }
+        if (msg) { msg.textContent = text; }
+        toast.style.display = '';
+        if (timer) { clearTimeout(timer); }
+        timer = setTimeout(function () { toast.style.display = 'none'; }, 2000);
+      }
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('.copy-link-btn') : null;
+        if (!btn) { return; }
+        var url = btn.getAttribute('data-copy-link');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(
+            function () { showToast('Link copied'); },
+            function () { showToast('Copy failed — ' + url); }
+          );
+        } else {
+          showToast('Copy failed — ' + url);
+        }
+      });
+    })();
+  </script>
 {/include}
