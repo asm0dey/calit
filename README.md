@@ -134,7 +134,7 @@ docker compose up -d --scale app=3
 ### Or run the prebuilt image (no local build)
 
 Released versions are published as multi-arch images (linux/amd64 + linux/arm64) to GitHub
-Container Registry: **`ghcr.io/asm0dey/calit`** (tags: `latest`, `1.0.1`, `1.0`). To deploy without
+Container Registry: **`ghcr.io/asm0dey/calit`** (tags: `latest`, `1.1.0`, `1.1`). To deploy without
 building from source, drop the `build:` and pull the image instead. Save this as `compose.yaml`:
 
 ```yaml
@@ -155,7 +155,7 @@ services:
     restart: unless-stopped
 
   app:
-    image: ghcr.io/asm0dey/calit:1.0.1   # or :latest
+    image: ghcr.io/asm0dey/calit:1.1.0   # or :latest
     depends_on:
       db:
         condition: service_healthy
