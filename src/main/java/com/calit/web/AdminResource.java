@@ -63,8 +63,6 @@ public class AdminResource {
         public static native TemplateInstance settings(
                 OwnerSettings settings, int reminderLeadMinutes, Long pendingCount, java.util.List<String> zones, boolean isAdmin);
 
-        public static native TemplateInstance google(Long pendingCount, boolean isAdmin);
-
         public static native TemplateInstance bookingFields(
                 List<BookingField> fields, BookingField.FieldType[] fieldTypes, Long pendingCount, boolean isAdmin);
 
@@ -517,13 +515,6 @@ public class AdminResource {
         s.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
         s.persist();
         return Templates.settings(s, reminderLeadMinutes, pendingCount(), zoneIds(), isAdmin());
-    }
-
-    @GET
-    @Path("/google")
-    @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance google() {
-        return Templates.google(pendingCount(), isAdmin());
     }
 
     @GET

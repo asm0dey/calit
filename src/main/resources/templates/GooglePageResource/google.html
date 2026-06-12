@@ -1,0 +1,65 @@
+{@java.util.List<com.calit.web.AccountView> accounts}
+{@java.lang.Boolean loadError}
+{@java.lang.Long pendingCount}
+{@java.lang.Boolean isAdmin}
+{#include adminBase title="Admin — Google" pendingCount=pendingCount active="google" isAdmin=isAdmin}
+  <h1 class="text-2xl font-bold mb-2">Google Calendar</h1>
+  <p class="text-base-content/70 mb-4">Connect Google accounts so calit can read your busy times and create events. Pick which calendars block availability, and one calendar to create booking events on.</p>
+
+  <a role="button" class="btn btn-primary mb-4" href="/api/google/connect">Connect a Google account</a>
+
+  {#if loadError}
+    <div class="alert alert-error mb-4">Couldn't reach Google for one or more accounts. Reconnect the flagged account, then reload.</div>
+  {/if}
+
+  {#if accounts.isEmpty()}
+    <p class="text-base-content/70">No Google accounts connected yet.</p>
+  {#else}
+    <form method="post" action="/me/google/calendars" class="flex flex-col gap-6">
+      {#for acc in accounts}
+        <div class="card bg-base-100 border border-base-300">
+          <div class="card-body gap-3">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold">{acc.accountEmail ?: "Google account"}
+                {#if acc.needsReconnect}<span class="badge badge-warning ml-2">needs reconnect</span>{/if}
+              </h2>
+              <button type="submit" form="disc-{acc.credentialId}" class="btn btn-outline btn-error btn-sm"
+                      {#if acc.holdsWriteTarget && accounts.size() > 1}disabled title="Pick a new write target on another account first"{/if}>
+                Disconnect
+              </button>
+            </div>
+            <table class="table table-sm">
+              <thead><tr><th>Calendar</th><th>Read busy</th><th>Write events here</th></tr></thead>
+              <tbody>
+                {#for cal in acc.calendars}
+                  <tr>
+                    <td>{cal.summary}</td>
+                    <td>
+                      <input type="checkbox" class="checkbox checkbox-sm" name="read"
+                             value="{cal.credentialId}:{cal.googleCalendarId}"
+                             {#if cal.readForBusy}checked{/if}
+                             {#if cal.writeTarget}disabled checked{/if}>
+                      {#if cal.writeTarget}<input type="hidden" name="read" value="{cal.credentialId}:{cal.googleCalendarId}">{/if}
+                    </td>
+                    <td>
+                      <input type="radio" class="radio radio-sm" name="writeTarget"
+                             value="{cal.credentialId}:{cal.googleCalendarId}"
+                             {#if cal.writeTarget}checked{/if}>
+                    </td>
+                  </tr>
+                {/for}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {/for}
+      <div><button type="submit" class="btn btn-primary">Save calendar selection</button></div>
+    </form>
+
+    <!-- Disconnect forms live OUTSIDE the selection form (no nested forms). Buttons above target them via form="disc-...". -->
+    {#for acc in accounts}
+      <form id="disc-{acc.credentialId}" method="post" action="/me/google/accounts/{acc.credentialId}/delete"
+            onsubmit="return confirm('Disconnect this Google account? Its calendar selections are removed.');"></form>
+    {/for}
+  {/if}
+{/include}

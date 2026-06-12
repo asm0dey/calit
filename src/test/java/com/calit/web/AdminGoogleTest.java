@@ -17,7 +17,7 @@ class AdminGoogleTest {
             .then()
                 .statusCode(200)
                 .body(containsString("/api/google/connect"))
-                .body(containsString("Connect Google"));
+                .body(containsString("Connect a Google account"));
     }
 
     @Test
