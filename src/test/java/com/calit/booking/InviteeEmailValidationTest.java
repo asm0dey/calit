@@ -36,4 +36,20 @@ class InviteeEmailValidationTest {
                 bookingService.book(1L, "intro", Instant.parse("2099-01-01T10:00:00Z"),
                         "Mallory", "not-an-email", Map.of(), null, null));
     }
+
+    @Test
+    void rejectsOversizedInviteeName() {
+        String longName = "n".repeat(201);
+        assertThrows(BookingValidationException.class, () ->
+                bookingService.book(1L, "intro", Instant.parse("2099-01-01T10:00:00Z"),
+                        longName, "a@b.com", Map.of(), null, null));
+    }
+
+    @Test
+    void rejectsOversizedAnswer() {
+        String longAnswer = "x".repeat(2001);
+        assertThrows(BookingValidationException.class, () ->
+                bookingService.book(1L, "intro", Instant.parse("2099-01-01T10:00:00Z"),
+                        "Bob", "a@b.com", Map.of("note", longAnswer), null, null));
+    }
 }
