@@ -99,23 +99,45 @@
       <input type="checkbox">
       <div class="collapse-title font-semibold">Working hours</div>
       <div class="collapse-content">
-        <p class="text-sm text-base-content/70 mb-2">Weekly hours for this meeting type. When set, they replace the global default hours for this type.</p>
-        <div class="space-y-2 mb-3">
-        {#for r in rules}
-          <div class="card bg-base-200 border border-base-300"><div class="card-body py-3 flex-row items-center justify-between">
-            <p><strong>{r.dayOfWeek.display}</strong> {r.startTime} &ndash; {r.endTime}</p>
-            <form method="post" action="/me/meeting-types/{type.id}/availability/{r.id}/delete"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
-          </div></div>
-        {/for}
-        </div>
-        <form method="post" action="/me/meeting-types/{type.id}/availability" class="fieldset">
-          <label class="label">Day</label>
-          <select class="select w-full" name="dayOfWeek">{#for d in daysOfWeek}<option value="{d}">{display:of(d)}</option>{/for}</select>
-          <label class="label">Start</label>
-          <input class="input w-full" type="time" name="startTime" value="09:00" required>
-          <label class="label">End</label>
-          <input class="input w-full" type="time" name="endTime" value="17:00" required>
-          <button type="submit" class="btn btn-primary mt-2">Add rule</button>
+        <p class="text-sm text-base-content/70 mb-2">Weekly hours for this meeting type. When any frame is set for a day, it replaces the global default hours for that day. Each day can hold several time frames; use the copy buttons to mirror one day, then Save.</p>
+        <form method="post" action="/me/meeting-types/{type.id}/availability/bulk" data-workplan class="space-y-2">
+          {#for row in week}
+          <div data-day="{row.day}" class="card bg-base-200 border border-base-300">
+            <div class="card-body py-3 gap-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <strong class="w-24">{display:of(row.day)}</strong>
+                <div class="flex flex-wrap gap-1">
+                  <button type="button" class="btn btn-ghost btn-xs" data-add-frame="{row.day}">+ Frame</button>
+                  <button type="button" class="btn btn-ghost btn-xs" data-copy-all="{row.day}">Copy to all days</button>
+                  <button type="button" class="btn btn-ghost btn-xs" data-copy-weekdays="{row.day}">Copy to weekdays</button>
+                </div>
+              </div>
+              <div data-frames class="space-y-1">
+                {#for fr in row.frames}
+                <div data-frame class="flex items-center gap-2">
+                  <input type="hidden" name="frameDay" value="{row.day}">
+                  <input class="input input-sm" type="time" name="frameStart" value="{fr.startTime}">
+                  <span class="text-base-content/60">to</span>
+                  <input class="input input-sm" type="time" name="frameEnd" value="{fr.endTime}">
+                  <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="Remove frame">&times;</button>
+                </div>
+                {/for}
+              </div>
+            </div>
+          </div>
+          {/for}
+
+          <template data-frame-template>
+            <div data-frame class="flex items-center gap-2">
+              <input type="hidden" name="frameDay" value="">
+              <input class="input input-sm" type="time" name="frameStart">
+              <span class="text-base-content/60">to</span>
+              <input class="input input-sm" type="time" name="frameEnd">
+              <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="Remove frame">&times;</button>
+            </div>
+          </template>
+
+          <button type="submit" class="btn btn-primary mt-2">Save working hours</button>
         </form>
       </div>
     </div>
@@ -152,4 +174,5 @@
       </div>
     </div>
   </div>
+  <script src="/workplan.js"></script>
 {/include}

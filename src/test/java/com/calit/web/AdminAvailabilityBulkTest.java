@@ -97,4 +97,25 @@ class AdminAvailabilityBulkTest {
                 .body(org.hamcrest.Matchers.containsString("Copy to weekdays"))
                 .body(org.hamcrest.Matchers.containsString("/workplan.js"));
     }
+
+    @Test
+    void typeDetailRendersSevenDayGrid() {
+        String cred = FormAuth.login();
+        given().cookie("quarkus-credential", cred)
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Grid Type").formParam("slug", "grid-type")
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0").formParam("horizonDays", "30")
+                .formParam("locationType", "PHONE")
+                .when().post("/me/meeting-types").then().statusCode(200);
+        com.calit.domain.MeetingType t = com.calit.domain.MeetingType.find("slug = ?1", "grid-type").firstResult();
+
+        given().cookie("quarkus-credential", cred)
+                .when().get("/me/meeting-types/" + t.id)
+                .then().statusCode(200)
+                .body(org.hamcrest.Matchers.containsString("data-workplan"))
+                .body(org.hamcrest.Matchers.containsString("data-day=\"MONDAY\""))
+                .body(org.hamcrest.Matchers.containsString("/me/meeting-types/" + t.id + "/availability/bulk"))
+                .body(org.hamcrest.Matchers.containsString("Copy to weekdays"));
+    }
 }
