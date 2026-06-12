@@ -33,4 +33,13 @@ class UsernamesGoogleTest {
         assertTrue(Usernames.isValid(fromReserved) && !Usernames.isReserved(fromReserved),
                 "reserved base must not survive: " + fromReserved);
     }
+
+    @Test
+    void uniquifyKeepsSuffixedCandidateWithinMaxLength() {
+        String longBase = "a".repeat(64); // exactly MAX_LEN, valid
+        // Taken so a suffix is needed; the produced handle must still be a valid (<=64) handle.
+        String result = Usernames.uniquify(longBase, longBase::equals);
+        assertTrue(Usernames.isValid(result),
+                "suffixed candidate must remain a valid handle (<=64 chars): " + result + " len=" + result.length());
+    }
 }

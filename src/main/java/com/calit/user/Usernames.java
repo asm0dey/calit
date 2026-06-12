@@ -78,14 +78,19 @@ public final class Usernames {
     /**
      * Return {@code base} if it is a usable, free handle; otherwise replace a reserved/invalid base
      * with "user" and append "-2", "-3", … until {@code taken} reports the candidate is free.
+     * Suffixed candidates are truncated so they never exceed {@link #MAX_LEN} characters.
      */
     public static String uniquify(String base, Predicate<String> taken) {
         String root = (isValid(base) && !isReserved(base)) ? normalize(base) : "user";
         if (!taken.test(root)) {
             return root;
         }
+        // Leave room for a "-NN" suffix within MAX_LEN so suffixed candidates stay valid handles.
+        String stem = root.length() > MAX_LEN - 4
+                ? root.substring(0, MAX_LEN - 4).replaceAll("-+$", "")
+                : root;
         for (int n = 2; ; n++) {
-            String candidate = root + "-" + n;
+            String candidate = stem + "-" + n;
             if (!taken.test(candidate)) {
                 return candidate;
             }
