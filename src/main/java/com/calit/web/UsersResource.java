@@ -8,6 +8,7 @@ import com.calit.user.PasswordHasher;
 import com.calit.user.Usernames;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
+import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -38,6 +39,9 @@ public class UsersResource {
 
     @Inject
     CurrentOwner currentOwner;
+
+    @Inject
+    SecurityIdentity identity;
 
     /** This admin's own pending-approval count — drives the shared nav badge (consistent with other /me pages). */
     private long pendingCount() {
@@ -81,6 +85,21 @@ public class UsersResource {
         return u;
     }
 
+    /** The currently-authenticated admin's own AppUser row (principal name == username). */
+    private AppUser currentUser() {
+        return AppUser.find("username", identity.getPrincipal().getName()).firstResult();
+    }
+
+    /** Count of admins that can still log in — the invariant we must never drive to zero. */
+    private static long enabledAdminCount() {
+        return AppUser.count("isAdmin = true and enabled = true");
+    }
+
+    private boolean isSelf(Long targetId) {
+        AppUser me = currentUser();
+        return me != null && me.id.equals(targetId);
+    }
+
     @POST
     @Path("/{id}/grant-admin")
     @Produces(MediaType.TEXT_HTML)
@@ -95,7 +114,12 @@ public class UsersResource {
     @Produces(MediaType.TEXT_HTML)
     @Transactional
     public TemplateInstance revokeAdmin(@PathParam("id") Long id) {
-        requireUser(id).setAdmin(false);
+        AppUser target = requireUser(id);
+        // Block removing the last enabled admin — there is no in-app recovery path (SEC-AUTHZ-01).
+        if (target.isAdmin && enabledAdminCount() <= 1) {
+            return render("Cannot revoke admin from the last enabled admin.");
+        }
+        target.setAdmin(false);
         return render(null);
     }
 
@@ -104,7 +128,15 @@ public class UsersResource {
     @Produces(MediaType.TEXT_HTML)
     @Transactional
     public TemplateInstance lock(@PathParam("id") Long id) {
-        requireUser(id).enabled = false;
+        if (isSelf(id)) {
+            return render("You cannot lock your own account.");
+        }
+        AppUser target = requireUser(id);
+        // Locking the last enabled admin also destroys admin capability (SEC-AUTHZ-01).
+        if (target.isAdmin && target.enabled && enabledAdminCount() <= 1) {
+            return render("Cannot lock the last enabled admin.");
+        }
+        target.enabled = false;
         return render(null);
     }
 
