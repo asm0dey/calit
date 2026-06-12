@@ -32,6 +32,8 @@ public class GoogleLoginService {
     private static final String TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
     private static final String HMAC_ALGO = "HmacSHA256";
     private static final String PURPOSE = "login"; // distinguishes these states from calendar states
+    // Sign-in needs identity only — NOT the calendar scope used by the connect flow.
+    private static final String LOGIN_SCOPE = "openid email";
 
     public static final Duration STATE_TTL = Duration.ofMinutes(10);
 
@@ -47,7 +49,7 @@ public class GoogleLoginService {
                 + "client_id=" + enc(config.oauth().clientId())
                 + "&redirect_uri=" + enc(config.oauth().loginRedirectUri())
                 + "&response_type=code"
-                + "&scope=" + enc(config.oauth().scope())
+                + "&scope=" + enc(LOGIN_SCOPE)
                 + "&prompt=select_account"
                 + "&state=" + enc(issueLoginState(now));
     }
@@ -87,7 +89,12 @@ public class GoogleLoginService {
         }
     }
 
-    /** Exchange the callback code for the Google identity. Overridable so tests skip the network. */
+    /**
+     * Exchange the callback code for the Google identity. Overridable so tests skip the network.
+     *
+     * @param code the authorization code received from Google's redirect callback
+     * @param now reserved for future id_token exp/iat validation; not used yet.
+     */
     public GoogleIdentity exchangeForIdentity(String code, Instant now) {
         return requestIdentity(code);
     }
@@ -105,6 +112,8 @@ public class GoogleLoginService {
             if (idToken == null) {
                 throw new IllegalStateException("Google response missing id_token; check the openid scope.");
             }
+            // The id_token came directly from Google's token endpoint over TLS in this request,
+            // so we read its sub/email claims without re-verifying the signature over the network.
             GoogleIdToken.Payload p = GoogleIdToken.parse(json, idToken).getPayload();
             boolean verified = Boolean.TRUE.equals(p.getEmailVerified());
             return new GoogleIdentity(p.getSubject(), p.getEmail(), verified);
