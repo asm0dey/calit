@@ -28,6 +28,8 @@ class GoogleLoginResourceTest {
     @Inject
     GoogleLoginService loginService; // resolves to the installed mock below (CDI client proxy)
 
+    private static final java.time.Instant FIXED = java.time.Instant.parse("2026-06-12T12:00:00Z");
+
     /** Stub: returns a fixed identity; inherits the real state issue/validate (same secret). */
     static class StubLoginService extends GoogleLoginService {
         StubLoginService(GoogleOAuthConfig config) { super(config); }
@@ -40,11 +42,13 @@ class GoogleLoginResourceTest {
     @BeforeEach
     void installStub() {
         QuarkusMock.installMockForType(new StubLoginService(oauthConfig), GoogleLoginService.class);
+        QuarkusMock.installMockForType(
+            java.time.Clock.fixed(FIXED, java.time.ZoneOffset.UTC), java.time.Clock.class);
     }
 
     @Test
     void callbackRendersBridgePostingToSecurityCheck() {
-        String state = loginService.issueLoginState(Instant.now());
+        String state = loginService.issueLoginState(FIXED);
         given().redirects().follow(false)
             .when().get("/api/google/login/callback?code=abc&state=" + state)
             .then().statusCode(200)
@@ -54,7 +58,7 @@ class GoogleLoginResourceTest {
 
     @Test
     void fullSignInMintsSessionCookie() {
-        String state = loginService.issueLoginState(Instant.now());
+        String state = loginService.issueLoginState(FIXED);
         String html = given().when().get("/api/google/login/callback?code=abc&state=" + state)
                 .then().statusCode(200).extract().asString();
         String username = extractValue(html, "j_username");

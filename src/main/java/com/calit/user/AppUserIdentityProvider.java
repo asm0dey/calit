@@ -9,7 +9,6 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
-import java.time.Instant;
 
 /**
  * Authenticates form-login submissions. Two paths, in order:
@@ -29,6 +28,9 @@ public class AppUserIdentityProvider implements IdentityProvider<UsernamePasswor
 
     @Inject
     LoginTicketService loginTickets;
+
+    @Inject
+    java.time.Clock clock;
 
     @Override
     public Class<UsernamePasswordAuthenticationRequest> getRequestType() {
@@ -54,7 +56,7 @@ public class AppUserIdentityProvider implements IdentityProvider<UsernamePasswor
         }
         // 2) Google sign-in bridge: the "password" may be a single-use login ticket. It is consumed
         //    here (single-use) and must belong to the username it was submitted under.
-        AppUser ticketUser = loginTickets.consume(secret, Instant.now());
+        AppUser ticketUser = loginTickets.consume(secret, clock.instant());
         if (ticketUser != null && ticketUser.enabled
                 && ticketUser.username.equals(Usernames.normalize(username))) {
             return AppUserSecurityIdentities.of(ticketUser);

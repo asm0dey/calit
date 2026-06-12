@@ -9,6 +9,7 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.filter.cookie.CookieFilter;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -34,6 +35,14 @@ class GoogleSignInFlowTest {
 
     @Inject
     GoogleLoginService loginService; // resolves to the installed mock below (CDI client proxy)
+
+    private static final java.time.Instant FIXED = java.time.Instant.parse("2026-06-12T12:00:00Z");
+
+    @BeforeEach
+    void freezeClock() {
+        QuarkusMock.installMockForType(
+            java.time.Clock.fixed(FIXED, java.time.ZoneOffset.UTC), java.time.Clock.class);
+    }
 
     /** Stub returning a chosen identity; inherits the real state issue/validate. */
     static class StubFor extends GoogleLoginService {
@@ -63,7 +72,7 @@ class GoogleSignInFlowTest {
 
     /** Drive callback -> bridge -> j_security_check within one session, minting the session cookie. */
     private void signIn(CookieFilter session) {
-        String state = loginService.issueLoginState(Instant.now());
+        String state = loginService.issueLoginState(FIXED);
         String html = given().filter(session)
                 .when().get("/api/google/login/callback?code=c&state=" + state)
                 .then().statusCode(200).extract().asString();

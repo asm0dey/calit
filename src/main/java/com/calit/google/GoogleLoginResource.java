@@ -38,20 +38,23 @@ public class GoogleLoginResource {
     private final GoogleLoginService loginService;
     private final GoogleSignInService signInService;
     private final LoginTicketService loginTickets;
+    private final java.time.Clock clock;
 
     @Inject
     public GoogleLoginResource(GoogleLoginService loginService,
                                GoogleSignInService signInService,
-                               LoginTicketService loginTickets) {
+                               LoginTicketService loginTickets,
+                               java.time.Clock clock) {
         this.loginService = loginService;
         this.signInService = signInService;
         this.loginTickets = loginTickets;
+        this.clock = clock;
     }
 
     @GET
     public Response start() {
         return Response.status(Response.Status.FOUND)
-                .location(URI.create(loginService.buildConsentUrl(Instant.now())))
+                .location(URI.create(loginService.buildConsentUrl(clock.instant())))
                 .build();
     }
 
@@ -61,7 +64,7 @@ public class GoogleLoginResource {
     public Response callback(@QueryParam("code") String code,
                              @QueryParam("state") String state,
                              @QueryParam("error") String error) {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         if (error != null) {
             return redirectToLogin(NOTICE_GENERIC);
         }

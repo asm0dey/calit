@@ -3,6 +3,7 @@ package com.calit.google;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -19,6 +20,14 @@ class GoogleLoginResourceErrorsTest {
 
     @Inject
     GoogleLoginService loginService;
+
+    private static final java.time.Instant FIXED = java.time.Instant.parse("2026-06-12T12:00:00Z");
+
+    @BeforeEach
+    void freezeClock() {
+        io.quarkus.test.junit.QuarkusMock.installMockForType(
+            java.time.Clock.fixed(FIXED, java.time.ZoneOffset.UTC), java.time.Clock.class);
+    }
 
     static class FixedIdentityStub extends GoogleLoginService {
         FixedIdentityStub(GoogleOAuthConfig c) { super(c); }
@@ -46,7 +55,7 @@ class GoogleLoginResourceErrorsTest {
     @Test
     void signupDisabledRedirectsWithSpecificNotice() {
         QuarkusMock.installMockForType(new FixedIdentityStub(oauthConfig), GoogleLoginService.class);
-        String state = loginService.issueLoginState(Instant.now());
+        String state = loginService.issueLoginState(FIXED);
         given().redirects().follow(false)
             .when().get("/api/google/login/callback?code=abc&state=" + state)
             .then().statusCode(302)
@@ -56,7 +65,7 @@ class GoogleLoginResourceErrorsTest {
     @Test
     void tokenExchangeFailureRedirectsToLogin() {
         QuarkusMock.installMockForType(new ThrowingStub(oauthConfig), GoogleLoginService.class);
-        String state = loginService.issueLoginState(Instant.now());
+        String state = loginService.issueLoginState(FIXED);
         given().redirects().follow(false)
             .when().get("/api/google/login/callback?code=abc&state=" + state)
             .then().statusCode(302)

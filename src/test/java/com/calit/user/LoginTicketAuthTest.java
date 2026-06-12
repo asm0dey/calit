@@ -5,11 +5,11 @@ import io.quarkus.security.credential.PasswordCredential;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.request.UsernamePasswordAuthenticationRequest;
 import io.quarkus.test.TestTransaction;
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,6 +24,14 @@ class LoginTicketAuthTest {
     @Inject
     LoginTicketService tickets;
 
+    private static final java.time.Instant FIXED = java.time.Instant.parse("2026-06-12T12:00:00Z");
+
+    @BeforeEach
+    void freezeClock() {
+        QuarkusMock.installMockForType(
+            java.time.Clock.fixed(FIXED, java.time.ZoneOffset.UTC), java.time.Clock.class);
+    }
+
     private static UsernamePasswordAuthenticationRequest req(String user, String pass) {
         return new UsernamePasswordAuthenticationRequest(user, new PasswordCredential(pass.toCharArray()));
     }
@@ -33,7 +41,7 @@ class LoginTicketAuthTest {
     void validTicketAuthenticatesAsItsUser() {
         AppUser u = AppUser.createGoogleUser("ticket-login", "sub-tl");
         u.persistAndFlush();
-        String token = tickets.issue(u.id, Instant.now());
+        String token = tickets.issue(u.id, FIXED);
 
         SecurityIdentity id = provider.authenticateBlocking(req("ticket-login", token));
         assertEquals("ticket-login", id.getPrincipal().getName());
@@ -47,7 +55,7 @@ class LoginTicketAuthTest {
         u.persistAndFlush();
         AppUser other = AppUser.createGoogleUser("someone-else", "sub-se");
         other.persistAndFlush();
-        String token = tickets.issue(u.id, Instant.now());
+        String token = tickets.issue(u.id, FIXED);
 
         // Token is valid but submitted under the wrong username -> reject (defence in depth).
         assertThrows(AuthenticationFailedException.class,
@@ -70,7 +78,7 @@ class LoginTicketAuthTest {
         AppUser u = AppUser.createGoogleUser("disabled-tkt", "sub-dis");
         u.enabled = false;
         u.persistAndFlush();
-        String token = tickets.issue(u.id, Instant.now());
+        String token = tickets.issue(u.id, FIXED);
 
         // A valid ticket must NOT log in a disabled account (the enabled gate).
         assertThrows(AuthenticationFailedException.class,
