@@ -20,12 +20,15 @@ public class GoogleCalendarResource {
 
     private final CalendarListPort calendarListPort;
     private final com.calit.user.CurrentOwner currentOwner;
+    private final CalendarSelectionService selectionService;
 
     @Inject
     public GoogleCalendarResource(CalendarListPort calendarListPort,
-                                  com.calit.user.CurrentOwner currentOwner) {
+                                  com.calit.user.CurrentOwner currentOwner,
+                                  CalendarSelectionService selectionService) {
         this.calendarListPort = calendarListPort;
         this.currentOwner = currentOwner;
+        this.selectionService = selectionService;
     }
 
     public record CalendarSelection(String googleCalendarId, String summary,
@@ -43,29 +46,18 @@ public class GoogleCalendarResource {
     @POST
     @Transactional
     public Response save(SaveSelectionRequest req) {
-        long writeTargets = req.calendars().stream().filter(CalendarSelection::writeTarget).count();
-        if (writeTargets > 1) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("At most one write-target calendar is allowed").build();
-        }
-        // Resolve the owner's primary credential — required now that calendars belong to an account.
-        // TODO(Task 2+): accept a credentialId in the request body for multi-account selection.
         GoogleCredential cred = GoogleCredential.forOwner(currentOwner.id());
         if (cred == null) {
-            return Response.status(Response.Status.CONFLICT)
-                    .entity("No Google account connected. Connect Google first.").build();
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Connect a Google account first").build();
         }
-        // Replace prior selection wholesale so removed calendars stop being read.
-        GoogleCalendar.deleteForOwner(currentOwner.id());
-        for (CalendarSelection sel : req.calendars()) {
-            GoogleCalendar c = new GoogleCalendar();
-            c.ownerId = currentOwner.id();
-            c.googleCalendarId = sel.googleCalendarId();
-            c.summary = sel.summary();
-            c.readForBusy = sel.readForBusy();
-            c.writeTarget = sel.writeTarget();
-            c.googleCredentialId = cred.id;
-            c.persist();
+        try {
+            selectionService.save(currentOwner.id(), req.calendars().stream()
+                    .map(s -> new CalendarSelectionService.Selection(
+                            cred.id, s.googleCalendarId(), s.summary(), s.readForBusy(), s.writeTarget()))
+                    .toList());
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         }
         return Response.ok().build();
     }
