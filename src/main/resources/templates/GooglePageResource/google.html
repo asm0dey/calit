@@ -22,6 +22,7 @@
             <div class="flex items-center justify-between">
               <h2 class="text-lg font-semibold">{acc.accountEmail ?: "Google account"}
                 {#if acc.needsReconnect}<span class="badge badge-warning ml-2">needs reconnect</span>{/if}
+                {#if acc.loadFailed && !acc.needsReconnect}<span class="badge badge-warning ml-2">couldn't load — try reload</span>{/if}
               </h2>
               <button type="submit" form="disc-{acc.credentialId}" class="btn btn-outline btn-error btn-sm"
                       {#if acc.holdsWriteTarget && accounts.size() > 1}disabled title="Pick a new write target on another account first"{/if}>
@@ -38,18 +39,23 @@
                       <input type="checkbox" class="checkbox checkbox-sm" name="read"
                              value="{cal.credentialId}:{cal.googleCalendarId}"
                              {#if cal.readForBusy}checked{/if}
-                             {#if cal.writeTarget}disabled checked{/if}>
-                      {#if cal.writeTarget}<input type="hidden" name="read" value="{cal.credentialId}:{cal.googleCalendarId}">{/if}
+                             {#if cal.writeTarget}disabled checked{/if}
+                             {#if acc.needsReconnect || acc.loadFailed}disabled{/if}>
+                      {#if cal.writeTarget && !acc.needsReconnect && !acc.loadFailed}<input type="hidden" name="read" value="{cal.credentialId}:{cal.googleCalendarId}">{/if}
                     </td>
                     <td>
                       <input type="radio" class="radio radio-sm" name="writeTarget"
                              value="{cal.credentialId}:{cal.googleCalendarId}"
-                             {#if cal.writeTarget}checked{/if}>
+                             {#if cal.writeTarget}checked{/if}
+                             {#if acc.needsReconnect || acc.loadFailed}disabled{/if}>
                     </td>
                   </tr>
                 {/for}
               </tbody>
             </table>
+            {#if acc.needsReconnect || acc.loadFailed}
+              <p class="text-sm text-base-content/60">Reconnect to edit. Your saved selection is shown and kept when you save other accounts.</p>
+            {/if}
           </div>
         </div>
       {/for}

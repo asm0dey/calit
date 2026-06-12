@@ -49,30 +49,49 @@ public class GooglePageResource {
 
     @GET
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance google() {
         Long ownerId = currentOwner.id();
         List<GoogleCredential> creds = GoogleCredential.listForOwner(ownerId);
         List<AccountView> accounts = new ArrayList<>();
         boolean loadError = false;
         for (GoogleCredential cred : creds) {
+            Map<String, GoogleCalendar> saved = GoogleCalendar
+                    .<GoogleCalendar>list("googleCredentialId", cred.id).stream()
+                    .collect(java.util.stream.Collectors.toMap(c -> c.googleCalendarId, c -> c, (a, b) -> a));
             List<CalendarRow> rows = new ArrayList<>();
             boolean holdsWriteTarget = false;
-            try {
-                Map<String, GoogleCalendar> saved = GoogleCalendar
-                        .<GoogleCalendar>list("googleCredentialId", cred.id).stream()
-                        .collect(java.util.stream.Collectors.toMap(c -> c.googleCalendarId, c -> c));
-                for (CalendarListPort.RemoteCalendar rc : calendarListPort.listCalendars(cred)) {
-                    GoogleCalendar s = saved.get(rc.googleCalendarId());
-                    boolean read = s == null ? saved.isEmpty() : s.readForBusy; // first-load default: all read
-                    boolean write = s != null && s.writeTarget;
-                    if (write) holdsWriteTarget = true;
-                    rows.add(new CalendarRow(cred.id, rc.googleCalendarId(), rc.summary(), read, write));
+            boolean loadFailed = false;
+
+            if (cred.needsReconnect) {
+                // Dead token: don't call Google. Show saved config so the owner sees what's configured.
+                loadFailed = true;
+                for (GoogleCalendar s : saved.values()) {
+                    if (s.writeTarget) holdsWriteTarget = true;
+                    rows.add(new CalendarRow(cred.id, s.googleCalendarId, s.summary, s.readForBusy, s.writeTarget));
                 }
-            } catch (RuntimeException ex) {
-                loadError = true; // Google unreachable for this account; banner, no editable rows
+            } else {
+                try {
+                    for (CalendarListPort.RemoteCalendar rc : calendarListPort.listCalendars(cred)) {
+                        GoogleCalendar s = saved.get(rc.googleCalendarId());
+                        boolean read = s == null ? saved.isEmpty() : s.readForBusy; // first-load: all read
+                        boolean write = s != null && s.writeTarget;
+                        if (write) holdsWriteTarget = true;
+                        rows.add(new CalendarRow(cred.id, rc.googleCalendarId(), rc.summary(), read, write));
+                    }
+                } catch (RuntimeException ex) {
+                    // Transient failure: banner + fall back to saved rows so config stays visible.
+                    loadError = true;
+                    loadFailed = true;
+                    rows.clear();
+                    holdsWriteTarget = false;
+                    for (GoogleCalendar s : saved.values()) {
+                        if (s.writeTarget) holdsWriteTarget = true;
+                        rows.add(new CalendarRow(cred.id, s.googleCalendarId, s.summary, s.readForBusy, s.writeTarget));
+                    }
+                }
             }
-            accounts.add(new AccountView(cred.id, cred.accountEmail, cred.needsReconnect, rows, holdsWriteTarget));
+            accounts.add(new AccountView(cred.id, cred.accountEmail, cred.needsReconnect, loadFailed,
+                    rows, holdsWriteTarget));
         }
         return Templates.google(accounts, loadError, pendingCount(), isAdmin());
     }
@@ -86,23 +105,47 @@ public class GooglePageResource {
         Long ownerId = currentOwner.id();
         List<String> readVals = form.getOrDefault("read", List.of());
         String writeVal = form.getFirst("writeTarget");
+
         List<CalendarSelectionService.Selection> selections = new ArrayList<>();
+        java.util.Set<Long> reachable = new java.util.HashSet<>();
         for (GoogleCredential cred : GoogleCredential.listForOwner(ownerId)) {
-            if (cred.needsReconnect) continue;
+            if (cred.needsReconnect) {
+                continue; // unreachable: preserved from DB below
+            }
+            List<CalendarListPort.RemoteCalendar> live;
             try {
-                for (CalendarListPort.RemoteCalendar rc : calendarListPort.listCalendars(cred)) {
-                    String key = cred.id + ":" + rc.googleCalendarId();
-                    boolean read = readVals.contains(key);
-                    boolean write = key.equals(writeVal);
-                    if (read || write) {
-                        selections.add(new CalendarSelectionService.Selection(
-                                cred.id, rc.googleCalendarId(), rc.summary(), read, write));
-                    }
+                live = calendarListPort.listCalendars(cred);
+            } catch (RuntimeException ex) {
+                continue; // unreachable mid-save: preserved from DB below
+            }
+            reachable.add(cred.id);
+            for (CalendarListPort.RemoteCalendar rc : live) {
+                String key = cred.id + ":" + rc.googleCalendarId();
+                boolean read = readVals.contains(key);
+                boolean write = key.equals(writeVal);
+                if (read || write) {
+                    selections.add(new CalendarSelectionService.Selection(
+                            cred.id, rc.googleCalendarId(), rc.summary(), read, write));
                 }
-            } catch (RuntimeException ignored) {
-                // skip an account that went unreachable mid-save
             }
         }
+
+        boolean submittedHasWriteTarget =
+                selections.stream().anyMatch(CalendarSelectionService.Selection::writeTarget);
+
+        // Preserve existing rows for accounts we could NOT reach (flagged/errored). Keep their read
+        // selections; demote a preserved write target only if the form chose a new one, so the
+        // single-write-target-per-owner invariant holds.
+        for (GoogleCalendar s : GoogleCalendar.<GoogleCalendar>list("ownerId", ownerId)) {
+            if (reachable.contains(s.googleCredentialId)) {
+                continue; // reachable accounts are fully respecified by the form above
+            }
+            boolean keepWrite = s.writeTarget && !submittedHasWriteTarget;
+            selections.add(new CalendarSelectionService.Selection(
+                    s.googleCredentialId, s.googleCalendarId, s.summary,
+                    s.readForBusy || keepWrite, keepWrite));
+        }
+
         if (selections.stream().noneMatch(CalendarSelectionService.Selection::writeTarget)) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("Pick exactly one write-target calendar").build();
