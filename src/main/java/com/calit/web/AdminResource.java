@@ -50,6 +50,7 @@ public class AdminResource {
                 MeetingType type,
                 List<BookingField> fields,
                 List<AvailabilityRule> rules,
+                List<WeekRow> week,
                 List<DateOverride> overrides,
                 LocationType[] locationTypes,
                 BookingField.FieldType[] fieldTypes,
@@ -57,7 +58,7 @@ public class AdminResource {
                 Long pendingCount, boolean isAdmin);
 
         public static native TemplateInstance availability(
-                List<AvailabilityRule> rules, List<MeetingType> types,
+                List<AvailabilityRule> rules, List<WeekRow> week, List<MeetingType> types,
                 DayOfWeek[] daysOfWeek, Long pendingCount, boolean isAdmin);
 
         public static native TemplateInstance settings(
@@ -267,7 +268,7 @@ public class AdminResource {
         List<BookingField> fields = BookingField.list("meetingTypeId = ?1 order by position", id);
         List<AvailabilityRule> rules = AvailabilityRule.list("meetingTypeId = ?1 order by dayOfWeek", id);
         List<DateOverride> overrides = overridesForType(id);
-        return Templates.meetingTypeDetail(t, fields, rules, overrides,
+        return Templates.meetingTypeDetail(t, fields, rules, weekRows(rules), overrides,
                 LocationType.values(), BookingField.FieldType.values(),
                 DayOfWeek.values(), pendingCount(), isAdmin());
     }
@@ -451,11 +452,22 @@ public class AdminResource {
                 currentOwner.id());
     }
 
+    /** This owner's GLOBAL default rules only (meetingTypeId IS NULL), for the weekly grid. */
+    private List<AvailabilityRule> globalRules() {
+        return AvailabilityRule.list(
+                "ownerId = ?1 and meetingTypeId is null order by dayOfWeek", currentOwner.id());
+    }
+
+    /** Group rules into the fixed seven-row weekly grid. */
+    private static List<WeekRow> weekRows(List<AvailabilityRule> rules) {
+        return WeekRow.fromRules(rules);
+    }
+
     @GET
     @Path("/availability")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance availability() {
-        return Templates.availability(ownerRules(),
+        return Templates.availability(ownerRules(), weekRows(globalRules()),
                 MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin());
     }
 
@@ -480,7 +492,7 @@ public class AdminResource {
         r.startTime = LocalTime.parse(startTime);
         r.endTime = LocalTime.parse(endTime);
         r.persist();
-        return Templates.availability(ownerRules(),
+        return Templates.availability(ownerRules(), weekRows(globalRules()),
                 MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin());
     }
 
@@ -493,7 +505,7 @@ public class AdminResource {
         // Replace-all for this owner's GLOBAL schedule: wipe the scope, re-insert posted frames.
         AvailabilityRule.delete("ownerId = ?1 and meetingTypeId is null", currentOwner.id());
         persistFrames(currentOwner.id(), null, form);
-        return Templates.availability(ownerRules(),
+        return Templates.availability(ownerRules(), weekRows(globalRules()),
                 MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin());
     }
 
@@ -531,7 +543,7 @@ public class AdminResource {
         if (r != null && currentOwner.id().equals(r.ownerId)) {
             AvailabilityRule.deleteById(id);
         }
-        return Templates.availability(ownerRules(),
+        return Templates.availability(ownerRules(), weekRows(globalRules()),
                 MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin());
     }
 
