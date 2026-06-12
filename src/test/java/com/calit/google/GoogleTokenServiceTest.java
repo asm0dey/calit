@@ -90,6 +90,7 @@ class GoogleTokenServiceTest {
         c.refreshToken = "refresh-1";
         c.accessToken = "cached-access";
         c.accessTokenExpiry = Instant.parse("2026-06-08T13:00:00Z");
+        c.googleSub = "sub-cached";
         c.persist();
 
         StubTokenService svc = new StubTokenService(config, null); // must NOT be used
@@ -106,6 +107,7 @@ class GoogleTokenServiceTest {
         c.refreshToken = "refresh-1";
         c.accessToken = "stale-access";
         c.accessTokenExpiry = Instant.parse("2026-06-08T12:00:00Z");
+        c.googleSub = "sub-stale";
         c.persist();
 
         Instant now = Instant.parse("2026-06-08T12:00:00Z");

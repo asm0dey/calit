@@ -47,12 +47,22 @@ class GoogleCalendarTest {
     }
 
     private GoogleCalendar cal(String id, String summary, boolean read, boolean write) {
+        // Ensure a credential exists for owner 1 (reuse within the same transaction).
+        GoogleCredential cred = GoogleCredential.forOwner(1L);
+        if (cred == null) {
+            cred = new GoogleCredential();
+            cred.ownerId = 1L;
+            cred.refreshToken = "rt-cal-test";
+            cred.googleSub = "sub-cal-test";
+            cred.persist();
+        }
         GoogleCalendar c = new GoogleCalendar();
         c.ownerId = 1L;
         c.googleCalendarId = id;
         c.summary = summary;
         c.readForBusy = read;
         c.writeTarget = write;
+        c.googleCredentialId = cred.id;
         c.persist();
         return c;
     }

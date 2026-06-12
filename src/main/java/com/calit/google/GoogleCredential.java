@@ -37,9 +37,36 @@ public class GoogleCredential extends PanacheEntityBase {
     @Column(name = "access_token_expiry")
     public Instant accessTokenExpiry;
 
+    /** Google account stable subject id (id_token "sub"). Identity for dedupe within an owner. */
+    @Column(name = "google_sub", nullable = false)
+    public String googleSub;
+
+    /** The account's email (id_token "email"), shown as the human label in the UI. May be null. */
+    @Column(name = "account_email")
+    public String accountEmail;
+
+    /** Set true when a token refresh fails (revoked/expired); cleared on a successful reconnect. */
+    @Column(name = "needs_reconnect", nullable = false)
+    public boolean needsReconnect = false;
+
     /** This owner's credential row, or null if Google is not yet connected for them. */
     public static GoogleCredential forOwner(Long ownerId) {
         return find("ownerId", ownerId).firstResult();
+    }
+
+    /** All of this owner's connected Google accounts. */
+    public static java.util.List<GoogleCredential> listForOwner(Long ownerId) {
+        return list("ownerId", ownerId);
+    }
+
+    /** This owner's credential for a specific Google account (by sub), or null. */
+    public static GoogleCredential findByOwnerAndSub(Long ownerId, String sub) {
+        return find("ownerId = ?1 and googleSub = ?2", ownerId, sub).firstResult();
+    }
+
+    /** How many Google accounts this owner has connected. */
+    public static long countForOwner(Long ownerId) {
+        return count("ownerId", ownerId);
     }
 
     /** True when there is no cached access token, or it expires within the safety margin of {@code now}. */
