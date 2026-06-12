@@ -9,6 +9,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "google_calendar")
@@ -61,8 +63,8 @@ public class GoogleCalendar extends PanacheEntityBase {
     }
 
     /** This owner's read-for-busy calendars grouped by the credential (account) they belong to. */
-    public static java.util.Map<Long, java.util.List<GoogleCalendar>> readForBusyByCredential(Long ownerId) {
+    public static Map<Long, List<GoogleCalendar>> readForBusyByCredential(Long ownerId) {
         return readForBusy(ownerId).stream()
-                .collect(java.util.stream.Collectors.groupingBy(c -> c.googleCredentialId));
+                .collect(Collectors.groupingBy(c -> c.googleCredentialId));
     }
 }
