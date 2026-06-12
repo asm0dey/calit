@@ -71,7 +71,7 @@ class GoogleTokenServiceTest {
         Instant now = Instant.parse("2026-06-08T12:00:00Z");
         StubTokenService svc = new StubTokenService(config,
                 new GoogleTokenService.TokenResponse("access-1", "refresh-1",
-                        now.plusSeconds(3600)));
+                        now.plusSeconds(3600), "sub-from-exchange", "owner@example.com"));
 
         svc.exchangeCode(1L, "auth-code-123", now);
 
@@ -113,7 +113,7 @@ class GoogleTokenServiceTest {
         Instant now = Instant.parse("2026-06-08T12:00:00Z");
         StubTokenService svc = new StubTokenService(config,
                 new GoogleTokenService.TokenResponse("fresh-access", null,
-                        now.plusSeconds(3600)));
+                        now.plusSeconds(3600), null, null));
 
         String token = svc.validAccessToken(1L, now);
 

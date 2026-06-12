@@ -45,15 +45,11 @@ public class GoogleTokenService {
 
     /**
      * Normalized token data, independent of the Google client types (keeps the test seam clean).
-     * {@code googleSub} is extracted from the id_token during authorization_code exchange (Task 2);
-     * it is null for refresh-token responses and for the legacy stub constructor.
+     * {@code googleSub} and {@code accountEmail} are extracted from the id_token during the
+     * authorization_code exchange (Task 2); both are null for refresh-token responses.
      */
-    public record TokenResponse(String accessToken, String refreshToken, Instant expiry, String googleSub) {
-        /** Convenience constructor for tests and refresh responses that have no id_token. */
-        public TokenResponse(String accessToken, String refreshToken, Instant expiry) {
-            this(accessToken, refreshToken, expiry, null);
-        }
-    }
+    public record TokenResponse(String accessToken, String refreshToken, Instant expiry,
+                                String googleSub, String accountEmail) {}
 
     /**
      * The Google consent URL, carrying a stateless, signed CSRF state bound to {@code ownerId}.
@@ -133,43 +129,77 @@ public class GoogleTokenService {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
-    /** Exchange the callback {@code code} for tokens and persist this owner's credential. */
+    /**
+     * Exchange the callback {@code code} for tokens and persist this owner's credential for the
+     * Google account identified by the id_token's {@code sub}. Reconnecting the same account
+     * upserts the existing row (dedupe by {@code (owner_id, sub)}) rather than creating a duplicate.
+     */
     @Transactional
     public void exchangeCode(Long ownerId, String code, Instant now) {
         TokenResponse resp = requestToken("authorization_code", code, now);
-        // TODO(Task 2): parse id_token to extract real google_sub + account_email from the response.
-        // For now use a stub sub so the NOT NULL constraint is satisfied; Task 2 replaces this with
-        // the real sub extracted from the id_token returned during authorization_code exchange.
-        String googleSub = resp.googleSub() != null ? resp.googleSub()
-                : "legacy-owner-" + ownerId;
-        GoogleCredential c = GoogleCredential.findByOwnerAndSub(ownerId, googleSub);
-        if (c == null) {
-            c = GoogleCredential.forOwner(ownerId);  // fall back for migration compatibility
+        if (resp.googleSub() == null) {
+            throw new IllegalStateException("Google id_token missing 'sub'; check the openid scope.");
         }
+        GoogleCredential c = GoogleCredential.findByOwnerAndSub(ownerId, resp.googleSub());
         if (c == null) {
             c = new GoogleCredential();
             c.ownerId = ownerId;
-            c.googleSub = googleSub;
+            c.googleSub = resp.googleSub();
         }
         if (resp.refreshToken() != null) {
             c.refreshToken = resp.refreshToken();
         }
+        c.accountEmail = resp.accountEmail();
         c.accessToken = resp.accessToken();
         c.accessTokenExpiry = resp.expiry();
+        c.needsReconnect = false;
         c.persist();
     }
 
     /**
-     * Return a currently-valid access token, refreshing and persisting a new one when the
-     * cached token is missing or within the safety margin of expiry.
+     * Return a currently-valid access token for a specific {@link GoogleCredential}, refreshing and
+     * persisting a new one when the cached token is missing or within the safety margin of expiry.
      *
-     * <p>Horizontal scalability: state lives in shared Postgres, never in instance memory.
-     * Each call re-reads the singleton {@link GoogleCredential}; a refresh writes the new
-     * access token + expiry (and any rotated refresh token) back to that row in this same
-     * transaction so other replicas pick it up on their next read. A concurrent refresh from
+     * <p>Fail-soft: when the refresh fails (token revoked/expired) the credential is flagged
+     * {@code needsReconnect} and persisted before the exception propagates, so the UI can prompt a
+     * reconnect for that single account without affecting the owner's other connected accounts.
+     *
+     * <p>Horizontal scalability: state lives in shared Postgres, never in instance memory. A refresh
+     * writes the new access token + expiry (and any rotated refresh token) back to that row in this
+     * same transaction so other replicas pick it up on their next read. A concurrent refresh from
      * another replica is safe — last write wins and either fresh token is valid until its own
      * expiry — so no distributed lock is needed.
      */
+    @Transactional
+    public String validAccessToken(GoogleCredential c, Instant now) {
+        if (!c.isAccessTokenExpired(now)) {
+            return c.accessToken;
+        }
+        try {
+            TokenResponse resp = requestToken("refresh_token", c.refreshToken, now);
+            c.accessToken = resp.accessToken();
+            c.accessTokenExpiry = resp.expiry();
+            // Google only returns a new refresh token if it rotated the old one; persist it when present.
+            if (resp.refreshToken() != null) {
+                c.refreshToken = resp.refreshToken();
+            }
+            c.needsReconnect = false;
+            // Write the refreshed token back to the shared row so every replica benefits; no node-local cache.
+            c.persist();
+            return c.accessToken;
+        } catch (RuntimeException ex) {
+            c.needsReconnect = true;
+            c.persist();
+            throw ex;
+        }
+    }
+
+    /**
+     * Owner-scoped convenience that refreshes the owner's (single) credential.
+     *
+     * @deprecated Task 3 migrates callers to the per-credential overload; remove after.
+     */
+    @Deprecated
     @Transactional
     public String validAccessToken(Long ownerId, Instant now) {
         GoogleCredential c = GoogleCredential.forOwner(ownerId);
@@ -177,19 +207,7 @@ public class GoogleTokenService {
             throw new IllegalStateException(
                     "Google is not connected for owner " + ownerId + ". Run /api/google/connect.");
         }
-        if (!c.isAccessTokenExpired(now)) {
-            return c.accessToken;
-        }
-        TokenResponse resp = requestToken("refresh_token", c.refreshToken, now);
-        c.accessToken = resp.accessToken();
-        c.accessTokenExpiry = resp.expiry();
-        // Google only returns a new refresh token if it rotated the old one; persist it when present.
-        if (resp.refreshToken() != null) {
-            c.refreshToken = resp.refreshToken();
-        }
-        // Write the refreshed token back to the shared row so every replica benefits; no node-local cache.
-        c.persist();
-        return c.accessToken;
+        return validAccessToken(c, now);
     }
 
     /**
@@ -208,19 +226,26 @@ public class GoogleTokenService {
                         config.oauth().clientId(), config.oauth().clientSecret(),
                         codeOrRefreshToken, config.oauth().redirectUri())
                         .execute();
-                return new TokenResponse(
-                        resp.getAccessToken(),
-                        resp.getRefreshToken(),
-                        now.plusSeconds(resp.getExpiresInSeconds()));
+                // The id_token came directly from Google's token endpoint over TLS, so we read its
+                // sub/email claims without re-verifying the signature over the network.
+                String sub = null, email = null;
+                String idToken = resp.getIdToken();
+                if (idToken != null) {
+                    var payload = com.google.api.client.googleapis.auth.oauth2.GoogleIdToken
+                            .parse(json, idToken).getPayload();
+                    sub = payload.getSubject();
+                    Object e = payload.get("email");
+                    email = e == null ? null : e.toString();
+                }
+                return new TokenResponse(resp.getAccessToken(), resp.getRefreshToken(),
+                        now.plusSeconds(resp.getExpiresInSeconds()), sub, email);
             }
             var resp = new GoogleRefreshTokenRequest(
                     transport, json, codeOrRefreshToken,
                     config.oauth().clientId(), config.oauth().clientSecret())
                     .execute();
-            return new TokenResponse(
-                    resp.getAccessToken(),
-                    resp.getRefreshToken(),
-                    now.plusSeconds(resp.getExpiresInSeconds()));
+            return new TokenResponse(resp.getAccessToken(), resp.getRefreshToken(),
+                    now.plusSeconds(resp.getExpiresInSeconds()), null, null);
         } catch (TokenResponseException e) {
             throw new IllegalStateException("Google token request failed: " + e.getStatusCode()
                     + " " + e.getMessage(), e);

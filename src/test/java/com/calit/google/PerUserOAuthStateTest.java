@@ -58,7 +58,8 @@ class PerUserOAuthStateTest {
         StubTokenService(GoogleOAuthConfig config) { super(config); }
         @Override
         protected TokenResponse requestToken(String grantType, String codeOrRefreshToken, Instant now) {
-            return new TokenResponse("access-tok", "refresh-tok", now.plusSeconds(3600));
+            return new TokenResponse("access-tok", "refresh-tok", now.plusSeconds(3600),
+                    "sub-peruser", "u@example.com");
         }
     }
 
