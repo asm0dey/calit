@@ -1,5 +1,12 @@
 # calit — self-hosted Calendly alternative
 
+[![CI](https://github.com/asm0dey/calit/actions/workflows/ci.yml/badge.svg)](https://github.com/asm0dey/calit/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/asm0dey/calit?sort=semver)](https://github.com/asm0dey/calit/releases/latest)
+[![Container](https://img.shields.io/badge/ghcr.io-asm0dey%2Fcalit-2496ED?logo=docker&logoColor=white)](https://github.com/asm0dey/calit/pkgs/container/calit)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Quarkus](https://img.shields.io/badge/Quarkus-3.36-4695EB?logo=quarkus&logoColor=white)](https://quarkus.io)
+[![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)](https://bell-sw.com/libericajdk/)
+
 A **multi-user** scheduling app built on Quarkus — each user runs their own independent
 "Calendly": isolated meeting types, availability, bookings, settings, and Google account, served
 from a personal public URL `/<username>/<slug>`. You publish bookable meeting types; invitees pick
@@ -17,6 +24,18 @@ accounts (a locked account can no longer log in, and its existing session cookie
 It runs as **N identical stateless replicas** behind a load balancer — there is no in-process session
 state, all shared state lives in Postgres, and background work (reminders, pending-booking expiry) is
 multi-node-safe via Postgres `SELECT … FOR UPDATE SKIP LOCKED` with no leader election.
+
+---
+
+## Screenshots
+
+| Public landing | Booking page |
+|---|---|
+| ![A user's public landing page listing their bookable meeting types](src/main/resources/META-INF/resources/img/product-landing.png) | ![Booking page: a monthly calendar of available days beside a column of bookable time slots](src/main/resources/META-INF/resources/img/product-booking.png) |
+
+| Owner dashboard | Booking confirmation |
+|---|---|
+| ![Owner dashboard showing upcoming bookings and a side navigation](src/main/resources/META-INF/resources/img/product-dashboard.png) | ![Booking confirmation screen shown to the invitee after they pick a time](src/main/resources/META-INF/resources/img/product-confirmation.png) |
 
 ---
 
@@ -50,9 +69,11 @@ multi-node-safe via Postgres `SELECT … FOR UPDATE SKIP LOCKED` with no leader 
 
 ## Requirements
 
-- **Java 25** and **Maven** to build.
-- The UI is styled with **Pico CSS v2**, bundled as a Maven WebJar (`org.webjars.npm:picocss__pico`)
-  and served locally via `quarkus-web-dependency-locator` — there is **no runtime CDN dependency**.
+- **Java 25** and **Maven** to build (the Maven wrapper `./mvnw` is included). The Docker image builds
+  and runs on **BellSoft Liberica JDK/JRE 26**.
+- **Bun** to compile the stylesheet. The UI is styled with **Tailwind CSS v4 + daisyUI 5** (custom
+  `calit-light` theme); `bun run css:build` compiles `src/main/css/input.css` into the self-hosted
+  `/calit.css` — there is **no runtime CDN dependency** (web fonts aside). No JavaScript ships at runtime.
 - **PostgreSQL** at runtime. (For local dev/tests, Quarkus Dev Services starts a throwaway Postgres in
   **Docker** automatically — Docker must be running to run the test suite or `quarkus:dev`.)
 - An **SMTP** account for outbound email.
@@ -65,8 +86,12 @@ multi-node-safe via Postgres `SELECT … FOR UPDATE SKIP LOCKED` with no leader 
 
 ```bash
 # Docker must be running (Dev Services provisions Postgres + a mock mailbox).
+bun install            # once
+bun run css:watch &    # compiles src/main/css/input.css -> /calit.css and rebuilds on change
 mvn quarkus:dev
 ```
+
+(`/calit.css` is gitignored, so build it at least once or the pages render unstyled.)
 
 - Public booking site: <http://localhost:8080/>
 - Management UI: <http://localhost:8080/me> (form login at `/login`). On a fresh database, visit any
@@ -85,8 +110,8 @@ mvn test
 
 ## Run with Docker Compose (recommended for self-hosting)
 
-The repo ships a `Dockerfile` (multi-stage, BellSoft **Liberica JDK 25**) and a `docker-compose.yml`
-that runs the app plus its Postgres.
+The repo ships a `Dockerfile` (multi-stage: Bun compiles the CSS, BellSoft **Liberica JDK 26** builds
+the app, **Liberica JRE 26** runs it) and a `docker-compose.yml` that runs the app plus its Postgres.
 
 ```bash
 cp .env.example .env          # then edit .env — at minimum set DB_PASSWORD, SESSION_ENCRYPTION_KEY,
@@ -303,3 +328,11 @@ The port number alone does **not** pick the mode — set `MAIL_TLS` explicitly f
 - **Double-booking** is prevented at the database level by a Postgres exclusion constraint covering
   PENDING+CONFIRMED bookings, so concurrent replicas cannot both win the same slot.
 - **Migrations** are plain SQL under `src/main/resources/db/migration` (`V1`…`V8`) and run at boot.
+
+---
+
+## License
+
+Licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0). If you run a modified version
+to provide a network service, you must offer its complete source to that service's users. See
+[LICENSE](LICENSE) for the full text.
