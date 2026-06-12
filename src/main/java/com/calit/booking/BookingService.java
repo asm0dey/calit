@@ -201,7 +201,7 @@ public class BookingService {
 
         // Auto type: create the Google event when connected (degraded mode skips it entirely).
         // If createEvent throws, the @Transactional boundary rolls back this booking (no orphan row).
-        // `createGoogleEvent` (shared with `approve`, added in Task 7) applies the feature-13
+        // `createGoogleEvent` (shared with `approve`) applies the feature-13
         // location logic: createMeetLink=(locationType==GOOGLE_MEET), locationText=locationDetail.
         if (calendarPort.isConnected(type.ownerId)) {
             createGoogleEvent(type, booking);

@@ -153,7 +153,8 @@ public class GoogleCalendarPort implements CalendarPort {
                 // The write-target calendar was deleted on Google since the owner selected it.
                 // Clear the selection + flag the account so the UI prompts a re-select/reconnect.
                 // This @Transactional method rethrows below, which would roll back plain persists,
-                // so commit the two flags in a separate transaction (same pattern as Task 2).
+                // so commit the two flags in a separate transaction (same pattern as
+                // GoogleTokenService.validAccessToken's fail-soft flag commit).
                 Long targetId = target.id, credId = cred.id;
                 io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
                     GoogleCalendar t = GoogleCalendar.findById(targetId);
