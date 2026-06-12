@@ -17,6 +17,12 @@ import java.util.List;
  *   3. otherwise provision a new passwordless, not-yet-onboarded account, but only when
  *      SIGNUP_ENABLED=true; else reject with SIGNUP_DISABLED.
  * Ambiguous email (more than one same-email account) is rejected rather than guessed.
+ *
+ * @implNote Auto-link trusts Google's verified email against the account's OwnerSettings
+ *           email, which the app itself does NOT verify (it is free-text from the settings
+ *           wizard). A user who entered someone else's address could thus be linked by that
+ *           address's real Google owner. Acceptable pre-public; before going public, add email
+ *           verification to the settings wizard or gate auto-link behind a confirmation step.
  */
 @ApplicationScoped
 public class GoogleSignInService {
@@ -59,6 +65,7 @@ public class GoogleSignInService {
         OwnerSettings s = new OwnerSettings();
         s.ownerId = u.id;
         s.ownerName = "";
+        // ownerEmail "" only when Google returns no email; satisfies NOT NULL until the wizard sets a real one.
         s.ownerEmail = identity.email() == null ? "" : identity.email();
         s.timezone = "UTC";
         s.persist();
