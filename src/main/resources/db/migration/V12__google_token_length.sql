@@ -7,4 +7,8 @@ BEGIN
         WHERE table_name = 'google_credential' AND column_name = 'refresh_token') <> 'text' THEN
         RAISE EXCEPTION 'refresh_token must remain TEXT to hold encrypted tokens';
     END IF;
+    IF (SELECT data_type FROM information_schema.columns
+        WHERE table_name = 'google_credential' AND column_name = 'access_token') <> 'text' THEN
+        RAISE EXCEPTION 'access_token must remain TEXT to hold encrypted tokens';
+    END IF;
 END $$;

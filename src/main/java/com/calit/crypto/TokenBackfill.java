@@ -27,15 +27,17 @@ public class TokenBackfill {
     @Inject
     TokenCipher cipher;
 
+    @Transactional
     void onStart(@Observes StartupEvent ev) {
         encryptLegacy();
     }
 
-    @Transactional
     void encryptLegacy() {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery(
-                "select id, refresh_token, access_token from google_credential").getResultList();
+                "select id, refresh_token, access_token from google_credential "
+                        + "where refresh_token not like 'enc:v1:%' or access_token not like 'enc:v1:%' "
+                        + "for update skip locked").getResultList();
         int migrated = 0;
         for (Object[] row : rows) {
             Long id = ((Number) row[0]).longValue();

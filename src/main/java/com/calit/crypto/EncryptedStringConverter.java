@@ -17,11 +17,18 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
 
     @Override
     public String convertToDatabaseColumn(String attribute) {
-        return cipher.encrypt(attribute);
+        return cipher().encrypt(attribute);
     }
 
     @Override
     public String convertToEntityAttribute(String dbData) {
-        return cipher.decrypt(dbData);
+        return cipher().decrypt(dbData);
+    }
+
+    private TokenCipher cipher() {
+        if (cipher == null) {
+            throw new IllegalStateException("TokenCipher was not injected into EncryptedStringConverter");
+        }
+        return cipher;
     }
 }

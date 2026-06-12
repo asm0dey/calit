@@ -9,6 +9,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.HexFormat;
 
 /**
  * AES-256-GCM encryption for secrets stored at rest (Google OAuth tokens — SEC-SECRET-02).
@@ -81,13 +82,11 @@ public class TokenCipher {
     }
 
     private static byte[] hexToBytes(String hex) {
-        if (hex == null || hex.length() % 2 != 0) {
-            throw new IllegalStateException("TOKEN_ENCRYPTION_KEY must be an even-length hex string.");
+        try {
+            return HexFormat.of().parseHex(hex);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new IllegalStateException(
+                "TOKEN_ENCRYPTION_KEY must decode to 32 bytes (64 hex chars).", e);
         }
-        byte[] out = new byte[hex.length() / 2];
-        for (int i = 0; i < out.length; i++) {
-            out[i] = (byte) Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
-        }
-        return out;
     }
 }
