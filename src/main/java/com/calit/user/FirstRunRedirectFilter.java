@@ -37,10 +37,12 @@ public class FirstRunRedirectFilter {
     }
 
     private boolean isAllowedWhileUnbootstrapped(String path) {
+        // Note: /login is NOT exempt — while unbootstrapped there is nobody to log in as, so /login
+        // redirects to /setup (first-user creation) like every other app path. /j_security_check stays
+        // exempt so the redirect target is reachable; it no-ops with no users.
         return path.equals("/")                  // public marketing landing stays open pre-bootstrap
                 || path.startsWith("/img/")       // ...and its screenshots
                 || path.equals("/setup")
-                || path.equals("/login")
                 || path.equals("/j_security_check")
                 || path.startsWith("/q/")
                 || path.equals("/calit.css")

@@ -56,6 +56,16 @@ class SetupFlowTest {
     }
 
     @Test
+    void loginRedirectsToSetupWhenNoUsers() {
+        // Nobody to log in as yet -> /login sends you to first-user creation, not the login form.
+        deleteAllUsers();
+        given().redirects().follow(false)
+                .when().get("/login")
+                .then().statusCode(302)
+                .header("Location", containsString("/setup"));
+    }
+
+    @Test
     void publicLandingStaysOpenWhenNoUsers() {
         // The marketing landing at / is exempt from the first-run redirect — it must render even
         // before the instance is bootstrapped, not 302 to /setup.
