@@ -227,7 +227,7 @@ class BookServiceTest {
 
         // Second attempt on the now-taken slot is rejected (the persisted booking is busy).
         // The app-level re-check catches it here; the DB exclusion constraint is the
-        // cross-replica backstop documented in Task 1 / the behavior contract.
+        // cross-replica backstop (guards against concurrent inserts from multiple replicas).
         assertThrows(BookingConflictException.class,
                 () -> bookingService.book(1L, "book-double", SLOT_09, "Second", "second@example.com", Map.of(), "tok", ""));
     }

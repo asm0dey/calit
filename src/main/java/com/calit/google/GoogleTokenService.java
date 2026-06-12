@@ -46,7 +46,7 @@ public class GoogleTokenService {
     /**
      * Normalized token data, independent of the Google client types (keeps the test seam clean).
      * {@code googleSub} and {@code accountEmail} are extracted from the id_token during the
-     * authorization_code exchange (Task 2); both are null for refresh-token responses.
+     * authorization_code exchange; both are null for refresh-token responses.
      */
     public record TokenResponse(String accessToken, String refreshToken, Instant expiry,
                                 String googleSub, String accountEmail) {}

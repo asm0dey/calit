@@ -99,7 +99,7 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance dashboard() {
         // Upcoming confirmed bookings, soonest first. PENDING ones live in the approval queue
-        // (Task 12, GET /me/pending), not here.
+        // (GET /me/pending), not here.
         List<Booking> upcoming = Booking.list(
                 "ownerId = ?1 and status = ?2 and startUtc >= ?3 order by startUtc",
                 currentOwner.id(), com.calit.booking.BookingStatus.CONFIRMED, java.time.Instant.now());
