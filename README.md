@@ -106,6 +106,57 @@ docker compose up -d --scale app=3
 
 (Everything below also applies to the compose deployment — the same env vars, set in `.env`.)
 
+### Or run the prebuilt image (no local build)
+
+Released versions are published as multi-arch images (linux/amd64 + linux/arm64) to GitHub
+Container Registry: **`ghcr.io/asm0dey/calit`** (tags: `latest`, `1.0.0`, `1.0`). To deploy without
+building from source, drop the `build:` and pull the image instead. Save this as `compose.yaml`:
+
+```yaml
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: ${DB_NAME:-calit}
+      POSTGRES_USER: ${DB_USER:-calit}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - calit-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-calit} -d ${DB_NAME:-calit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    image: ghcr.io/asm0dey/calit:1.0.0   # or :latest
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-calit}
+      DB_USER: ${DB_USER:-calit}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  calit-db:
+```
+
+```bash
+cp .env.example .env   # set DB_PASSWORD, SESSION_ENCRYPTION_KEY, APP_BASE_URL, MAIL_*
+docker compose up -d   # pulls the image; Flyway migrates on boot
+```
+
+The image is public — no `docker login` needed. (If you fork and keep the package private, run
+`docker login ghcr.io` with a token that has `read:packages` first.)
+
 ## Build & run for production
 
 ```bash
