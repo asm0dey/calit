@@ -20,9 +20,8 @@
         <p class="text-sm text-base-content/70">/{t.slug} &middot; {t.durationMinutes} min &middot; {t.locationType.display}{#if t.locationDetail} ({t.locationDetail}){/if}</p>
         <p class="text-sm text-base-content/70">min notice {t.minNoticeMinutes} min &middot; horizon {t.horizonDays} days{#if t.slotIntervalMinutes} &middot; slot interval {t.slotIntervalMinutes} min{/if} &middot; buffer {t.bufferBeforeMinutes}/{t.bufferAfterMinutes} min</p>
         <div class="flex flex-wrap items-center gap-2 mt-1">
-          <button type="button" class="btn btn-ghost btn-sm copy-link-btn" data-copy-link="{baseUrl}/{username}/{t.slug}">
+          <button type="button" class="btn btn-ghost btn-sm btn-square copy-link-btn" data-copy-link="{baseUrl}/{username}/{t.slug}" aria-label="Copy booking link" title="Copy booking link">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
-            Copy link
           </button>
           <a href="/me/meeting-types/{t.id}" role="button" class="btn btn-outline btn-sm">Edit</a>
           <form method="post" action="/me/meeting-types/{t.id}/toggle">
