@@ -214,6 +214,7 @@ the same values must be present on every replica.
 |---|---|
 | `DB_PASSWORD` | Postgres password. |
 | `SESSION_ENCRYPTION_KEY` | Encrypts the login cookie (>=16 chars). Must be the same on every replica. Generate with `openssl rand -hex 32`. **Required in prod.** |
+| `TOKEN_ENCRYPTION_KEY` | AES-256-GCM key for Google OAuth tokens at rest. 64 hex chars (`openssl rand -hex 32`). Must be the same on every replica; keep it stable. **Required in prod.** |
 | `APP_BASE_URL` | Public origin, e.g. `https://book.example.com`. Used to build invitee manage links in emails and the Google OAuth redirect; must match what users hit. |
 | `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | SMTP server + the "from" address. |
 
