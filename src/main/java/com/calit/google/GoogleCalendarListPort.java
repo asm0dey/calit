@@ -26,9 +26,9 @@ public class GoogleCalendarListPort implements CalendarListPort {
     }
 
     @Override
-    public List<RemoteCalendar> listCalendars() {
+    public List<RemoteCalendar> listCalendars(GoogleCredential credential) {
         try {
-            var client = clientFactory.build(tokens.validAccessToken(currentOwner.id(), Instant.now()));
+            var client = clientFactory.build(tokens.validAccessToken(credential, Instant.now()));
             List<CalendarListEntry> entries = client.calendarList().list().execute().getItems();
             if (entries == null) {
                 return List.of();
@@ -40,5 +40,11 @@ public class GoogleCalendarListPort implements CalendarListPort {
         } catch (IOException e) {
             throw new UncheckedIOException("calendarList.list failed", e);
         }
+    }
+
+    @Override
+    public List<RemoteCalendar> listCalendars() {
+        GoogleCredential c = GoogleCredential.forOwner(currentOwner.id());
+        return c == null ? List.of() : listCalendars(c);
     }
 }

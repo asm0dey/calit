@@ -9,4 +9,7 @@ public interface CalendarListPort {
     record RemoteCalendar(String googleCalendarId, String summary) {}
 
     List<RemoteCalendar> listCalendars();
+
+    /** Calendars for one specific connected account. */
+    List<RemoteCalendar> listCalendars(GoogleCredential credential);
 }

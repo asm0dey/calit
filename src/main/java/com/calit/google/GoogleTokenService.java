@@ -207,22 +207,6 @@ public class GoogleTokenService {
     }
 
     /**
-     * Owner-scoped convenience that refreshes the owner's (single) credential.
-     *
-     * @deprecated Task 3 migrates callers to the per-credential overload; remove after.
-     */
-    @Deprecated
-    @Transactional
-    public String validAccessToken(Long ownerId, Instant now) {
-        GoogleCredential c = GoogleCredential.forOwner(ownerId);
-        if (c == null) {
-            throw new IllegalStateException(
-                    "Google is not connected for owner " + ownerId + ". Run /api/google/connect.");
-        }
-        return validAccessToken(c, now);
-    }
-
-    /**
      * The single network round-trip. Overridable so tests can stub it without touching Google.
      *
      * @param grantType            "authorization_code" or "refresh_token"

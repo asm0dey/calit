@@ -97,7 +97,7 @@ class GoogleTokenServiceTest {
         c.persist();
 
         StubTokenService svc = new StubTokenService(config, null); // must NOT be used
-        String token = svc.validAccessToken(1L, Instant.parse("2026-06-08T12:00:00Z"));
+        String token = svc.validAccessToken(c, Instant.parse("2026-06-08T12:00:00Z"));
 
         assertEquals("cached-access", token);
     }
@@ -118,7 +118,7 @@ class GoogleTokenServiceTest {
                 new GoogleTokenService.TokenResponse("fresh-access", null,
                         now.plusSeconds(3600), null, null));
 
-        String token = svc.validAccessToken(1L, now);
+        String token = svc.validAccessToken(c, now);
 
         assertEquals("fresh-access", token);
         GoogleCredential reloaded = GoogleCredential.forOwner(1L);
