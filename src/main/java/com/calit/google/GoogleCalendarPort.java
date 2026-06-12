@@ -1,6 +1,7 @@
 package com.calit.google;
 
 import com.calit.domain.OwnerSettings;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.ConferenceData;
@@ -54,7 +55,6 @@ public class GoogleCalendarPort implements CalendarPort {
     }
 
     @Override
-    @Transactional
     public List<BusyInterval> freeBusy(Long ownerId, Instant from, Instant to) {
         Map<Long, List<GoogleCalendar>> byCredential = GoogleCalendar.readForBusyByCredential(ownerId);
         if (byCredential.isEmpty()) {
@@ -88,10 +88,18 @@ public class GoogleCalendarPort implements CalendarPort {
                     }
                 }
             } catch (IOException | RuntimeException ex) {
-                // Fail-soft: one broken account must not take down availability. This method does NOT
-                // rethrow, so the flag persists with the method's own transaction (no rollback hazard).
-                cred.needsReconnect = true;
-                cred.persist();
+                // Fail-soft: one broken account must not take down availability. KEEP this broad
+                // catch (do NOT narrow to IOException): a revoked/expired refresh token surfaces as
+                // an IllegalStateException (a RuntimeException) from validAccessToken, which is the
+                // most common fail-soft case; narrowing would abort the whole freeBusy. Log so a
+                // genuine defect is still discoverable rather than silently masquerading as "reconnect".
+                org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class)
+                        .warnf(ex, "freeBusy failed for credential %d; flagging needsReconnect", cred.id);
+                Long credId = cred.id;
+                io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
+                    GoogleCredential fresh = GoogleCredential.findById(credId);
+                    if (fresh != null) { fresh.needsReconnect = true; fresh.persist(); }
+                });
             }
         }
         return BusyIntervals.merge(raw);
@@ -103,11 +111,9 @@ public class GoogleCalendarPort implements CalendarPort {
                                     Instant start, Instant end,
                                     List<String> attendeeEmails,
                                     boolean createMeetLink, String locationText) {
-        GoogleCalendar target = requireWriteTarget(ownerId);
-        GoogleCredential cred = GoogleCredential.findById(target.googleCredentialId);
-        if (cred == null) {
-            throw new IllegalStateException("Write-target calendar has no credential; reconnect Google.");
-        }
+        var ctx = writeContext(ownerId);
+        GoogleCalendar target = ctx.target();
+        GoogleCredential cred = ctx.cred();
         Event event = new Event()
                 .setSummary(summary)
                 .setDescription(description)
@@ -142,7 +148,7 @@ public class GoogleCalendarPort implements CalendarPort {
                     .execute();
             String meetLink = createMeetLink ? extractMeetLink(created) : null;
             return new CreatedEvent(created.getId(), meetLink, created.getHtmlLink());
-        } catch (com.google.api.client.googleapis.json.GoogleJsonResponseException e) {
+        } catch (GoogleJsonResponseException e) {
             if (e.getStatusCode() == 404) {
                 // The write-target calendar was deleted on Google since the owner selected it.
                 // Clear the selection + flag the account so the UI prompts a re-select/reconnect.
@@ -167,8 +173,9 @@ public class GoogleCalendarPort implements CalendarPort {
     @Override
     @Transactional
     public void updateEvent(Long ownerId, String eventId, Instant start, Instant end) {
-        GoogleCalendar target = requireWriteTarget(ownerId);
-        GoogleCredential cred = GoogleCredential.findById(target.googleCredentialId);
+        var ctx = writeContext(ownerId);
+        GoogleCalendar target = ctx.target();
+        GoogleCredential cred = ctx.cred();
         Event patch = new Event()
                 .setStart(eventTime(ownerId, start))
                 .setEnd(eventTime(ownerId, end));
@@ -185,8 +192,9 @@ public class GoogleCalendarPort implements CalendarPort {
     @Override
     @Transactional
     public void deleteEvent(Long ownerId, String eventId) {
-        GoogleCalendar target = requireWriteTarget(ownerId);
-        GoogleCredential cred = GoogleCredential.findById(target.googleCredentialId);
+        var ctx = writeContext(ownerId);
+        GoogleCalendar target = ctx.target();
+        GoogleCredential cred = ctx.cred();
         try {
             // sendUpdates=all so Google emails the attendees the cancellation.
             client(cred).events().delete(target.googleCalendarId, eventId)
@@ -203,6 +211,18 @@ public class GoogleCalendarPort implements CalendarPort {
             throw new IllegalStateException("No write-target Google calendar selected. POST /api/google/calendars.");
         }
         return target;
+    }
+
+    /** The write-target calendar plus its (non-null) owning credential, or fail clearly. */
+    private record WriteContext(GoogleCalendar target, GoogleCredential cred) {}
+
+    private WriteContext writeContext(Long ownerId) {
+        GoogleCalendar target = requireWriteTarget(ownerId);
+        GoogleCredential cred = GoogleCredential.findById(target.googleCredentialId);
+        if (cred == null) {
+            throw new IllegalStateException("Write-target calendar has no credential; reconnect Google.");
+        }
+        return new WriteContext(target, cred);
     }
 
     /**
