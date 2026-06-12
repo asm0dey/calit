@@ -146,7 +146,7 @@ services:
       POSTGRES_USER: ${DB_USER:-calit}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
     volumes:
-      - calit-db:/var/lib/postgresql/data
+      - calit-db:/var/lib/postgresql   # postgres:18 default PGDATA moved under here
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-calit} -d ${DB_NAME:-calit}"]
       interval: 5s
