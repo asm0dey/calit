@@ -42,57 +42,72 @@ public class GoogleCalendarPort implements CalendarPort {
         this.clientFactory = clientFactory;
     }
 
-    private Calendar client(Long ownerId) {
-        return clientFactory.build(tokens.validAccessToken(ownerId, Instant.now()));
+    private Calendar client(GoogleCredential cred) {
+        return clientFactory.build(tokens.validAccessToken(cred, Instant.now()));
     }
 
     @Override
     @Transactional
     public boolean isConnected(Long ownerId) {
-        // Connected iff this owner's OAuth credential (with refresh token) exists. No Google call.
-        return GoogleCredential.forOwner(ownerId) != null;
+        // Connected iff this owner has at least one OAuth credential. No Google call.
+        return GoogleCredential.countForOwner(ownerId) > 0;
     }
 
     @Override
+    @Transactional
     public List<BusyInterval> freeBusy(Long ownerId, Instant from, Instant to) {
-        List<GoogleCalendar> readers = GoogleCalendar.readForBusy(ownerId);
-        if (readers.isEmpty()) {
+        Map<Long, List<GoogleCalendar>> byCredential = GoogleCalendar.readForBusyByCredential(ownerId);
+        if (byCredential.isEmpty()) {
             return List.of();
         }
-        FreeBusyRequest request = new FreeBusyRequest()
-                .setTimeMin(new DateTime(from.toEpochMilli()))
-                .setTimeMax(new DateTime(to.toEpochMilli()))
-                .setItems(readers.stream()
-                        .map(c -> new FreeBusyRequestItem().setId(c.googleCalendarId))
-                        .toList());
-        try {
-            FreeBusyResponse response = client(ownerId).freebusy().query(request).execute();
-            List<BusyInterval> raw = new ArrayList<>();
-            Map<String, FreeBusyCalendar> calendars = response.getCalendars();
-            if (calendars != null) {
-                for (FreeBusyCalendar cal : calendars.values()) {
-                    List<TimePeriod> busy = cal.getBusy();
-                    if (busy != null) {
-                        for (TimePeriod p : busy) {
-                            raw.add(new BusyInterval(
-                                    Instant.ofEpochMilli(p.getStart().getValue()),
-                                    Instant.ofEpochMilli(p.getEnd().getValue())));
+        List<BusyInterval> raw = new ArrayList<>();
+        for (Map.Entry<Long, List<GoogleCalendar>> e : byCredential.entrySet()) {
+            GoogleCredential cred = GoogleCredential.findById(e.getKey());
+            if (cred == null || cred.needsReconnect) {
+                continue; // fail-soft: skip an account that is gone or known-broken
+            }
+            FreeBusyRequest request = new FreeBusyRequest()
+                    .setTimeMin(new DateTime(from.toEpochMilli()))
+                    .setTimeMax(new DateTime(to.toEpochMilli()))
+                    .setItems(e.getValue().stream()
+                            .map(c -> new FreeBusyRequestItem().setId(c.googleCalendarId))
+                            .toList());
+            try {
+                FreeBusyResponse response = client(cred).freebusy().query(request).execute();
+                Map<String, FreeBusyCalendar> calendars = response.getCalendars();
+                if (calendars != null) {
+                    for (FreeBusyCalendar cal : calendars.values()) {
+                        List<TimePeriod> busy = cal.getBusy();
+                        if (busy != null) {
+                            for (TimePeriod p : busy) {
+                                raw.add(new BusyInterval(
+                                        Instant.ofEpochMilli(p.getStart().getValue()),
+                                        Instant.ofEpochMilli(p.getEnd().getValue())));
+                            }
                         }
                     }
                 }
+            } catch (IOException | RuntimeException ex) {
+                // Fail-soft: one broken account must not take down availability. This method does NOT
+                // rethrow, so the flag persists with the method's own transaction (no rollback hazard).
+                cred.needsReconnect = true;
+                cred.persist();
             }
-            return BusyIntervals.merge(raw);
-        } catch (IOException e) {
-            throw new UncheckedIOException("freeBusy query failed", e);
         }
+        return BusyIntervals.merge(raw);
     }
 
     @Override
+    @Transactional
     public CreatedEvent createEvent(Long ownerId, String summary, String description,
                                     Instant start, Instant end,
                                     List<String> attendeeEmails,
                                     boolean createMeetLink, String locationText) {
         GoogleCalendar target = requireWriteTarget(ownerId);
+        GoogleCredential cred = GoogleCredential.findById(target.googleCredentialId);
+        if (cred == null) {
+            throw new IllegalStateException("Write-target calendar has no credential; reconnect Google.");
+        }
         Event event = new Event()
                 .setSummary(summary)
                 .setDescription(description)
@@ -120,27 +135,46 @@ public class GoogleCalendarPort implements CalendarPort {
         try {
             // setConferenceDataVersion(1) is required so Google honors the createRequest; harmless when absent.
             // setSendUpdates("all") makes Google email the attendees the invite (chosen invitee path).
-            Event created = client(ownerId).events()
+            Event created = client(cred).events()
                     .insert(target.googleCalendarId, event)
                     .setConferenceDataVersion(createMeetLink ? 1 : 0)
                     .setSendUpdates("all")
                     .execute();
             String meetLink = createMeetLink ? extractMeetLink(created) : null;
             return new CreatedEvent(created.getId(), meetLink, created.getHtmlLink());
+        } catch (com.google.api.client.googleapis.json.GoogleJsonResponseException e) {
+            if (e.getStatusCode() == 404) {
+                // The write-target calendar was deleted on Google since the owner selected it.
+                // Clear the selection + flag the account so the UI prompts a re-select/reconnect.
+                // This @Transactional method rethrows below, which would roll back plain persists,
+                // so commit the two flags in a separate transaction (same pattern as Task 2).
+                Long targetId = target.id, credId = cred.id;
+                io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
+                    GoogleCalendar t = GoogleCalendar.findById(targetId);
+                    if (t != null) { t.writeTarget = false; t.persist(); }
+                    GoogleCredential c2 = GoogleCredential.findById(credId);
+                    if (c2 != null) { c2.needsReconnect = true; c2.persist(); }
+                });
+                throw new IllegalStateException(
+                        "Write-target calendar no longer exists on Google; re-select a write target.", e);
+            }
+            throw new UncheckedIOException("createEvent failed", e);
         } catch (IOException e) {
             throw new UncheckedIOException("createEvent failed", e);
         }
     }
 
     @Override
+    @Transactional
     public void updateEvent(Long ownerId, String eventId, Instant start, Instant end) {
         GoogleCalendar target = requireWriteTarget(ownerId);
+        GoogleCredential cred = GoogleCredential.findById(target.googleCredentialId);
         Event patch = new Event()
                 .setStart(eventTime(ownerId, start))
                 .setEnd(eventTime(ownerId, end));
         try {
             // sendUpdates=all so Google emails the attendees the rescheduled time.
-            client(ownerId).events().patch(target.googleCalendarId, eventId, patch)
+            client(cred).events().patch(target.googleCalendarId, eventId, patch)
                     .setSendUpdates("all")
                     .execute();
         } catch (IOException e) {
@@ -149,11 +183,13 @@ public class GoogleCalendarPort implements CalendarPort {
     }
 
     @Override
+    @Transactional
     public void deleteEvent(Long ownerId, String eventId) {
         GoogleCalendar target = requireWriteTarget(ownerId);
+        GoogleCredential cred = GoogleCredential.findById(target.googleCredentialId);
         try {
             // sendUpdates=all so Google emails the attendees the cancellation.
-            client(ownerId).events().delete(target.googleCalendarId, eventId)
+            client(cred).events().delete(target.googleCalendarId, eventId)
                     .setSendUpdates("all")
                     .execute();
         } catch (IOException e) {
