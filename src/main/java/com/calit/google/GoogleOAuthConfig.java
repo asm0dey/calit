@@ -18,6 +18,9 @@ public interface GoogleOAuthConfig {
 
         String redirectUri();
 
+        /** Redirect URI for the SIGN-IN flow (distinct from the calendar-connect redirectUri). */
+        String loginRedirectUri();
+
         String scope();
 
         /** Shared HMAC key for signing the stateless CSRF {@code state}; identical on every replica. */

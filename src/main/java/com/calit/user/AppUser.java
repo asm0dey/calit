@@ -27,8 +27,14 @@ public class AppUser extends PanacheEntityBase {
     @Column(unique = true, nullable = false)
     public String username;
 
-    @Column(name = "password_hash", nullable = false)
+    // Nullable: users who only sign in with Google have no password (see V11). Form-login
+    // users always have one; AppUserIdentityProvider guards against verifying a null hash.
+    @Column(name = "password_hash")
     public String passwordHash;
+
+    /** Stable Google id_token "sub" linking this account to a Google identity, or null. Unique. */
+    @Column(name = "google_sub", unique = true)
+    public String googleSub;
 
     @Column(nullable = false)
     public String roles;
@@ -67,8 +73,32 @@ public class AppUser extends PanacheEntityBase {
         return u;
     }
 
+    /**
+     * Factory for a Google-only user: no password, non-admin, not yet onboarded. The username
+     * must already be uniquified by the caller (see Usernames.uniquify); it is normalized here.
+     */
+    public static AppUser createGoogleUser(String username, String googleSub) {
+        AppUser u = new AppUser();
+        u.username = Usernames.normalize(username);
+        u.passwordHash = null;
+        u.googleSub = googleSub;
+        u.isAdmin = false;
+        u.roles = rolesFor(false);
+        u.mustChangePassword = false;
+        u.settingsComplete = false;
+        u.createdAt = Instant.now();
+        return u;
+    }
+
     public static AppUser findByUsername(String username) {
         return find("username", Usernames.normalize(username)).firstResult();
+    }
+
+    public static AppUser findByGoogleSub(String googleSub) {
+        if (googleSub == null) {
+            return null;
+        }
+        return find("googleSub", googleSub).firstResult();
     }
 
     public static boolean usernameTaken(String username) {

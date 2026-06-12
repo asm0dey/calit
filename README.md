@@ -49,6 +49,14 @@ multi-node-safe via Postgres `SELECT … FOR UPDATE SKIP LOCKED` with no leader 
 - **Opt-in self-service sign-up.** Public `/signup` is **off by default**. Set `SIGNUP_ENABLED=true`
   to let anyone register (username + their own password); when off, `/signup` returns 404. Changing
   the flag requires a restart — there is no runtime toggle.
+- **Sign in with Google.** When a Google OAuth client is configured, `/login` shows a
+  "Sign in with Google" button. A returning user (matched by the Google account's stable id, or
+  auto-linked on first use when their *verified* Google email matches exactly one existing account)
+  is logged straight in. An unknown Google account is provisioned a new user **only when
+  `SIGNUP_ENABLED=true`** (otherwise sign-in is refused), and is sent through the first-login wizard
+  with their email pre-filled. Register **both** `${APP_BASE_URL}/api/google/callback` (calendar) and
+  `${APP_BASE_URL}/api/google/login/callback` (sign-in) as authorized redirect URIs in Google. The
+  sign-in consent requests only your identity (email), not calendar access.
 - **First-login wizard (`/me/setup`).** On first login a user is sent to `/me/setup` and kept there
   until onboarding is done: set a new password (only for admin-created temp-password accounts) and
   fill in display name, email, and timezone. After that they land on `/me`.
@@ -120,7 +128,7 @@ docker compose up --build -d
 ```
 
 The app image builds from source (tests are skipped in the image — run `mvn test` on the host with
-Docker first), waits for a healthy Postgres, and Flyway applies the `V1…V8` migrations at boot. The
+Docker first), waits for a healthy Postgres, and Flyway applies the `V1…V11` migrations at boot. The
 DB is persisted in the `calit-db` volume. Reach it at `http://localhost:${APP_PORT:-8080}/`.
 
 Scale the stateless app behind your own load balancer:
@@ -189,7 +197,7 @@ mvn package
 java -Dquarkus.profile=prod -jar target/quarkus-app/quarkus-run.jar
 ```
 
-The schema is created and kept up to date automatically: **Flyway runs the `V1…V8` migrations at
+The schema is created and kept up to date automatically: **Flyway runs the `V1…V11` migrations at
 boot** (`quarkus.flyway.migrate-at-start=true`), and Hibernate validates the entities against it.
 Point all replicas at the same database; each can serve any request.
 
@@ -232,6 +240,7 @@ links are created and the app emails the invitee directly (instead of Google sen
 |---|---|
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | OAuth client credentials (see below). |
 | `GOOGLE_OAUTH_REDIRECT_URI` | Must be `${APP_BASE_URL}/api/google/callback` and match the authorized redirect URI registered with Google. Defaults to `http://localhost:8080/api/google/callback`. |
+| `GOOGLE_OAUTH_LOGIN_REDIRECT_URI` | Sign-in redirect URI for "Sign in with Google" (separate from the calendar one). Must be `${APP_BASE_URL}/api/google/login/callback` and registered as an authorized redirect URI in the same Google OAuth client. Defaults to `http://localhost:8080/api/google/login/callback`. |
 | `GOOGLE_OAUTH_STATE_SECRET` | A strong random string shared by all replicas (signs the stateless OAuth CSRF token). Generate e.g. `openssl rand -hex 32`. |
 
 ### Cloudflare Turnstile (optional, public-form bot protection)
@@ -327,7 +336,7 @@ The port number alone does **not** pick the mode — set `MAIL_TLS` explicitly f
   LOCKED` — reminder dispatch and pending-booking auto-expiry. No clustered scheduler is needed.
 - **Double-booking** is prevented at the database level by a Postgres exclusion constraint covering
   PENDING+CONFIRMED bookings, so concurrent replicas cannot both win the same slot.
-- **Migrations** are plain SQL under `src/main/resources/db/migration` (`V1`…`V8`) and run at boot.
+- **Migrations** are plain SQL under `src/main/resources/db/migration` (`V1`…`V11`) and run at boot.
 
 ---
 

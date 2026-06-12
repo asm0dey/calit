@@ -1,10 +1,13 @@
 {@java.lang.Boolean error}
+{@java.lang.Boolean googleEnabled}
+{@java.lang.String notice}
 {#include base title="Sign in"}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-sm mx-auto">
     <div class="card-body">
       <h1 class="text-2xl font-bold">Sign in</h1>
       <p class="text-base-content/70">Owner access to calit admin.</p>
       {#if error}<div role="alert" class="alert alert-error mt-2">Invalid credentials — try again.</div>{/if}
+      {#if notice}<div role="alert" class="alert alert-warning mt-2">{notice}</div>{/if}
       <form method="post" action="/j_security_check" class="mt-2">
         <fieldset class="fieldset">
           <label class="label" for="j_username">Username</label>
@@ -17,6 +20,10 @@
           <button type="submit" class="btn btn-primary btn-block mt-2">Sign in</button>
         </fieldset>
       </form>
+      {#if googleEnabled}
+        <div class="divider text-base-content/50">or</div>
+        <a href="/api/google/login" class="btn btn-outline btn-block">Sign in with Google</a>
+      {/if}
     </div>
   </div>
   <script>

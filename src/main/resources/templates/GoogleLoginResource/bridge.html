@@ -1,0 +1,24 @@
+{@java.lang.String username}
+{@java.lang.String token}
+<!DOCTYPE html>
+<html lang="en" data-theme="calit-light">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex">
+  <title>Signing you in…</title>
+  <link rel="stylesheet" href="/calit.css">
+</head>
+<body class="min-h-screen flex items-center justify-center bg-base-200">
+  <!-- Bridges the verified Google identity into a native form-auth session: this posts the
+       single-use login ticket to /j_security_check, which mints the quarkus-credential cookie. -->
+  <form id="bridge" method="post" action="/j_security_check" autocomplete="off">
+    <input type="hidden" name="j_username" value="{username}">
+    <input type="hidden" name="j_password" value="{token}">
+    <noscript>
+      <button type="submit" class="btn btn-primary">Continue signing in</button>
+    </noscript>
+  </form>
+  <p class="text-base-content/70">Signing you in…</p>
+  <script>document.getElementById('bridge').submit();</script>
+</body>
+</html>

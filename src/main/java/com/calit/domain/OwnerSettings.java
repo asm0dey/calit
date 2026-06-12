@@ -36,4 +36,17 @@ public class OwnerSettings extends PanacheEntityBase {
     public static OwnerSettings forOwner(Long ownerId) {
         return find("ownerId", ownerId).firstResult();
     }
+
+    /**
+     * Owner ids whose settings email equals {@code email} (case-insensitive). Empty for
+     * null/blank input. Used to auto-link a verified Google identity to an existing account;
+     * the caller links only when exactly one id is returned.
+     */
+    public static java.util.List<Long> findOwnerIdsByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return java.util.List.of();
+        }
+        return OwnerSettings.find("lower(ownerEmail) = ?1", email.trim().toLowerCase())
+                .<OwnerSettings>list().stream().map(s -> s.ownerId).toList();
+    }
 }
