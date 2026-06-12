@@ -158,8 +158,8 @@
     <button type="submit" class="btn btn-primary">Create</button>
   </form>
 
-  <div class="toast toast-end z-50" id="copy-toast" style="display:none">
-    <div class="alert alert-success">
+  <div class="toast toast-end z-50" id="copy-toast" style="display:none" role="status" aria-live="polite">
+    <div class="alert alert-success" id="copy-toast-alert">
       <span id="copy-toast-msg">Link copied</span>
     </div>
   </div>
@@ -167,11 +167,13 @@
   <script>
     (function () {
       var toast = document.getElementById('copy-toast');
+      var alert = document.getElementById('copy-toast-alert');
       var msg = document.getElementById('copy-toast-msg');
       var timer = null;
-      function showToast(text) {
+      function showToast(text, ok) {
         if (!toast) { return; }
         if (msg) { msg.textContent = text; }
+        if (alert) { alert.className = ok ? 'alert alert-success' : 'alert alert-error'; }
         toast.style.display = '';
         if (timer) { clearTimeout(timer); }
         timer = setTimeout(function () { toast.style.display = 'none'; }, 2000);
@@ -182,11 +184,11 @@
         var url = btn.getAttribute('data-copy-link');
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(url).then(
-            function () { showToast('Link copied'); },
-            function () { showToast('Copy failed — ' + url); }
+            function () { showToast('Link copied', true); },
+            function () { showToast('Copy failed — ' + url, false); }
           );
         } else {
-          showToast('Copy failed — ' + url);
+          showToast('Copy failed — ' + url, false);
         }
       });
     })();
