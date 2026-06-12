@@ -23,7 +23,7 @@ CREATE INDEX idx_booking_status_start ON booking (status, start_utc);
 CREATE INDEX idx_booking_email_created ON booking (invitee_email, created_at);
 
 -- NFR (horizontal scalability): cross-node double-booking guard.
--- App-level "is this slot free?" checks cannot be trusted across
+-- App-level "is this slot free?" checks (Task 5/6) cannot be trusted across
 -- replicas — two nodes can pass the check simultaneously and both INSERT.
 -- This DB-level exclusion constraint makes the INSERT itself the source of
 -- truth: Postgres rejects any second HELD booking whose raw time range
@@ -32,7 +32,7 @@ CREATE INDEX idx_booking_email_created ON booking (invitee_email, created_at);
 -- "Held" = status IN ('PENDING','CONFIRMED'): a pending approval request
 -- (feature 14) holds the slot too, so it cannot be double-requested while
 -- the owner decides. NOTE: this guarantees only no RAW-TIME overlap of held
--- rows. Buffers remain an app-level policy — the DB does not know
+-- rows. Buffers remain an app-level policy (Task 5) — the DB does not know
 -- about them. Cancelling/declining sets status to CANCELLED/DECLINED, so the
 -- partial WHERE clause drops the row from the constraint and frees the slot.
 CREATE EXTENSION IF NOT EXISTS btree_gist;
