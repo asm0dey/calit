@@ -239,8 +239,10 @@ public class BookingService {
      */
     // RFC-pragmatic single-address check: one @, no CRLF/comma, <=254 chars. Not a full RFC 5322
     // parser — just enough to stop header/ICS injection and obvious malformed input (SEC-INPUT-01).
+    // Domain is dot-separated labels that exclude '.', so each '\.' is a deterministic boundary —
+    // the pattern is linear (no overlapping quantifiers), avoiding polynomial-backtracking ReDoS.
     private static final java.util.regex.Pattern EMAIL =
-            java.util.regex.Pattern.compile("^[^\\s@,]+@[^\\s@,]+\\.[^\\s@,]+$");
+            java.util.regex.Pattern.compile("^[^\\s@,]+@[^\\s@,.]+(?:\\.[^\\s@,.]+)+$");
 
     private static void validateInputBounds(String inviteeName, Map<String, String> answers) {
         if (inviteeName == null || inviteeName.isBlank()) {
