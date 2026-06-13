@@ -10,6 +10,7 @@
   {/if}
 
   <form method="post" action="/me/users" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md mb-6">
+    <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
     <h2 class="font-semibold">Create user</h2>
     <label class="label">Username</label>
     <input class="input w-full" type="text" name="username" required>
@@ -28,14 +29,14 @@
         <td>{#if u.enabled}Active{#else}Locked{/if}</td>
         <td class="flex flex-wrap gap-1">
           {#if u.isAdmin}
-          <form method="post" action="/me/users/{u.id}/revoke-admin"><button class="btn btn-xs">Revoke admin</button></form>
+          <form method="post" action="/me/users/{u.id}/revoke-admin"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs">Revoke admin</button></form>
           {#else}
-          <form method="post" action="/me/users/{u.id}/grant-admin"><button class="btn btn-xs">Grant admin</button></form>
+          <form method="post" action="/me/users/{u.id}/grant-admin"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs">Grant admin</button></form>
           {/if}
           {#if u.enabled}
-          <form method="post" action="/me/users/{u.id}/lock"><button class="btn btn-xs btn-warning">Lock</button></form>
+          <form method="post" action="/me/users/{u.id}/lock"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs btn-warning">Lock</button></form>
           {#else}
-          <form method="post" action="/me/users/{u.id}/unlock"><button class="btn btn-xs btn-success">Unlock</button></form>
+          <form method="post" action="/me/users/{u.id}/unlock"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs btn-success">Unlock</button></form>
           {/if}
         </td>
       </tr>

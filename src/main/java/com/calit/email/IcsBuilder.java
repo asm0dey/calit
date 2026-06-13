@@ -33,7 +33,7 @@ public final class IcsBuilder {
         sb.append("PRODID:-//calit//EN\r\n");
         sb.append("METHOD:REQUEST\r\n");
         sb.append("BEGIN:VEVENT\r\n");
-        sb.append("UID:").append(uid).append("\r\n");
+        sb.append("UID:").append(escape(uid)).append("\r\n");
         sb.append("DTSTAMP:").append(ICS_UTC.format(Instant.now())).append("\r\n");
         sb.append("DTSTART:").append(ICS_UTC.format(start)).append("\r\n");
         sb.append("DTEND:").append(ICS_UTC.format(end)).append("\r\n");
@@ -41,17 +41,18 @@ public final class IcsBuilder {
         if (location != null && !location.isBlank()) {
             sb.append("LOCATION:").append(escape(location)).append("\r\n");
         }
-        sb.append("ORGANIZER:mailto:").append(organizerEmail).append("\r\n");
+        sb.append("ORGANIZER:mailto:").append(escape(organizerEmail)).append("\r\n");
         sb.append("END:VEVENT\r\n");
         sb.append("END:VCALENDAR\r\n");
         return sb.toString();
     }
 
-    /** RFC 5545 text escaping for SUMMARY/LOCATION values. */
+    /** RFC 5545 text escaping for any interpolated value; also strips CR so no value can inject a line. */
     private static String escape(String v) {
         return v.replace("\\", "\\\\")
                 .replace(";", "\\;")
                 .replace(",", "\\,")
+                .replace("\r", "")
                 .replace("\n", "\\n");
     }
 }

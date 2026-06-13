@@ -25,9 +25,11 @@
           </button>
           <a href="/me/meeting-types/{t.id}" role="button" class="btn btn-outline btn-sm">Edit</a>
           <form method="post" action="/me/meeting-types/{t.id}/toggle">
+            <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
             <button type="submit" class="btn btn-ghost btn-sm">{#if t.active}Deactivate{#else}Activate{/if}</button>
           </form>
           <form method="post" action="/me/meeting-types/{t.id}/delete">
+            <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
             <button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button>
           </form>
         </div>
@@ -38,6 +40,7 @@
 
   <h2 class="text-xl font-semibold mt-8 mb-3">Create meeting type</h2>
   <form method="post" action="/me/meeting-types" class="space-y-3">
+    <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox" checked>
       <div class="collapse-title font-semibold">Basics</div>

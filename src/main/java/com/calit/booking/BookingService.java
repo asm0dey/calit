@@ -141,6 +141,8 @@ public class BookingService {
     public Booking book(Long ownerId, String meetingTypeSlug, Instant startUtc,
                         String inviteeName, String inviteeEmail,
                         Map<String, String> answers, String turnstileToken, String honeypot) {
+        validateInviteeEmail(inviteeEmail);
+        validateInputBounds(inviteeName, answers);
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
         if (type == null) {
             throw new NotFoundException("No meeting type with slug " + meetingTypeSlug
@@ -235,6 +237,56 @@ public class BookingService {
      * Feature 16: rejects the booking (HTTP 429) if this invitee email already created at least
      * {@code perEmailDailyCap} bookings during today's owner-tz day window.
      */
+    private static void validateInputBounds(String inviteeName, Map<String, String> answers) {
+        if (inviteeName == null || inviteeName.isBlank()) {
+            throw new BookingValidationException("Name is required.");
+        }
+        if (inviteeName.length() > 200) {
+            throw new BookingValidationException("Name is too long.");
+        }
+        if (answers != null) {
+            for (String v : answers.values()) {
+                if (v != null && v.length() > 2000) {
+                    throw new BookingValidationException("An answer is too long.");
+                }
+            }
+        }
+    }
+
+    private static void validateInviteeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new BookingValidationException("Email is required.");
+        }
+        if (email.length() > 254) {
+            throw new BookingValidationException("Email is too long.");
+        }
+        if (!isPlausibleEmail(email)) {
+            throw new BookingValidationException("Enter a valid email address.");
+        }
+    }
+
+    // RFC-pragmatic single-address check done WITHOUT a regex (so there is no ReDoS or regex-engine
+    // stack-overflow risk on hostile input): exactly one non-leading '@', a domain with at least one
+    // dot and no empty labels, and no whitespace or comma anywhere — the latter blocks header/ICS
+    // injection and CRLF smuggling. Not a full RFC 5322 parser (SEC-INPUT-01).
+    private static boolean isPlausibleEmail(String email) {
+        for (int i = 0; i < email.length(); i++) {
+            char ch = email.charAt(i);
+            if (ch == ',' || Character.isWhitespace(ch)) {
+                return false; // commas and CR/LF/space/tab are injection vectors — reject
+            }
+        }
+        int at = email.indexOf('@');
+        if (at <= 0 || at != email.lastIndexOf('@') || at == email.length() - 1) {
+            return false; // need exactly one '@', neither first nor last char
+        }
+        String domain = email.substring(at + 1);
+        if (domain.startsWith(".") || domain.endsWith(".") || domain.contains("..")) {
+            return false; // no empty domain labels
+        }
+        return domain.indexOf('.') >= 0; // domain must have at least one dot
+    }
+
     private void enforcePerEmailDailyCap(MeetingType type, String inviteeEmail) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         LocalDate today = Instant.now().atZone(zone).toLocalDate();

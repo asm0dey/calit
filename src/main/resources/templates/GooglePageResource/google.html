@@ -16,6 +16,7 @@
     <p class="text-base-content/70">No Google accounts connected yet.</p>
   {#else}
     <form method="post" action="/me/google/calendars" class="flex flex-col gap-6">
+      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
       {#for acc in accounts}
         <div class="card bg-base-100 border border-base-300">
           <div class="card-body gap-3">
@@ -65,7 +66,7 @@
     <!-- Disconnect forms live OUTSIDE the selection form (no nested forms). Buttons above target them via form="disc-...". -->
     {#for acc in accounts}
       <form id="disc-{acc.credentialId}" method="post" action="/me/google/accounts/{acc.credentialId}/delete"
-            onsubmit="return confirm('Disconnect this Google account? Its calendar selections are removed.');"></form>
+            onsubmit="return confirm('Disconnect this Google account? Its calendar selections are removed.');"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"></form>
     {/for}
   {/if}
 {/include}

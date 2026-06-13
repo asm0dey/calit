@@ -38,7 +38,11 @@ public class MeOwnerFilter implements ContainerRequestFilter {
         }
         AppUser user = AppUser.findByUsername(identity.getPrincipal().getName());
         if (user == null) {
-            return; // augmentor should have rejected this; nothing to scope
+            // Authenticated principal with no backing AppUser row — fail closed (SEC-AUTHZ-03)
+            // rather than relying on downstream null-handling. Upstream augmentor makes this
+            // near-unreachable, so this is defense-in-depth.
+            ctx.abortWith(Response.status(Response.Status.UNAUTHORIZED).build());
+            return;
         }
         currentOwner.set(user); // Phase 2 owner resolution — covers /me* AND /api/google*
 

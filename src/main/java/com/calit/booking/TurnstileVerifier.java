@@ -9,6 +9,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -33,7 +34,12 @@ public class TurnstileVerifier {
             defaultValue = "https://challenges.cloudflare.com/turnstile/v0/siteverify")
     String verifyUrl;
 
-    private final HttpClient http = HttpClient.newHttpClient();
+    // SEC-SSRF-01: bound the synchronous booking-path call so a hung Cloudflare upstream can't pin
+    // a request thread indefinitely. Fixed destination (no SSRF) — this is availability hardening.
+    private final HttpClient http = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
 
     /** Matches the success flag in the siteverify JSON, tolerating whitespace: {@code "success" : true}. */
     private static final Pattern SUCCESS = Pattern.compile("\"success\"\\s*:\\s*true");
@@ -51,6 +57,7 @@ public class TurnstileVerifier {
                     + "&response=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
             HttpRequest req = HttpRequest.newBuilder(URI.create(verifyUrl))
                     .header("Content-Type", "application/x-www-form-urlencoded")
+                    .timeout(Duration.ofSeconds(10))
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());

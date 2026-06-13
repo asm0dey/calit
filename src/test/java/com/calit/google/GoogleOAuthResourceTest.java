@@ -11,6 +11,7 @@ import java.time.Instant;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -66,8 +67,12 @@ class GoogleOAuthResourceTest {
 
     @Test
     void callbackWithErrorReturns400() {
+        // SEC-INPUT-03: error param must NOT be reflected — assert fixed message and nosniff header.
         given().cookie("quarkus-credential", com.calit.web.FormAuth.login())
                 .when().get("/api/google/callback?error=access_denied")
-                .then().statusCode(400).body(containsString("access_denied"));
+                .then().statusCode(400)
+                .header("X-Content-Type-Options", "nosniff")
+                .body(containsString("Please try connecting again"))
+                .body(is(not(containsString("access_denied"))));
     }
 }

@@ -13,6 +13,12 @@ import jakarta.ws.rs.core.Response;
 import java.time.Instant;
 import java.util.Map;
 
+/**
+ * Public JSON booking API. SECURITY (SEC-AUTHZ-02): every mutation MUST route through
+ * {@link BookingService} so this API and the web form ({@code PublicResource}) share one set of
+ * guards — invitee validation, abuse/rate limits, and conflict checks. Do not add booking logic
+ * here; add it to BookingService or it will silently bypass this entry point.
+ */
 @Path("/api")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)

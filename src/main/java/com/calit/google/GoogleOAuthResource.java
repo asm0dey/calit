@@ -15,6 +15,9 @@ import java.time.Instant;
 @Path("/api/google")
 public class GoogleOAuthResource {
 
+    private static final org.jboss.logging.Logger LOG =
+            org.jboss.logging.Logger.getLogger(GoogleOAuthResource.class);
+
     private final GoogleTokenService tokenService;
     private final com.calit.user.CurrentOwner currentOwner;
 
@@ -43,8 +46,12 @@ public class GoogleOAuthResource {
                              @QueryParam("state") String state,
                              @QueryParam("error") String error) {
         if (error != null) {
+            // Do not reflect attacker-controlled ?error= into the response (SEC-INPUT-03).
+            LOG.warnf("Google OAuth callback returned error: %s",
+                    error.replace('\r', ' ').replace('\n', ' '));
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Google authorization failed: " + error)
+                    .header("X-Content-Type-Options", "nosniff")
+                    .entity("Google authorization failed. Please try connecting again.")
                     .build();
         }
         Instant now = Instant.now();

@@ -51,6 +51,7 @@
           {#else}
             {tzBar.raw}
             <form method="post" action="/{user}/{type.slug}" class="space-y-4">
+              <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
               <div class="booking-grid">
                 <div id="calendar" class="calendar"></div>
                 <div class="time-column">

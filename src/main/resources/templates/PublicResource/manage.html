@@ -20,6 +20,7 @@
         <p>No alternative times available.</p>
       {#else}
         <form method="post" action="/booking/{booking.manageToken}/reschedule" class="space-y-4">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
           <div class="booking-grid">
             <div id="calendar" class="calendar"></div>
             <div class="time-column">
@@ -43,6 +44,7 @@
       <div class="divider"></div>
       <h2 class="text-lg font-semibold mb-3">Cancel</h2>
       <form method="post" action="/booking/{booking.manageToken}/cancel">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
         <button type="submit" class="btn btn-error btn-outline">Cancel this booking</button>
       </form>
       {tzScript.raw}

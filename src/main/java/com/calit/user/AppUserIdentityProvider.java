@@ -32,6 +32,9 @@ public class AppUserIdentityProvider implements IdentityProvider<UsernamePasswor
     @Inject
     java.time.Clock clock;
 
+    @Inject
+    com.calit.audit.AuditLog audit;
+
     @Override
     public Class<UsernamePasswordAuthenticationRequest> getRequestType() {
         return UsernamePasswordAuthenticationRequest.class;
@@ -52,6 +55,7 @@ public class AppUserIdentityProvider implements IdentityProvider<UsernamePasswor
         // 1) Normal form login: verify the argon2id hash (skipped for passwordless Google users).
         if (user != null && user.enabled && user.passwordHash != null
                 && passwordHasher.verify(secret, user.passwordHash)) {
+            audit.event(user.username, "login-success", "-", null);
             return AppUserSecurityIdentities.of(user);
         }
         // 2) Google sign-in bridge: the "password" may be a single-use login ticket. It is consumed
@@ -59,8 +63,13 @@ public class AppUserIdentityProvider implements IdentityProvider<UsernamePasswor
         AppUser ticketUser = loginTickets.consume(secret, clock.instant());
         if (ticketUser != null && ticketUser.enabled
                 && ticketUser.username.equals(Usernames.normalize(username))) {
+            audit.event(ticketUser.username, "login-success", "-", null);
             return AppUserSecurityIdentities.of(ticketUser);
         }
+        // Failed-login audit (SEC-SECRET-05): this previously-silent path is the authoritative
+        // failure signal. Best-effort and never allowed to break authentication — we still throw.
+        // Source IP is not reliably available on this blocking worker thread; emit username only.
+        audit.event(username, "login-failed", "-", null);
         throw new AuthenticationFailedException();
     }
 }

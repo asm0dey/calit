@@ -9,6 +9,7 @@
   <p class="text-sm text-base-content/70 mb-4">Your default weekly schedule. Each day can hold several time frames. Use the copy buttons to mirror one day across the week, then Save.</p>
 
   <form method="post" action="/me/availability/bulk" data-workplan class="space-y-2">
+    <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
     {#for row in week}
     <div data-day="{row.day}" class="card bg-base-100 border border-base-300">
       <div class="card-body py-3 gap-2">

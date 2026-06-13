@@ -6,6 +6,7 @@
       <p class="text-base-content/70">This first account is the site administrator.</p>
       {#if error}<div role="alert" class="alert alert-error mt-2">Username invalid, reserved, or taken — try another.</div>{/if}
       <form method="post" action="/setup" class="mt-2">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
         <fieldset class="fieldset">
           <label class="label" for="username">Username</label>
           <input id="username" class="input w-full" type="text" name="username" required autofocus>

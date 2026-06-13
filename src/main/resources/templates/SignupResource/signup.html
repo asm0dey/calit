@@ -9,6 +9,7 @@
 </head>
 <body class="min-h-screen flex items-center justify-center bg-base-200">
   <form method="post" action="/signup" class="fieldset bg-base-100 border border-base-300 rounded-box p-6 w-full max-w-sm">
+    <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
     <h1 class="text-xl font-bold mb-2">Sign up</h1>
     {#if error}
     <div class="alert alert-error mb-2"><span>{error}</span></div>

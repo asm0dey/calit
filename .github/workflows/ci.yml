@@ -45,6 +45,22 @@ jobs:
       - name: Build and run tests
         run: ./mvnw --batch-mode --no-transfer-progress verify
 
+  scan:
+    name: Vulnerability scan (Trivy fs)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v6
+
+      - name: Trivy filesystem scan (fail on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
   build:
     name: Build image (${{ matrix.arch }})
     needs: [test]
@@ -99,6 +115,31 @@ jobs:
             }
           skip-extraction: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/v') }}
 
+      # Build the single-arch image locally (no push) and Trivy-scan it BEFORE any
+      # GHCR push. If HIGH/CRITICAL vulns are found this step fails the job and the
+      # push-by-digest step below never runs, so a vulnerable image never reaches GHCR.
+      # The buildx gha cache makes the subsequent push build a near-no-op.
+      - name: Build image locally for scanning
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          load: true
+          push: false
+          tags: calit:scan-${{ matrix.arch }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+
+      - name: Trivy image scan (fail on HIGH/CRITICAL) before push
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: calit:scan-${{ matrix.arch }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v7
@@ -131,6 +172,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Download digests
         uses: actions/download-artifact@v8

@@ -1,7 +1,9 @@
 package com.calit.google;
 
+import com.calit.crypto.EncryptedStringConverter;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,10 +29,12 @@ public class GoogleCredential extends PanacheEntityBase {
 
     /** Long-lived offline refresh token. Obtained once during the consent flow. */
     @Column(name = "refresh_token", nullable = false, columnDefinition = "text")
+    @Convert(converter = EncryptedStringConverter.class)
     public String refreshToken;
 
     /** Short-lived access token, refreshed on demand. Null until first refresh. */
     @Column(name = "access_token", columnDefinition = "text")
+    @Convert(converter = EncryptedStringConverter.class)
     public String accessToken;
 
     /** Instant the current access token stops being valid. Null when no access token is cached. */

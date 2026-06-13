@@ -184,6 +184,20 @@ class BookingResourceTest {
                 .then().statusCode(201);
     }
 
+    @Test
+    void apiBookingRejectsCrlfEmailLikeWebFlow() {
+        // SEC-AUTHZ-02 / SEC-INPUT-01: the JSON API funnels through BookingService.book, so the same
+        // invitee-email validation that protects the web form rejects header/BCC injection here too.
+        String slug = "rest-crlf-" + System.nanoTime();
+        seedType(slug);
+        given().contentType("application/json")
+                .body("{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
+                        + "\"inviteeName\":\"Attacker\",\"inviteeEmail\":\"a@b.com\\r\\nBcc: x@evil.com\","
+                        + "\"answers\":{},\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
+                .when().post("/api/bookings")
+                .then().statusCode(422);
+    }
+
     void seedType(String slug) {
         QuarkusTransaction.requiringNew().run(() -> {
             MeetingType t = new MeetingType();
