@@ -240,8 +240,8 @@ links are created and the app emails the invitee directly (instead of Google sen
 | Variable | Purpose |
 |---|---|
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | OAuth client credentials (see below). |
-| `GOOGLE_OAUTH_REDIRECT_URI` | Must be `${APP_BASE_URL}/api/google/callback` and match the authorized redirect URI registered with Google. Defaults to `http://localhost:8080/api/google/callback`. |
-| `GOOGLE_OAUTH_LOGIN_REDIRECT_URI` | Sign-in redirect URI for "Sign in with Google" (separate from the calendar one). Must be `${APP_BASE_URL}/api/google/login/callback` and registered as an authorized redirect URI in the same Google OAuth client. Defaults to `http://localhost:8080/api/google/login/callback`. |
+| `GOOGLE_OAUTH_REDIRECT_URI` | **Optional.** Calendar-connect redirect URI. Defaults to `${APP_BASE_URL}/api/google/callback` — set it only to override (e.g. an unusual proxy path). Must match an authorized redirect URI registered with Google. |
+| `GOOGLE_OAUTH_LOGIN_REDIRECT_URI` | **Optional.** "Sign in with Google" redirect URI (separate from the calendar one). Defaults to `${APP_BASE_URL}/api/google/login/callback` — set it only to override. Must be registered as an authorized redirect URI in the same Google OAuth client. |
 | `GOOGLE_OAUTH_STATE_SECRET` | A strong random string shared by all replicas (signs the stateless OAuth CSRF token). Generate e.g. `openssl rand -hex 32`. |
 
 ### Cloudflare Turnstile (optional, public-form bot protection)
