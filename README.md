@@ -337,6 +337,11 @@ The port number alone does **not** pick the mode — set `MAIL_TLS` explicitly f
   LOCKED` — reminder dispatch and pending-booking auto-expiry. No clustered scheduler is needed.
 - **Double-booking** is prevented at the database level by a Postgres exclusion constraint covering
   PENDING+CONFIRMED bookings, so concurrent replicas cannot both win the same slot.
+- **TLS / reverse proxy:** calit listens on plain HTTP and expects to run behind a TLS-terminating
+  reverse proxy in production. The `%prod` profile trusts `X-Forwarded-*` headers
+  (`quarkus.http.proxy.proxy-address-forwarding=true`) so the request scheme is seen as HTTPS — which
+  is what marks the login cookie `Secure`. Only expose calit through that proxy; if it can be reached
+  directly, restrict trust with `quarkus.http.proxy.trusted-proxies=<proxy CIDR>`.
 - **Migrations** are plain SQL under `src/main/resources/db/migration` (`V1`…`V12`) and run at boot.
 
 ---
