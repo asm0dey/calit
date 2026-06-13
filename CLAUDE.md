@@ -29,7 +29,7 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 
 - Surefire runs **`reuseForks=true`**: ONE reused JVM fork + ONE Dev Services Postgres shared across all same-profile `@QuarkusTest` classes (cold-boot per class took minutes). `@TestProfile` classes trigger in-JVM Quarkus restart. Heap pinned `-Xms512m -Xmx6g`.
 - `DatabaseResetCallback` (registered via `src/test/resources/META-INF/services/`) truncates + reseeds DB per test. Admin user **always id 1**. Write owner-scoped tests against that invariant.
-- Mailer mocked in `%dev`/`%test`; Google + Turnstile disabled by default. Full booking flow runs with zero external accounts.
+- Mailer mocked in `%dev`/`%test`; Google + Turnstile disabled by default. Full booking flow runs zero external accounts.
 - RestAssured can't execute JS — tests assert on stable marker comments (e.g. `CALIT_TZ_REFORMAT`) instead of running scripts.
 
 ## Architecture
@@ -41,7 +41,7 @@ Packages under `src/main/java/com/calit/`:
 - **`web/`** — Qute-backed JAX-RS resources (`AdminResource` = `/me` management UI, `PublicResource` = `/{username}/{slug}` booking, `UsersResource` = `/me/users` admin, plus Login/Signup/MeSetup/GooglePage). View-model records (`AccountView`, `WeekRow`, `CalendarRow`). `MeOwnerFilter`/`RememberMeFilter` are request filters.
 - **`booking/`** — `BookingService` (core booking transaction), `BookingResource`, conflict/validation/rate-limit exceptions each with paired JAX-RS `*Mapper`. `TurnstileVerifier` + abuse protection. `events/` for domain events.
 - **`availability/`** — `SlotService` computes bookable `TimeSlot`s from rules/overrides/buffers/min-notice/horizon. `DefaultAvailabilitySeeder` seeds new users.
-- **`google/`** — Google Calendar OAuth + sync, behind ports (`CalendarPort`, `CalendarListPort`) with `Google*` implementations so it run in degraded (no-Google) mode. `GoogleTokenService`, multi-account support.
+- **`google/`** — Google Calendar OAuth + sync, behind ports (`CalendarPort`, `CalendarListPort`) with `Google*` implementations so it run degraded (no-Google) mode. `GoogleTokenService`, multi-account support.
 - **`email/`** — `EmailService` (Qute email templates), `IcsBuilder` (.ics invites).
 - **`scheduler/`** — `ReminderScheduler`, `PendingExpiryScheduler`. Multi-node-safe via Postgres `SELECT … FOR UPDATE SKIP LOCKED` — **no leader election**; any replica run background work.
 
@@ -71,6 +71,6 @@ Flyway migrations `V1…V10` in `src/main/resources/db/migration/`, applied at b
 
 ## Documentation
 
-Public docs site lives on the **`docs-site`** branch (Astro Starlight project in `docs-site/`, deployed to GitHub Pages at `https://asm0dey.github.io/calit/` by `.github/workflows/docs.yml` on push). The homepage reuses the marketing landing; doc pages cover install, configuration, reverse-proxy, Google/Turnstile setup, usage, and releases.
+Public docs site lives on **`docs-site`** branch (Astro Starlight project in `docs-site/`, deployed to GitHub Pages at `https://asm0dey.github.io/calit/` by `.github/workflows/docs.yml` on push). Homepage reuses marketing landing; doc pages cover install, configuration, reverse-proxy, Google/Turnstile setup, usage, releases.
 
-**On every interesting change, update the docs too.** Any user-facing change — new/changed env var, route, config flag, setup step, feature, or upgrade/migration note — must be reflected on the `docs-site` branch in the same effort. Treat the docs as part of "done", not a follow-up.
+**On every interesting change, update docs too.** Any user-facing change — new/changed env var, route, config flag, setup step, feature, or upgrade/migration note — must land on `docs-site` branch same effort. Docs are part of "done", not follow-up.
