@@ -21,3 +21,6 @@ working-hours-*.png
 
 # local CI validator
 /actionlint
+
+# docs site lives on its own branch (docs-site); ignore its working-tree leftovers here
+docs-site/
