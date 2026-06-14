@@ -15,6 +15,7 @@ public final class Usernames {
 
     private static final Set<String> RESERVED = Set.of(
             "me", "login", "logout", "signup", "setup",
+            "forgot-password", "reset-password",
             "booking", "api", "q", "health", "calit", "index");
 
     /** Trim + lowercase. Null-safe: null stays null. */
