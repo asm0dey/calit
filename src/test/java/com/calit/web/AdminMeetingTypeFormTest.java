@@ -94,6 +94,18 @@ class AdminMeetingTypeFormTest {
     }
 
     @Test
+    void createFormHasDynamicMinNoticeDefault() {
+        // Static fallback = default duration 30 * 4 = 120; marker = script hook for live recompute.
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when().get("/me/meeting-types")
+            .then()
+                .statusCode(200)
+                .body(containsString("name=\"minNoticeMinutes\" value=\"120\""))
+                .body(containsString("data-min-notice-auto"));
+    }
+
+    @Test
     void slugInputHasLiveFillScript() {
         given()
             .cookie("quarkus-credential", FormAuth.login())
