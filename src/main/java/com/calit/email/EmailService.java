@@ -84,6 +84,16 @@ public class EmailService {
     @Location("email/reminder.html")
     Template reminder;
 
+    @Inject
+    @Location("email/password-reset.html")
+    Template passwordReset;
+
+    /** Sends a password-reset link. Caller has already resolved the destination address. */
+    public void sendPasswordReset(String toEmail, String resetUrl) {
+        String body = passwordReset.data("resetUrl", resetUrl).render();
+        mailer.send(Mail.withHtml(toEmail, "Reset your calit password", body));
+    }
+
     /** Which invitee-delivery rule a kind follows. */
     private enum InviteeRule {
         /** Always send to invitee (no Google event exists for this state). */
