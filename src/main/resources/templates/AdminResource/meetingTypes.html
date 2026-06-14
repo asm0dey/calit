@@ -168,8 +168,8 @@
       notice.addEventListener('input', function () { edited = true; });
       duration.addEventListener('input', function () {
         if (edited) { return; }
-        var d = parseInt(duration.value, 10);
-        notice.value = (isNaN(d) ? 0 : d) * 4;
+        var d = Number.parseInt(duration.value, 10);
+        notice.value = (Number.isNaN(d) ? 0 : d) * 4;
       });
     })();
     </script>
