@@ -101,7 +101,7 @@
       <div class="collapse-title font-semibold">Scheduling limits</div>
       <div class="collapse-content fieldset">
         <label class="label">Min scheduling notice (minutes)</label>
-        <input class="input w-full" type="number" name="minNoticeMinutes" value="0" required>
+        <input class="input w-full" type="number" name="minNoticeMinutes" value="120" required data-min-notice-auto>
         <label class="label">Booking horizon (days)</label>
         <input class="input w-full" type="number" name="horizonDays" value="60" required>
       </div>
@@ -155,6 +155,21 @@
           .replace(/[\u0300-\u036f]/g, '')
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-+|-+$/g, '');
+      });
+    })();
+    </script>
+    <script>
+    (function () {
+      var form = document.currentScript.closest('form');
+      var duration = form.querySelector('[name="durationMinutes"]');
+      var notice = form.querySelector('[data-min-notice-auto]');
+      if (!duration || !notice) { return; }
+      var edited = false;
+      notice.addEventListener('input', function () { edited = true; });
+      duration.addEventListener('input', function () {
+        if (edited) { return; }
+        var d = parseInt(duration.value, 10);
+        notice.value = (isNaN(d) ? 0 : d) * 4;
       });
     })();
     </script>
