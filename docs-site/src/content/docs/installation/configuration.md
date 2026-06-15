@@ -62,6 +62,12 @@ MAIL_START_TLS=OPTIONAL
 
 `MAIL_START_TLS` is an **enum** (`REQUIRED` / `OPTIONAL` / `DISABLED`), not a boolean. `MAIL_TLS` is a boolean.
 
+### Surviving SMTP outages
+
+Mail is sent synchronously. If a send fails (SMTP down, refused, timing out), the message is parked in a database outbox instead of being lost, and a background tick retries it — every 60 s, on every replica, claimed with `SELECT … FOR UPDATE SKIP LOCKED` so it is multi-node-safe with no leader election. Retries use exponential backoff (1 min, doubling, capped at 1 h) and stop after 10 attempts; failed rows are kept for inspection.
+
+Booking and password-reset flows therefore never fail just because SMTP is unavailable. Time-sensitive mail carries a deadline: a queued password-reset email is dropped (not delivered) once its 30-minute reset token has expired, so a recovered SMTP server never hands out a dead reset link. No configuration is required — the outbox is always on.
+
 ## Behaviour
 
 | Variable | Description | Default |
@@ -69,6 +75,17 @@ MAIL_START_TLS=OPTIONAL
 | `REMINDER_LEAD_MINUTES` | Minutes before a meeting to send the reminder email | `1440` (24 h) |
 | `APPROVAL_HOLD_HOURS` | How long a pending (approval-required) booking is held before it expires | `24` |
 | `PER_EMAIL_DAILY_CAP` | Maximum bookings an invitee email address may make per day (abuse protection) | `10` |
+
+## Health probes
+
+calit exposes standard MicroProfile Health endpoints — point your orchestrator or load balancer at these:
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /q/health/live` | **Liveness** — the process is up. Does *not* check SMTP or Google, so a flapping external dependency can never get a healthy replica restarted. |
+| `GET /q/health/ready` | **Readiness** — safe to route traffic. Includes *informational* SMTP and Google checks. |
+
+The SMTP and Google checks are **informational**: they always report `UP` and expose reachability under `data.state` (`reachable`, `unreachable`, `mocked-or-unconfigured`, or `not-configured`). They never mark a replica `DOWN` — a down mail server does not pull the replica out of rotation, because outgoing mail falls back to the [outbox](#surviving-smtp-outages). Use `data.state` for observability, not as a gate.
 
 ## Secrets
 
