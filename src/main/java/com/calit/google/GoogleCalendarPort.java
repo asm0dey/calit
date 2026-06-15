@@ -91,9 +91,10 @@ public class GoogleCalendarPort implements CalendarPort {
                     }
                 }
             } catch (IOException | RuntimeException ex) {
-                // Fail-CLOSED on any live failure. A genuine auth failure was already flagged by
-                // validAccessToken (called inside client(cred)); a transient blip is left unflagged so
-                // it self-heals on the next read. Either way we refuse to return a misleading list.
+                // Fail-CLOSED on any live failure. If client(cred) had to refresh, validAccessToken
+                // already committed needs_reconnect=true (it flags on ANY refresh failure, transient or
+                // auth). The hourly probe re-validates and clears a transient flag before any reconnect
+                // email is sent, so a blip won't false-alarm. Either way we refuse a misleading list.
                 org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class)
                         .warnf(ex, "freeBusy failed for credential %d; failing closed", cred.id);
                 throw new CalendarUnavailableException(
