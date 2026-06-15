@@ -48,7 +48,11 @@ public class EmailOutbox extends PanacheEntityBase {
     @Column(name = "last_error")
     public String lastError;
 
-    /** Due time; null = dead (attempt-capped). */
+    /** Usefulness deadline (e.g. reset-token expiry); null = no deadline (retry until attempt cap). */
+    @Column(name = "not_after")
+    public Instant notAfter;
+
+    /** Due time; null = dead (attempt-capped or deadline passed). */
     @Column(name = "next_attempt_at")
     public Instant nextAttemptAt;
 
@@ -58,8 +62,13 @@ public class EmailOutbox extends PanacheEntityBase {
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
 
-    /** Parks a failed send. Must run inside a transaction (caller opens requiringNew). Returns the new id. */
-    public static Long enqueue(String recipient, String subject, String htmlBody, byte[] icsBytes, String error) {
+    /**
+     * Parks a failed send. Must run inside a transaction (caller opens requiringNew). Returns the new id.
+     * {@code notAfter} null = no usefulness deadline; non-null = stop retrying once that instant passes
+     * (so a time-limited mail like a reset link isn't delivered dead).
+     */
+    public static Long enqueue(String recipient, String subject, String htmlBody, byte[] icsBytes,
+                               Instant notAfter, String error) {
         EmailOutbox r = new EmailOutbox();
         r.recipient = recipient;
         r.subject = subject;
@@ -67,11 +76,23 @@ public class EmailOutbox extends PanacheEntityBase {
         r.icsBytes = icsBytes;
         r.attempts = 0;
         r.lastError = error;
+        r.notAfter = notAfter;
         r.nextAttemptAt = Instant.now(); // due immediately
         r.sentAt = null;
         r.createdAt = Instant.now();
         r.persist();
         return r.id;
+    }
+
+    /** True once a deadlined mail is no longer worth delivering. */
+    public boolean pastDeadline(Instant now) {
+        return notAfter != null && now.isAfter(notAfter);
+    }
+
+    /** Mark dead without sending: the usefulness deadline passed before we could deliver. */
+    public void markExpired() {
+        nextAttemptAt = null; // dead: excluded by the claim predicate, kept for inspection
+        lastError = "deadline passed before delivery";
     }
 
     /** After a failed retry: bump attempts; reschedule with exponential backoff, or mark dead at the cap. */

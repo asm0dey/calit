@@ -37,6 +37,23 @@ class MailSenderTest {
     }
 
     @Test
+    void failedDeadlinedSendStoresTheDeadline() {
+        doThrow(new RuntimeException("smtp down"))
+                .when(mailSender).sendNow(anyString(), anyString(), anyString(), any());
+        // Truncate to micros: Postgres TIMESTAMPTZ has microsecond precision, so a nanosecond
+        // Instant would not round-trip exactly.
+        java.time.Instant deadline = java.time.Instant.now()
+                .plusSeconds(1800).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+
+        mailSender.send("d@b.com", "Reset", "<p>link</p>", null, deadline);
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            EmailOutbox r = EmailOutbox.find("recipient", "d@b.com").firstResult();
+            assertEquals(deadline, r.notAfter, "reset mail carries its usefulness deadline into the outbox");
+        });
+    }
+
+    @Test
     void successfulSendLeavesOutboxEmpty() {
         doNothing().when(mailSender).sendNow(anyString(), anyString(), anyString(), any());
 

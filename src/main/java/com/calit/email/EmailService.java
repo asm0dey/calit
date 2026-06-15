@@ -84,10 +84,14 @@ public class EmailService {
     @Location("email/password-reset.html")
     Template passwordReset;
 
-    /** Sends a password-reset link. Caller has already resolved the destination address. */
-    public void sendPasswordReset(String toEmail, String resetUrl) {
+    /**
+     * Sends a password-reset link. Caller has already resolved the destination address.
+     * {@code expiresAt} is the reset token's expiry: if the mail can't be sent now and has to fall
+     * back to the outbox, retries stop at that instant so a dead-link email is never delivered.
+     */
+    public void sendPasswordReset(String toEmail, String resetUrl, Instant expiresAt) {
         String body = passwordReset.data("resetUrl", resetUrl).render();
-        mailSender.send(toEmail, "Reset your calit password", body, null);
+        mailSender.send(toEmail, "Reset your calit password", body, null, expiresAt);
     }
 
     /** Which invitee-delivery rule a kind follows. */

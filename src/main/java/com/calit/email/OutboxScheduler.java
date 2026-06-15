@@ -57,6 +57,10 @@ public class OutboxScheduler {
                     continue; // can't happen (row is locked in this tx) -- guard so a stray null
                               // never aborts the batch and discards already-sent rows' progress
                 }
+                if (r.pastDeadline(Instant.now())) {
+                    r.markExpired(); // e.g. reset-token already expired -- don't deliver a dead link
+                    continue;
+                }
                 try {
                     mailSender.sendNow(r.recipient, r.subject, r.htmlBody, r.icsBytes);
                     r.sentAt = Instant.now();        // marked within the lock-holding tx
