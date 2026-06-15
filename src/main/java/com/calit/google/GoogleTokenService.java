@@ -251,6 +251,14 @@ public class GoogleTokenService {
             return new TokenResponse(resp.getAccessToken(), resp.getRefreshToken(),
                     now.plusSeconds(resp.getExpiresInSeconds()), null, null);
         } catch (TokenResponseException e) {
+            // invalid_grant (HTTP 400) = the refresh token is permanently dead -> flag + notify.
+            // Any other OAuth/HTTP status (429, 5xx, ...) is transient -> generic IllegalStateException,
+            // which the probe treats as "leave the account alone, try again next hour".
+            String error = e.getDetails() != null ? e.getDetails().getError() : null;
+            if (e.getStatusCode() == 400 && "invalid_grant".equals(error)) {
+                throw new GoogleInvalidGrantException(
+                        "Google refresh token rejected: invalid_grant", e);
+            }
             throw new IllegalStateException("Google token request failed: " + e.getStatusCode()
                     + " " + e.getMessage(), e);
         } catch (IOException e) {
