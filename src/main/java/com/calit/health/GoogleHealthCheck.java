@@ -12,11 +12,13 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 
 /**
- * Readiness check: can we reach Google's OAuth/token endpoint? calit runs in
- * degraded (Google-optional) mode, so when no client-id is configured we report
- * UP — gating readiness on an unconfigured integration would mark every replica
- * permanently DOWN.
- *
+ * Informational readiness check for Google OAuth/Calendar connectivity — always reports UP.
+ * <p>
+ * calit runs in degraded (Google-optional) mode, so an unreachable Google endpoint
+ * must never pull a replica out of rotation. Reachability is exposed under
+ * {@code data.state} (values: {@code not-configured}, {@code reachable},
+ * {@code unreachable}) for operators at {@code /q/health/ready}.
+ * <p>
  * ponytail: TCP reachability to oauth2.googleapis.com:443, not a real token call.
  */
 @Readiness
@@ -35,9 +37,9 @@ public class GoogleHealthCheck implements HealthCheck {
         }
         try (Socket s = new Socket()) {
             s.connect(new InetSocketAddress("oauth2.googleapis.com", 443), 2000);
-            return r.up().build();
+            return r.up().withData("state", "reachable").build();
         } catch (Exception e) {
-            return r.down().withData("error", e.getMessage()).build();
+            return r.up().withData("state", "unreachable").withData("error", e.getMessage()).build();
         }
     }
 }

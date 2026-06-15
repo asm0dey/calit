@@ -12,10 +12,13 @@ import java.net.Socket;
 import java.util.Optional;
 
 /**
- * Readiness check: can we reach the SMTP server? When the mailer is mocked
- * ({@code %dev}/{@code %test}) there is no real host, so we report UP — the app
- * must not drop out of rotation just because no SMTP is configured.
- *
+ * Informational readiness check for the SMTP server — always reports UP.
+ * <p>
+ * Now that the transactional outbox queues mail while SMTP is unreachable, a
+ * down mail server must not pull a replica out of rotation. Reachability is
+ * exposed under {@code data.state} (values: {@code mocked-or-unconfigured},
+ * {@code reachable}, {@code unreachable}) for operators at {@code /q/health/ready}.
+ * <p>
  * ponytail: bare TCP connect, no SMTP handshake/auth. Add EHLO if "port open but
  * server broken" ever actually bites.
  */
@@ -40,9 +43,11 @@ public class SmtpHealthCheck implements HealthCheck {
         }
         try (Socket s = new Socket()) {
             s.connect(new InetSocketAddress(host.get(), port), 2000);
-            return r.up().withData("host", host.get() + ":" + port).build();
+            return r.up().withData("state", "reachable").withData("host", host.get() + ":" + port).build();
         } catch (Exception e) {
-            return r.down().withData("host", host.get() + ":" + port)
+            // UP, not DOWN: the outbox queues mail while SMTP is down -- don't drop out of rotation.
+            return r.up().withData("state", "unreachable")
+                    .withData("host", host.get() + ":" + port)
                     .withData("error", e.getMessage()).build();
         }
     }
