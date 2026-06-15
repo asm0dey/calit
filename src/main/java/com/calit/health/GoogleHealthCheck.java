@@ -25,6 +25,8 @@ import java.net.Socket;
 @ApplicationScoped
 public class GoogleHealthCheck implements HealthCheck {
 
+    private static final String STATE = "state";
+
     @Inject
     GoogleOAuthConfig config;
 
@@ -33,13 +35,13 @@ public class GoogleHealthCheck implements HealthCheck {
         HealthCheckResponseBuilder r = HealthCheckResponse.named("Google");
         String clientId = config.oauth().clientId();
         if (clientId == null || clientId.isBlank()) {
-            return r.up().withData("state", "not-configured").build();
+            return r.up().withData(STATE, "not-configured").build();
         }
         try (Socket s = new Socket()) {
             s.connect(new InetSocketAddress("oauth2.googleapis.com", 443), 2000);
-            return r.up().withData("state", "reachable").build();
+            return r.up().withData(STATE, "reachable").build();
         } catch (Exception e) {
-            return r.up().withData("state", "unreachable").withData("error", e.getMessage()).build();
+            return r.up().withData(STATE, "unreachable").withData("error", e.getMessage()).build();
         }
     }
 }

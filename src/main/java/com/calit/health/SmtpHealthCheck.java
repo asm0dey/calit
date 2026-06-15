@@ -26,6 +26,8 @@ import java.util.Optional;
 @ApplicationScoped
 public class SmtpHealthCheck implements HealthCheck {
 
+    private static final String STATE = "state";
+
     @ConfigProperty(name = "quarkus.mailer.mock", defaultValue = "false")
     boolean mock;
 
@@ -39,14 +41,14 @@ public class SmtpHealthCheck implements HealthCheck {
     public HealthCheckResponse call() {
         HealthCheckResponseBuilder r = HealthCheckResponse.named("SMTP");
         if (mock || host.isEmpty()) {
-            return r.up().withData("state", "mocked-or-unconfigured").build();
+            return r.up().withData(STATE, "mocked-or-unconfigured").build();
         }
         try (Socket s = new Socket()) {
             s.connect(new InetSocketAddress(host.get(), port), 2000);
-            return r.up().withData("state", "reachable").withData("host", host.get() + ":" + port).build();
+            return r.up().withData(STATE, "reachable").withData("host", host.get() + ":" + port).build();
         } catch (Exception e) {
             // UP, not DOWN: the outbox queues mail while SMTP is down -- don't drop out of rotation.
-            return r.up().withData("state", "unreachable")
+            return r.up().withData(STATE, "unreachable")
                     .withData("host", host.get() + ":" + port)
                     .withData("error", e.getMessage()).build();
         }
