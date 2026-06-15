@@ -53,6 +53,18 @@ public class GoogleCredential extends PanacheEntityBase {
     @Column(name = "needs_reconnect", nullable = false)
     public boolean needsReconnect = false;
 
+    /**
+     * When the owner was last emailed about this account being disconnected. NULL = not yet
+     * notified for the current outage. INVARIANT: reset to NULL whenever {@code needsReconnect}
+     * is cleared (recovery), so the next outage re-notifies. See GoogleTokenService.
+     */
+    @Column(name = "reconnect_notified_at")
+    public Instant reconnectNotifiedAt;
+
+    /** When the hourly connection probe last attempted a refresh on this account. NULL = never. */
+    @Column(name = "last_probed_at")
+    public Instant lastProbedAt;
+
     /** This owner's credential row, or null if Google is not yet connected for them. */
     public static GoogleCredential forOwner(Long ownerId) {
         return find("ownerId", ownerId).firstResult();
