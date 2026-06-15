@@ -7,6 +7,27 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## 1.6.0
+
+Resilient email delivery and health probes.
+
+- **Email survives SMTP outages.** Mail is sent synchronously; if a send
+  fails, the message is parked in a new database outbox instead of being lost
+  and retried by a background tick (every 60 s, on every replica, claimed with
+  `SELECT … FOR UPDATE SKIP LOCKED` — multi-node-safe, no leader). Retries use
+  exponential backoff (1 min doubling to 1 h, capped at 10 attempts). Booking
+  and password-reset flows no longer fail when SMTP is unavailable.
+- Time-sensitive mail carries a deadline: a queued password-reset email is
+  dropped once its 30-minute token has expired, so a recovered SMTP server
+  never delivers a dead reset link.
+- **Health probes.** `GET /q/health/live` (liveness, process only) and
+  `GET /q/health/ready` (readiness). The SMTP and Google checks are
+  informational — always `UP`, exposing reachability under `data.state` — so a
+  down mail server never pulls a replica out of rotation now that the outbox
+  covers delivery.
+- New V14 migration adds the `email_outbox` table. No new configuration — the
+  outbox is always on and reuses the existing mailer settings.
+
 ## 1.5.0
 
 Self-service password reset.
