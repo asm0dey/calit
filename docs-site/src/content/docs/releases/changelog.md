@@ -7,6 +7,28 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## 1.7.0
+
+Google Calendar disconnect detection.
+
+- **Booking page fails closed when Google is unreachable.** Previously a silent
+  disconnect (dead refresh token) made every slot appear free, risking
+  double-bookings. Now the public page shows "Scheduling temporarily
+  unavailable" and new bookings are blocked while the calendar can't be read,
+  so nothing lands on an event calit can't see.
+- **Hourly connection probe.** Each connected Google account is checked on a
+  schedule (a forced refresh-token round-trip), distinguishing a permanently
+  dead grant from a transient blip. The probe also keeps the token warm,
+  preventing the 6-months-unused expiry. Multi-node-safe with
+  `SELECT … FOR UPDATE SKIP LOCKED`, no leader.
+- **Reconnect email.** The owner is emailed once per outage with a link to
+  reconnect (`/me/google`); the alert re-arms after the account recovers.
+- Most recurring disconnects come from leaving the Google OAuth app in
+  **"Testing"** publishing status (7-day refresh-token expiry) — publish it to
+  "In production" to avoid them.
+- New `GOOGLE_PROBE_INTERVAL` setting (duration, default `1h`). New V15
+  migration adds `reconnect_notified_at` and `last_probed_at` columns.
+
 ## 1.6.0
 
 Resilient email delivery and health probes.
