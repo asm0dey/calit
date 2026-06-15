@@ -12,11 +12,16 @@ import java.util.List;
 /**
  * Retries parked mail. Runs on EVERY replica every 60s, multi-node-safe with NO leader: each tick
  * claims due unsent rows with SELECT ... FOR UPDATE SKIP LOCKED, so a concurrent replica's identical
- * query skips the rows this one locked -- each mail is retried by exactly one replica per tick.
+ * query skips the rows this one locked -- only one replica processes a given row per tick.
+ *
+ * Delivery is at-least-once (the only achievable guarantee against a non-transactional SMTP server):
+ * if a send succeeds but the tx fails to commit -- e.g. the pod is killed between send and commit --
+ * the row stays unsent and is re-sent next tick. A duplicate on crash is preferable to a lost mail,
+ * which is the whole point of the outbox.
  *
  * ponytail: the row lock is held across the SMTP send (one tx per tick, LIMIT 20). Fine at self-hosted
  * scale; if send latency x volume causes lock contention, switch to a lease-token claim (set
- * next_attempt_at forward in a short claim tx, then send unlocked).
+ * next_attempt_at forward in a short claim tx, then send unlocked, then mark sent in a second tx).
  */
 @ApplicationScoped
 public class OutboxScheduler {
@@ -48,6 +53,10 @@ public class OutboxScheduler {
 
             for (Number n : ids) {
                 EmailOutbox r = EmailOutbox.findById(n.longValue());
+                if (r == null) {
+                    continue; // can't happen (row is locked in this tx) -- guard so a stray null
+                              // never aborts the batch and discards already-sent rows' progress
+                }
                 try {
                     mailSender.sendNow(r.recipient, r.subject, r.htmlBody, r.icsBytes);
                     r.sentAt = Instant.now();        // marked within the lock-holding tx
