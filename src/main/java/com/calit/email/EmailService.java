@@ -13,8 +13,6 @@ import com.calit.domain.MeetingType;
 import com.calit.domain.MeetingType.LocationType;
 import com.calit.domain.OwnerSettings;
 import com.calit.google.CalendarPort;
-import io.quarkus.mailer.Mail;
-import io.quarkus.mailer.Mailer;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
@@ -39,8 +37,6 @@ public class EmailService {
 
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm", Locale.ENGLISH);
-    private static final String ICS_CONTENT_TYPE = "text/calendar; charset=UTF-8; method=REQUEST";
-    private static final String ICS_FILENAME = "invite.ics";
     public static final String RECIPIENT_ROLE = "recipientRole";
     public static final String INVITEE_NAME = "inviteeName";
     public static final String MEETING_TYPE_NAME = "meetingTypeName";
@@ -52,7 +48,7 @@ public class EmailService {
     public static final String ANSWERS = "answers";
 
     @Inject
-    Mailer mailer;
+    MailSender mailSender;
 
     @Inject
     CalendarPort calendarPort;
@@ -91,7 +87,7 @@ public class EmailService {
     /** Sends a password-reset link. Caller has already resolved the destination address. */
     public void sendPasswordReset(String toEmail, String resetUrl) {
         String body = passwordReset.data("resetUrl", resetUrl).render();
-        mailer.send(Mail.withHtml(toEmail, "Reset your calit password", body));
+        mailSender.send(toEmail, "Reset your calit password", body, null);
     }
 
     /** Which invitee-delivery rule a kind follows. */
@@ -279,17 +275,11 @@ public class EmailService {
                 .getBytes(StandardCharsets.UTF_8);
 
         if (sendInvitee) {
-            mailer.send(withIcs(
-                    Mail.withHtml(l.booking.inviteeEmail, subject, bodyForRole.apply("invitee")), ics));
+            mailSender.send(l.booking.inviteeEmail, subject, bodyForRole.apply("invitee"), ics);
         }
         if (sendOwner) {
-            mailer.send(withIcs(
-                    Mail.withHtml(l.owner.ownerEmail, subject, bodyForRole.apply("owner")), ics));
+            mailSender.send(l.owner.ownerEmail, subject, bodyForRole.apply("owner"), ics);
         }
-    }
-
-    private static Mail withIcs(Mail mail, byte[] ics) {
-        return mail.addAttachment(ICS_FILENAME, ics, ICS_CONTENT_TYPE);
     }
 
     private String manageUrl(Booking b) {

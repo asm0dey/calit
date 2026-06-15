@@ -1,6 +1,5 @@
 package com.calit.email;
 
-import io.quarkus.arc.Unremovable;
 import io.quarkus.logging.Log;
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.Mailer;
@@ -15,7 +14,6 @@ import jakarta.inject.Inject;
  * {@link #sendNow} is the raw send used by OutboxScheduler's retry, which applies its own backoff.
  */
 @ApplicationScoped
-@Unremovable
 public class MailSender {
 
     /** ponytail: the only attachment calit sends. Generalize if a second type ever appears. */
