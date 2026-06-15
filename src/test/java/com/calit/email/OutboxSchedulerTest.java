@@ -88,11 +88,9 @@ class OutboxSchedulerTest {
     void deadlinedRowPastDeadlineIsMarkedDeadAndNotSent() {
         doNothing().when(mailSender).sendNow(anyString(), anyString(), anyString(), any());
         // Due now (next_attempt_at <= now) but its usefulness deadline already passed.
-        Long id = QuarkusTransaction.requiringNew().call(() -> {
-            Long x = EmailOutbox.enqueue("a@b.com", "S", "h", null,
-                    java.time.Instant.now().minusSeconds(1), null);
-            return x;
-        });
+        Long id = QuarkusTransaction.requiringNew().call(() ->
+                EmailOutbox.enqueue("a@b.com", "S", "h", null,
+                        java.time.Instant.now().minusSeconds(1), null));
 
         scheduler.dispatchDueMail();
 

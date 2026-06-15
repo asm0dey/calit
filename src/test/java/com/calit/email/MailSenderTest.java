@@ -40,10 +40,9 @@ class MailSenderTest {
     void failedDeadlinedSendStoresTheDeadline() {
         doThrow(new RuntimeException("smtp down"))
                 .when(mailSender).sendNow(anyString(), anyString(), anyString(), any());
-        // Truncate to micros: Postgres TIMESTAMPTZ has microsecond precision, so a nanosecond
-        // Instant would not round-trip exactly.
-        java.time.Instant deadline = java.time.Instant.now()
-                .plusSeconds(1800).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        // Fixed instant (not the system clock): the deadline is only stored + read back here, and
+        // a second-precision value round-trips exactly through Postgres TIMESTAMPTZ (micro precision).
+        java.time.Instant deadline = java.time.Instant.parse("2026-06-15T12:00:00Z");
 
         mailSender.send("d@b.com", "Reset", "<p>link</p>", null, deadline);
 

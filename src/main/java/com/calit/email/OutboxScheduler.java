@@ -54,18 +54,19 @@ public class OutboxScheduler {
             for (Number n : ids) {
                 EmailOutbox r = EmailOutbox.findById(n.longValue());
                 if (r == null) {
-                    continue; // can't happen (row is locked in this tx) -- guard so a stray null
-                              // never aborts the batch and discards already-sent rows' progress
+                    // can't happen (row is locked in this tx) -- guard so a stray null never
+                    // aborts the batch and discards already-sent rows' progress
+                    continue;
                 }
                 if (r.pastDeadline(Instant.now())) {
                     r.markExpired(); // e.g. reset-token already expired -- don't deliver a dead link
-                    continue;
-                }
-                try {
-                    mailSender.sendNow(r.recipient, r.subject, r.htmlBody, r.icsBytes);
-                    r.sentAt = Instant.now();        // marked within the lock-holding tx
-                } catch (Exception e) {
-                    r.deadOrBackoff(e.getMessage()); // bump attempts / reschedule / mark dead
+                } else {
+                    try {
+                        mailSender.sendNow(r.recipient, r.subject, r.htmlBody, r.icsBytes);
+                        r.sentAt = Instant.now();        // marked within the lock-holding tx
+                    } catch (Exception e) {
+                        r.deadOrBackoff(e.getMessage()); // bump attempts / reschedule / mark dead
+                    }
                 }
             }
         });
