@@ -61,8 +61,10 @@ public class PasswordResetResource {
         if (user != null) {
             OwnerSettings os = OwnerSettings.forOwner(user.id);
             if (os != null && os.ownerEmail != null && !os.ownerEmail.isBlank()) {
-                String token = resetService.issue(user.id, Instant.now());
-                emailService.sendPasswordReset(os.ownerEmail, baseUrl + "/reset-password?token=" + token);
+                Instant now = Instant.now();
+                String token = resetService.issue(user.id, now);
+                emailService.sendPasswordReset(os.ownerEmail,
+                        baseUrl + "/reset-password?token=" + token, now.plus(PasswordResetService.TTL));
             }
         }
         // Always the same response — never disclose whether the account exists.

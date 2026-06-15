@@ -128,7 +128,7 @@ docker compose up --build -d
 ```
 
 The app image builds from source (tests are skipped in the image — run `mvn test` on the host with
-Docker first), waits for a healthy Postgres, and Flyway applies the `V1…V11` migrations at boot. The
+Docker first), waits for a healthy Postgres, and Flyway applies the `V1…V14` migrations at boot. The
 DB is persisted in the `calit-db` volume. Reach it at `http://localhost:${APP_PORT:-8080}/`.
 
 Scale the stateless app behind your own load balancer:
@@ -197,7 +197,7 @@ mvn package
 java -Dquarkus.profile=prod -jar target/quarkus-app/quarkus-run.jar
 ```
 
-The schema is created and kept up to date automatically: **Flyway runs the `V1…V11` migrations at
+The schema is created and kept up to date automatically: **Flyway runs the `V1…V14` migrations at
 boot** (`quarkus.flyway.migrate-at-start=true`), and Hibernate validates the entities against it.
 Point all replicas at the same database; each can serve any request.
 
@@ -342,7 +342,24 @@ The port number alone does **not** pick the mode — set `MAIL_TLS` explicitly f
   (`quarkus.http.proxy.proxy-address-forwarding=true`) so the request scheme is seen as HTTPS — which
   is what marks the login cookie `Secure`. Only expose calit through that proxy; if it can be reached
   directly, restrict trust with `quarkus.http.proxy.trusted-proxies=<proxy CIDR>`.
-- **Migrations** are plain SQL under `src/main/resources/db/migration` (`V1`…`V12`) and run at boot.
+- **Migrations** are plain SQL under `src/main/resources/db/migration` (`V1`…`V14`) and run at boot.
+
+### Health probes
+
+- `GET /q/health/live` — liveness: the process is up. Does **not** check SMTP or Google (a flapping
+  external dependency must not get a healthy replica restarted).
+- `GET /q/health/ready` — readiness. Includes **informational** SMTP and Google checks: they always
+  report `UP` and expose reachability under `data.state` (`reachable` / `unreachable` /
+  `mocked-or-unconfigured` / `not-configured`). They never mark a replica `DOWN` — a down mail
+  server doesn't pull the replica from rotation, because outgoing mail falls back to the outbox.
+
+### Email delivery & SMTP outages
+
+Mail is sent synchronously. If an SMTP send fails, the mail is parked in the `email_outbox` table
+instead of being lost; a background tick (every 60s, on every replica, `FOR UPDATE SKIP LOCKED` so
+it is multi-node-safe) retries with exponential backoff (1 min, doubling up to 1 h, capped at 10
+attempts). Booking and password-reset flows never fail because SMTP is unavailable. No configuration
+required.
 
 ---
 
