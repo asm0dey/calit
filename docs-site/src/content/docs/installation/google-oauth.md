@@ -57,3 +57,15 @@ Each user connects their **own** Google account from the owner console (`/me`). 
 
 - Creates a Google Calendar event on the user's calendar.
 - Generates a Google Meet link included in the booking confirmation.
+
+## Disconnect detection
+
+A Google connection can break without warning — access is revoked, the account password is changed, or the refresh token simply expires. calit detects this and **fails closed**: while an owner's Google account is disconnected, their public booking page shows *"Scheduling temporarily unavailable"* instead of offering every slot as free. This prevents bookings landing on top of calendar events calit can no longer see.
+
+Each connected account is probed on a schedule (every `GOOGLE_PROBE_INTERVAL`, default `1h`) for a still-valid connection; the probe also keeps the refresh token warm. When a disconnect is found, the owner is emailed once per outage with a link to reconnect on the `/me/google` settings page.
+
+:::tip[Avoid recurring disconnects]
+The most common cause of repeated disconnects is leaving your Google OAuth app in **"Testing"** publishing status. Google expires refresh tokens for testing apps after **7 days**, so calit loses access roughly once a week no matter what.
+
+In the Google Cloud Console, open **APIs & Services → OAuth consent screen** and publish the app to **"In production"**. Production refresh tokens do not expire on a fixed schedule, so the connection stays alive.
+:::

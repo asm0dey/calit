@@ -115,6 +115,7 @@ Leave `GOOGLE_OAUTH_CLIENT_ID` blank to run calit in degraded mode without Googl
 | `GOOGLE_OAUTH_REDIRECT_URI` | Override the calendar sync redirect URI | Derived: `${APP_BASE_URL}/api/google/callback` |
 | `GOOGLE_OAUTH_LOGIN_REDIRECT_URI` | Override the sign-in redirect URI | Derived: `${APP_BASE_URL}/api/google/login/callback` |
 | `GOOGLE_OAUTH_STATE_SECRET` | Strong random string shared by all replicas. Generate: `openssl rand -hex 32`. Required when Google is enabled. | *(blank)* |
+| `GOOGLE_PROBE_INTERVAL` | How often each connected Google account is probed for a still-valid connection (a duration string, e.g. `30m`, `1h`, `2h`). This also keeps refresh tokens warm and sets how often a reconnect alert is evaluated. See [disconnect detection](/calit/installation/google-oauth/#disconnect-detection). | `1h` |
 
 Register **both** derived redirect URIs in your Google OAuth client even if you do not override them.
 
