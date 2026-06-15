@@ -84,6 +84,10 @@ public class EmailService {
     @Location("email/password-reset.html")
     Template passwordReset;
 
+    @Inject
+    @Location("email/google-disconnected.html")
+    Template googleDisconnected;
+
     /**
      * Sends a password-reset link. Caller has already resolved the destination address.
      * {@code expiresAt} is the reset token's expiry: if the mail can't be sent now and has to fall
@@ -92,6 +96,20 @@ public class EmailService {
     public void sendPasswordReset(String toEmail, String resetUrl, Instant expiresAt) {
         String body = passwordReset.data("resetUrl", resetUrl).render();
         mailSender.send(toEmail, "Reset your calit password", body, null, expiresAt);
+    }
+
+    /**
+     * Critical operational alert: the owner's Google account is disconnected and their booking page
+     * is paused. Sent regardless of {@code ownerNotificationsEnabled} (that flag governs only routine
+     * booking notifications). Links to the Google settings page so the owner can reconnect.
+     */
+    public void sendGoogleDisconnected(String toEmail, String accountEmail) {
+        String reconnectUrl = baseUrl + "/me/google";
+        String body = googleDisconnected
+                .data("accountEmail", accountEmail == null ? "your account" : accountEmail)
+                .data("reconnectUrl", reconnectUrl)
+                .render();
+        mailSender.send(toEmail, "Action needed: reconnect your Google Calendar", body, null);
     }
 
     /** Which invitee-delivery rule a kind follows. */

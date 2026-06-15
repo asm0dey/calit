@@ -52,6 +52,9 @@ public class GoogleTokenService {
     public record TokenResponse(String accessToken, String refreshToken, Instant expiry,
                                 String googleSub, String accountEmail) {}
 
+    /** Outcome of a connection probe. */
+    public enum ProbeResult { OK, INVALID_GRANT, TRANSIENT }
+
     /**
      * The Google consent URL, carrying a stateless, signed CSRF state bound to {@code ownerId}.
      * Layout: b64(nonce) ":" ownerId ":" issuedAtEpochSec "." b64(HMAC-SHA256(payload)), signed with
@@ -156,6 +159,7 @@ public class GoogleTokenService {
         c.accessToken = resp.accessToken();
         c.accessTokenExpiry = resp.expiry();
         c.needsReconnect = false;
+        c.reconnectNotifiedAt = null; // recovery via manual reconnect re-arms future notifications
         c.persist();
     }
 
@@ -187,6 +191,7 @@ public class GoogleTokenService {
                 c.refreshToken = resp.refreshToken();
             }
             c.needsReconnect = false;
+            c.reconnectNotifiedAt = null; // recovery via normal traffic re-arms future notifications
             // Write the refreshed token back to the shared row so every replica benefits; no node-local cache.
             c.persist();
             return c.accessToken;
@@ -204,6 +209,42 @@ public class GoogleTokenService {
                 });
             }
             throw ex;
+        }
+    }
+
+    /**
+     * Force a refresh-token round-trip to verify the account is still connected, ignoring the cached
+     * access token's expiry (a zero-traffic calendar never refreshes on its own, so this is the only
+     * way to learn a dead grant). Runs in its own transaction; the result is committed.
+     *
+     * <p>OK -> store the fresh token, clear needsReconnect AND reconnectNotifiedAt (recovery).
+     * INVALID_GRANT -> flag needsReconnect, leave reconnectNotifiedAt for the notifier.
+     * TRANSIENT (network/5xx) -> change nothing, so a blip never raises a false reconnect alarm.
+     */
+    @Transactional
+    public ProbeResult probe(Long credentialId, Instant now) {
+        GoogleCredential c = GoogleCredential.findById(credentialId);
+        if (c == null) {
+            return null;
+        }
+        try {
+            TokenResponse resp = requestToken("refresh_token", c.refreshToken, now);
+            c.accessToken = resp.accessToken();
+            c.accessTokenExpiry = resp.expiry();
+            if (resp.refreshToken() != null) {
+                c.refreshToken = resp.refreshToken();
+            }
+            c.needsReconnect = false;
+            c.reconnectNotifiedAt = null; // INVARIANT: clearing needsReconnect resets the notify gate
+            c.persist();
+            return ProbeResult.OK;
+        } catch (GoogleInvalidGrantException e) {
+            c.needsReconnect = true;      // managed entity, flushes with this committed transaction
+            c.persist();
+            return ProbeResult.INVALID_GRANT;
+        } catch (RuntimeException e) {
+            // Transient: network blip, 429, or 5xx. Leave state untouched and retry next cycle.
+            return ProbeResult.TRANSIENT;
         }
     }
 
@@ -251,6 +292,14 @@ public class GoogleTokenService {
             return new TokenResponse(resp.getAccessToken(), resp.getRefreshToken(),
                     now.plusSeconds(resp.getExpiresInSeconds()), null, null);
         } catch (TokenResponseException e) {
+            // invalid_grant (HTTP 400) = the refresh token is permanently dead -> flag + notify.
+            // Any other OAuth/HTTP status (429, 5xx, ...) is transient -> generic IllegalStateException,
+            // which the probe treats as "leave the account alone, try again next hour".
+            String error = e.getDetails() != null ? e.getDetails().getError() : null;
+            if (e.getStatusCode() == 400 && "invalid_grant".equals(error)) {
+                throw new GoogleInvalidGrantException(
+                        "Google refresh token rejected: invalid_grant", e);
+            }
             throw new IllegalStateException("Google token request failed: " + e.getStatusCode()
                     + " " + e.getMessage(), e);
         } catch (IOException e) {

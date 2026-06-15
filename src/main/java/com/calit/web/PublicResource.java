@@ -11,6 +11,7 @@ import com.calit.booking.RateLimitException;
 import com.calit.domain.BookingField;
 import com.calit.domain.MeetingType;
 import com.calit.domain.OwnerSettings;
+import com.calit.google.CalendarUnavailableException;
 import com.calit.user.AppUser;
 import com.calit.user.CurrentOwner;
 import com.calit.user.Usernames;
@@ -74,6 +75,8 @@ public class PublicResource {
         public static native TemplateInstance cancelled();
 
         public static native TemplateInstance notReady();
+
+        public static native TemplateInstance unavailable();
     }
 
     @Inject
@@ -143,7 +146,13 @@ public class PublicResource {
         if (settings == null) {
             return Templates.notReady();
         }
-        List<DaySlots> byDate = daySlots(type);
+        List<DaySlots> byDate;
+        try {
+            byDate = daySlots(type);
+        } catch (CalendarUnavailableException e) {
+            // Fail-closed: the owner's Google calendar can't be read, so we cannot safely offer slots.
+            return Templates.unavailable();
+        }
         // Resolved EXTRA fields (per-type-else-global), already ordered by position.
         List<BookingField> fields = BookingField.formFor(owner.id, type.id);
         // turnstileEnabled drives the widget; site key is public (rendered). The approval
@@ -242,7 +251,12 @@ public class PublicResource {
             return Templates.notReady();
         }
         ZoneId zone = ZoneId.of(settings.timezone);
-        List<DaySlots> byDate = daySlots(type);
+        List<DaySlots> byDate;
+        try {
+            byDate = daySlots(type);
+        } catch (CalendarUnavailableException e) {
+            return Templates.unavailable();
+        }
         String current = booking.startUtc.atZone(zone)
                 .format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
         String currentUtcIso = booking.startUtc.toString(); // absolute instant for data-utc

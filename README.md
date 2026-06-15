@@ -243,6 +243,7 @@ links are created and the app emails the invitee directly (instead of Google sen
 | `GOOGLE_OAUTH_REDIRECT_URI` | **Optional.** Calendar-connect redirect URI. Defaults to `${APP_BASE_URL}/api/google/callback` — set it only to override (e.g. an unusual proxy path). Must match an authorized redirect URI registered with Google. |
 | `GOOGLE_OAUTH_LOGIN_REDIRECT_URI` | **Optional.** "Sign in with Google" redirect URI (separate from the calendar one). Defaults to `${APP_BASE_URL}/api/google/login/callback` — set it only to override. Must be registered as an authorized redirect URI in the same Google OAuth client. |
 | `GOOGLE_OAUTH_STATE_SECRET` | A strong random string shared by all replicas (signs the stateless OAuth CSRF token). Generate e.g. `openssl rand -hex 32`. |
+| `GOOGLE_PROBE_INTERVAL` | **Optional.** How often connected Google accounts are checked for disconnection, and how often the "reconnect your Google" alert email is (re-)evaluated. Duration string. Default `1h`. If an account's grant has died, calit fails the booking page closed (no slots) and emails the owner once per outage. |
 
 ### Cloudflare Turnstile (optional, public-form bot protection)
 

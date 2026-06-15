@@ -6,8 +6,8 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
@@ -18,12 +18,14 @@ class FreeBusyMultiAccountTest {
 
     @Test
     @Transactional
-    void allAccountsFlaggedNeedsReconnectYieldsEmptyAndNoThrow() {
+    void brokenBusyFeedingAccountFailsClosed() {
+        // Fail-CLOSED: a needsReconnect busy-feeding account must make freeBusy throw, not return
+        // an empty (all-free) list that would let a conflicting booking slip through.
         GoogleCredential a = cred(1L, "sub-A", true);
         a.persist();
         readCal(1L, a.id, "a-cal");
-        List<BusyInterval> busy = port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400));
-        assertTrue(busy.isEmpty());
+        assertThrows(CalendarUnavailableException.class, () ->
+                port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)));
     }
 
     @Test
