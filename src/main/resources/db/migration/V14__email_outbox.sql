@@ -10,7 +10,7 @@ CREATE TABLE email_outbox (
     ics_bytes       BYTEA,                         -- optional single .ics attachment; NULL = none
     attempts        INT          NOT NULL DEFAULT 0,
     last_error      TEXT,
-    next_attempt_at TIMESTAMPTZ  NOT NULL DEFAULT now(),  -- due now on enqueue; NULL = dead (attempt-capped)
+    next_attempt_at TIMESTAMPTZ  DEFAULT now(),           -- due now on enqueue; NULL = dead (attempt-capped)
     sent_at         TIMESTAMPTZ,                   -- NULL = unsent
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
