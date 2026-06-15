@@ -8,18 +8,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.time.Instant;
-import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Verifies the freeBusy fail-soft path: when a HEALTHY credential's Google call throws,
- * the port catches the exception, flags needsReconnect=true in a committed inner transaction,
- * and returns an empty busy list (no rethrow).
- *
- * Kept in a separate class from FreeBusyMultiAccountTest because @InjectMock replaces the
- * real bean for the whole class, and the other tests there are @Transactional (which would
- * conflict with this test's requiringNew() seeding and commit assertions).
+ * freeBusy is fail-CLOSED: a broken busy-feeding account must make the whole call throw
+ * CalendarUnavailableException rather than return an empty/partial busy list (which would render
+ * every slot as available). Covers both a known-broken (needsReconnect) account and a live failure.
  */
 @QuarkusTest
 class FreeBusyLiveFailureTest {
@@ -31,45 +26,57 @@ class FreeBusyLiveFailureTest {
     GoogleTokenService tokenService;
 
     @Test
-    void liveFailureFlagsAccountNeedsReconnectAndStaysFailSoft() {
-        // Seed a healthy (not pre-flagged) credential with a read calendar in a committed
-        // transaction, so the row is visible to the port and to the post-call assertion.
-        Long credId = QuarkusTransaction.requiringNew().call(() -> {
-            GoogleCredential c = cred(1L, "sub-live", false);
-            c.persist();
-            GoogleCalendar g = new GoogleCalendar();
-            g.ownerId = 1L;
-            g.googleCredentialId = c.id;
-            g.googleCalendarId = "g1";
-            g.summary = "g1";
-            g.readForBusy = true;
-            g.persist();
-            return c.id;
-        });
-
-        // Make the per-account Google call fail (tokens.validAccessToken is called first inside
-        // client(cred), so throwing here drives the per-account catch in freeBusy).
+    void liveFailureThrowsCalendarUnavailable() {
+        Long credId = seedHealthyCredWithReadCalendar("sub-live");
+        // validAccessToken is called first inside client(cred); throwing here drives the live-failure path.
         Mockito.when(tokenService.validAccessToken(Mockito.any(), Mockito.any()))
                 .thenThrow(new IllegalStateException("token dead"));
 
-        // fail-soft: no exception propagates, busy list is empty
-        List<BusyInterval> busy = port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400));
-        assertTrue(busy.isEmpty(), "freeBusy must not throw on a per-account failure");
-
-        // The credential must have been flagged needsReconnect=true in a committed transaction
-        // (i.e. the flag survives the method's own transaction boundary).
-        GoogleCredential reloaded = QuarkusTransaction.requiringNew()
-                .call(() -> GoogleCredential.findById(credId));
-        assertTrue(reloaded.needsReconnect,
-                "a live Google failure must flag the account needsReconnect, committed");
+        assertThrows(CalendarUnavailableException.class, () ->
+                port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)));
     }
 
-    private static GoogleCredential cred(long owner, String sub, boolean needsReconnect) {
-        GoogleCredential c = new GoogleCredential();
-        c.ownerId = owner;
-        c.refreshToken = "rt";
-        c.googleSub = sub;
-        c.needsReconnect = needsReconnect;
-        return c;
+    @Test
+    void knownBrokenAccountThrowsCalendarUnavailableWithoutCallingGoogle() {
+        seedReadCalendarForCred(seedCred("sub-broken", true)); // pre-flagged needsReconnect
+
+        assertThrows(CalendarUnavailableException.class, () ->
+                port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)));
+        // No tokenService interaction: a known-broken account short-circuits before any Google call.
+        Mockito.verifyNoInteractions(tokenService);
+    }
+
+    // --- helpers ---
+
+    private Long seedHealthyCredWithReadCalendar(String sub) {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            Long id = seedCred(sub, false);
+            seedReadCalendarForCred(id);
+            return id;
+        });
+    }
+
+    private Long seedCred(String sub, boolean needsReconnect) {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            GoogleCredential c = new GoogleCredential();
+            c.ownerId = 1L;
+            c.refreshToken = "rt";
+            c.googleSub = sub;
+            c.needsReconnect = needsReconnect;
+            c.persist();
+            return c.id;
+        });
+    }
+
+    private void seedReadCalendarForCred(Long credId) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            GoogleCalendar g = new GoogleCalendar();
+            g.ownerId = 1L;
+            g.googleCredentialId = credId;
+            g.googleCalendarId = "g-" + credId;
+            g.summary = "cal";
+            g.readForBusy = true;
+            g.persist();
+        });
     }
 }

@@ -64,7 +64,10 @@ public class GoogleCalendarPort implements CalendarPort {
         for (Map.Entry<Long, List<GoogleCalendar>> e : byCredential.entrySet()) {
             GoogleCredential cred = GoogleCredential.findById(e.getKey());
             if (cred == null || cred.needsReconnect) {
-                continue; // fail-soft: skip an account that is gone or known-broken
+                // Fail-CLOSED: a busy-feeding account that is gone or known-broken means we cannot see
+                // its events. Refuse to produce an availability picture rather than hide the conflict.
+                throw new CalendarUnavailableException(
+                        "Google account " + e.getKey() + " is disconnected; availability unavailable");
             }
             FreeBusyRequest request = new FreeBusyRequest()
                     .setTimeMin(new DateTime(from.toEpochMilli()))
@@ -88,18 +91,13 @@ public class GoogleCalendarPort implements CalendarPort {
                     }
                 }
             } catch (IOException | RuntimeException ex) {
-                // Fail-soft: one broken account must not take down availability. KEEP this broad
-                // catch (do NOT narrow to IOException): a revoked/expired refresh token surfaces as
-                // an IllegalStateException (a RuntimeException) from validAccessToken, which is the
-                // most common fail-soft case; narrowing would abort the whole freeBusy. Log so a
-                // genuine defect is still discoverable rather than silently masquerading as "reconnect".
+                // Fail-CLOSED on any live failure. A genuine auth failure was already flagged by
+                // validAccessToken (called inside client(cred)); a transient blip is left unflagged so
+                // it self-heals on the next read. Either way we refuse to return a misleading list.
                 org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class)
-                        .warnf(ex, "freeBusy failed for credential %d; flagging needsReconnect", cred.id);
-                Long credId = cred.id;
-                io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
-                    GoogleCredential fresh = GoogleCredential.findById(credId);
-                    if (fresh != null) { fresh.needsReconnect = true; fresh.persist(); }
-                });
+                        .warnf(ex, "freeBusy failed for credential %d; failing closed", cred.id);
+                throw new CalendarUnavailableException(
+                        "Could not read Google free/busy for credential " + cred.id, ex);
             }
         }
         return BusyIntervals.merge(raw);
