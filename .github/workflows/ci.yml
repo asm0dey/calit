@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Liberica JDK 26
         uses: actions/setup-java@v5
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Trivy filesystem scan (fail on HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@v0.36.0
@@ -83,7 +83,7 @@ jobs:
             platform: linux/arm64
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v4
@@ -225,7 +225,7 @@ jobs:
       contents: write
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history for generated release notes
 
