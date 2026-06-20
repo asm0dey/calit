@@ -28,6 +28,13 @@ RUN --mount=type=cache,target=/root/.m2 \
 COPY src/ src/
 # Overlay the Bun-compiled stylesheet (gitignored, so not in the COPY above).
 COPY --from=css /app/src/main/resources/META-INF/resources/calit.css src/main/resources/META-INF/resources/calit.css
+# Inject build metadata so the footer shows the real version + commit instead of "dev".
+# The git-commit-id plugin skips silently (failOnNoGitDirectory=false) when .git is absent;
+# this hand-written file is what ends up on the classpath inside the jar.
+ARG APP_VERSION=dev
+ARG GIT_COMMIT=dev
+RUN printf 'git.build.version=%s\ngit.commit.id.abbrev=%s\n' "$APP_VERSION" "$GIT_COMMIT" \
+    > src/main/resources/git.properties
 RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw -B -q -DskipTests clean package
 
