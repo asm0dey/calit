@@ -229,6 +229,7 @@ the same values must be present on every replica.
 | `MAIL_TLS` | `false` | Implicit TLS (SMTPS). Set `true` for port 465; keep `false` for STARTTLS on 587. |
 | `REMINDER_LEAD_MINUTES` | `1440` | How long before a meeting the reminder email fires (24h). Also shown on the `/me/settings` page. |
 | `APPROVAL_HOLD_HOURS` | `24` | How long an approval-mode booking is held as PENDING before it auto-declines (or until its start, whichever comes first). |
+| `SCHEDULER_GRACE_SECONDS` | `30` | Treat reminder / pending-expiry rows as due up to N seconds early, so replicas on unsynchronised tick timers fire on time. `0` = exact. |
 | `PER_EMAIL_DAILY_CAP` | `10` | Max bookings one invitee email may create per day (abuse guard). |
 | `SIGNUP_ENABLED` | `false` | Allow public self-service sign-up at `/signup`. When `false`, `/signup` returns 404. |
 
