@@ -28,6 +28,9 @@ public class PendingExpiryScheduler {
     @ConfigProperty(name = "calit.approval.hold-hours", defaultValue = "24")
     int holdHours;
 
+    @ConfigProperty(name = "calit.scheduler.grace-seconds", defaultValue = "30")
+    int graceSeconds;
+
     @Inject
     EntityManager em;
 
@@ -55,11 +58,13 @@ public class PendingExpiryScheduler {
             List<Number> ids = em.createNativeQuery(
                     "SELECT id FROM booking "
                             + "WHERE status = 'PENDING' "
-                            + "AND LEAST(created_at + (:holdHours * INTERVAL '1 hour'), start_utc) <= now() "
+                            + "AND LEAST(created_at + (:holdHours * INTERVAL '1 hour'), start_utc) "
+                            + "    <= now() + make_interval(secs => :graceSeconds) "
                             + "ORDER BY created_at "
                             + "FOR UPDATE SKIP LOCKED "
                             + "LIMIT 50")
                     .setParameter("holdHours", holdHours)
+                    .setParameter("graceSeconds", (double) graceSeconds)
                     .getResultList();
 
             List<Long> declinedIds = new ArrayList<>();
