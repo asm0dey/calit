@@ -120,6 +120,21 @@ public class EmailService {
         FALLBACK
     }
 
+    /** Where a rendered mail goes: either a direct SMTP send or an outbox enqueue. */
+    @FunctionalInterface
+    private interface MailSink {
+        void deliver(String to, String subject, String html, byte[] ics);
+    }
+
+    /**
+     * In-transaction sink: persist the rendered mail to the outbox (a fast INSERT, no SMTP) so it
+     * commits atomically with the caller's transaction. OutboxScheduler delivers it with retry/backoff.
+     * Static so it can be used as a method reference with no captured state.
+     */
+    private static void enqueueToOutbox(String to, String subject, String html, byte[] ics) {
+        EmailOutbox.enqueue(to, subject, html, ics, null, "scheduled dispatch (transactional outbox)");
+    }
+
     // --- CDI observers: fire only after the booking transaction commits. ---
 
     void onRequested(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingRequested e) {
@@ -213,6 +228,11 @@ public class EmailService {
     void handleDeclined(BookingDeclined e) {
         Loaded l = load(e.bookingId());
         if (l == null) return;
+        deliverDeclined(l, mailSender::send);
+    }
+
+    /** Renders + delivers the declined email through the given sink (direct or outbox). */
+    private void deliverDeclined(Loaded l, MailSink sink) {
         String start = format(l.booking.startUtc, l.zone);
         // No Google event ever existed -> always notify the invitee. No answers, no location link.
         sendForKind(InviteeRule.ALWAYS, "Booking declined: " + l.meetingType.name, l, resolveLocation(l),
@@ -222,7 +242,15 @@ public class EmailService {
                         .data(MEETING_TYPE_NAME, l.meetingType.name)
                         .data(START_TIME, start)
                         .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                        .render());
+                        .render(),
+                sink);
+    }
+
+    /** Renders the declined email and enqueues it in the CALLER's transaction (atomic with the claim). */
+    public void enqueueDeclined(Long bookingId) {
+        Loaded l = read(bookingId);
+        if (l == null) return;
+        deliverDeclined(l, EmailService::enqueueToOutbox);
     }
 
     void handleRescheduled(BookingRescheduled e) {
@@ -264,6 +292,11 @@ public class EmailService {
     void handleReminder(ReminderDue e) {
         Loaded l = load(e.bookingId());
         if (l == null) return;
+        deliverReminder(l, mailSender::send);
+    }
+
+    /** Renders + delivers the reminder email through the given sink (direct or outbox). */
+    private void deliverReminder(Loaded l, MailSink sink) {
         String location = resolveLocation(l);
         String start = format(l.booking.startUtc, l.zone);
         sendForKind(InviteeRule.FALLBACK, "Reminder: " + l.meetingType.name, l, location,
@@ -277,18 +310,32 @@ public class EmailService {
                         .data(IS_MEET_LINK, isMeet(l))
                         .data(MANAGE_URL, manageUrl(l.booking))
                         .data(ANSWERS, l.answers)
-                        .render());
+                        .render(),
+                sink);
+    }
+
+    /** Renders the reminder email and enqueues it in the CALLER's transaction (atomic with the claim). */
+    public void enqueueReminder(Long bookingId) {
+        Loaded l = read(bookingId);
+        if (l == null) return;
+        deliverReminder(l, EmailService::enqueueToOutbox);
     }
 
     // --- recipient selection + send plumbing ---
 
-    /**
-     * Sends the rendered body (per recipient role) to the selected recipients, each with the .ics.
-     * Owner is included iff {@code ownerNotificationsEnabled}; invitee per {@code rule} and
-     * {@code calendarPort.isConnected()}. No mail is sent if the recipient set is empty.
-     */
+    /** Default delivery: direct SMTP via MailSender (outbox fallback on failure). Used by event handlers. */
     private void sendForKind(InviteeRule rule, String subject, Loaded l, String icsLocation,
                              Function<String, String> bodyForRole) {
+        sendForKind(rule, subject, l, icsLocation, bodyForRole, mailSender::send);
+    }
+
+    /**
+     * Renders the body (per recipient role) and delivers it through {@code sink} to the selected
+     * recipients, each with the .ics. Owner included iff {@code ownerNotificationsEnabled}; invitee
+     * per {@code rule} and {@code calendarPort.isConnected()}. No mail if the recipient set is empty.
+     */
+    private void sendForKind(InviteeRule rule, String subject, Loaded l, String icsLocation,
+                             Function<String, String> bodyForRole, MailSink sink) {
         boolean sendInvitee = rule == InviteeRule.ALWAYS || !calendarPort.isConnected(l.owner.ownerId);
         boolean sendOwner = l.owner.ownerNotificationsEnabled;
 
@@ -297,10 +344,10 @@ public class EmailService {
                 .getBytes(StandardCharsets.UTF_8);
 
         if (sendInvitee) {
-            mailSender.send(l.booking.inviteeEmail, subject, bodyForRole.apply("invitee"), ics);
+            sink.deliver(l.booking.inviteeEmail, subject, bodyForRole.apply("invitee"), ics);
         }
         if (sendOwner) {
-            mailSender.send(l.owner.ownerEmail, subject, bodyForRole.apply("owner"), ics);
+            sink.deliver(l.owner.ownerEmail, subject, bodyForRole.apply("owner"), ics);
         }
     }
 
@@ -325,22 +372,24 @@ public class EmailService {
     }
 
     /**
-     * Loads the booking + its meeting type + owner settings + custom-field answers inside a fresh
-     * transaction. Required because AFTER_SUCCESS observers run with no active persistence context.
-     * Returns null if the booking no longer exists.
+     * Loads the booking + meeting type + owner settings + answers in the CALLER's active transaction.
+     * Use from an already-transactional caller (the scheduler claim tx). Returns null if gone.
      */
+    private Loaded read(Long bookingId) {
+        Booking booking = Booking.findById(bookingId);
+        if (booking == null) {
+            return null;
+        }
+        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
+        ZoneId zone = ZoneId.of(owner.timezone);
+        List<AnswerLine> answers = buildAnswerLines(booking, type);
+        return new Loaded(booking, type, owner, zone, answers);
+    }
+
+    /** As {@link #read} but opens its own transaction — for AFTER_SUCCESS observers (no active tx). */
     private Loaded load(Long bookingId) {
-        return QuarkusTransaction.requiringNew().call(() -> {
-            Booking booking = Booking.findById(bookingId);
-            if (booking == null) {
-                return null;
-            }
-            MeetingType type = MeetingType.findById(booking.meetingTypeId);
-            OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
-            ZoneId zone = ZoneId.of(owner.timezone);
-            List<AnswerLine> answers = buildAnswerLines(booking, type);
-            return new Loaded(booking, type, owner, zone, answers);
-        });
+        return QuarkusTransaction.requiringNew().call(() -> read(bookingId));
     }
 
     /**
