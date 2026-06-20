@@ -28,7 +28,7 @@ public class BuildInfo {
             if (in != null) {
                 p.load(in);
             }
-        } catch (IOException e) {
+        } catch (IOException _) {
             // ponytail: git.properties is build-generated and tiny; a read failure just means "dev".
         }
         this.version = p.getProperty("git.build.version", FALLBACK);
