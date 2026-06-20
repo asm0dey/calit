@@ -29,6 +29,9 @@ public class ReminderScheduler {
     @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440")
     int leadMinutes;
 
+    @ConfigProperty(name = "calit.scheduler.grace-seconds", defaultValue = "30")
+    int graceSeconds;
+
     @Inject
     EntityManager em;
 
@@ -131,10 +134,11 @@ public class ReminderScheduler {
             @SuppressWarnings("unchecked")
             List<Number> ids = em.createNativeQuery(
                     "SELECT id FROM reminder "
-                            + "WHERE sent_at IS NULL AND send_at <= now() "
+                            + "WHERE sent_at IS NULL AND send_at <= now() + make_interval(secs => :graceSeconds) "
                             + "ORDER BY send_at "
                             + "FOR UPDATE SKIP LOCKED "
                             + "LIMIT 50")
+                    .setParameter("graceSeconds", (double) graceSeconds)
                     .getResultList();
 
             List<Long> bookingIds = new ArrayList<>();
