@@ -2,16 +2,15 @@ package com.calit.scheduler;
 
 import com.calit.booking.Booking;
 import com.calit.booking.BookingStatus;
-import com.calit.booking.events.BookingDeclined;
+import com.calit.email.EmailService;
+import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,25 +34,27 @@ public class PendingExpiryScheduler {
     EntityManager em;
 
     @Inject
-    Event<BookingDeclined> bookingDeclinedEvent;
+    EmailService emailService;
 
+    /**
+     * Feature 14 expiry tick. Runs on EVERY replica every 60s, leaderless (FOR UPDATE SKIP LOCKED).
+     * Per expired booking, in the SAME transaction as the claim: flip PENDING -> DECLINED, drop its
+     * unsent reminder, and enqueue the declined email to the outbox (crash-safe). OutboxScheduler
+     * delivers it. A node dying mid-tick loses nothing: all three commit together or not at all.
+     */
     @Scheduled(every = "60s")
     void expirePendingBookings() {
-        List<Long> declinedIds = claimAndDeclineExpired();
-        // Fire AFTER the flip transaction commits. Each fire runs in its own committed tx
-        // so the AFTER_SUCCESS observers (Plan 4 declined email, ReminderScheduler.onDeclined)
-        // are reliably delivered.
-        for (Long id : declinedIds) {
-            QuarkusTransaction.requiringNew().run(() -> bookingDeclinedEvent.fire(new BookingDeclined(id)));
-        }
+        claimAndDeclineExpired();
     }
 
     /**
-     * Claims expired PENDING bookings FOR UPDATE SKIP LOCKED and flips them to DECLINED
-     * in the SAME transaction. Expiry = min(createdAt + holdHours, startUtc) <= now().
+     * Claims expired PENDING bookings FOR UPDATE SKIP LOCKED and, per booking in the SAME tx:
+     * flips to DECLINED, deletes any unsent reminder, enqueues the declined email. Expiry =
+     * min(createdAt + holdHours, startUtc) <= now() + grace. A render failure for one poison
+     * booking is caught/logged so it can't roll back the whole batch.
      */
-    List<Long> claimAndDeclineExpired() {
-        return QuarkusTransaction.requiringNew().call(() -> {
+    void claimAndDeclineExpired() {
+        QuarkusTransaction.requiringNew().run(() -> {
             @SuppressWarnings("unchecked")
             List<Number> ids = em.createNativeQuery(
                     "SELECT id FROM booking "
@@ -67,14 +68,17 @@ public class PendingExpiryScheduler {
                     .setParameter("graceSeconds", (double) graceSeconds)
                     .getResultList();
 
-            List<Long> declinedIds = new ArrayList<>();
             for (Number n : ids) {
                 Long id = n.longValue();
                 Booking b = Booking.findById(id);
                 b.status = BookingStatus.DECLINED;   // flipped within the lock-holding transaction
-                declinedIds.add(id);
+                Reminder.deleteUnsentFor(id);        // was ReminderScheduler.onDeclined observer
+                try {
+                    emailService.enqueueDeclined(id); // was EmailService.onDeclined observer; durable, same tx
+                } catch (Exception ex) {
+                    Log.errorf(ex, "declined enqueue failed for booking %d (declined, mail dropped)", id);
+                }
             }
-            return declinedIds;
         });
     }
 }
