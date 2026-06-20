@@ -7,6 +7,26 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## 1.8.0
+
+Scheduler timing control and crash-safe dispatch.
+
+- **Configurable grace window.** New `SCHEDULER_GRACE_SECONDS` setting (default
+  `30`, `0` = exact). The reminder and pending-expiry ticks now treat a row as
+  due up to N seconds early (`send_at <= now() + grace`), so replicas ticking on
+  independent timers fire on time instead of waiting up to a whole extra tick.
+  Postgres `now()` remains the single clock authority, so app-replica clock skew
+  never affects which rows are due — this only smooths per-node tick latency.
+- **Crash-safe reminder & auto-decline dispatch.** Both ticks now render the
+  outgoing email and write it to the email outbox **inside the same transaction
+  that claims the row** (marks the reminder sent / flips the booking to
+  declined), instead of firing a post-commit in-memory event that a node crash
+  between commit and send could drop. Claim and intent-to-send now commit
+  atomically; the existing outbox tick delivers with retry/backoff. The manual
+  owner-decline path is unchanged.
+- New `SCHEDULER_GRACE_SECONDS` config. Dependency updates: Quarkus 3.36.3,
+  `google-api-services-calendar`, and `actions/checkout` v7.
+
 ## 1.7.0
 
 Google Calendar disconnect detection.

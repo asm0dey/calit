@@ -74,6 +74,7 @@ Booking and password-reset flows therefore never fail just because SMTP is unava
 |---|---|---|
 | `REMINDER_LEAD_MINUTES` | Minutes before a meeting to send the reminder email | `1440` (24 h) |
 | `APPROVAL_HOLD_HOURS` | How long a pending (approval-required) booking is held before it expires | `24` |
+| `SCHEDULER_GRACE_SECONDS` | Treat reminder / pending-expiry rows as due up to this many seconds early, so replicas on unsynchronised tick timers fire on time instead of a tick late. `0` = exact | `30` |
 | `PER_EMAIL_DAILY_CAP` | Maximum bookings an invitee email address may make per day (abuse protection) | `10` |
 
 ## Health probes
