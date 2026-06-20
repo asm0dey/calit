@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 @ApplicationScoped
 public class EmailService {
@@ -325,7 +325,7 @@ public class EmailService {
 
     /** Default delivery: direct SMTP via MailSender (outbox fallback on failure). Used by event handlers. */
     private void sendForKind(InviteeRule rule, String subject, Loaded l, String icsLocation,
-                             Function<String, String> bodyForRole) {
+                             UnaryOperator<String> bodyForRole) {
         sendForKind(rule, subject, l, icsLocation, bodyForRole, mailSender::send);
     }
 
@@ -335,7 +335,7 @@ public class EmailService {
      * per {@code rule} and {@code calendarPort.isConnected()}. No mail if the recipient set is empty.
      */
     private void sendForKind(InviteeRule rule, String subject, Loaded l, String icsLocation,
-                             Function<String, String> bodyForRole, MailSink sink) {
+                             UnaryOperator<String> bodyForRole, MailSink sink) {
         boolean sendInvitee = rule == InviteeRule.ALWAYS || !calendarPort.isConnected(l.owner.ownerId);
         boolean sendOwner = l.owner.ownerNotificationsEnabled;
 
