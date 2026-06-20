@@ -5,8 +5,8 @@ import com.calit.booking.BookingStatus;
 import com.calit.domain.MeetingType;
 import com.calit.domain.MeetingType.LocationType;
 import com.calit.domain.OwnerSettings;
+import com.calit.email.EmailOutbox;
 import com.calit.google.CalendarPort;
-import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -23,11 +23,10 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 /**
- * End-to-end check that the dispatch tick's out-of-claim-transaction ReminderDue fire is
- * actually delivered to Plan 4's {@code @Observes(during = AFTER_SUCCESS)} reminder observer,
- * which then sends BOTH the invitee (Google disconnected -> fallback) and owner (notifications
- * enabled) reminder emails. Guards correction #3: an AFTER_SUCCESS observer fired with NO active
- * transaction may not be delivered, so the tick fires each event inside its own committed tx.
+ * The dispatch tick claims due reminders and, in the SAME transaction, enqueues the reminder email
+ * to the outbox (crash-safe: claim + intent-to-send commit atomically). OutboxScheduler delivers it.
+ * This asserts both recipients (invitee via Google-disconnected fallback + owner) get a durable
+ * outbox row.
  */
 @QuarkusTest
 class ReminderEmailEndToEndTest {
@@ -38,35 +37,32 @@ class ReminderEmailEndToEndTest {
     @Inject
     ReminderScheduler scheduler;
 
-    @Inject
-    MockMailbox mailbox;
-
     @InjectMock
     CalendarPort calendarPort;
 
     @Test
-    void dispatchTickDeliversReminderEmailToInviteeAndOwner() {
-        // Google disconnected -> invitee fallback reminder fires.
-        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+    void dispatchTickEnqueuesReminderForInviteeAndOwner() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false); // Google off -> invitee fallback
 
         Long bookingId = seedConfirmedBookingWithOwner();
         seedDueUnsentReminder(bookingId);
 
-        mailbox.clear();
-
         scheduler.dispatchDueReminders();
 
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
-                "invitee reminder must arrive (Google disconnected -> fallback)");
-        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size(),
-                "owner reminder must arrive (ownerNotificationsEnabled=true)");
-        assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL).get(0).getSubject()
-                .toLowerCase().contains("reminder"), "subject identifies the reminder email");
+        QuarkusTransaction.requiringNew().run(() -> {
+            assertEquals(1, EmailOutbox.count("recipient", INVITEE_EMAIL),
+                    "invitee reminder enqueued (Google disconnected -> fallback)");
+            assertEquals(1, EmailOutbox.count("recipient", OWNER_EMAIL),
+                    "owner reminder enqueued (ownerNotificationsEnabled=true)");
+            EmailOutbox r = EmailOutbox.find("recipient", INVITEE_EMAIL).firstResult();
+            assertTrue(r.subject.toLowerCase().contains("reminder"), "subject identifies the reminder email");
+        });
 
-        // Cleanup committed rows so they don't leak to other tests.
         QuarkusTransaction.requiringNew().run(() -> {
             Reminder.delete("bookingId", bookingId);
             Booking.deleteById(bookingId);
+            EmailOutbox.delete("recipient", INVITEE_EMAIL);
+            EmailOutbox.delete("recipient", OWNER_EMAIL);
         });
     }
 
@@ -97,7 +93,6 @@ class ReminderEmailEndToEndTest {
             b.meetingTypeId = t.id;
             b.inviteeName = "Sam Invitee";
             b.inviteeEmail = INVITEE_EMAIL;
-            // A unique far-future slot so the booking_no_overlap_held guard never collides.
             Instant start = Instant.now().plus(500, ChronoUnit.HOURS);
             b.startUtc = start;
             b.endUtc = start.plus(30, ChronoUnit.MINUTES);
