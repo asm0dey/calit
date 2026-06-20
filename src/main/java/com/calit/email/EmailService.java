@@ -394,8 +394,9 @@ public class EmailService {
 
     /**
      * Joins {@code BookingField.formFor(meetingTypeId)} (ordered by {@code position}) to
-     * {@code booking.answers} by {@code fieldKey}, skipping blank/absent values. Must run inside the
-     * {@code requiringNew()} transaction opened by {@link #load}.
+     * {@code booking.answers} by {@code fieldKey}, skipping blank/absent values. Must run inside a
+     * transaction -- the {@code requiringNew()} one opened by {@link #load} (event path) or the
+     * caller's active transaction via {@link #read} (scheduler enqueue path).
      */
     private static List<AnswerLine> buildAnswerLines(Booking booking, MeetingType type) {
         List<AnswerLine> lines = new ArrayList<>();

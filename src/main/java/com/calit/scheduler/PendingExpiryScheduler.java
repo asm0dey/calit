@@ -73,6 +73,9 @@ public class PendingExpiryScheduler {
                 Booking b = Booking.findById(id);
                 b.status = BookingStatus.DECLINED;   // flipped within the lock-holding transaction
                 Reminder.deleteUnsentFor(id);        // was ReminderScheduler.onDeclined observer
+                // Guard covers a render/load failure (throws before any persist): the flip + cleanup
+                // still commit, one mail dropped. A crash (not caught) rolls back the whole tx pre-commit
+                // and the row is reclaimed next tick -- the crash-safety guarantee.
                 try {
                     emailService.enqueueDeclined(id); // was EmailService.onDeclined observer; durable, same tx
                 } catch (Exception ex) {

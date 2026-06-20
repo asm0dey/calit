@@ -139,6 +139,10 @@ public class ReminderScheduler {
             for (Number n : ids) {
                 Reminder r = Reminder.findById(n.longValue());
                 r.sentAt = now; // claim: marked within the lock-holding transaction
+                // Guard covers a render/load failure (e.g. missing OwnerSettings), which throws
+                // BEFORE any persist -- session stays clean, the claim still commits, one mail dropped.
+                // A node crash is not caught here: it kills the process pre-commit, the tx rolls back,
+                // and the row is reclaimed next tick -- that is the crash-safety guarantee.
                 try {
                     emailService.enqueueReminder(r.bookingId); // durable intent, same tx
                 } catch (Exception ex) {
