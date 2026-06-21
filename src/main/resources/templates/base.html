@@ -34,17 +34,14 @@
     <a href="https://github.com/asm0dey/calit" class="link link-hover">calit</a>
     {inject:build.version} &middot; {inject:build.commit}
     <nav class="mt-2" aria-label="{msg:common_language}">
-      {#if lang == "en"}
-        <span class="font-semibold" aria-current="true">English</span>
-      {#else}
-        <a href="/lang/en?return={returnPath}" class="link link-hover">English</a>
-      {/if}
-      <span class="mx-1">&middot;</span>
-      {#if lang == "de"}
-        <span class="font-semibold" aria-current="true">Deutsch</span>
-      {#else}
-        <a href="/lang/de?return={returnPath}" class="link link-hover">Deutsch</a>
-      {/if}
+      {#for o in localeOptions}
+        {#if o_index > 0}<span class="mx-1">&middot;</span>{/if}
+        {#if o.active}
+          <span class="font-semibold" aria-current="true">{o.label}</span>
+        {#else}
+          <a class="link link-hover" href="{o.href}">{o.label}</a>
+        {/if}
+      {/for}
     </nav>
   </footer>
   <script>

@@ -5,6 +5,8 @@ import io.quarkus.qute.EngineBuilder;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -30,11 +32,16 @@ public class LocaleTemplateInitializer implements TemplateInstance.Initializer {
     public void accept(TemplateInstance instance) {
         Locale locale = null;
         String returnPath = "/";
+        List<LocaleOption> localeOptions = Collections.emptyList();
         if (Arc.container().requestContext().isActive()) {
             ActiveLocale active = Arc.container().instance(ActiveLocale.class).get();
             if (active != null) {
                 locale = active.getOrNull();
                 returnPath = active.getReturnPath();
+            }
+            LocaleOptions opts = Arc.container().instance(LocaleOptions.class).get();
+            if (opts != null) {
+                localeOptions = opts.options();
             }
         }
         if (locale != null) {
@@ -44,5 +51,6 @@ public class LocaleTemplateInitializer implements TemplateInstance.Initializer {
             instance.data("lang", AppLocales.DEFAULT.toLanguageTag());
         }
         instance.data("returnPath", returnPath);
+        instance.data("localeOptions", localeOptions);
     }
 }
