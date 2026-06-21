@@ -15,4 +15,7 @@ public interface AppMessages {
 
     @Message("Cancel")
     String common_cancel();
+
+    @Message("Language")
+    String adm_settings_language();
 }

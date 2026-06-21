@@ -600,12 +600,14 @@ public class AdminResource {
     public TemplateInstance updateSettings(@RestForm String ownerName,
                                            @RestForm String ownerEmail,
                                            @RestForm String timezone,
+                                           @RestForm String locale,
                                            @RestForm String ownerNotificationsEnabled) {
         OwnerSettings s = OwnerSettings.forOwner(currentOwner.id());
         if (s == null) { s = new OwnerSettings(); s.ownerId = currentOwner.id(); }
         s.ownerName = ownerName;
         s.ownerEmail = ownerEmail;
         s.timezone = timezone;
+        s.locale = com.calit.i18n.AppLocales.isSupported(locale) ? locale : "en";
         // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
         s.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
         s.persist();

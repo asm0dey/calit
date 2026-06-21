@@ -21,6 +21,11 @@
         {/if}
       {/for}
     </select>
+    <label class="label">{msg:adm_settings_language}</label>
+    <select name="locale" class="select select-bordered w-full">
+      <option value="en"{#if !settings || settings.locale == 'en'} selected{/if}>English</option>
+      <option value="de"{#if settings && settings.locale == 'de'} selected{/if}>Deutsch</option>
+    </select>
     <label class="label cursor-pointer justify-start gap-2 mt-2">
       <input type="checkbox" name="ownerNotificationsEnabled" class="checkbox checkbox-sm"{#if settings && settings.ownerNotificationsEnabled} checked{/if}>
       Send me (the owner) email notifications for bookings</label>
