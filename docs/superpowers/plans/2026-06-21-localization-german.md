@@ -34,6 +34,8 @@
 - `src/main/java/com/calit/i18n/LocaleResolutionFilter.java` — `ContainerRequestFilter` computing the active locale (owner for `/me*`, else cookie → `Accept-Language` → default) into `ActiveLocale`.
 - `src/main/java/com/calit/i18n/LocaleTemplateInitializer.java` — `TemplateInstance.Initializer` applying the active locale to every render (`setLocale` + `{lang}` data).
 - `src/main/java/com/calit/i18n/Messages.java` — thin helper to fetch a locale-specific `AppMessages` for Java code (email subjects), backed by `@Localized` injections.
+- `src/main/java/com/calit/i18n/AdminMessages.java` — SECOND `@MessageBundle("adm")` for admin-UI strings (`adm_*`/`google_*`/`users_*`/`mesetup_*`), namespace `{adm:}`, German in `adm_de.properties`. **Why split from AppMessages:** Qute generates one resolver method per bundle; the admin surface (~200+ keys) would push the single generated method past the JVM 64KB method-size limit. Splitting public/email (`AppMessages`/`{msg:}`) from admin (`AdminMessages`/`{adm:}`) keeps each generated resolver under the limit. (Decided during Task 9b.)
+- `src/main/java/com/calit/i18n/AdminMsgs.java` — locale-aware accessor for `AdminMessages` (mirrors `Messages`): `forLocale(Locale)` → `@Localized` admin bundle. Admin Java code (page titles, error strings) localizes via this, NOT the `AppMessages`-only `Messages` helper.
 - `src/main/java/com/calit/web/LangResource.java` — `GET /lang/{code}` switch endpoint.
 - `src/main/resources/messages/msg_de.properties` — German translations.
 - `src/main/resources/db/migration/V16__locale_columns.sql` — adds `locale` to `owner_settings` + `booking`.
@@ -994,6 +996,7 @@ Commit: `feat(i18n): translate admin setup, google, and users pages`.
 ### Task 9c: auth / bootstrap
 
 **Files (modify):** `templates/LoginResource/login.html`, `templates/SignupResource/signup.html`, `templates/PasswordResetResource/forgot.html`, `templates/PasswordResetResource/reset.html`, `templates/SetupResource/setup.html`, `templates/GoogleLoginResource/bridge.html`.
+**Bundle:** auth is public-facing and small — put `auth_*` keys in `AppMessages` (`{msg:}`), not the admin bundle. If adding them pushes the `AppMessages` generated resolver past the JVM 64KB method-size limit (the same wall that forced the admin split — watch for a `MethodTooLargeException`/`code too large` build error), split a third `AuthMessages`/`{auth:}` bundle + `AuthMsgs` accessor mirroring `AdminMessages`/`AdminMsgs`. Page titles localize from the Java handlers (login/signup/etc.) via `Messages` (or the new accessor) like Task 9a.
 **Test:** `src/test/java/com/calit/web/AuthI18nTest.java` — login page German via cookie/Accept-Language.
 Commit: `feat(i18n): translate auth and bootstrap pages`.
 
