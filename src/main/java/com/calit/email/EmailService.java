@@ -13,6 +13,9 @@ import com.calit.domain.MeetingType;
 import com.calit.domain.MeetingType.LocationType;
 import com.calit.domain.OwnerSettings;
 import com.calit.google.CalendarPort;
+import com.calit.i18n.AppLocales;
+import com.calit.i18n.AppMessages;
+import com.calit.i18n.Messages;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
@@ -35,8 +38,6 @@ import java.util.function.UnaryOperator;
 @ApplicationScoped
 public class EmailService {
 
-    private static final DateTimeFormatter TIME_FORMAT =
-            DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm", Locale.ENGLISH);
     public static final String RECIPIENT_ROLE = "recipientRole";
     public static final String INVITEE_NAME = "inviteeName";
     public static final String MEETING_TYPE_NAME = "meetingTypeName";
@@ -49,6 +50,9 @@ public class EmailService {
 
     @Inject
     MailSender mailSender;
+
+    @Inject
+    Messages messages;
 
     @Inject
     CalendarPort calendarPort;
@@ -171,58 +175,85 @@ public class EmailService {
         Loaded l = load(e.bookingId());
         if (l == null) return;
         String location = resolveLocation(l);
-        String start = format(l.booking.startUtc, l.zone);
-        sendForKind(InviteeRule.ALWAYS, "Booking request received: " + l.meetingType.name, l, location,
-                role -> requested
-                        .data(RECIPIENT_ROLE, role)
-                        .data(INVITEE_NAME, l.booking.inviteeName)
-                        .data(MEETING_TYPE_NAME, l.meetingType.name)
-                        .data(START_TIME, start)
-                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                        .data(LOCATION, location)
-                        .data(IS_MEET_LINK, isMeet(l))
-                        .data(MANAGE_URL, manageUrl(l.booking))
-                        .data(ANSWERS, l.answers)
-                        .render());
+        Locale inviteeLocale = AppLocales.pick(l.booking.locale);
+        Locale ownerLocale = AppLocales.pick(l.owner.locale);
+        String inviteeStart = format(l.booking.startUtc, l.zone, inviteeLocale);
+        String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
+        sendForKindLocaleAware(InviteeRule.ALWAYS, l, location,
+                inviteeLocale, messages.forLocale(inviteeLocale).email_requested_subject(l.meetingType.name),
+                ownerLocale, messages.forLocale(ownerLocale).email_requested_subject(l.meetingType.name),
+                role -> {
+                    Locale locale = "invitee".equals(role) ? inviteeLocale : ownerLocale;
+                    String start = "invitee".equals(role) ? inviteeStart : ownerStart;
+                    return requested.instance().setLocale(locale)
+                            .data(RECIPIENT_ROLE, role)
+                            .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(START_TIME, start)
+                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                            .data(LOCATION, location)
+                            .data(IS_MEET_LINK, isMeet(l))
+                            .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(ANSWERS, l.answers)
+                            .render();
+                });
     }
 
     void handleConfirmed(BookingConfirmed e) {
         Loaded l = load(e.bookingId());
         if (l == null) return;
         String location = resolveLocation(l);
-        String start = format(l.booking.startUtc, l.zone);
-        sendForKind(InviteeRule.FALLBACK, "Booking confirmed: " + l.meetingType.name, l, location,
-                role -> confirmation
-                        .data(RECIPIENT_ROLE, role)
-                        .data(INVITEE_NAME, l.booking.inviteeName)
-                        .data(MEETING_TYPE_NAME, l.meetingType.name)
-                        .data(START_TIME, start)
-                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                        .data(LOCATION, location)
-                        .data(IS_MEET_LINK, isMeet(l))
-                        .data(MANAGE_URL, manageUrl(l.booking))
-                        .data(ANSWERS, l.answers)
-                        .render());
+        Locale inviteeLocale = AppLocales.pick(l.booking.locale);
+        Locale ownerLocale = AppLocales.pick(l.owner.locale);
+        String inviteeStart = format(l.booking.startUtc, l.zone, inviteeLocale);
+        String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
+        sendForKindLocaleAware(InviteeRule.FALLBACK, l, location,
+                inviteeLocale, messages.forLocale(inviteeLocale).email_confirmed_subject(l.meetingType.name),
+                ownerLocale, messages.forLocale(ownerLocale).email_confirmed_subject(l.meetingType.name),
+                role -> {
+                    Locale locale = "invitee".equals(role) ? inviteeLocale : ownerLocale;
+                    String start = "invitee".equals(role) ? inviteeStart : ownerStart;
+                    return confirmation.instance().setLocale(locale)
+                            .data(RECIPIENT_ROLE, role)
+                            .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(START_TIME, start)
+                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                            .data(LOCATION, location)
+                            .data(IS_MEET_LINK, isMeet(l))
+                            .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(ANSWERS, l.answers)
+                            .render();
+                });
     }
 
     void handleApproved(BookingApproved e) {
         Loaded l = load(e.bookingId());
         if (l == null) return;
         String location = resolveLocation(l);
-        String start = format(l.booking.startUtc, l.zone);
+        Locale inviteeLocale = AppLocales.pick(l.booking.locale);
+        Locale ownerLocale = AppLocales.pick(l.owner.locale);
+        String inviteeStart = format(l.booking.startUtc, l.zone, inviteeLocale);
+        String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
         // Same body as confirmed (now confirmed after approval); only subject differs.
-        sendForKind(InviteeRule.FALLBACK, "Booking approved: " + l.meetingType.name, l, location,
-                role -> confirmation
-                        .data(RECIPIENT_ROLE, role)
-                        .data(INVITEE_NAME, l.booking.inviteeName)
-                        .data(MEETING_TYPE_NAME, l.meetingType.name)
-                        .data(START_TIME, start)
-                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                        .data(LOCATION, location)
-                        .data(IS_MEET_LINK, isMeet(l))
-                        .data(MANAGE_URL, manageUrl(l.booking))
-                        .data(ANSWERS, l.answers)
-                        .render());
+        sendForKindLocaleAware(InviteeRule.FALLBACK, l, location,
+                inviteeLocale, messages.forLocale(inviteeLocale).email_approved_subject(l.meetingType.name),
+                ownerLocale, messages.forLocale(ownerLocale).email_approved_subject(l.meetingType.name),
+                role -> {
+                    Locale locale = "invitee".equals(role) ? inviteeLocale : ownerLocale;
+                    String start = "invitee".equals(role) ? inviteeStart : ownerStart;
+                    return confirmation.instance().setLocale(locale)
+                            .data(RECIPIENT_ROLE, role)
+                            .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(START_TIME, start)
+                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                            .data(LOCATION, location)
+                            .data(IS_MEET_LINK, isMeet(l))
+                            .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(ANSWERS, l.answers)
+                            .render();
+                });
     }
 
     void handleDeclined(BookingDeclined e) {
@@ -233,16 +264,25 @@ public class EmailService {
 
     /** Renders + delivers the declined email through the given sink (direct or outbox). */
     private void deliverDeclined(Loaded l, MailSink sink) {
-        String start = format(l.booking.startUtc, l.zone);
+        Locale inviteeLocale = AppLocales.pick(l.booking.locale);
+        Locale ownerLocale = AppLocales.pick(l.owner.locale);
+        String inviteeStart = format(l.booking.startUtc, l.zone, inviteeLocale);
+        String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
         // No Google event ever existed -> always notify the invitee. No answers, no location link.
-        sendForKind(InviteeRule.ALWAYS, "Booking declined: " + l.meetingType.name, l, resolveLocation(l),
-                role -> declined
-                        .data(RECIPIENT_ROLE, role)
-                        .data(INVITEE_NAME, l.booking.inviteeName)
-                        .data(MEETING_TYPE_NAME, l.meetingType.name)
-                        .data(START_TIME, start)
-                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                        .render(),
+        sendForKindLocaleAware(InviteeRule.ALWAYS, l, resolveLocation(l),
+                inviteeLocale, messages.forLocale(inviteeLocale).email_declined_subject(l.meetingType.name),
+                ownerLocale, messages.forLocale(ownerLocale).email_declined_subject(l.meetingType.name),
+                role -> {
+                    Locale locale = "invitee".equals(role) ? inviteeLocale : ownerLocale;
+                    String start = "invitee".equals(role) ? inviteeStart : ownerStart;
+                    return declined.instance().setLocale(locale)
+                            .data(RECIPIENT_ROLE, role)
+                            .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(START_TIME, start)
+                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                            .render();
+                },
                 sink);
     }
 
@@ -257,36 +297,56 @@ public class EmailService {
         Loaded l = load(e.bookingId());
         if (l == null) return;
         String location = resolveLocation(l);
-        String newStart = format(l.booking.startUtc, l.zone);
-        String oldStart = format(e.oldStartUtc(), l.zone);
-        sendForKind(InviteeRule.FALLBACK, "Booking rescheduled: " + l.meetingType.name, l, location,
-                role -> reschedule
-                        .data(RECIPIENT_ROLE, role)
-                        .data(INVITEE_NAME, l.booking.inviteeName)
-                        .data(MEETING_TYPE_NAME, l.meetingType.name)
-                        .data(START_TIME, newStart)
-                        .data("oldStartTime", oldStart)
-                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                        .data(LOCATION, location)
-                        .data(IS_MEET_LINK, isMeet(l))
-                        .data(MANAGE_URL, manageUrl(l.booking))
-                        .data(ANSWERS, l.answers)
-                        .render());
+        Locale inviteeLocale = AppLocales.pick(l.booking.locale);
+        Locale ownerLocale = AppLocales.pick(l.owner.locale);
+        String inviteeNewStart = format(l.booking.startUtc, l.zone, inviteeLocale);
+        String ownerNewStart = format(l.booking.startUtc, l.zone, ownerLocale);
+        String inviteeOldStart = format(e.oldStartUtc(), l.zone, inviteeLocale);
+        String ownerOldStart = format(e.oldStartUtc(), l.zone, ownerLocale);
+        sendForKindLocaleAware(InviteeRule.FALLBACK, l, location,
+                inviteeLocale, messages.forLocale(inviteeLocale).email_rescheduled_subject(l.meetingType.name),
+                ownerLocale, messages.forLocale(ownerLocale).email_rescheduled_subject(l.meetingType.name),
+                role -> {
+                    Locale locale = "invitee".equals(role) ? inviteeLocale : ownerLocale;
+                    String newStart = "invitee".equals(role) ? inviteeNewStart : ownerNewStart;
+                    String oldStart = "invitee".equals(role) ? inviteeOldStart : ownerOldStart;
+                    return reschedule.instance().setLocale(locale)
+                            .data(RECIPIENT_ROLE, role)
+                            .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(START_TIME, newStart)
+                            .data("oldStartTime", oldStart)
+                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                            .data(LOCATION, location)
+                            .data(IS_MEET_LINK, isMeet(l))
+                            .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(ANSWERS, l.answers)
+                            .render();
+                });
     }
 
     void handleCancelled(BookingCancelled e) {
         Loaded l = load(e.bookingId());
         if (l == null) return;
-        String start = format(l.booking.startUtc, l.zone);
+        Locale inviteeLocale = AppLocales.pick(l.booking.locale);
+        Locale ownerLocale = AppLocales.pick(l.owner.locale);
+        String inviteeStart = format(l.booking.startUtc, l.zone, inviteeLocale);
+        String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
         // No location/meet link in the cancellation body; .ics still attached describing the removed event.
-        sendForKind(InviteeRule.FALLBACK, "Booking cancelled: " + l.meetingType.name, l, resolveLocation(l),
-                role -> cancellation
-                        .data(RECIPIENT_ROLE, role)
-                        .data(INVITEE_NAME, l.booking.inviteeName)
-                        .data(MEETING_TYPE_NAME, l.meetingType.name)
-                        .data(START_TIME, start)
-                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                        .render());
+        sendForKindLocaleAware(InviteeRule.FALLBACK, l, resolveLocation(l),
+                inviteeLocale, messages.forLocale(inviteeLocale).email_cancelled_subject(l.meetingType.name),
+                ownerLocale, messages.forLocale(ownerLocale).email_cancelled_subject(l.meetingType.name),
+                role -> {
+                    Locale locale = "invitee".equals(role) ? inviteeLocale : ownerLocale;
+                    String start = "invitee".equals(role) ? inviteeStart : ownerStart;
+                    return cancellation.instance().setLocale(locale)
+                            .data(RECIPIENT_ROLE, role)
+                            .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(START_TIME, start)
+                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                            .render();
+                });
     }
 
     void handleReminder(ReminderDue e) {
@@ -298,19 +358,28 @@ public class EmailService {
     /** Renders + delivers the reminder email through the given sink (direct or outbox). */
     private void deliverReminder(Loaded l, MailSink sink) {
         String location = resolveLocation(l);
-        String start = format(l.booking.startUtc, l.zone);
-        sendForKind(InviteeRule.FALLBACK, "Reminder: " + l.meetingType.name, l, location,
-                role -> reminder
-                        .data(RECIPIENT_ROLE, role)
-                        .data(INVITEE_NAME, l.booking.inviteeName)
-                        .data(MEETING_TYPE_NAME, l.meetingType.name)
-                        .data(START_TIME, start)
-                        .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                        .data(LOCATION, location)
-                        .data(IS_MEET_LINK, isMeet(l))
-                        .data(MANAGE_URL, manageUrl(l.booking))
-                        .data(ANSWERS, l.answers)
-                        .render(),
+        Locale inviteeLocale = AppLocales.pick(l.booking.locale);
+        Locale ownerLocale = AppLocales.pick(l.owner.locale);
+        String inviteeStart = format(l.booking.startUtc, l.zone, inviteeLocale);
+        String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
+        sendForKindLocaleAware(InviteeRule.FALLBACK, l, location,
+                inviteeLocale, messages.forLocale(inviteeLocale).email_reminder_subject(l.meetingType.name),
+                ownerLocale, messages.forLocale(ownerLocale).email_reminder_subject(l.meetingType.name),
+                role -> {
+                    Locale locale = "invitee".equals(role) ? inviteeLocale : ownerLocale;
+                    String start = "invitee".equals(role) ? inviteeStart : ownerStart;
+                    return reminder.instance().setLocale(locale)
+                            .data(RECIPIENT_ROLE, role)
+                            .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(START_TIME, start)
+                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                            .data(LOCATION, location)
+                            .data(IS_MEET_LINK, isMeet(l))
+                            .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(ANSWERS, l.answers)
+                            .render();
+                },
                 sink);
     }
 
@@ -323,19 +392,30 @@ public class EmailService {
 
     // --- recipient selection + send plumbing ---
 
-    /** Default delivery: direct SMTP via MailSender (outbox fallback on failure). Used by event handlers. */
-    private void sendForKind(InviteeRule rule, String subject, Loaded l, String icsLocation,
-                             UnaryOperator<String> bodyForRole) {
-        sendForKind(rule, subject, l, icsLocation, bodyForRole, mailSender::send);
+    /**
+     * Locale-aware delivery (default SMTP sink). Invitee and owner may get different subjects and
+     * body renderings according to their respective locales.
+     */
+    private void sendForKindLocaleAware(InviteeRule rule, Loaded l, String icsLocation,
+                                        Locale inviteeLocale, String inviteeSubject,
+                                        Locale ownerLocale, String ownerSubject,
+                                        UnaryOperator<String> bodyForRole) {
+        sendForKindLocaleAware(rule, l, icsLocation,
+                inviteeLocale, inviteeSubject,
+                ownerLocale, ownerSubject,
+                bodyForRole, mailSender::send);
     }
 
     /**
      * Renders the body (per recipient role) and delivers it through {@code sink} to the selected
-     * recipients, each with the .ics. Owner included iff {@code ownerNotificationsEnabled}; invitee
-     * per {@code rule} and {@code calendarPort.isConnected()}. No mail if the recipient set is empty.
+     * recipients, each with the .ics, using per-recipient locale for subject and body.
+     * Owner included iff {@code ownerNotificationsEnabled}; invitee per {@code rule} and
+     * {@code calendarPort.isConnected()}. No mail if the recipient set is empty.
      */
-    private void sendForKind(InviteeRule rule, String subject, Loaded l, String icsLocation,
-                             UnaryOperator<String> bodyForRole, MailSink sink) {
+    private void sendForKindLocaleAware(InviteeRule rule, Loaded l, String icsLocation,
+                                        Locale inviteeLocale, String inviteeSubject,
+                                        Locale ownerLocale, String ownerSubject,
+                                        UnaryOperator<String> bodyForRole, MailSink sink) {
         boolean sendInvitee = rule == InviteeRule.ALWAYS || !calendarPort.isConnected(l.owner.ownerId);
         boolean sendOwner = l.owner.ownerNotificationsEnabled;
 
@@ -344,10 +424,10 @@ public class EmailService {
                 .getBytes(StandardCharsets.UTF_8);
 
         if (sendInvitee) {
-            sink.deliver(l.booking.inviteeEmail, subject, bodyForRole.apply("invitee"), ics);
+            sink.deliver(l.booking.inviteeEmail, inviteeSubject, bodyForRole.apply("invitee"), ics);
         }
         if (sendOwner) {
-            sink.deliver(l.owner.ownerEmail, subject, bodyForRole.apply("owner"), ics);
+            sink.deliver(l.owner.ownerEmail, ownerSubject, bodyForRole.apply("owner"), ics);
         }
     }
 
@@ -367,8 +447,9 @@ public class EmailService {
         return l.meetingType.locationType == LocationType.GOOGLE_MEET;
     }
 
-    private static String format(Instant instant, ZoneId zone) {
-        return TIME_FORMAT.format(instant.atZone(zone));
+    private String format(Instant instant, ZoneId zone, Locale locale) {
+        String pattern = messages.forLocale(locale).email_datetime_pattern();
+        return DateTimeFormatter.ofPattern(pattern, locale).format(instant.atZone(zone));
     }
 
     /**

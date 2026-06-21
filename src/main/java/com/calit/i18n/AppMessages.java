@@ -18,4 +18,37 @@ public interface AppMessages {
 
     @Message("Language")
     String adm_settings_language();
+
+    // ---- Email subjects ----
+
+    @Message("Booking request received: {meetingTypeName}")
+    String email_requested_subject(String meetingTypeName);
+
+    @Message("Booking confirmed: {meetingTypeName}")
+    String email_confirmed_subject(String meetingTypeName);
+
+    @Message("Booking approved: {meetingTypeName}")
+    String email_approved_subject(String meetingTypeName);
+
+    @Message("Booking declined: {meetingTypeName}")
+    String email_declined_subject(String meetingTypeName);
+
+    @Message("Booking rescheduled: {meetingTypeName}")
+    String email_rescheduled_subject(String meetingTypeName);
+
+    @Message("Booking cancelled: {meetingTypeName}")
+    String email_cancelled_subject(String meetingTypeName);
+
+    @Message("Reminder: {meetingTypeName}")
+    String email_reminder_subject(String meetingTypeName);
+
+    /** Shorthand for tests: confirmation subject with placeholder filled. */
+    @Message("Booking confirmed")
+    String email_confirmation_subject();
+
+    // ---- Email date/time formatting ----
+
+    /** strftime-like pattern used to format booking date/time in email bodies. */
+    @Message("EEEE, d MMMM yyyy 'at' HH:mm")
+    String email_datetime_pattern();
 }
