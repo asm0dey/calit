@@ -6,6 +6,8 @@ import com.calit.google.CalendarListPort;
 import com.calit.google.CalendarSelectionService;
 import com.calit.google.GoogleCalendar;
 import com.calit.google.GoogleCredential;
+import com.calit.i18n.ActiveLocale;
+import com.calit.i18n.AdminMsgs;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -33,13 +35,15 @@ public class GooglePageResource {
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance google(List<AccountView> accounts, boolean loadError,
-                                                     Long pendingCount, boolean isAdmin);
+                                                     Long pendingCount, boolean isAdmin, String title);
     }
 
     @Inject CalendarListPort calendarListPort;
     @Inject CalendarSelectionService selectionService;
     @Inject com.calit.user.CurrentOwner currentOwner;
     @Inject SecurityIdentity identity;
+    @Inject AdminMsgs adminMsgs;
+    @Inject ActiveLocale activeLocale;
 
     private boolean isAdmin() { return identity.hasRole("admin"); }
 
@@ -93,7 +97,7 @@ public class GooglePageResource {
             accounts.add(new AccountView(cred.id, cred.accountEmail, cred.needsReconnect, loadFailed,
                     rows, holdsWriteTarget));
         }
-        return Templates.google(accounts, loadError, pendingCount(), isAdmin());
+        return Templates.google(accounts, loadError, pendingCount(), isAdmin(), adminMsgs.forLocale(activeLocale.current()).adm_google_title());
     }
 
     // NOT @Transactional: this loops N calendarListPort.listCalendars() network calls to re-fetch

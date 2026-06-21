@@ -5,32 +5,33 @@
 {@java.lang.Boolean isAdmin}
 {@java.lang.String username}
 {@java.lang.String baseUrl}
-{#include adminBase title="Admin — Meeting types" pendingCount=pendingCount active="meetingTypes" isAdmin=isAdmin}
-  <h1 class="text-2xl font-bold mb-4">Meeting types</h1>
+{@java.lang.String title}
+{#include adminBase title=title pendingCount=pendingCount active="meetingTypes" isAdmin=isAdmin}
+  <h1 class="text-2xl font-bold mb-4">{adm:adm_meetingTypes_h1}</h1>
 
   <div class="space-y-3">
   {#for t in types}
     <div class="card bg-base-100 border border-base-300">
       <div class="card-body gap-2">
         <h3 class="text-lg font-semibold flex items-center gap-2">{t.name}
-          {#if t.secret}<span class="badge badge-ghost badge-sm">secret</span>{/if}
-          {#if !t.active}<span class="badge badge-ghost badge-sm">inactive</span>{/if}
-          {#if t.requiresApproval}<span class="badge badge-primary badge-sm">approval</span>{/if}
+          {#if t.secret}<span class="badge badge-ghost badge-sm">{adm:adm_meetingTypes_badge_secret}</span>{/if}
+          {#if !t.active}<span class="badge badge-ghost badge-sm">{adm:adm_meetingTypes_badge_inactive}</span>{/if}
+          {#if t.requiresApproval}<span class="badge badge-primary badge-sm">{adm:adm_meetingTypes_badge_approval}</span>{/if}
         </h3>
-        <p class="text-sm text-base-content/70">/{t.slug} &middot; {t.durationMinutes} min &middot; {t.locationType.display}{#if t.locationDetail} ({t.locationDetail}){/if}</p>
-        <p class="text-sm text-base-content/70">min notice {t.minNoticeMinutes} min &middot; horizon {t.horizonDays} days{#if t.slotIntervalMinutes} &middot; slot interval {t.slotIntervalMinutes} min{/if} &middot; buffer {t.bufferBeforeMinutes}/{t.bufferAfterMinutes} min</p>
+        <p class="text-sm text-base-content/70">/{t.slug} &middot; {t.durationMinutes} {adm:adm_meetingTypes_min} &middot; {t.locationType.display}{#if t.locationDetail} ({t.locationDetail}){/if}</p>
+        <p class="text-sm text-base-content/70">{adm:adm_meetingTypes_min_notice} {t.minNoticeMinutes} {adm:adm_meetingTypes_min} &middot; {adm:adm_meetingTypes_horizon} {t.horizonDays} {adm:adm_meetingTypes_days}{#if t.slotIntervalMinutes} &middot; {adm:adm_meetingTypes_slot_interval} {t.slotIntervalMinutes} {adm:adm_meetingTypes_min}{/if} &middot; {adm:adm_meetingTypes_buffer} {t.bufferBeforeMinutes}/{t.bufferAfterMinutes} {adm:adm_meetingTypes_min}</p>
         <div class="flex flex-wrap items-center gap-2 mt-1">
-          <button type="button" class="btn btn-ghost btn-sm btn-square copy-link-btn" data-copy-link="{baseUrl}/{username}/{t.slug}" aria-label="Copy booking link" title="Copy booking link">
+          <button type="button" class="btn btn-ghost btn-sm btn-square copy-link-btn" data-copy-link="{baseUrl}/{username}/{t.slug}" aria-label="{adm:adm_meetingTypes_copy_link_aria}" title="{adm:adm_meetingTypes_copy_link_aria}">
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
           </button>
-          <a href="/me/meeting-types/{t.id}" role="button" class="btn btn-outline btn-sm">Edit</a>
+          <a href="/me/meeting-types/{t.id}" role="button" class="btn btn-outline btn-sm">{adm:adm_meetingTypes_btn_edit}</a>
           <form method="post" action="/me/meeting-types/{t.id}/toggle">
             <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-            <button type="submit" class="btn btn-ghost btn-sm">{#if t.active}Deactivate{#else}Activate{/if}</button>
+            <button type="submit" class="btn btn-ghost btn-sm">{#if t.active}{adm:adm_meetingTypes_btn_deactivate}{#else}{adm:adm_meetingTypes_btn_activate}{/if}</button>
           </form>
           <form method="post" action="/me/meeting-types/{t.id}/delete">
             <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-            <button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button>
+            <button type="submit" class="btn btn-error btn-outline btn-sm">{adm:adm_meetingTypes_btn_delete}</button>
           </form>
         </div>
       </div>
@@ -38,40 +39,40 @@
   {/for}
   </div>
 
-  <h2 class="text-xl font-semibold mt-8 mb-3">Create meeting type</h2>
+  <h2 class="text-xl font-semibold mt-8 mb-3">{adm:adm_meetingTypes_create_h2}</h2>
   <form method="post" action="/me/meeting-types" class="space-y-3">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox" checked>
-      <div class="collapse-title font-semibold">Basics</div>
+      <div class="collapse-title font-semibold">{adm:adm_meetingTypes_section_basics}</div>
       <div class="collapse-content fieldset">
-        <label class="label">Name</label>
+        <label class="label">{adm:adm_meetingTypes_label_name}</label>
         <input class="input w-full" type="text" name="name" data-slug-name required>
-        <label class="label">Slug <span class="text-base-content/60">(blank = auto from name)</span></label>
+        <label class="label">{adm:adm_meetingTypes_label_slug} <span class="text-base-content/60">{adm:adm_meetingTypes_slug_hint}</span></label>
         <input class="input w-full" type="text" name="slug" data-slug-autofill>
-        <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="secret" class="checkbox checkbox-sm"> Secret (hidden from public landing)</label>
-        <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="requiresApproval" class="checkbox checkbox-sm"> Requires owner approval (hold as pending)</label>
+        <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="secret" class="checkbox checkbox-sm"> {adm:adm_meetingTypes_label_secret}</label>
+        <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="requiresApproval" class="checkbox checkbox-sm"> {adm:adm_meetingTypes_label_approval}</label>
       </div>
     </div>
 
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox">
-      <div class="collapse-title font-semibold">Duration</div>
+      <div class="collapse-title font-semibold">{adm:adm_meetingTypes_section_duration}</div>
       <div class="collapse-content fieldset">
-        <label class="label">Duration (minutes)</label>
+        <label class="label">{adm:adm_meetingTypes_label_duration}</label>
         <input class="input w-full" type="number" name="durationMinutes" value="30" required>
-        <label class="label">Slot interval (minutes, blank = back-to-back)</label>
+        <label class="label">{adm:adm_meetingTypes_label_slot_interval}</label>
         <input class="input w-full" type="number" name="slotIntervalMinutes">
-        <label class="label">Buffer before (minutes)</label>
+        <label class="label">{adm:adm_meetingTypes_label_buffer_before}</label>
         <input class="input w-full" type="number" name="bufferBeforeMinutes" value="0" min="0">
-        <label class="label">Buffer after (minutes)</label>
+        <label class="label">{adm:adm_meetingTypes_label_buffer_after}</label>
         <input class="input w-full" type="number" name="bufferAfterMinutes" value="0" min="0">
       </div>
     </div>
 
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox">
-      <div class="collapse-title font-semibold">Location</div>
+      <div class="collapse-title font-semibold">{adm:adm_meetingTypes_section_location}</div>
       <div class="collapse-content">
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
           {#for lt in locationTypes}
@@ -90,35 +91,35 @@
             </label>
           {/for}
         </div>
-        <p class="text-sm text-base-content/60 mb-2">Pick where the meeting happens. Google Meet generates a link after booking (requires Google connected); for the others, fill in the detail below.</p>
-        <label class="label">Location detail (phone / address / custom; ignored for Google Meet)</label>
+        <p class="text-sm text-base-content/60 mb-2">{adm:adm_meetingTypes_location_hint}</p>
+        <label class="label">{adm:adm_meetingTypes_label_location_detail}</label>
         <input class="input w-full" type="text" name="locationDetail">
       </div>
     </div>
 
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox">
-      <div class="collapse-title font-semibold">Scheduling limits</div>
+      <div class="collapse-title font-semibold">{adm:adm_meetingTypes_section_limits}</div>
       <div class="collapse-content fieldset">
-        <label class="label">Min scheduling notice (minutes)</label>
+        <label class="label">{adm:adm_meetingTypes_label_min_notice}</label>
         <input class="input w-full" type="number" name="minNoticeMinutes" value="120" required data-min-notice-auto>
-        <label class="label">Booking horizon (days)</label>
+        <label class="label">{adm:adm_meetingTypes_label_horizon}</label>
         <input class="input w-full" type="number" name="horizonDays" value="60" required>
       </div>
     </div>
 
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox">
-      <div class="collapse-title font-semibold">Working hours</div>
+      <div class="collapse-title font-semibold">{adm:adm_meetingTypes_section_working_hours}</div>
       <div class="collapse-content">
-        <p class="text-sm text-base-content/60 mb-2">Weekly hours for this meeting type. Leave a day blank to use the global default; fill a day to override it for this type.</p>
+        <p class="text-sm text-base-content/60 mb-2">{adm:adm_meetingTypes_working_hours_hint}</p>
         <div class="flex flex-col gap-2">
           {#for d in daysOfWeek}
             <div class="flex items-center gap-2">
               <input type="hidden" name="ruleDay" value="{d}">
               <span class="w-28 text-sm">{display:of(d)}</span>
               <input class="input input-sm" type="time" name="ruleStart">
-              <span class="text-sm opacity-70">to</span>
+              <span class="text-sm opacity-70">{adm:adm_meetingTypes_to}</span>
               <input class="input input-sm" type="time" name="ruleEnd">
             </div>
           {/for}
@@ -128,16 +129,16 @@
 
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox">
-      <div class="collapse-title font-semibold">Date override</div>
+      <div class="collapse-title font-semibold">{adm:adm_meetingTypes_section_date_override}</div>
       <div class="collapse-content">
-        <p class="text-sm text-base-content/60 mb-2">Optional. An override REPLACES this date's normal hours for this type. Set a date and leave the windows blank to mark it a day off; add windows to set the only bookable times.</p>
-        <label class="label">Date</label>
+        <p class="text-sm text-base-content/60 mb-2">{adm:adm_meetingTypes_date_override_hint}</p>
+        <label class="label">{adm:adm_meetingTypes_label_date}</label>
         <input class="input" type="date" name="overrideDate">
         <fieldset class="fieldset border border-base-300 rounded-box p-3 mt-2">
-          <legend class="fieldset-legend">Bookable windows (leave all blank = day off)</legend>
-          <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
-          <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
-          <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+          <legend class="fieldset-legend">{adm:adm_meetingTypes_windows_legend}</legend>
+          <label class="label">{adm:adm_meetingTypes_window_1} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> {adm:adm_meetingTypes_to} <input class="input" type="time" name="windowEnd"></span></label>
+          <label class="label">{adm:adm_meetingTypes_window_2} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> {adm:adm_meetingTypes_to} <input class="input" type="time" name="windowEnd"></span></label>
+          <label class="label">{adm:adm_meetingTypes_window_3} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> {adm:adm_meetingTypes_to} <input class="input" type="time" name="windowEnd"></span></label>
         </fieldset>
       </div>
     </div>
@@ -152,7 +153,7 @@
       name.addEventListener('input', function () {
         if (edited) { return; }
         slug.value = name.value.toLowerCase().normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[̀-ͯ]/g, '')
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-+|-+$/g, '');
       });
@@ -173,12 +174,12 @@
       });
     })();
     </script>
-    <button type="submit" class="btn btn-primary">Create</button>
+    <button type="submit" class="btn btn-primary">{adm:adm_meetingTypes_btn_create}</button>
   </form>
 
   <div class="toast toast-end z-50" id="copy-toast" style="display:none" role="status" aria-live="polite">
     <div class="alert alert-success" id="copy-toast-alert">
-      <span id="copy-toast-msg">Link copied</span>
+      <span id="copy-toast-msg">{adm:adm_meetingTypes_toast_copied}</span>
     </div>
   </div>
 

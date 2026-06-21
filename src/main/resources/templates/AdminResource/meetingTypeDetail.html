@@ -8,44 +8,45 @@
 {@java.time.DayOfWeek[] daysOfWeek}
 {@java.lang.Long pendingCount}
 {@java.lang.Boolean isAdmin}
-{#include adminBase title="Admin — {type.name}" pendingCount=pendingCount active="meetingTypes" isAdmin=isAdmin}
-  <p class="mb-2"><a class="link link-hover text-sm" href="/me/meeting-types">&larr; All meeting types</a></p>
+{@java.lang.String title}
+{#include adminBase title=title pendingCount=pendingCount active="meetingTypes" isAdmin=isAdmin}
+  <p class="mb-2"><a class="link link-hover text-sm" href="/me/meeting-types">{adm:adm_detail_back}</a></p>
   <h1 class="text-2xl font-bold">{type.name}</h1>
   <p class="text-sm text-base-content/70 mb-4">/{type.slug} &middot; {type.durationMinutes} min &middot; {type.locationType.display}</p>
 
   <div class="space-y-3">
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox" checked>
-      <div class="collapse-title font-semibold">Basics</div>
+      <div class="collapse-title font-semibold">{adm:adm_detail_section_basics}</div>
       <div class="collapse-content">
         <form method="post" action="/me/meeting-types/{type.id}/edit" class="fieldset">
           <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-          <label class="label">Name</label>
+          <label class="label">{adm:adm_detail_label_name}</label>
           <input class="input w-full" type="text" name="name" data-slug-name value="{type.name}" required>
-          <label class="label">Slug <span class="text-base-content/60">(blank = auto from name)</span></label>
+          <label class="label">{adm:adm_detail_label_slug} <span class="text-base-content/60">{adm:adm_detail_slug_hint}</span></label>
           <input class="input w-full" type="text" name="slug" data-slug-autofill value="{type.slug}">
-          <label class="label">Duration (minutes)</label>
+          <label class="label">{adm:adm_detail_label_duration}</label>
           <input class="input w-full" type="number" name="durationMinutes" value="{type.durationMinutes}" required>
-          <label class="label">Buffer before (minutes)</label>
+          <label class="label">{adm:adm_detail_label_buffer_before}</label>
           <input class="input w-full" type="number" name="bufferBeforeMinutes" value="{type.bufferBeforeMinutes}" min="0">
-          <label class="label">Buffer after (minutes)</label>
+          <label class="label">{adm:adm_detail_label_buffer_after}</label>
           <input class="input w-full" type="number" name="bufferAfterMinutes" value="{type.bufferAfterMinutes}" min="0">
-          <label class="label">Slot interval (minutes, blank = back-to-back)</label>
+          <label class="label">{adm:adm_detail_label_slot_interval}</label>
           <input class="input w-full" type="number" name="slotIntervalMinutes" value="{#if type.slotIntervalMinutes}{type.slotIntervalMinutes}{/if}">
-          <label class="label">Min scheduling notice (minutes)</label>
+          <label class="label">{adm:adm_detail_label_min_notice}</label>
           <input class="input w-full" type="number" name="minNoticeMinutes" value="{type.minNoticeMinutes}" required>
-          <label class="label">Booking horizon (days)</label>
+          <label class="label">{adm:adm_detail_label_horizon}</label>
           <input class="input w-full" type="number" name="horizonDays" value="{type.horizonDays}" required>
-          <label class="label">Location</label>
+          <label class="label">{adm:adm_detail_label_location}</label>
           <select class="select w-full" name="locationType">
             {#for loc in locationTypes}
               <option value="{loc}"{#if type.locationType == loc} selected{/if}>{display:of(loc)}</option>
             {/for}
           </select>
-          <label class="label">Location detail (phone / address / custom; ignored for Google Meet)</label>
+          <label class="label">{adm:adm_detail_label_location_detail}</label>
           <input class="input w-full" type="text" name="locationDetail" value="{#if type.locationDetail}{type.locationDetail}{/if}">
-          <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="secret" class="checkbox checkbox-sm"{#if type.secret} checked{/if}> Secret (hidden from public landing)</label>
-          <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="requiresApproval" class="checkbox checkbox-sm"{#if type.requiresApproval} checked{/if}> Requires owner approval</label>
+          <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="secret" class="checkbox checkbox-sm"{#if type.secret} checked{/if}> {adm:adm_detail_label_secret}</label>
+          <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="requiresApproval" class="checkbox checkbox-sm"{#if type.requiresApproval} checked{/if}> {adm:adm_detail_label_approval}</label>
           <script>
           (function () {
             var form = document.currentScript.closest('form');
@@ -56,52 +57,52 @@
             name.addEventListener('input', function () {
               if (edited) { return; }
               slug.value = name.value.toLowerCase().normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[̀-ͯ]/g, '')
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/^-+|-+$/g, '');
             });
           })();
           </script>
-          <button type="submit" class="btn btn-primary mt-2">Save changes</button>
+          <button type="submit" class="btn btn-primary mt-2">{adm:adm_detail_btn_save}</button>
         </form>
       </div>
     </div>
 
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox">
-      <div class="collapse-title font-semibold">Booking fields</div>
+      <div class="collapse-title font-semibold">{adm:adm_detail_section_fields}</div>
       <div class="collapse-content">
-        <p class="text-sm text-base-content/70 mb-2">These are asked only for this meeting type, in addition to the always-present name and email.</p>
+        <p class="text-sm text-base-content/70 mb-2">{adm:adm_detail_fields_hint}</p>
         <div class="space-y-2 mb-3">
         {#for f in fields}
           <div class="card bg-base-200 border border-base-300"><div class="card-body py-3 gap-1">
-            <h3 class="font-semibold flex items-center gap-2">{f.label}{#if f.required} <span class="badge badge-primary badge-sm">required</span>{/if}</h3>
-            <p class="text-sm text-base-content/70"><code>{f.fieldKey}</code> &middot; {f.type.display} &middot; position {f.position}</p>
-            <form method="post" action="/me/meeting-types/{type.id}/booking-fields/{f.id}/delete"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+            <h3 class="font-semibold flex items-center gap-2">{f.label}{#if f.required} <span class="badge badge-primary badge-sm">{adm:adm_detail_badge_required}</span>{/if}</h3>
+            <p class="text-sm text-base-content/70"><code>{f.fieldKey}</code> &middot; {f.type.display} &middot; {adm:adm_detail_label_field_position} {f.position}</p>
+            <form method="post" action="/me/meeting-types/{type.id}/booking-fields/{f.id}/delete"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">{adm:adm_detail_btn_delete}</button></form>
           </div></div>
         {/for}
         </div>
         <form method="post" action="/me/meeting-types/{type.id}/booking-fields" class="fieldset">
           <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-          <label class="label">Label</label>
+          <label class="label">{adm:adm_detail_label_field_label}</label>
           <input class="input w-full" type="text" name="label" required>
-          <label class="label">Field key</label>
+          <label class="label">{adm:adm_detail_label_field_key}</label>
           <input class="input w-full" type="text" name="fieldKey" required>
-          <label class="label">Type</label>
+          <label class="label">{adm:adm_detail_label_field_type}</label>
           <select class="select w-full" name="type">{#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}</select>
-          <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="required" class="checkbox checkbox-sm"> Required</label>
-          <label class="label">Position</label>
+          <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="required" class="checkbox checkbox-sm"> {adm:adm_detail_label_field_required}</label>
+          <label class="label">{adm:adm_detail_label_field_position}</label>
           <input class="input w-full" type="number" name="position" value="0" required>
-          <button type="submit" class="btn btn-primary mt-2">Add field</button>
+          <button type="submit" class="btn btn-primary mt-2">{adm:adm_detail_btn_add_field}</button>
         </form>
       </div>
     </div>
 
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox">
-      <div class="collapse-title font-semibold">Working hours</div>
+      <div class="collapse-title font-semibold">{adm:adm_detail_section_working_hours}</div>
       <div class="collapse-content">
-        <p class="text-sm text-base-content/70 mb-2">Weekly hours for this meeting type. When any frame is set for a day, it replaces the global default hours for that day. Each day can hold several time frames; use the copy buttons to mirror one day, then Save.</p>
+        <p class="text-sm text-base-content/70 mb-2">{adm:adm_detail_working_hours_hint}</p>
         <form method="post" action="/me/meeting-types/{type.id}/availability/bulk" data-workplan class="space-y-2">
           <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
           {#for row in week}
@@ -110,9 +111,9 @@
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <strong class="w-24">{display:of(row.day)}</strong>
                 <div class="flex flex-wrap gap-1">
-                  <button type="button" class="btn btn-ghost btn-xs" data-add-frame="{row.day}">+ Frame</button>
-                  <button type="button" class="btn btn-ghost btn-xs" data-copy-all="{row.day}">Copy to all days</button>
-                  <button type="button" class="btn btn-ghost btn-xs" data-copy-weekdays="{row.day}">Copy to weekdays</button>
+                  <button type="button" class="btn btn-ghost btn-xs" data-add-frame="{row.day}">{adm:adm_detail_frame_add}</button>
+                  <button type="button" class="btn btn-ghost btn-xs" data-copy-all="{row.day}">{adm:adm_detail_copy_all}</button>
+                  <button type="button" class="btn btn-ghost btn-xs" data-copy-weekdays="{row.day}">{adm:adm_detail_copy_weekdays}</button>
                 </div>
               </div>
               <div data-frames class="space-y-1">
@@ -120,9 +121,9 @@
                 <div data-frame class="flex items-center gap-2">
                   <input type="hidden" name="frameDay" value="{row.day}">
                   <input class="input input-sm" type="time" name="frameStart" value="{fr.startTime}">
-                  <span class="text-base-content/60">to</span>
+                  <span class="text-base-content/60">{adm:adm_detail_to}</span>
                   <input class="input input-sm" type="time" name="frameEnd" value="{fr.endTime}">
-                  <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="Remove frame">&times;</button>
+                  <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="{adm:adm_detail_remove_frame_aria}">&times;</button>
                 </div>
                 {/for}
               </div>
@@ -134,46 +135,46 @@
             <div data-frame class="flex items-center gap-2">
               <input type="hidden" name="frameDay" value="">
               <input class="input input-sm" type="time" name="frameStart">
-              <span class="text-base-content/60">to</span>
+              <span class="text-base-content/60">{adm:adm_detail_to}</span>
               <input class="input input-sm" type="time" name="frameEnd">
-              <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="Remove frame">&times;</button>
+              <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="{adm:adm_detail_remove_frame_aria}">&times;</button>
             </div>
           </template>
 
-          <button type="submit" class="btn btn-primary mt-2">Save working hours</button>
+          <button type="submit" class="btn btn-primary mt-2">{adm:adm_detail_btn_save_hours}</button>
         </form>
       </div>
     </div>
 
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox">
-      <div class="collapse-title font-semibold">Date overrides</div>
+      <div class="collapse-title font-semibold">{adm:adm_detail_section_overrides}</div>
       <div class="collapse-content">
-        <p class="text-sm text-base-content/70 mb-2">An override REPLACES this date's normal hours for this meeting type. Leave the windows blank to mark the date as a day off.</p>
+        <p class="text-sm text-base-content/70 mb-2">{adm:adm_detail_overrides_hint}</p>
         <div class="space-y-2 mb-3">
         {#for o in overrides}
           <div class="card bg-base-200 border border-base-300"><div class="card-body py-3 gap-1">
             <p><strong>{o.overrideDate}</strong></p>
             {#if o.windows.isEmpty()}
-              <p><span class="badge badge-ghost badge-sm">day off</span> (blocked)</p>
+              <p><span class="badge badge-ghost badge-sm">{adm:adm_detail_badge_day_off}</span> (blocked)</p>
             {#else}
-              <ul class="list-disc ml-5">{#for w in o.windows}<li>{w.startTime} &ndash; {w.endTime}</li>{/for}</ul>
+              <ul class="list-disc ms-5">{#for w in o.windows}<li>{w.startTime} &ndash; {w.endTime}</li>{/for}</ul>
             {/if}
-            <form method="post" action="/me/meeting-types/{type.id}/date-overrides/{o.id}/delete"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+            <form method="post" action="/me/meeting-types/{type.id}/date-overrides/{o.id}/delete"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">{adm:adm_detail_btn_delete}</button></form>
           </div></div>
         {/for}
         </div>
         <form method="post" action="/me/meeting-types/{type.id}/date-overrides" class="fieldset">
           <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-          <label class="label">Date</label>
+          <label class="label">{adm:adm_detail_label_date}</label>
           <input class="input w-full" type="date" name="date" required>
           <fieldset class="fieldset border border-base-300 rounded-box p-3 mt-2">
-            <legend class="fieldset-legend">Bookable windows (leave all blank = day off)</legend>
-            <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
-            <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
-            <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+            <legend class="fieldset-legend">{adm:adm_detail_windows_legend}</legend>
+            <label class="label">{adm:adm_detail_window_1} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> {adm:adm_detail_to} <input class="input" type="time" name="windowEnd"></span></label>
+            <label class="label">{adm:adm_detail_window_2} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> {adm:adm_detail_to} <input class="input" type="time" name="windowEnd"></span></label>
+            <label class="label">{adm:adm_detail_window_3} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> {adm:adm_detail_to} <input class="input" type="time" name="windowEnd"></span></label>
           </fieldset>
-          <button type="submit" class="btn btn-primary mt-2">Save override</button>
+          <button type="submit" class="btn btn-primary mt-2">{adm:adm_detail_btn_save_override}</button>
         </form>
       </div>
     </div>

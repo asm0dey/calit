@@ -2,23 +2,24 @@
 {@java.lang.Long pendingCount}
 {@java.lang.String tzScript}
 {@java.lang.Boolean isAdmin}
-{#include adminBase title="Admin — Dashboard" pendingCount=pendingCount active="dashboard" isAdmin=isAdmin}
-  <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
+{@java.lang.String title}
+{#include adminBase title=title pendingCount=pendingCount active="dashboard" isAdmin=isAdmin}
+  <h1 class="text-2xl font-bold mb-4">{adm:adm_dashboard_h1}</h1>
 
   <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 mb-6">
     <div class="stat">
-      <div class="stat-title">Upcoming bookings</div>
+      <div class="stat-title">{adm:adm_dashboard_upcoming_stat}</div>
       <div class="stat-value text-primary">{upcoming.size()}</div>
     </div>
     <div class="stat">
-      <div class="stat-title">Pending approvals</div>
+      <div class="stat-title">{adm:adm_dashboard_pending_stat}</div>
       <div class="stat-value">{pendingCount}</div>
     </div>
   </div>
 
-  <h2 class="text-xl font-semibold mb-3">Upcoming bookings</h2>
+  <h2 class="text-xl font-semibold mb-3">{adm:adm_dashboard_h2}</h2>
   {#if upcoming.isEmpty()}
-    <div class="alert">No upcoming bookings.</div>
+    <div class="alert">{adm:adm_dashboard_no_upcoming}</div>
   {#else}
     <div class="space-y-2">
     {#for b in upcoming}

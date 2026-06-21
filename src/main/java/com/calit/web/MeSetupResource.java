@@ -1,6 +1,8 @@
 package com.calit.web;
 
 import com.calit.domain.OwnerSettings;
+import com.calit.i18n.ActiveLocale;
+import com.calit.i18n.AdminMsgs;
 import com.calit.user.AppUser;
 import com.calit.user.CurrentOwner;
 import com.calit.user.PasswordHasher;
@@ -29,7 +31,7 @@ public class MeSetupResource {
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance meSetup(
-                boolean mustChangePassword, OwnerSettings settings, List<String> zones, String error);
+                boolean mustChangePassword, OwnerSettings settings, List<String> zones, String error, String title);
     }
 
     @Inject
@@ -37,6 +39,12 @@ public class MeSetupResource {
 
     @Inject
     PasswordHasher passwordHasher;
+
+    @Inject
+    AdminMsgs adminMsgs;
+
+    @Inject
+    ActiveLocale activeLocale;
 
     /** All IANA zone ids, sorted — for the timezone combobox. */
     private static List<String> zoneIds() {
@@ -48,7 +56,8 @@ public class MeSetupResource {
     public TemplateInstance wizard() {
         AppUser me = currentOwner.require(); // 401 if no owner resolved (never NPE on a null id)
         OwnerSettings existing = OwnerSettings.forOwner(me.id); // may be null on first visit
-        return Templates.meSetup(me.mustChangePassword, existing, zoneIds(), null);
+        String title = adminMsgs.forLocale(activeLocale.current()).mesetup_title();
+        return Templates.meSetup(me.mustChangePassword, existing, zoneIds(), null, title);
     }
 
     @POST
@@ -67,7 +76,7 @@ public class MeSetupResource {
             if (newPassword == null || newPassword.isBlank()) {
                 return Response.ok(Templates.meSetup(true,
                         OwnerSettings.forOwner(ownerId), zoneIds(),
-                        "Please choose a new password.")).build();
+                        "Please choose a new password.", adminMsgs.forLocale(activeLocale.current()).mesetup_title())).build();
             }
             me.passwordHash = passwordHasher.hash(newPassword);
             me.mustChangePassword = false;

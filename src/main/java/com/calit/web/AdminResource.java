@@ -12,6 +12,9 @@ import com.calit.domain.MeetingType.LocationType;
 import com.calit.domain.Slugs;
 import com.calit.domain.OwnerSettings;
 import com.calit.google.GoogleCalendar;
+import com.calit.i18n.ActiveLocale;
+import com.calit.i18n.AdminMessages;
+import com.calit.i18n.AdminMsgs;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -41,12 +44,12 @@ public class AdminResource {
 
     @CheckedTemplate
     public static class Templates {
-        public static native TemplateInstance dashboard(List<Booking> upcoming, long pendingCount, String tzScript, boolean isAdmin);
+        public static native TemplateInstance dashboard(List<Booking> upcoming, long pendingCount, String tzScript, boolean isAdmin, String title);
 
         public static native TemplateInstance meetingTypes(
                 List<MeetingType> types, LocationType[] locationTypes,
                 DayOfWeek[] daysOfWeek, Long pendingCount, boolean isAdmin,
-                String username, String baseUrl);
+                String username, String baseUrl, String title);
 
         public static native TemplateInstance meetingTypeDetail(
                 MeetingType type,
@@ -57,22 +60,22 @@ public class AdminResource {
                 LocationType[] locationTypes,
                 BookingField.FieldType[] fieldTypes,
                 DayOfWeek[] daysOfWeek,
-                Long pendingCount, boolean isAdmin);
+                Long pendingCount, boolean isAdmin, String title);
 
         public static native TemplateInstance availability(
                 List<AvailabilityRule> rules, List<WeekRow> week, List<MeetingType> types,
-                DayOfWeek[] daysOfWeek, Long pendingCount, boolean isAdmin);
+                DayOfWeek[] daysOfWeek, Long pendingCount, boolean isAdmin, String title);
 
         public static native TemplateInstance settings(
-                OwnerSettings settings, int reminderLeadMinutes, Long pendingCount, java.util.List<String> zones, boolean isAdmin);
+                OwnerSettings settings, int reminderLeadMinutes, Long pendingCount, java.util.List<String> zones, boolean isAdmin, String title);
 
         public static native TemplateInstance bookingFields(
-                List<BookingField> fields, BookingField.FieldType[] fieldTypes, Long pendingCount, boolean isAdmin);
+                List<BookingField> fields, BookingField.FieldType[] fieldTypes, Long pendingCount, boolean isAdmin, String title);
 
         public static native TemplateInstance dateOverrides(
-                List<DateOverride> overrides, List<MeetingType> types, Long pendingCount, boolean isAdmin);
+                List<DateOverride> overrides, List<MeetingType> types, Long pendingCount, boolean isAdmin, String title);
 
-        public static native TemplateInstance pending(List<Booking> pending, String tzScript, boolean isAdmin);
+        public static native TemplateInstance pending(List<Booking> pending, String tzScript, boolean isAdmin, String title);
     }
 
     @Inject
@@ -87,9 +90,20 @@ public class AdminResource {
     @Inject
     SecurityIdentity identity;
 
+    @Inject
+    AdminMsgs adminMsgs;
+
+    @Inject
+    ActiveLocale activeLocale;
+
     /** True when the logged-in user holds the site-admin role (drives the Users nav link). */
     private boolean isAdmin() {
         return identity.hasRole("admin");
+    }
+
+    /** Returns the localized admin message bundle for the current request's locale. */
+    private AdminMessages m() {
+        return adminMsgs.forLocale(activeLocale.current());
     }
 
     @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440")
@@ -110,7 +124,7 @@ public class AdminResource {
                 "ownerId = ?1 and status = ?2 and startUtc >= ?3 order by startUtc",
                 currentOwner.id(), com.calit.booking.BookingStatus.CONFIRMED, java.time.Instant.now());
         long pendingCount = pendingCount();
-        return Templates.dashboard(upcoming, pendingCount, Layout.TZ_SCRIPT, isAdmin());
+        return Templates.dashboard(upcoming, pendingCount, Layout.TZ_SCRIPT, isAdmin(), m().adm_dashboard_title());
     }
 
     @GET
@@ -119,7 +133,7 @@ public class AdminResource {
     public TemplateInstance meetingTypes() {
         // Pass LocationType.values() so the form can render the location dropdown options.
         return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), allowedLocationTypes(),
-                DayOfWeek.values(), pendingCount(), isAdmin(), currentOwner.require().username, baseUrl); // includes secret
+                DayOfWeek.values(), pendingCount(), isAdmin(), currentOwner.require().username, baseUrl, m().adm_meetingTypes_title()); // includes secret
     }
 
     @POST
@@ -161,7 +175,7 @@ public class AdminResource {
         createInitialWorkingHours(t.id, t.ownerId, form);
         createInitialDateOverride(t.id, t.ownerId, form);
         return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), allowedLocationTypes(),
-                DayOfWeek.values(), pendingCount(), isAdmin(), currentOwner.require().username, baseUrl);
+                DayOfWeek.values(), pendingCount(), isAdmin(), currentOwner.require().username, baseUrl, m().adm_meetingTypes_title());
     }
 
     /**
@@ -219,7 +233,7 @@ public class AdminResource {
         MeetingType t = requireType(id);
         t.active = !t.active;
         return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), allowedLocationTypes(),
-                DayOfWeek.values(), pendingCount(), isAdmin(), currentOwner.require().username, baseUrl);
+                DayOfWeek.values(), pendingCount(), isAdmin(), currentOwner.require().username, baseUrl, m().adm_meetingTypes_title());
     }
 
     @POST
@@ -231,7 +245,7 @@ public class AdminResource {
         requireType(id);
         MeetingType.deleteById(id);
         return Templates.meetingTypes(MeetingType.listForOwner(currentOwner.id()), allowedLocationTypes(),
-                DayOfWeek.values(), pendingCount(), isAdmin(), currentOwner.require().username, baseUrl);
+                DayOfWeek.values(), pendingCount(), isAdmin(), currentOwner.require().username, baseUrl, m().adm_meetingTypes_title());
     }
 
     /** Date overrides scoped to one meeting type, each with its (transient) windows loaded. */
@@ -300,9 +314,10 @@ public class AdminResource {
         List<BookingField> fields = BookingField.list("meetingTypeId = ?1 order by position", id);
         List<AvailabilityRule> rules = AvailabilityRule.list("meetingTypeId = ?1 order by dayOfWeek", id);
         List<DateOverride> overrides = overridesForType(id);
+        String title = m().adm_meetingTypeDetail_title_prefix().stripTrailing() + " " + t.name;
         return Templates.meetingTypeDetail(t, fields, rules, weekRows(rules), overrides,
                 LocationType.values(), BookingField.FieldType.values(),
-                DayOfWeek.values(), pendingCount(), isAdmin());
+                DayOfWeek.values(), pendingCount(), isAdmin(), title);
     }
 
     @GET
@@ -500,7 +515,7 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance availability() {
         return Templates.availability(ownerRules(), weekRows(globalRules()),
-                MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin());
+                MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin(), m().adm_availability_title());
     }
 
     @POST
@@ -525,7 +540,7 @@ public class AdminResource {
         r.endTime = LocalTime.parse(endTime);
         r.persist();
         return Templates.availability(ownerRules(), weekRows(globalRules()),
-                MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin());
+                MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin(), m().adm_availability_title());
     }
 
     @POST
@@ -538,7 +553,7 @@ public class AdminResource {
         AvailabilityRule.delete("ownerId = ?1 and meetingTypeId is null", currentOwner.id());
         persistFrames(currentOwner.id(), null, form);
         return Templates.availability(ownerRules(), weekRows(globalRules()),
-                MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin());
+                MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin(), m().adm_availability_title());
     }
 
     /**
@@ -576,7 +591,7 @@ public class AdminResource {
             AvailabilityRule.deleteById(id);
         }
         return Templates.availability(ownerRules(), weekRows(globalRules()),
-                MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin());
+                MeetingType.listForOwner(currentOwner.id()), DayOfWeek.values(), pendingCount(), isAdmin(), m().adm_availability_title());
     }
 
     /** All IANA zone ids, sorted — for the Settings timezone combobox. */
@@ -589,7 +604,7 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance settings() {
         return Templates.settings(OwnerSettings.forOwner(currentOwner.id()),
-                reminderLeadMinutes, pendingCount(), zoneIds(), isAdmin());
+                reminderLeadMinutes, pendingCount(), zoneIds(), isAdmin(), m().adm_settings_title());
     }
 
     @POST
@@ -611,7 +626,7 @@ public class AdminResource {
         // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
         s.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
         s.persist();
-        return Templates.settings(s, reminderLeadMinutes, pendingCount(), zoneIds(), isAdmin());
+        return Templates.settings(s, reminderLeadMinutes, pendingCount(), zoneIds(), isAdmin(), m().adm_settings_title());
     }
 
     @GET
@@ -619,7 +634,7 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance bookingFields() {
         return Templates.bookingFields(
-                BookingField.globalForOwner(currentOwner.id()), FieldType.values(), pendingCount(), isAdmin());
+                BookingField.globalForOwner(currentOwner.id()), FieldType.values(), pendingCount(), isAdmin(), m().adm_bookingFields_title());
     }
 
     @POST
@@ -642,7 +657,7 @@ public class AdminResource {
         f.meetingTypeId = null; // standalone page manages this owner's global defaults
         f.persist();
         return Templates.bookingFields(
-                BookingField.globalForOwner(currentOwner.id()), FieldType.values(), pendingCount(), isAdmin());
+                BookingField.globalForOwner(currentOwner.id()), FieldType.values(), pendingCount(), isAdmin(), m().adm_bookingFields_title());
     }
 
     @POST
@@ -656,7 +671,7 @@ public class AdminResource {
             BookingField.deleteById(id);
         }
         return Templates.bookingFields(
-                BookingField.globalForOwner(currentOwner.id()), FieldType.values(), pendingCount(), isAdmin());
+                BookingField.globalForOwner(currentOwner.id()), FieldType.values(), pendingCount(), isAdmin(), m().adm_bookingFields_title());
     }
 
     /**
@@ -675,7 +690,7 @@ public class AdminResource {
     public TemplateInstance dateOverrides() {
         return Templates.dateOverrides(
                 overridesWithWindows(),
-                MeetingType.listForOwner(currentOwner.id()), pendingCount(), isAdmin());
+                MeetingType.listForOwner(currentOwner.id()), pendingCount(), isAdmin(), m().adm_dateOverrides_title());
     }
 
     @POST
@@ -708,7 +723,7 @@ public class AdminResource {
             w.persist();
         }
         return Templates.dateOverrides(
-                overridesWithWindows(), MeetingType.listForOwner(currentOwner.id()), pendingCount(), isAdmin());
+                overridesWithWindows(), MeetingType.listForOwner(currentOwner.id()), pendingCount(), isAdmin(), m().adm_dateOverrides_title());
     }
 
     @POST
@@ -723,7 +738,7 @@ public class AdminResource {
             DateOverride.deleteById(id);
         }
         return Templates.dateOverrides(
-                overridesWithWindows(), MeetingType.listForOwner(currentOwner.id()), pendingCount(), isAdmin());
+                overridesWithWindows(), MeetingType.listForOwner(currentOwner.id()), pendingCount(), isAdmin(), m().adm_dateOverrides_title());
     }
 
     @GET
@@ -733,7 +748,7 @@ public class AdminResource {
         List<Booking> pending = Booking.list(
                 "ownerId = ?1 and status = ?2 order by startUtc",
                 currentOwner.id(), com.calit.booking.BookingStatus.PENDING);
-        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin());
+        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin(), m().adm_pending_title());
     }
 
     /** Load a booking owned by the current owner, or 404. */
@@ -755,7 +770,7 @@ public class AdminResource {
         List<Booking> pending = Booking.list(
                 "ownerId = ?1 and status = ?2 order by startUtc",
                 currentOwner.id(), com.calit.booking.BookingStatus.PENDING);
-        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin());
+        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin(), m().adm_pending_title());
     }
 
     @POST
@@ -768,6 +783,6 @@ public class AdminResource {
         List<Booking> pending = Booking.list(
                 "ownerId = ?1 and status = ?2 order by startUtc",
                 currentOwner.id(), com.calit.booking.BookingStatus.PENDING);
-        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin());
+        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin(), m().adm_pending_title());
     }
 }

@@ -2,36 +2,38 @@
 {@com.calit.domain.OwnerSettings settings}
 {@java.util.List<java.lang.String> zones}
 {@java.lang.String error}
+{@java.lang.String title}
+{@java.lang.String lang}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Welcome — set up your account</title>
+  <title>{title}</title>
   <link rel="stylesheet" href="/calit.css">
 </head>
 <body class="min-h-screen flex items-center justify-center bg-base-200 py-8">
   <form method="post" action="/me/setup" class="fieldset bg-base-100 border border-base-300 rounded-box p-6 w-full max-w-md">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-    <h1 class="text-2xl font-bold mb-2">Finish setting up</h1>
-    <p class="text-sm opacity-70 mb-2">A couple of details before you start.</p>
+    <h1 class="text-2xl font-bold mb-2">{adm:mesetup_h1}</h1>
+    <p class="text-sm opacity-70 mb-2">{adm:mesetup_subtitle}</p>
 
     {#if error}
     <div class="alert alert-error mb-2"><span>{error}</span></div>
     {/if}
 
     {#if mustChangePassword}
-    <h2 class="font-semibold mt-2">Choose a password</h2>
-    <label class="label" for="newPassword">New password</label>
+    <h2 class="font-semibold mt-2">{adm:mesetup_h2_password}</h2>
+    <label class="label" for="newPassword">{adm:mesetup_label_new_password}</label>
     <input id="newPassword" class="input w-full" type="password" name="newPassword" required>
     {/if}
 
-    <h2 class="font-semibold mt-3">Your details</h2>
-    <label class="label" for="ownerName">Name</label>
+    <h2 class="font-semibold mt-3">{adm:mesetup_h2_details}</h2>
+    <label class="label" for="ownerName">{adm:mesetup_label_name}</label>
     <input id="ownerName" class="input w-full" type="text" name="ownerName" required value="{#if settings}{settings.ownerName}{/if}">
-    <label class="label" for="ownerEmail">Email</label>
+    <label class="label" for="ownerEmail">{adm:mesetup_label_email}</label>
     <input id="ownerEmail" class="input w-full" type="email" name="ownerEmail" required value="{#if settings}{settings.ownerEmail}{/if}">
-    <label class="label" for="timezone">Timezone</label>
+    <label class="label" for="timezone">{adm:mesetup_label_timezone}</label>
     <select id="timezone" class="select w-full" name="timezone" required>
       {#for z in zones}
         {#if settings}
@@ -42,7 +44,7 @@
       {/for}
     </select>
 
-    <button type="submit" class="btn btn-primary mt-4">Finish</button>
+    <button type="submit" class="btn btn-primary mt-4">{adm:mesetup_btn_finish}</button>
   </form>
 </body>
 </html>

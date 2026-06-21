@@ -2,8 +2,9 @@
 {@java.lang.String error}
 {@java.lang.Boolean isAdmin}
 {@java.lang.Long pendingCount}
-{#include adminBase title="Admin — Users" pendingCount=pendingCount active="users" isAdmin=isAdmin}
-  <h1 class="text-2xl font-bold mb-4">Users</h1>
+{@java.lang.String title}
+{#include adminBase title=title pendingCount=pendingCount active="users" isAdmin=isAdmin}
+  <h1 class="text-2xl font-bold mb-4">{adm:users_h1}</h1>
 
   {#if error}
   <div class="alert alert-error mb-4 max-w-2xl"><span>{error}</span></div>
@@ -11,32 +12,32 @@
 
   <form method="post" action="/me/users" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md mb-6">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-    <h2 class="font-semibold">Create user</h2>
-    <label class="label">Username</label>
+    <h2 class="font-semibold">{adm:users_create_h2}</h2>
+    <label class="label">{adm:users_label_username}</label>
     <input class="input w-full" type="text" name="username" required>
-    <label class="label">Temporary password</label>
+    <label class="label">{adm:users_label_temp_password}</label>
     <input class="input w-full" type="text" name="tempPassword" required>
-    <button type="submit" class="btn btn-primary mt-2">Create user</button>
+    <button type="submit" class="btn btn-primary mt-2">{adm:users_btn_create}</button>
   </form>
 
   <table class="table bg-base-100 border border-base-300 rounded-box max-w-3xl">
-    <thead><tr><th>Username</th><th>Admin</th><th>Status</th><th>Actions</th></tr></thead>
+    <thead><tr><th>{adm:users_th_username}</th><th>{adm:users_th_admin}</th><th>{adm:users_th_status}</th><th>{adm:users_th_actions}</th></tr></thead>
     <tbody>
       {#for u in users}
       <tr>
         <td>{u.username}</td>
-        <td>{#if u.isAdmin}Yes{#else}No{/if}</td>
-        <td>{#if u.enabled}Active{#else}Locked{/if}</td>
+        <td>{#if u.isAdmin}{adm:users_yes}{#else}{adm:users_no}{/if}</td>
+        <td>{#if u.enabled}{adm:users_active}{#else}{adm:users_locked}{/if}</td>
         <td class="flex flex-wrap gap-1">
           {#if u.isAdmin}
-          <form method="post" action="/me/users/{u.id}/revoke-admin"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs">Revoke admin</button></form>
+          <form method="post" action="/me/users/{u.id}/revoke-admin"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs">{adm:users_btn_revoke_admin}</button></form>
           {#else}
-          <form method="post" action="/me/users/{u.id}/grant-admin"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs">Grant admin</button></form>
+          <form method="post" action="/me/users/{u.id}/grant-admin"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs">{adm:users_btn_grant_admin}</button></form>
           {/if}
           {#if u.enabled}
-          <form method="post" action="/me/users/{u.id}/lock"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs btn-warning">Lock</button></form>
+          <form method="post" action="/me/users/{u.id}/lock"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs btn-warning">{adm:users_btn_lock}</button></form>
           {#else}
-          <form method="post" action="/me/users/{u.id}/unlock"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs btn-success">Unlock</button></form>
+          <form method="post" action="/me/users/{u.id}/unlock"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs btn-success">{adm:users_btn_unlock}</button></form>
           {/if}
         </td>
       </tr>

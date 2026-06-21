@@ -2,41 +2,42 @@
 {@java.util.List<com.calit.domain.MeetingType> types}
 {@java.lang.Long pendingCount}
 {@java.lang.Boolean isAdmin}
-{#include adminBase title="Admin — Date overrides" pendingCount=pendingCount active="dateOverrides" isAdmin=isAdmin}
-  <h1 class="text-2xl font-bold mb-2">Date-specific overrides</h1>
-  <p class="text-sm text-base-content/70 mb-4">An override REPLACES that date's normal work hours. Adding windows sets the only bookable times; leaving the windows empty marks the whole date as a day off.</p>
+{@java.lang.String title}
+{#include adminBase title=title pendingCount=pendingCount active="dateOverrides" isAdmin=isAdmin}
+  <h1 class="text-2xl font-bold mb-2">{adm:adm_dateOverrides_h1}</h1>
+  <p class="text-sm text-base-content/70 mb-4">{adm:adm_dateOverrides_hint}</p>
 
   <div class="space-y-2 mb-6">
   {#for o in overrides}
     <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 gap-1">
-      <p><strong>{o.overrideDate}</strong> &middot; {#if o.meetingTypeId}type #{o.meetingTypeId}{#else}global{/if}</p>
+      <p><strong>{o.overrideDate}</strong> &middot; {#if o.meetingTypeId}type #{o.meetingTypeId}{#else}{adm:adm_dateOverrides_global}{/if}</p>
       {#if o.windows.isEmpty()}
-        <p><span class="badge badge-ghost badge-sm">day off</span> (blocked)</p>
+        <p><span class="badge badge-ghost badge-sm">{adm:adm_dateOverrides_badge_day_off}</span> (blocked)</p>
       {#else}
-        <ul class="list-disc ml-5">{#for w in o.windows}<li>{w.startTime} &ndash; {w.endTime}</li>{/for}</ul>
+        <ul class="list-disc ms-5">{#for w in o.windows}<li>{w.startTime} &ndash; {w.endTime}</li>{/for}</ul>
       {/if}
-      <form method="post" action="/me/date-overrides/{o.id}/delete"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+      <form method="post" action="/me/date-overrides/{o.id}/delete"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">{adm:adm_dateOverrides_btn_delete}</button></form>
     </div></div>
   {/for}
   </div>
 
-  <h2 class="text-xl font-semibold mb-3">Add an override</h2>
+  <h2 class="text-xl font-semibold mb-3">{adm:adm_dateOverrides_add_h2}</h2>
   <form method="post" action="/me/date-overrides" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-    <label class="label">Date</label>
+    <label class="label">{adm:adm_dateOverrides_label_date}</label>
     <input class="input w-full" type="date" name="date" required>
-    <label class="label">Applies to</label>
+    <label class="label">{adm:adm_dateOverrides_label_applies_to}</label>
     <select class="select w-full" name="meetingTypeId">
-      <option value="">All (global)</option>
+      <option value="">{adm:adm_dateOverrides_option_all_global}</option>
       {#for t in types}<option value="{t.id}">{t.name}</option>{/for}
     </select>
     {! Up to three window rows; leave all blank for a day off. Repeated names → parallel arrays. !}
     <fieldset class="fieldset border border-base-300 rounded-box p-3 mt-2">
-      <legend class="fieldset-legend">Bookable windows (leave all blank = day off)</legend>
-      <label class="label">Window 1 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
-      <label class="label">Window 2 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
-      <label class="label">Window 3 <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+      <legend class="fieldset-legend">{adm:adm_dateOverrides_windows_legend}</legend>
+      <label class="label">{adm:adm_dateOverrides_window_1} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+      <label class="label">{adm:adm_dateOverrides_window_2} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+      <label class="label">{adm:adm_dateOverrides_window_3} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
     </fieldset>
-    <button type="submit" class="btn btn-primary mt-2">Save override</button>
+    <button type="submit" class="btn btn-primary mt-2">{adm:adm_dateOverrides_btn_save}</button>
   </form>
 {/include}

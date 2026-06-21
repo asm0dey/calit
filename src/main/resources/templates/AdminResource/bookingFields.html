@@ -2,32 +2,33 @@
 {@com.calit.domain.BookingField.FieldType[] fieldTypes}
 {@java.lang.Long pendingCount}
 {@java.lang.Boolean isAdmin}
-{#include adminBase title="Admin — Booking fields" pendingCount=pendingCount active="bookingFields" isAdmin=isAdmin}
-  <h1 class="text-2xl font-bold mb-2">Default booking fields</h1>
-  <p class="text-sm text-base-content/70 mb-4">Full name and email are always asked. These default extra fields apply to every meeting type that has no fields of its own. Set per-type fields from each meeting type's page.</p>
+{@java.lang.String title}
+{#include adminBase title=title pendingCount=pendingCount active="bookingFields" isAdmin=isAdmin}
+  <h1 class="text-2xl font-bold mb-2">{adm:adm_bookingFields_h1}</h1>
+  <p class="text-sm text-base-content/70 mb-4">{adm:adm_bookingFields_hint}</p>
 
   <div class="space-y-2 mb-6">
   {#for f in fields}
     <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 gap-1">
-      <h3 class="font-semibold flex items-center gap-2">{f.label}{#if f.required}<span class="badge badge-primary badge-sm">required</span>{/if}</h3>
-      <p class="text-sm text-base-content/70"><code>{f.fieldKey}</code> &middot; {f.type.display} &middot; position {f.position}</p>
-      <form method="post" action="/me/booking-fields/{f.id}/delete"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">Delete</button></form>
+      <h3 class="font-semibold flex items-center gap-2">{f.label}{#if f.required}<span class="badge badge-primary badge-sm">{adm:adm_bookingFields_badge_required}</span>{/if}</h3>
+      <p class="text-sm text-base-content/70"><code>{f.fieldKey}</code> &middot; {f.type.display} &middot; {adm:adm_bookingFields_position_prefix} {f.position}</p>
+      <form method="post" action="/me/booking-fields/{f.id}/delete"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">{adm:adm_bookingFields_btn_delete}</button></form>
     </div></div>
   {/for}
   </div>
 
-  <h2 class="text-xl font-semibold mb-3">Add a field</h2>
+  <h2 class="text-xl font-semibold mb-3">{adm:adm_bookingFields_add_h2}</h2>
   <form method="post" action="/me/booking-fields" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-    <label class="label">Label</label>
+    <label class="label">{adm:adm_bookingFields_label_label}</label>
     <input class="input w-full" type="text" name="label" required>
-    <label class="label">Field key</label>
+    <label class="label">{adm:adm_bookingFields_label_key}</label>
     <input class="input w-full" type="text" name="fieldKey" required>
-    <label class="label">Type</label>
+    <label class="label">{adm:adm_bookingFields_label_type}</label>
     <select class="select w-full" name="type">{#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}</select>
-    <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="required" class="checkbox checkbox-sm"> Required</label>
-    <label class="label">Position</label>
+    <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="required" class="checkbox checkbox-sm"> {adm:adm_bookingFields_label_required}</label>
+    <label class="label">{adm:adm_bookingFields_label_position}</label>
     <input class="input w-full" type="number" name="position" value="0" required>
-    <button type="submit" class="btn btn-primary mt-2">Add field</button>
+    <button type="submit" class="btn btn-primary mt-2">{adm:adm_bookingFields_btn_add}</button>
   </form>
 {/include}

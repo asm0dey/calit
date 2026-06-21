@@ -2,6 +2,8 @@ package com.calit.web;
 
 import com.calit.booking.Booking;
 import com.calit.booking.BookingStatus;
+import com.calit.i18n.ActiveLocale;
+import com.calit.i18n.AdminMsgs;
 import com.calit.user.AppUser;
 import com.calit.user.CurrentOwner;
 import com.calit.user.PasswordHasher;
@@ -31,7 +33,7 @@ public class UsersResource {
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance users(List<AppUser> users, String error, boolean isAdmin,
-                                                    Long pendingCount);
+                                                    Long pendingCount, String title);
     }
 
     @Inject
@@ -49,6 +51,12 @@ public class UsersResource {
     @Inject
     com.calit.audit.AuditLog audit;
 
+    @Inject
+    AdminMsgs adminMsgs;
+
+    @Inject
+    ActiveLocale activeLocale;
+
     /** This admin's own pending-approval count — drives the shared nav badge (consistent with other /me pages). */
     private long pendingCount() {
         return Booking.count("ownerId = ?1 and status = ?2", currentOwner.id(), BookingStatus.PENDING);
@@ -56,7 +64,8 @@ public class UsersResource {
 
     /** All users, oldest first. Page is admin-only, so isAdmin is always true here. */
     private TemplateInstance render(String error) {
-        return Templates.users(AppUser.list("order by createdAt asc"), error, true, pendingCount());
+        return Templates.users(AppUser.list("order by createdAt asc"), error, true, pendingCount(),
+                adminMsgs.forLocale(activeLocale.current()).adm_users_title());
     }
 
     @GET

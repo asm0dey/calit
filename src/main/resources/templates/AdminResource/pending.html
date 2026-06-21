@@ -1,10 +1,11 @@
 {@java.util.List<com.calit.booking.Booking> pending}
 {@java.lang.String tzScript}
 {@java.lang.Boolean isAdmin}
-{#include adminBase title="Admin — Pending approvals" pendingCount=pending.size() active="pending" isAdmin=isAdmin}
-  <h1 class="text-2xl font-bold mb-4">Pending approvals</h1>
+{@java.lang.String title}
+{#include adminBase title=title pendingCount=pending.size() active="pending" isAdmin=isAdmin}
+  <h1 class="text-2xl font-bold mb-4">{adm:adm_pending_h1}</h1>
   {#if pending.isEmpty()}
-    <div class="alert">No requests are awaiting approval.</div>
+    <div class="alert">{adm:adm_pending_empty}</div>
   {#else}
     <div class="space-y-2">
     {#for b in pending}
@@ -12,8 +13,8 @@
         <p><strong>{b.inviteeName}</strong> ({b.inviteeEmail})</p>
         <p class="text-sm text-base-content/70"><time data-utc="{b.startUtc}">{b.startUtc} UTC</time></p>
         <div class="flex gap-2">
-          <form method="post" action="/me/bookings/{b.id}/approve"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-primary btn-sm">Approve</button></form>
-          <form method="post" action="/me/bookings/{b.id}/decline"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">Decline</button></form>
+          <form method="post" action="/me/bookings/{b.id}/approve"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-primary btn-sm">{adm:adm_pending_btn_approve}</button></form>
+          <form method="post" action="/me/bookings/{b.id}/decline"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">{adm:adm_pending_btn_decline}</button></form>
         </div>
       </div></div>
     {/for}

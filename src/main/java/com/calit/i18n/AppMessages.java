@@ -19,9 +19,6 @@ public interface AppMessages {
     @Message("Language")
     String common_language();
 
-    @Message("Language")
-    String adm_settings_language();
-
     // ---- Landing page (index.html at /) ----
 
     @Message("calit — scheduling you own")
