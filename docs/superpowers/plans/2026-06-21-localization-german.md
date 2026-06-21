@@ -1,6 +1,8 @@
 # Localization (German) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+>
+> **Flat dispatch only (no nested subagents).** The main thread is the sole orchestrator: main → worker, one level deep. Every implementer/reviewer dispatch MUST include the line **"Do the work yourself. Do NOT spawn or dispatch subagents."** Prefer a worker agent type whose tool list excludes the Agent/Task tool so nesting is physically impossible. Keep each dispatched task small enough that a worker is not tempted to decompose-and-delegate; if a task lists many files, split it (see Task 9b) rather than handing the whole group to one worker that might fan out.
 
 **Goal:** Add multi-language support to calit with German as the first non-default language across public booking pages, owner admin UI, auth/bootstrap pages, and all emails; English stays default + per-key fallback.
 
@@ -973,9 +975,21 @@ Commit: `feat(i18n): translate public booking flow + base layouts`.
 
 ### Task 9b: owner admin UI
 
-**Files (modify):** `templates/AdminResource/*.html` (dashboard, meetingTypes, meetingTypeDetail, availability, dateOverrides, bookingFields, pending, settings), `templates/MeSetupResource/meSetup.html`, `templates/GooglePageResource/google.html`, `templates/UsersResource/users.html`.
-**Test:** `src/test/java/com/calit/web/AdminI18nTest.java` — set owner locale to `de` (via Task 6 flow or direct `OwnerSettings` write in a `@Transactional` setup), assert `/me/...` renders German regardless of cookie.
-Commit: `feat(i18n): translate owner admin UI`.
+The owner admin surface is 11 templates — too large for a single worker dispatch (a big multi-file scope tempts a worker to decompose-and-delegate, producing nested subagents). Split into three sub-tasks, each its own dispatch + commit. Dispatch each to a worker that cannot spawn subagents; include "Do the work yourself. Do NOT spawn or dispatch subagents." in the prompt.
+
+**Shared test:** `src/test/java/com/calit/web/AdminI18nTest.java` — set owner locale to `de` (via Task 6 flow or direct `OwnerSettings` write in a `@Transactional` setup), assert `/me/...` renders German regardless of cookie. Add/extend the relevant assertion in whichever sub-task touches the asserted page; the file is created in 9b-1.
+
+#### Task 9b-1: admin dashboard + meeting types
+**Files (modify):** `templates/AdminResource/dashboard.html`, `templates/AdminResource/meetingTypes.html`, `templates/AdminResource/meetingTypeDetail.html`, plus `AppMessages` + `msg_de.properties`. Create `AdminI18nTest` with a dashboard German assertion.
+Commit: `feat(i18n): translate admin dashboard and meeting types`.
+
+#### Task 9b-2: availability + booking config
+**Files (modify):** `templates/AdminResource/availability.html`, `templates/AdminResource/dateOverrides.html`, `templates/AdminResource/bookingFields.html`, `templates/AdminResource/pending.html`, `templates/AdminResource/settings.html`.
+Commit: `feat(i18n): translate admin availability and booking config`.
+
+#### Task 9b-3: setup wizard + integrations + users admin
+**Files (modify):** `templates/MeSetupResource/meSetup.html`, `templates/GooglePageResource/google.html`, `templates/UsersResource/users.html`.
+Commit: `feat(i18n): translate admin setup, google, and users pages`.
 
 ### Task 9c: auth / bootstrap
 
