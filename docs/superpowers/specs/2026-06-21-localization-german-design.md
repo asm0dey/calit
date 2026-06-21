@@ -95,21 +95,32 @@ persisted:
 
 ## Date / time localization
 
-Times are formatted **server-side** (no client-side `Intl`/`toLocaleString` in
-templates — verified). So localization is purely a matter of passing the active
-`Locale` into the formatters:
+Dates/times appear in **two** places — both need the locale:
 
-- `EmailService` currently hardcodes
+**Server-side formatters:**
+- `EmailService` hardcodes
   `DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm", Locale.ENGLISH)`.
-  Replace the hardcoded `Locale.ENGLISH` with the active locale (owner or
-  booking locale as appropriate). The literal `'at'` becomes a translated
-  connector (`msg` key) or a locale-aware pattern.
-- Any view-model / resource code that formats dates for display (e.g. weekday /
-  month names in availability, calendar, slot rendering — `WeekRow`,
-  `CalendarRow`, slot views) must format with the active `Locale` so German
-  weekday/month names appear.
-- A small shared helper that takes `(Locale, ...)` and returns the formatted
-  string keeps this DRY; exact shape decided during implementation.
+  Replace `Locale.ENGLISH` with the active locale (booking locale for invitee
+  copy, owner locale for owner copy). The literal `'at'` becomes a translated
+  connector (`msg` key per locale).
+- Any view-model / resource code formatting dates for display (weekday/month
+  names in availability, calendar, slot rendering) formats with the active
+  `Locale`.
+
+**Client-side JS (`com.calit.web.Layout`):** the invitee booking page renders
+times in the browser, so these are NOT server-formatted:
+- `TZ_SCRIPT` calls `toLocaleString([], opts)` — the empty `[]` means "browser
+  default locale". Change to read the page language and pass it:
+  `toLocaleString(document.documentElement.lang || [], opts)`. Since `<html
+  lang>` is set from the active locale, times match the chosen language.
+- `CALENDAR_SCRIPT` hardcodes English `MONTHS` and `DOW` arrays. Replace the
+  hardcoded arrays by deriving names from the page language via `Intl`
+  (`new Intl.DateTimeFormat(lang, {month:'long'}).format(...)`,
+  `{weekday:'short'}`), reading `lang` from `document.documentElement.lang`.
+  This both localizes AND deletes the hardcoded arrays (net simplification).
+
+No new server round-trip or data attributes are needed — `<html lang>` already
+carries the locale to the client.
 
 ## `<html lang>` attribute
 
