@@ -34,9 +34,9 @@
     {! Up to three window rows; leave all blank for a day off. Repeated names → parallel arrays. !}
     <fieldset class="fieldset border border-base-300 rounded-box p-3 mt-2">
       <legend class="fieldset-legend">{adm:adm_dateOverrides_windows_legend}</legend>
-      <label class="label">{adm:adm_dateOverrides_window_1} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
-      <label class="label">{adm:adm_dateOverrides_window_2} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
-      <label class="label">{adm:adm_dateOverrides_window_3} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> to <input class="input" type="time" name="windowEnd"></span></label>
+      <label class="label">{adm:adm_dateOverrides_window_1} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> {adm:adm_dateOverrides_to} <input class="input" type="time" name="windowEnd"></span></label>
+      <label class="label">{adm:adm_dateOverrides_window_2} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> {adm:adm_dateOverrides_to} <input class="input" type="time" name="windowEnd"></span></label>
+      <label class="label">{adm:adm_dateOverrides_window_3} <span class="flex items-center gap-2"><input class="input" type="time" name="windowStart"> {adm:adm_dateOverrides_to} <input class="input" type="time" name="windowEnd"></span></label>
     </fieldset>
     <button type="submit" class="btn btn-primary mt-2">{adm:adm_dateOverrides_btn_save}</button>
   </form>

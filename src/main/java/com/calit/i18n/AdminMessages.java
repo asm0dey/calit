@@ -439,6 +439,9 @@ public interface AdminMessages {
     @Message("Save override")
     String adm_dateOverrides_btn_save();
 
+    @Message("to")
+    String adm_dateOverrides_to();
+
     // ---- Booking fields ----
 
     @Message("Default booking fields")
@@ -651,4 +654,7 @@ public interface AdminMessages {
 
     @Message("Finish")
     String mesetup_btn_finish();
+
+    @Message("Please choose a new password.")
+    String mesetup_choose_new_password();
 }

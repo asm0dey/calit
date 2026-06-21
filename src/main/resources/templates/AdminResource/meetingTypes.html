@@ -203,7 +203,7 @@
         var url = btn.getAttribute('data-copy-link');
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(url).then(
-            function () { showToast('Link copied', true); },
+            function () { showToast(msg.textContent, true); },
             function () { showToast('Copy failed — ' + url, false); }
           );
         } else {

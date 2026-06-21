@@ -76,7 +76,7 @@ public class MeSetupResource {
             if (newPassword == null || newPassword.isBlank()) {
                 return Response.ok(Templates.meSetup(true,
                         OwnerSettings.forOwner(ownerId), zoneIds(),
-                        "Please choose a new password.", adminMsgs.forLocale(activeLocale.current()).mesetup_title())).build();
+                        adminMsgs.forLocale(activeLocale.current()).mesetup_choose_new_password(), adminMsgs.forLocale(activeLocale.current()).mesetup_title())).build();
             }
             me.passwordHash = passwordHasher.hash(newPassword);
             me.mustChangePassword = false;

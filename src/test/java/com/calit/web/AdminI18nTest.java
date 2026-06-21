@@ -104,4 +104,28 @@ class AdminI18nTest {
                 .statusCode(200)
                 .body(containsString("<title>Admin — Dashboard</title>"));
     }
+
+    @Test
+    void dateOverridesPageContainsBisConnector() {
+        given()
+                .cookie("calit_lang", "en")
+                .when().get("/me/date-overrides")
+                .then()
+                .statusCode(200)
+                .body(containsString("lang=\"de\""))
+                .body(containsString("bis"));
+    }
+
+    @Test
+    void meetingTypesPageContainsCopiedLinkSpan() {
+        // The server-rendered span with the translated "Link kopiert" text must be present
+        // so that the JS toast reads its localized textContent rather than hardcoded English.
+        given()
+                .cookie("calit_lang", "en")
+                .when().get("/me/meeting-types")
+                .then()
+                .statusCode(200)
+                .body(containsString("lang=\"de\""))
+                .body(containsString("Link kopiert"));
+    }
 }
