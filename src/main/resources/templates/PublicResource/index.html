@@ -112,7 +112,7 @@
   .lp-frame .bar i:nth-child(2) { background: #f3c150; }
   .lp-frame .bar i:nth-child(3) { background: #62c264; }
   .lp-frame .bar .url {
-    margin-left: 10px; font-family: "JetBrains Mono", monospace; font-size: .72rem; color: #9a958c;
+    margin-inline-start: 10px; font-family: "JetBrains Mono", monospace; font-size: .72rem; color: #9a958c;
     background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 3px 12px; max-width: 60%;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
@@ -206,35 +206,34 @@
   <header class="lp-wrap lp-nav lp-rise lp-d1">
     <a class="lp-brand" href="/"><span class="chip">c</span> calit</a>
     <nav class="lp-nav-right">
-      <a class="lp-navlink hide-sm" href="#gallery">Product</a>
-      <a class="lp-navlink hide-sm" href="#features">Features</a>
+      <a class="lp-navlink hide-sm" href="#gallery">{msg:pub_landing_nav_product}</a>
+      <a class="lp-navlink hide-sm" href="#features">{msg:pub_landing_nav_features}</a>
       {#if authenticated}
-        <span class="lp-user hide-sm">Signed in as <b>{username}</b></span>
-        <a class="lp-navlink" href="/me/settings">Settings</a>
-        <a class="lp-navlink" href="/logout">Log out</a>
-        <a class="lp-btn lp-btn-primary" href="/me">Your dashboard <span class="arr">&rarr;</span></a>
+        <span class="lp-user hide-sm">{msg:pub_landing_signed_in_as} <b>{username}</b></span>
+        <a class="lp-navlink" href="/me/settings">{msg:pub_landing_nav_settings}</a>
+        <a class="lp-navlink" href="/logout">{msg:pub_landing_nav_logout}</a>
+        <a class="lp-btn lp-btn-primary" href="/me">{msg:pub_landing_nav_dashboard} <span class="arr">&rarr;</span></a>
       {#else}
-        <a class="lp-navlink" href="/login">Sign in</a>
-        <a class="lp-btn lp-btn-primary" href="/login">Open your instance <span class="arr">&rarr;</span></a>
+        <a class="lp-navlink" href="/login">{msg:pub_landing_nav_signin}</a>
+        <a class="lp-btn lp-btn-primary" href="/login">{msg:pub_landing_nav_open_instance} <span class="arr">&rarr;</span></a>
       {/if}
     </nav>
   </header>
 
   <section class="lp-wrap lp-hero">
-    <span class="lp-eyebrow lp-rise lp-d1">Self-hosted &middot; Open source &middot; Multi-user</span>
-    <h1 class="lp-rise lp-d2">The scheduling app you <em>actually own</em>.</h1>
-    <p class="lp-sub lp-rise lp-d3">calit gives every user their own scheduling space &mdash; a personal booking page, availability,
-      and Google Calendar &mdash; running entirely on <strong>your</strong> server. No SaaS, no per-seat pricing, no lock-in.</p>
+    <span class="lp-eyebrow lp-rise lp-d1">{msg:pub_landing_eyebrow}</span>
+    <h1 class="lp-rise lp-d2">{msg:pub_landing_hero_h1_pre} <em>{msg:pub_landing_hero_h1_em}</em>.</h1>
+    <p class="lp-sub lp-rise lp-d3">{msg:pub_landing_hero_sub_pre} <strong>{msg:pub_landing_hero_sub_strong}</strong> {msg:pub_landing_hero_sub_post}</p>
     <div class="lp-cta lp-rise lp-d3">
       {#if authenticated}
-        <a class="lp-btn lp-btn-primary" href="/me">Go to your dashboard <span class="arr">&rarr;</span></a>
+        <a class="lp-btn lp-btn-primary" href="/me">{msg:pub_landing_cta_dashboard} <span class="arr">&rarr;</span></a>
       {#else}
-        <a class="lp-btn lp-btn-primary" href="/login">Sign in <span class="arr">&rarr;</span></a>
+        <a class="lp-btn lp-btn-primary" href="/login">{msg:pub_landing_nav_signin} <span class="arr">&rarr;</span></a>
       {/if}
-      <a class="lp-btn lp-btn-ghost" href="#gallery">See it in action</a>
+      <a class="lp-btn lp-btn-ghost" href="#gallery">{msg:pub_landing_cta_gallery}</a>
     </div>
     <div class="lp-trust lp-rise lp-d4">
-      <span>argon2id auth</span><span>Google Meet links</span><span>approval flows</span><span>one binary + Postgres</span>
+      <span>{msg:pub_landing_trust_argon}</span><span>{msg:pub_landing_trust_meet}</span><span>{msg:pub_landing_trust_approvals}</span><span>{msg:pub_landing_trust_binary}</span>
     </div>
 
     <div class="lp-shot-wrap lp-rise lp-d5">
@@ -248,10 +247,9 @@
   <section id="gallery" class="lp-dark">
     <div class="lp-wrap">
       <div class="lp-head">
-        <span class="lp-eyebrow">A look inside</span>
-        <h2>One app. Three surfaces.</h2>
-        <p class="lp-lede">A public page for invitees, a personal landing for every user, and an owner console to run it all &mdash;
-          each isolated to its owner, served from the same self-hosted instance.</p>
+        <span class="lp-eyebrow">{msg:pub_landing_gallery_eyebrow}</span>
+        <h2>{msg:pub_landing_gallery_h2}</h2>
+        <p class="lp-lede">{msg:pub_landing_gallery_lede}</p>
       </div>
 
       <div class="lp-gallery">
@@ -260,7 +258,7 @@
             <div class="bar"><i></i><i></i><i></i><span class="url">yourteam.com/me</span></div>
             <img src="/img/product-dashboard.png" loading="lazy" alt="calit owner dashboard showing upcoming bookings and a side navigation" width="1440" height="960">
           </div>
-          <div class="lp-cap"><b>The owner console</b><span>Manage meeting types, availability, booking fields, Google sync, and &mdash; for admins &mdash; the whole team's users at <code>/me</code>.</span></div>
+          <div class="lp-cap"><b>{msg:pub_landing_cap_console_title}</b><span>{msg:pub_landing_cap_console_desc_pre} <code>/me</code>.</span></div>
         </div>
         <div class="lp-stackcol">
           <div class="lp-card">
@@ -268,14 +266,14 @@
               <div class="bar"><i></i><i></i><i></i><span class="url">yourteam.com/alex</span></div>
               <img src="/img/product-landing.png" loading="lazy" alt="A user's public landing page listing their bookable meeting types" width="1440" height="960">
             </div>
-            <div class="lp-cap"><b>Each user's landing</b><span>Every user gets <code>/their-name</code> &mdash; their own active meeting types, nobody else's.</span></div>
+            <div class="lp-cap"><b>{msg:pub_landing_cap_landing_title}</b><span>{msg:pub_landing_cap_landing_pre} <code>/their-name</code> — {msg:pub_landing_cap_landing_post}</span></div>
           </div>
           <div class="lp-card">
             <div class="lp-frame">
               <div class="bar"><i></i><i></i><i></i><span class="url">&hellip;/intro-call &middot; booked</span></div>
               <img src="/img/product-confirmation.png" loading="lazy" alt="Booking confirmation screen shown to the invitee after they pick a time" width="1440" height="960">
             </div>
-            <div class="lp-cap"><b>Confirmed in a tap</b><span>Invitees pick a slot in their own timezone; both sides get an email and a Meet link.</span></div>
+            <div class="lp-cap"><b>{msg:pub_landing_cap_confirmed_title}</b><span>{msg:pub_landing_cap_confirmed_desc}</span></div>
           </div>
         </div>
       </div>
@@ -283,40 +281,40 @@
   </section>
 
   <section id="features" class="lp-wrap lp-feat">
-    <span class="lp-eyebrow">Why calit</span>
-    <h2>Built to be run, not rented.</h2>
-    <p class="lp-lede">Everything you expect from a scheduling tool &mdash; plus true multi-tenancy and the peace of mind of owning your data.</p>
+    <span class="lp-eyebrow">{msg:pub_landing_features_eyebrow}</span>
+    <h2>{msg:pub_landing_features_h2}</h2>
+    <p class="lp-lede">{msg:pub_landing_features_lede}</p>
 
     <div class="lp-grid">
-      <div class="lp-cell"><div class="k">Isolation</div><h3>Per-user tenancy</h3><p>Every meeting type, booking, and setting carries an owner. One user can never see or touch another's data.</p></div>
-      <div class="lp-cell"><div class="k">Calendar</div><h3>Google sync &amp; Meet</h3><p>Connect each user's own Google account. Bookings create events and auto-generate a Meet link &mdash; or run fully degraded.</p></div>
-      <div class="lp-cell"><div class="k">Control</div><h3>Approvals &amp; limits</h3><p>Hold meetings as pending until approved, with per-type buffers, minimum notice, and a booking horizon.</p></div>
-      <div class="lp-cell"><div class="k">Trust</div><h3>Real authentication</h3><p>Passwords hashed with argon2id, stateless encrypted cookies, instant lockout &mdash; no embedded admin password.</p></div>
-      <div class="lp-cell"><div class="k">Defense</div><h3>Abuse protection</h3><p>Cloudflare Turnstile, a honeypot, and a per-email daily cap guard every public booking form out of the box.</p></div>
-      <div class="lp-cell"><div class="k">Ops</div><h3>One binary + Postgres</h3><p>A single Quarkus app and a database. Self-host it anywhere, invite your team, done. Opt-in public sign-up too.</p></div>
+      <div class="lp-cell"><div class="k">{msg:pub_landing_feat_isolation_k}</div><h3>{msg:pub_landing_feat_isolation_h3}</h3><p>{msg:pub_landing_feat_isolation_p}</p></div>
+      <div class="lp-cell"><div class="k">{msg:pub_landing_feat_calendar_k}</div><h3>{msg:pub_landing_feat_calendar_h3}</h3><p>{msg:pub_landing_feat_calendar_p}</p></div>
+      <div class="lp-cell"><div class="k">{msg:pub_landing_feat_control_k}</div><h3>{msg:pub_landing_feat_control_h3}</h3><p>{msg:pub_landing_feat_control_p}</p></div>
+      <div class="lp-cell"><div class="k">{msg:pub_landing_feat_trust_k}</div><h3>{msg:pub_landing_feat_trust_h3}</h3><p>{msg:pub_landing_feat_trust_p}</p></div>
+      <div class="lp-cell"><div class="k">{msg:pub_landing_feat_defense_k}</div><h3>{msg:pub_landing_feat_defense_h3}</h3><p>{msg:pub_landing_feat_defense_p}</p></div>
+      <div class="lp-cell"><div class="k">{msg:pub_landing_feat_ops_k}</div><h3>{msg:pub_landing_feat_ops_h3}</h3><p>{msg:pub_landing_feat_ops_p}</p></div>
     </div>
   </section>
 
   <section class="lp-wrap lp-close">
     <div class="panel">
-      <span class="lp-eyebrow" style="justify-content:center;color:var(--indigo-3)">Get started</span>
-      <h2>Spin up your own in minutes.</h2>
-      <p>Point it at a Postgres database and open the site &mdash; the first visit creates your admin account. No license, no waitlist, no seat math.</p>
+      <span class="lp-eyebrow" style="justify-content:center;color:var(--indigo-3)">{msg:pub_landing_close_eyebrow}</span>
+      <h2>{msg:pub_landing_close_h2}</h2>
+      <p>{msg:pub_landing_close_p}</p>
       <div class="codeline"><span class="p">$</span> docker compose up <span class="p">&middot;</span> visit <span style="color:var(--paper-on-dark)">/setup</span></div>
       <div class="lp-cta" style="justify-content:center;margin-top:28px">
         {#if authenticated}
-          <a class="lp-btn lp-btn-primary" href="/me">Open your dashboard <span class="arr">&rarr;</span></a>
+          <a class="lp-btn lp-btn-primary" href="/me">{msg:pub_landing_close_cta_dashboard} <span class="arr">&rarr;</span></a>
         {#else}
-          <a class="lp-btn lp-btn-primary" href="/login">Sign in <span class="arr">&rarr;</span></a>
+          <a class="lp-btn lp-btn-primary" href="/login">{msg:pub_landing_nav_signin} <span class="arr">&rarr;</span></a>
         {/if}
-        <a class="lp-btn lp-btn-ghost" style="color:var(--paper-on-dark);border-color:rgba(255,255,255,.18)" href="#features">Explore features</a>
+        <a class="lp-btn lp-btn-ghost" style="color:var(--paper-on-dark);border-color:rgba(255,255,255,.18)" href="#features">{msg:pub_landing_close_cta_features}</a>
       </div>
     </div>
   </section>
 
   <footer class="lp-wrap lp-foot">
     <a class="lp-brand" href="/"><span class="chip">c</span> calit</a>
-    <span class="meta">Self-hosted scheduling &middot; your data never leaves your server</span>
+    <span class="meta">{msg:pub_landing_footer_meta}</span>
   </footer>
 </div>
 {/include}

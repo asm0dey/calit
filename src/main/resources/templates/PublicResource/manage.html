@@ -8,16 +8,16 @@
 {#include base title="Manage booking"}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-2xl mx-auto">
     <div class="card-body">
-      <h1 class="text-2xl font-bold">Manage your booking</h1>
+      <h1 class="text-2xl font-bold">{msg:pub_manage_h1}</h1>
       {tzBar.raw}
       <div class="rounded-box bg-base-200 border border-base-300 p-4 my-4 space-y-1">
-        <p><strong>Currently:</strong> <time data-utc="{currentUtcIso}">{currentLabel}</time></p>
-        <p><strong>For:</strong> {booking.inviteeName} ({booking.inviteeEmail})</p>
+        <p><strong>{msg:pub_manage_currently_label}</strong> <time data-utc="{currentUtcIso}">{currentLabel}</time></p>
+        <p><strong>{msg:pub_manage_for_label}</strong> {booking.inviteeName} ({booking.inviteeEmail})</p>
       </div>
 
-      <h2 class="text-lg font-semibold mt-2 mb-3">Reschedule</h2>
+      <h2 class="text-lg font-semibold mt-2 mb-3">{msg:pub_manage_h2_reschedule}</h2>
       {#if days.isEmpty()}
-        <p>No alternative times available.</p>
+        <p>{msg:pub_manage_no_alternatives}</p>
       {#else}
         <form method="post" action="/booking/{booking.manageToken}/reschedule" class="space-y-4">
           <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
@@ -37,15 +37,15 @@
               {/for}
             </div>
           </div>
-          <button type="submit" class="btn btn-primary">Reschedule to selected time</button>
+          <button type="submit" class="btn btn-primary">{msg:pub_manage_btn_reschedule}</button>
         </form>
       {/if}
 
       <div class="divider"></div>
-      <h2 class="text-lg font-semibold mb-3">Cancel</h2>
+      <h2 class="text-lg font-semibold mb-3">{msg:pub_manage_h2_cancel}</h2>
       <form method="post" action="/booking/{booking.manageToken}/cancel">
         <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-        <button type="submit" class="btn btn-error btn-outline">Cancel this booking</button>
+        <button type="submit" class="btn btn-error btn-outline">{msg:pub_manage_btn_cancel}</button>
       </form>
       {tzScript.raw}
       {calScript.raw}

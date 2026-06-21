@@ -47,8 +47,10 @@ class BookingSettingsGuardTest {
     @Test
     void bookPageShowsFriendlyMessageWhenSettingsMissing() {
         removeSettingsAndSeedType();
+        // "isn't ready yet" renders as "isn&#39;t ready yet" in escaped HTML — match the stable part.
         given().when().get("/bob/guard-type")
             .then().statusCode(200)
-                .body(containsString("isn't ready yet"));
+                .body(containsString("booking page"))
+                .body(containsString("ready yet"));
     }
 }

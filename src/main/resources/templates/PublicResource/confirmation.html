@@ -10,25 +10,24 @@
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-xl mx-auto">
     <div class="card-body">
       {#if pending}
-        <h1 class="text-2xl font-bold">Request sent — pending owner approval</h1>
-        <p class="text-base-content/70">Thanks, {booking.inviteeName}. Your requested time is held while {type.name}'s owner reviews it.
-           You'll get an email once it's approved or declined.</p>
+        <h1 class="text-2xl font-bold">{msg:pub_conf_h1_pending}</h1>
+        <p class="text-base-content/70">{msg:pub_conf_pending_desc(booking.inviteeName, type.name)}</p>
       {#else}
-        <h1 class="text-2xl font-bold">You're booked, {booking.inviteeName}!</h1>
+        <h1 class="text-2xl font-bold">{msg:pub_conf_h1_confirmed(booking.inviteeName)}</h1>
       {/if}
       {tzBar.raw}
       <div class="rounded-box bg-base-200 border border-base-300 p-4 my-4 space-y-1">
-        <p><strong>When:</strong> <time data-utc="{startUtcIso}">{whenLabel}</time></p>
+        <p><strong>{msg:pub_conf_when_label}</strong> <time data-utc="{startUtcIso}">{whenLabel}</time></p>
         {#if !pending}
           {#if type.locationType.name == 'GOOGLE_MEET'}
-            <p><strong>Google Meet:</strong> <a class="link link-primary" href="{location}">{location}</a></p>
+            <p><strong>{msg:pub_conf_meet_label}</strong> <a class="link link-primary" href="{location}">{location}</a></p>
           {#else}
-            <p><strong>Location:</strong> {location}</p>
+            <p><strong>{msg:pub_conf_location_label}</strong> {location}</p>
           {/if}
         {/if}
       </div>
-      <p>{#if pending}A request confirmation{#else}A confirmation{/if} email is on its way to {booking.inviteeEmail}.</p>
-      <p><a class="link link-hover" href="/booking/{booking.manageToken}/manage">Need to change or cancel this booking?</a></p>
+      <p>{#if pending}{msg:pub_conf_pending_email(booking.inviteeEmail)}{#else}{msg:pub_conf_confirmed_email(booking.inviteeEmail)}{/if}</p>
+      <p><a class="link link-hover" href="/booking/{booking.manageToken}/manage">{msg:pub_conf_manage_link}</a></p>
       {tzScript.raw}
     </div>
   </div>

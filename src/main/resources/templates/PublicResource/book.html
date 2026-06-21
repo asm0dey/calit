@@ -17,12 +17,12 @@
     {/if}
   {/head}
 
-  <p class="mb-3"><a class="link link-hover text-sm" href="/{user}">&larr; All meeting types</a></p>
+  <p class="mb-3"><a class="link link-hover text-sm" href="/{user}">{msg:pub_book_back}</a></p>
 
   <div class="card bg-base-100 border border-base-300 shadow-sm">
     <div class="card-body">
       <div class="grid gap-6 md:grid-cols-[minmax(13rem,17rem)_1fr] md:gap-8">
-        <div class="md:border-r md:border-base-300 md:pr-8">
+        <div class="md:border-e md:border-base-300 md:pe-8">
           <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-content mb-3">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
           </span>
@@ -34,20 +34,20 @@
           </p>
           {#if type.description}<p class="text-sm text-base-content/70 mb-3">{type.description}</p>{/if}
           {#if type.locationType.name == 'GOOGLE_MEET'}
-            {#if googleConnected}<p class="text-sm mb-2"><strong>Location:</strong> Google Meet — link sent after booking</p>{/if}
+            {#if googleConnected}<p class="text-sm mb-2"><strong>{msg:pub_book_location_label}</strong> {msg:pub_book_meet_hint}</p>{/if}
           {#else}
-            <p class="text-sm mb-2"><strong>Location:</strong> {type.locationDetail}</p>
+            <p class="text-sm mb-2"><strong>{msg:pub_book_location_label}</strong> {type.locationDetail}</p>
           {/if}
           {#if type.requiresApproval}
-            <p class="text-sm text-base-content/70">This meeting requires owner approval — you'll send a request and be notified once it's approved.</p>
+            <p class="text-sm text-base-content/70">{msg:pub_book_approval_hint}</p>
           {/if}
         </div>
 
         <div>
-          <h2 class="text-lg font-semibold mb-4">Select a Date &amp; Time</h2>
+          <h2 class="text-lg font-semibold mb-4">{msg:pub_book_select_datetime}</h2>
           {#if error}<div role="alert" class="alert alert-error mb-4">{error}</div>{/if}
           {#if days.isEmpty()}
-            <p>No available times right now. Please check back later.</p>
+            <p>{msg:pub_book_no_times}</p>
           {#else}
             {tzBar.raw}
             <form method="post" action="/{user}/{type.slug}" class="space-y-4">
@@ -70,9 +70,9 @@
               </div>
 
               <fieldset class="fieldset">
-                <label class="label" for="inviteeName">Your name</label>
+                <label class="label" for="inviteeName">{msg:pub_book_your_name}</label>
                 <input id="inviteeName" class="input w-full" type="text" name="inviteeName" required>
-                <label class="label" for="inviteeEmail">Your email</label>
+                <label class="label" for="inviteeEmail">{msg:pub_book_your_email}</label>
                 <input id="inviteeEmail" class="input w-full" type="email" name="inviteeEmail" required>
                 {#for f in fields}
                   <label class="label" for="f-{f.fieldKey}">{f.label}</label>
@@ -98,9 +98,9 @@
               {/if}
 
               {#if type.requiresApproval}
-                <button type="submit" class="btn btn-primary btn-block">Request</button>
+                <button type="submit" class="btn btn-primary btn-block">{msg:pub_book_btn_request}</button>
               {#else}
-                <button type="submit" class="btn btn-primary btn-block">Confirm booking</button>
+                <button type="submit" class="btn btn-primary btn-block">{msg:pub_book_btn_confirm}</button>
               {/if}
             </form>
           {/if}

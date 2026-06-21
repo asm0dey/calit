@@ -4,12 +4,12 @@
 {#include base title="Book a meeting"}
   <div class="max-w-3xl mx-auto">
     <header class="mb-6">
-      <h1 class="text-3xl font-bold">Book a meeting</h1>
+      <h1 class="text-3xl font-bold">{msg:pub_user_title}</h1>
       {#if ownerName}<p class="font-semibold text-base-content/70">{ownerName}</p>{/if}
-      <p class="text-base-content/70">Pick a meeting type to see available times.</p>
+      <p class="text-base-content/70">{msg:pub_user_pick_type}</p>
     </header>
     {#if types.isEmpty()}
-      <div class="alert">No meeting types are currently available.</div>
+      <div class="alert">{msg:pub_user_no_types}</div>
     {#else}
       <div class="grid gap-4 sm:grid-cols-2">
         {#for t in types}
@@ -19,7 +19,7 @@
               <p class="text-sm text-base-content/70">{t.durationMinutes} min &middot; {t.locationType.display}</p>
               {#if t.description}<p class="text-sm text-base-content/70">{t.description}</p>{/if}
               <div class="card-actions mt-2">
-                <a role="button" class="btn btn-primary btn-block" href="/{user}/{t.slug}">Choose a time &rarr;</a>
+                <a role="button" class="btn btn-primary btn-block" href="/{user}/{t.slug}">{msg:pub_user_choose_time} &rarr;</a>
               </div>
             </div>
           </div>
