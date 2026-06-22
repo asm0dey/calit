@@ -9,6 +9,16 @@ asset downloads, are on
 
 ## Unreleased
 
+- **German localization (English default + fallback).** The entire UI — public
+  booking pages, the owner admin UI, and all notification emails — is now
+  available in English and German. No configuration or environment variables are
+  required: both languages are always on, and any untranslated phrase falls back
+  to English. Booking visitors get a language switcher in the page footer (choice
+  persisted in a `calit_lang` cookie, otherwise detected from `Accept-Language`),
+  and the language used when booking is reused for that booking's follow-up
+  emails. Account owners choose their own language in **Settings**, applied to
+  their admin UI and the notification emails they receive. See
+  [Language & localization](/usage/languages/).
 - **Build info in the footer.** Every page now shows the running release version
   and short git commit in the footer (e.g. `calit 1.8.0 · a1b2c3d`), so you can
   tell at a glance which build a deployment is running.
