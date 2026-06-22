@@ -1,10 +1,15 @@
 {@java.lang.String lang}
+{@java.lang.String recipientRole}
 <!DOCTYPE html>
 <html lang="{lang}" dir="{#if lang == 'he'}rtl{#else}ltr{/if}">
 <head><title>{msg:email_confirmation_title}</title></head>
 <body>
-<p>{msg:email_body_greeting(inviteeName)}</p>
+<p>{msg:email_body_greeting(greetingName)}</p>
+{#if recipientRole == 'owner'}
+<p><strong>{msg:email_confirmation_body_owner(inviteeName)}</strong></p>
+{#else}
 <p><strong>{msg:email_confirmation_body}</strong></p>
+{/if}
 <ul>
   <li><strong>{msg:email_body_meeting_label}</strong> {meetingTypeName}</li>
   <li><strong>{msg:email_body_when_label}</strong> {startTime}</li>
@@ -22,7 +27,10 @@
   {/for}
 </ul>
 {/if}
-<p><a href="{manageUrl}">{msg:email_body_manage_link_text}</a></p>
+{#if recipientRole != 'owner'}
+  <p><a href="{manageUrl}">{msg:email_body_manage_link_text}</a></p>
+  <p><a href="{cancelUrl}">{msg:email_body_cancel_link_text}</a></p>
+{/if}
 <p>{msg:email_body_recipient_note(recipientRoleDisplay)}</p>
 </body>
 </html>

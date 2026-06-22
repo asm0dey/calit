@@ -46,6 +46,14 @@ public class EmailService {
     public static final String MANAGE_URL = "manageUrl";
     public static final String ANSWERS = "answers";
 
+    /** Role-aware greeting name: invitee name for the invitee copy, owner name for the owner copy. */
+    public static final String GREETING_NAME = "greetingName";
+    /** Owner-only authenticated approve/decline links (requested email); null for the invitee copy. */
+    public static final String APPROVE_URL = "approveUrl";
+    public static final String DECLINE_URL = "declineUrl";
+    /** Invitee cancel-confirmation link. */
+    public static final String CANCEL_URL = "cancelUrl";
+
     @Inject
     MailSender mailSender;
 
@@ -193,12 +201,16 @@ public class EmailService {
                             .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .data(LOCATION, location)
                             .data(IS_MEET_LINK, isMeet(l))
                             .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(CANCEL_URL, cancelUrl(l.booking))
+                            .data(APPROVE_URL, approveUrl(l.booking))
+                            .data(DECLINE_URL, declineUrl(l.booking))
                             .data(ANSWERS, l.answers)
                             .render();
                 });
@@ -223,12 +235,14 @@ public class EmailService {
                             .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .data(LOCATION, location)
                             .data(IS_MEET_LINK, isMeet(l))
                             .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(CANCEL_URL, cancelUrl(l.booking))
                             .data(ANSWERS, l.answers)
                             .render();
                 });
@@ -254,12 +268,14 @@ public class EmailService {
                             .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .data(LOCATION, location)
                             .data(IS_MEET_LINK, isMeet(l))
                             .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(CANCEL_URL, cancelUrl(l.booking))
                             .data(ANSWERS, l.answers)
                             .render();
                 });
@@ -289,6 +305,7 @@ public class EmailService {
                             .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
@@ -326,6 +343,7 @@ public class EmailService {
                             .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, newStart)
                             .data("oldStartTime", oldStart)
@@ -333,6 +351,7 @@ public class EmailService {
                             .data(LOCATION, location)
                             .data(IS_MEET_LINK, isMeet(l))
                             .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(CANCEL_URL, cancelUrl(l.booking))
                             .data(ANSWERS, l.answers)
                             .render();
                 });
@@ -357,6 +376,7 @@ public class EmailService {
                             .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
@@ -388,12 +408,14 @@ public class EmailService {
                             .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .data(LOCATION, location)
                             .data(IS_MEET_LINK, isMeet(l))
                             .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(CANCEL_URL, cancelUrl(l.booking))
                             .data(ANSWERS, l.answers)
                             .render();
                 },
@@ -455,6 +477,19 @@ public class EmailService {
 
     private String manageUrl(Booking b) {
         return baseUrl + "/booking/" + b.manageToken + "/manage";
+    }
+
+    /** Owner authenticated approve link with the token nonce; null when no approval token exists. */
+    private String approveUrl(Booking b) {
+        return b.approvalToken == null ? null : baseUrl + "/me/bookings/" + b.id + "/approve?t=" + b.approvalToken;
+    }
+
+    private String declineUrl(Booking b) {
+        return b.approvalToken == null ? null : baseUrl + "/me/bookings/" + b.id + "/decline?t=" + b.approvalToken;
+    }
+
+    private String cancelUrl(Booking b) {
+        return baseUrl + "/booking/" + b.manageToken + "/cancel";
     }
 
     /** Meet link for GOOGLE_MEET types, else the type's locationDetail (phone/address/custom). */
