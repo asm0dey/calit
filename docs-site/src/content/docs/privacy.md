@@ -3,6 +3,10 @@ title: Privacy Policy
 description: How calit handles your data, including Google user data.
 ---
 
+<!-- Canonical privacy policy. The app serves the same text at ${APP_BASE_URL}/privacy
+     (rendered by src/main/resources/templates/LegalResource/privacy.html on the main branch).
+     When editing this policy, mirror the changes into that template so the two stay in sync. -->
+
 :::note[For operators]
 calit is **self-hosted**: each deployment is run and controlled by whoever
 installs it, and that operator is the data controller for their instance. This
