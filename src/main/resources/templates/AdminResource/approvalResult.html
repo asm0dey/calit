@@ -1,0 +1,14 @@
+{@java.lang.Long pendingCount}
+{@java.lang.Boolean isAdmin}
+{@java.lang.String title}
+{@java.lang.String h1}
+{@java.lang.String desc}
+{#include adminBase title=title pendingCount=pendingCount active="pending" isAdmin=isAdmin}
+  <div class="card bg-base-100 border border-base-300 max-w-xl">
+    <div class="card-body items-start">
+      <h1 class="text-2xl font-bold">{h1}</h1>
+      <p class="text-base-content/70">{desc}</p>
+      <a class="btn btn-primary mt-2" href="/me/pending">{adm:adm_approve_back}</a>
+    </div>
+  </div>
+{/include}
