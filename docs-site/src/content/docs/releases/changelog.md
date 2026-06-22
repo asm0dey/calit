@@ -19,6 +19,29 @@ asset downloads, are on
   (owners), with untranslated phrases falling back to English. See
   [Language & localization](/usage/languages/).
 
+- **Approve or decline pending bookings straight from email.** When a booking
+  requires approval, the request email now carries one-click **Approve** and
+  **Decline** links. They open the owner console — if you are not signed in you
+  log in first and are returned to the action — so only the authenticated owner
+  can act on their own request. See [Bookings & approvals](/usage/bookings/).
+
+- **Cancel link in invitee emails.** Booking emails now include a direct
+  **Cancel this booking** link (alongside the manage link), which opens a
+  confirmation page before releasing the slot.
+
+- **Role-specific booking emails.** Owner and invitee copies of every booking
+  email now differ appropriately: the owner copy is addressed to the owner and
+  names the invitee, the invitee copy is addressed to the invitee. Each side
+  only sees the links relevant to it.
+
+- **Calendar invites (`.ics`) fixed for Gmail.** The attached invite is now a
+  valid iTIP request (it includes the attendee), so Gmail and other clients
+  render the event card instead of showing "Unable to load event".
+
+- **Language changes in Settings apply immediately.** Changing your admin
+  language under **Settings** now updates the page in the same response, rather
+  than after navigating away and back.
+
 ## 1.9.0
 
 Google OAuth verification, German localization, and footer & first-run polish.
