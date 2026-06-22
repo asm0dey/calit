@@ -12,7 +12,7 @@
     <summary class="btn btn-ghost btn-xs" aria-label="{msg:common_language}">
       {#for o in localeOptions}{#if o.active}{o.label}{/if}{/for} &#9662;
     </summary>
-    <ul class="menu dropdown-content bg-base-100 rounded-box z-10 w-44 p-2 shadow-sm max-h-64 overflow-y-auto text-left text-base-content">
+    <ul class="menu dropdown-content bg-base-100 rounded-box z-10 w-44 p-2 shadow-sm max-h-64 overflow-y-auto text-start text-base-content">
       {#for o in localeOptions}
         <li>
           {#if o.active}

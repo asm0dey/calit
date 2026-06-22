@@ -12,7 +12,7 @@
   <p class="mt-2">calit is open-source scheduling software the operator hosts themselves. It stores all data in a database the operator controls. The maintainers of the project do not operate a central service, do not receive your data, and have no access to any deployment's database.</p>
 
   <h2 class="text-xl font-semibold mt-6">Data calit stores</h2>
-  <ul class="list-disc pl-6 mt-2">
+  <ul class="list-disc ps-6 mt-2">
     <li><strong>Account data</strong> — your username, email address, display name, timezone, and an argon2id hash of your password (never the password itself).</li>
     <li><strong>Scheduling data</strong> — your meeting types, availability rules, and the bookings made by invitees (invitee name, email, and any answers to custom booking questions you configure).</li>
     <li><strong>Google account data</strong> — when you connect Google Calendar (optional): the Google account's email and stable subject identifier, and the OAuth access and refresh tokens. Tokens are encrypted at rest.</li>
@@ -28,7 +28,7 @@
   <p class="mt-2">calit does not sell or share your data. The only external parties a deployment communicates with for core functionality are Google (only for the calendar operations above) and the SMTP server the operator configures for sending booking and notification emails.</p>
 
   <h2 class="text-xl font-semibold mt-6">Retention and deletion</h2>
-  <ul class="list-disc pl-6 mt-2">
+  <ul class="list-disc ps-6 mt-2">
     <li>Disconnecting a Google account in <a class="link" href="/me/google">Settings → Google</a> deletes that account's stored tokens and calendar selections.</li>
     <li>Deleting a user account removes that user's scheduling data.</li>
     <li>Booking records are retained until removed by the account owner or operator.</li>
