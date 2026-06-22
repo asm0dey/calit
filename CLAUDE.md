@@ -38,7 +38,7 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 
 ## Architecture
 
-Packages under `src/main/java/com/calit/`:
+Packages under `src/main/java/site/asm0dey/calit/`:
 
 - **`domain/`** — Panache `PanacheEntityBase` entities (public fields, no getters/setters): `MeetingType`, `AvailabilityRule`, `DateOverride[Window]`, `BookingField`, `OwnerSettings`. `Slugs`/`Usernames` for slug rules.
 - **`user/`** — auth + tenancy. Custom `AppUserIdentityProvider` (passwords **argon2id** via `PasswordHasher`/BouncyCastle). NOTE: `quarkus-security-jpa` deliberately dropped — its generated Elytron provider raced custom one and rejected valid logins; only core `quarkus-security` used. `FirstRunRedirectFilter` drives `/setup` bootstrap. `SetupResource`, `EnabledUserAugmentor` (locked accounts).
