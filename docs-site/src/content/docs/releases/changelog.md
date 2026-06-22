@@ -17,7 +17,7 @@ Google OAuth verification, German localization, and footer & first-run polish.
   required Limited Use disclosure), and optionally `GOOGLE_SITE_VERIFICATION` to
   render the Search Console `<meta>` tag for domain verification. All three are
   optional; unset leaves the feature off (no tag; pages fall back to
-  `APP_BASE_URL`). See [Google OAuth setup](/installation/google-oauth/#oauth-verification).
+  `APP_BASE_URL`). See [Google OAuth setup](/calit/installation/google-oauth/#oauth-verification).
 
 - **German localization (English default + fallback).** The entire UI — public
   booking pages, the owner admin UI, and all notification emails — is now
