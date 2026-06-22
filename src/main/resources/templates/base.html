@@ -21,7 +21,7 @@
   {/if}
   {#insert head}{/insert}
 </head>
-<body class="canvas {bodyClass ?: ''} bg-base-200 text-base-content min-h-screen">
+<body class="canvas {bodyClass ?: ''} bg-base-200 text-base-content min-h-screen"{#if forceTheme??} data-theme="{forceTheme}"{/if}>
   <div class="fixed top-3 right-3 z-50">
     <label class="swap swap-rotate btn btn-ghost btn-circle btn-sm" title="Toggle theme" aria-label="Toggle theme">
       <input type="checkbox" class="theme-controller" value="calit-dark" id="calit-theme-toggle">
@@ -32,7 +32,7 @@
   <main class="container py-8">
     {#insert}{/insert}
   </main>
-  {#include footer /}
+  {#if !(ownFooter??)}{#include footer /}{/if}
   <script>
     /* Persist the manual theme choice; default (no attr) falls back to OS via prefersdark. */
     (function () {

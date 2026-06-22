@@ -1,7 +1,7 @@
 {@java.lang.String title}
 {@java.lang.Boolean authenticated}
 {@java.lang.String username}
-{#include base title=title bodyClass="lp-body"}
+{#include base title=title bodyClass="lp-body" forceTheme="calit-light" ownFooter=true}
 {#head}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -315,6 +315,10 @@
 
   <footer class="lp-wrap lp-foot">
     <a class="lp-brand" href="/"><span class="chip">c</span> calit</a>
+    <nav class="lp-foot-links">
+      <a class="lp-navlink" href="/privacy">Privacy</a>
+      <a class="lp-navlink" href="/terms">Terms</a>
+    </nav>
     <span class="meta">{msg:pub_landing_footer_meta}</span>
   </footer>
 </div>
