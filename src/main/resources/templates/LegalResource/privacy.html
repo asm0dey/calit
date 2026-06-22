@@ -1,0 +1,33 @@
+{@java.lang.String title}
+{#include base title=title}
+{! ponytail: English-only legal copy. Add msg: keys only if bilingual policy is requested. !}
+<article class="prose max-w-2xl mx-auto bg-base-100 border border-base-300 rounded-box p-6">
+  <!-- CALIT_LEGAL_PRIVACY -->
+  <h1 class="text-2xl font-bold">Privacy Policy</h1>
+  <p class="text-base-content/70">This calit instance is operated by <strong>{inject:site.operatorName}</strong> at {inject:site.baseUrl}.</p>
+
+  <h2 class="text-xl font-semibold mt-4">Data we store</h2>
+  <ul class="list-disc pl-6">
+    <li><strong>Account data</strong> — your name, email, and a hashed (argon2id) password.</li>
+    <li><strong>Booking data</strong> — meeting types, availability, and, for each booking, the invitee's name, email, and any answers to questions you configure.</li>
+    <li><strong>Google account data</strong> — if you connect Google Calendar, OAuth access/refresh tokens and the calendar identifiers you select.</li>
+  </ul>
+
+  <h2 class="text-xl font-semibold mt-4">How we use Google Calendar data</h2>
+  <p>When you connect a Google account, calit reads your calendars' busy/free information to avoid offering already-booked times, and creates, updates, or deletes calendar events that correspond to your calit bookings. That is the only use. Google Calendar data is never sold, never used for advertising, and never read by a human except as needed to support you or where required by law.</p>
+
+  <h2 class="text-xl font-semibold mt-4">Limited Use disclosure</h2>
+  <p>calit's use and transfer of information received from Google APIs adheres to the <a class="link" href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener" target="_blank">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+
+  <h2 class="text-xl font-semibold mt-4">Storage and retention</h2>
+  <p>All data is stored in this instance's PostgreSQL database on infrastructure controlled by the operator. Google tokens are kept until you disconnect the account (at <a class="link" href="/me/google">/me/google</a>) or delete your calit account; disconnecting revokes calit's access and removes the stored tokens.</p>
+
+  <h2 class="text-xl font-semibold mt-4">Your choices</h2>
+  <p>You can disconnect Google at any time at <a class="link" href="/me/google">/me/google</a>. To export or delete your account data, contact the operator.</p>
+
+  {#if inject:site.contactEmail}
+  <h2 class="text-xl font-semibold mt-4">Contact</h2>
+  <p>Privacy questions and data requests: <a class="link" href="mailto:{inject:site.contactEmail}">{inject:site.contactEmail}</a></p>
+  {/if}
+</article>
+{/include}

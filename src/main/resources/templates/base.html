@@ -36,6 +36,11 @@
   <footer class="container py-6 text-center text-xs text-base-content/50">
     <a href="https://github.com/asm0dey/calit" class="link link-hover">calit</a>
     {inject:build.version} &middot; {inject:build.commit}
+    <div class="mt-1">
+      <a href="/privacy" class="link link-hover">Privacy</a>
+      <span class="mx-1">&middot;</span>
+      <a href="/terms" class="link link-hover">Terms</a>
+    </div>
     <nav class="mt-2" aria-label="{msg:common_language}">
       {#for o in localeOptions}
         {#if o_index > 0}<span class="mx-1">&middot;</span>{/if}

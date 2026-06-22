@@ -40,7 +40,8 @@ class UsernamesTest {
     void isReservedCoversAllReservedWords() {
         for (String w : new String[]{
                 "me", "login", "logout", "signup", "setup",
-                "booking", "api", "q", "health", "calit", "index"}) {
+                "booking", "api", "q", "health", "calit", "index",
+                "privacy", "terms"}) {
             assertTrue(Usernames.isReserved(w), w + " should be reserved");
         }
         assertFalse(Usernames.isReserved("alice"));
