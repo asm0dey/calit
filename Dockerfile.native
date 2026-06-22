@@ -31,8 +31,14 @@ ARG GIT_COMMIT=dev
 RUN printf 'git.build.version=%s\ngit.commit.id.abbrev=%s\n' "$APP_VERSION" "$GIT_COMMIT" \
     > src/main/resources/git.properties
 # Native compile. Builder is musl → binary is musl-linked. Heavy: needs several GB RAM.
+# -H:Preserve=package=... keeps full reflection metadata for the Google API client model
+# classes. They are (de)serialized reflectively (no-arg ctor + @Key fields) but ship NO native
+# metadata in their jars (google-api-client / google-oauth-client / google-api-services-calendar),
+# so without this the OAuth token + freeBusy JSON parsing crashes at runtime in the native image.
+# Each "-H:Preserve=..." is a separate comma item (Quarkus splits additional-build-args on commas).
 RUN --mount=type=cache,target=/root/.m2 \
-    ./mvnw -B -DskipTests package -Dquarkus.native.enabled=true
+    ./mvnw -B -DskipTests package -Dquarkus.native.enabled=true \
+    "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken"
 
 # --- Runtime stage: Alpaquita musl base (~3.9MB) — no JDK, just the native binary ---
 FROM bellsoft/alpaquita-linux-base:stream-musl AS runtime
