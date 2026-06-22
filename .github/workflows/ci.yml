@@ -150,6 +150,49 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
 
+      # Native-only: boot the just-built image and exercise the paths that fail in native but
+      # pass on the JVM (build-heap RNG, BouncyCastle argon2id, Hibernate, Qute render, JSON
+      # reflection). Catches reflection/init regressions BEFORE the push. The Google freeBusy
+      # path can't be smoked here (needs real OAuth tokens) — it relies on -H:Preserve in
+      # Dockerfile.native, which covers those packages by construction.
+      - name: Smoke test native image
+        if: matrix.variant == 'native'
+        run: |
+          set -euo pipefail
+          IMG=calit:scan-${{ matrix.arch }}${{ matrix.suffix }}
+          docker network create smoke
+          docker run -d --name pg --network smoke \
+            -e POSTGRES_USER=calit -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=calit postgres:16-alpine
+          for i in $(seq 1 60); do docker exec pg pg_isready -U calit >/dev/null 2>&1 && break; sleep 1; done
+          docker run -d --name app --network smoke -p 8080:8080 \
+            -e DB_URL=jdbc:postgresql://pg:5432/calit -e DB_USER=calit -e DB_PASSWORD=pw \
+            -e SESSION_ENCRYPTION_KEY=ci-smoke-session-key-0123456789-abcdef \
+            -e TOKEN_ENCRYPTION_KEY=1111111111111111111111111111111111111111111111111111111111111111 \
+            -e APP_BASE_URL=http://localhost:8080 -e MAIL_HOST=localhost -e QUARKUS_MAILER_MOCK=true \
+            -e GOOGLE_OAUTH_CLIENT_ID=dummy -e GOOGLE_OAUTH_CLIENT_SECRET=dummy \
+            -e GOOGLE_OAUTH_STATE_SECRET=ci-smoke-state-secret-0123456789-abcd \
+            "$IMG"
+          ready=""
+          for i in $(seq 1 120); do
+            if curl -fs http://localhost:8080/q/health/ready >/dev/null 2>&1; then ready=1; break; fi
+            docker ps -q -f name=app -f status=running | grep -q . || { echo "::error::app container exited during boot"; break; }
+            sleep 1
+          done
+          if [ -z "$ready" ]; then echo "::error::native image did not become ready"; docker logs app; exit 1; fi
+          # /setup render (Qute) + create admin (argon2id / BouncyCastle native path) with CSRF.
+          csrf=$(curl -s -c /tmp/cj http://localhost:8080/setup | grep -oP 'name="csrf-token"[^>]*value="\K[^"]+' | head -1)
+          code=$(curl -s -b /tmp/cj -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/setup \
+            --data-urlencode "username=admin" --data-urlencode "email=a@b.co" \
+            --data-urlencode "password=hunter2hunter2" --data-urlencode "csrf-token=$csrf")
+          echo "/setup POST -> $code"
+          [ "$code" = "302" ] || { echo "::error::/setup (argon2id) returned $code, expected 302"; docker logs app; exit 1; }
+          # Fail on reflection/init errors even if a request happened to return non-fatally.
+          if docker logs app 2>&1 | grep -iE 'NoSuchMethodException|InstantiationException|no accessible default constructor|UnsupportedFeatureException'; then
+            echo "::error::native reflection/init error in logs"; exit 1
+          fi
+          echo "native smoke test passed"
+          docker rm -f app pg >/dev/null 2>&1 || true
+
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v7
