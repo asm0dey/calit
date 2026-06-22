@@ -8,7 +8,7 @@ import java.util.Locale;
 /**
  * Locale-specific AppMessages for Java code (e.g. email subjects).
  * Resolves dynamically via MessageBundles.get so adding a new language
- * requires only a new properties file and a config entry — no Java edits here.
+ * requires only new properties files — no config, no Java edits here.
  *
  * For the default locale ("en") we call MessageBundles.get(AppMessages.class)
  * (no Localized qualifier) to match the unqualified default bean; for any other

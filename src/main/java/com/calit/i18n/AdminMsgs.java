@@ -8,7 +8,7 @@ import java.util.Locale;
 /**
  * Locale-specific AdminMessages for Java code (page titles etc).
  * Resolves dynamically via MessageBundles.get so adding a new language
- * requires only a new properties file and a config entry — no Java edits here.
+ * requires only new properties files — no config, no Java edits here.
  *
  * For the default locale ("en") we call MessageBundles.get(AdminMessages.class)
  * (no Localized qualifier) to match the unqualified default bean; for any other

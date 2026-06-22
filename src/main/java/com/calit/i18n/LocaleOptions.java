@@ -12,9 +12,9 @@ import java.util.Locale;
  * language-switcher footer in base.html.
  *
  * Injected into templates via the {@link LocaleTemplateInitializer} (which sets
- * "localeOptions" in data). Adding a new language requires only a new properties
- * file, a config entry in app.supported-locales, and one endonym entry in
- * {@link AppLocales#labelFor(String)} — no edits needed here.
+ * "localeOptions" in data). Adding a new language requires only
+ * {@code msg_XX.properties} and {@code adm_XX.properties} — no config, no endonym
+ * map, no Java edits needed here.
  */
 @RequestScoped
 @Unremovable
