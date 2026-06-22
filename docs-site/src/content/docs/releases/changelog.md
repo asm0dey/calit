@@ -17,13 +17,13 @@ asset downloads, are on
   language. Like German, Hebrew needs no configuration — it is always available,
   selectable from the footer language switcher (visitors) or **Settings**
   (owners), with untranslated phrases falling back to English. See
-  [Language & localization](/usage/languages/).
+  [Language & localization](/calit/usage/languages/).
 
 - **Approve or decline pending bookings straight from email.** When a booking
   requires approval, the request email now carries one-click **Approve** and
   **Decline** links. They open the owner console — if you are not signed in you
   log in first and are returned to the action — so only the authenticated owner
-  can act on their own request. See [Bookings & approvals](/usage/bookings/).
+  can act on their own request. See [Bookings & approvals](/calit/usage/bookings/).
 
 - **Cancel link in invitee emails.** Booking emails now include a direct
   **Cancel this booking** link (alongside the manage link), which opens a
@@ -63,7 +63,7 @@ Google OAuth verification, German localization, and footer & first-run polish.
   and the language used when booking is reused for that booking's follow-up
   emails. Account owners choose their own language in **Settings**, applied to
   their admin UI and the notification emails they receive. See
-  [Language & localization](/usage/languages/).
+  [Language & localization](/calit/usage/languages/).
 - **Build info in the footer.** Every page now shows the running release version
   and short git commit in the footer (e.g. `calit 1.8.0 · a1b2c3d`), so you can
   tell at a glance which build a deployment is running.
