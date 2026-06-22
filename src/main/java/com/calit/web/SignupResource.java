@@ -67,7 +67,8 @@ public class SignupResource {
         try {
             normalized = Usernames.validateNew(username, AppUser::usernameTaken); // throws on invalid/reserved/taken
         } catch (IllegalArgumentException e) {
-            return Response.ok(Templates.signup(title, e.getMessage())).build();
+            String error = messages.forLocale(activeLocale.current()).auth_signup_error();
+            return Response.ok(Templates.signup(title, error)).build();
         }
         AppUser u = AppUser.create(normalized, passwordHasher.hash(password), false);
         u.mustChangePassword = false; // self-chosen password → no forced reset

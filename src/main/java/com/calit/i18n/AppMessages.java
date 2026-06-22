@@ -501,6 +501,9 @@ public interface AppMessages {
     @Message("Username invalid, reserved, or taken — try another.")
     String auth_setup_error();
 
+    @Message("That username can't be used — it may be invalid, reserved, or already taken. Use 2–64 lowercase letters or digits, with single hyphens between.")
+    String auth_signup_error();
+
     @Message("Username")
     String auth_setup_username_label();
 
