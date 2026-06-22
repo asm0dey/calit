@@ -66,6 +66,9 @@ public class AdminResource {
                 List<DateOverride> overrides, List<MeetingType> types, Long pendingCount, boolean isAdmin, String title);
 
         public static native TemplateInstance pending(List<Booking> pending, String tzScript, boolean isAdmin, String title);
+
+        public static native TemplateInstance approvalResult(
+                Long pendingCount, boolean isAdmin, String title, String h1, String desc);
     }
 
     @Inject
@@ -774,5 +777,48 @@ public class AdminResource {
                 "ownerId = ?1 and status = ?2 order by startUtc",
                 currentOwner.id(), site.asm0dey.calit.booking.BookingStatus.PENDING);
         return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin(), m().adm_pending_title());
+    }
+
+    @GET
+    @Path("/bookings/{id}/approve")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance approveFromEmail(@PathParam("id") Long id, @QueryParam("t") String token) {
+        Booking b = requireOwnedBooking(id); // 404 if not the current owner's
+        if (token == null || !token.equals(b.approvalToken)) {
+            // CSRF nonce mismatch (GET is not guarded by quarkus-rest-csrf) -> 404, no info leak.
+            throw new jakarta.ws.rs.NotFoundException("No booking " + id);
+        }
+        String h1;
+        String desc;
+        if (b.status == site.asm0dey.calit.booking.BookingStatus.PENDING) {
+            bookingService.approve(id); // PENDING -> CONFIRMED (+ Google event if connected)
+            h1 = m().adm_approve_approved_h1();
+            desc = m().adm_approve_approved_desc();
+        } else {
+            h1 = m().adm_approve_gone_h1();
+            desc = m().adm_approve_gone_desc();
+        }
+        return Templates.approvalResult(pendingCount(), isAdmin(), m().adm_approve_result_title(), h1, desc);
+    }
+
+    @GET
+    @Path("/bookings/{id}/decline")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance declineFromEmail(@PathParam("id") Long id, @QueryParam("t") String token) {
+        Booking b = requireOwnedBooking(id);
+        if (token == null || !token.equals(b.approvalToken)) {
+            throw new jakarta.ws.rs.NotFoundException("No booking " + id);
+        }
+        String h1;
+        String desc;
+        if (b.status == site.asm0dey.calit.booking.BookingStatus.PENDING) {
+            bookingService.decline(id); // PENDING -> DECLINED (frees the slot)
+            h1 = m().adm_approve_declined_h1();
+            desc = m().adm_approve_declined_desc();
+        } else {
+            h1 = m().adm_approve_gone_h1();
+            desc = m().adm_approve_gone_desc();
+        }
+        return Templates.approvalResult(pendingCount(), isAdmin(), m().adm_approve_result_title(), h1, desc);
     }
 }

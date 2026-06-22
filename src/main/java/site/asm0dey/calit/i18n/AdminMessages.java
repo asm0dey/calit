@@ -501,6 +501,32 @@ public interface AdminMessages {
     @Message("Decline")
     String adm_pending_btn_decline();
 
+    // ---- Approve/decline from email — result page ----
+
+    @Message("Booking request")
+    String adm_approve_result_title();
+
+    @Message("Booking approved")
+    String adm_approve_approved_h1();
+
+    @Message("The booking is confirmed and the invitee has been notified.")
+    String adm_approve_approved_desc();
+
+    @Message("Booking declined")
+    String adm_approve_declined_h1();
+
+    @Message("The request was declined and the invitee has been notified.")
+    String adm_approve_declined_desc();
+
+    @Message("Already handled")
+    String adm_approve_gone_h1();
+
+    @Message("This request was already approved, declined, or has expired.")
+    String adm_approve_gone_desc();
+
+    @Message("Back to pending requests")
+    String adm_approve_back();
+
     // ---- Settings ----
 
     @Message("Owner settings")
