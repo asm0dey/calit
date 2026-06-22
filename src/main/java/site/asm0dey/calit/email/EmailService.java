@@ -434,7 +434,9 @@ public class EmailService {
         boolean sendOwner = l.owner.ownerNotificationsEnabled;
 
         byte[] ics = IcsBuilder.build(l.booking.manageToken, l.meetingType.name, icsLocation,
-                l.owner.ownerEmail, l.booking.startUtc, l.booking.endUtc)
+                l.owner.ownerEmail, l.owner.ownerName,
+                l.booking.inviteeEmail, l.booking.inviteeName,
+                l.booking.startUtc, l.booking.endUtc)
                 .getBytes(StandardCharsets.UTF_8);
 
         if (sendInvitee) {
