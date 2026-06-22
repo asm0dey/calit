@@ -46,6 +46,7 @@ public final class Layout {
                 picker.appendChild(o);
               });
 
+              var LANG = document.documentElement.lang || undefined;
               function render() {
                 var tz = picker.value;
                 if (label) { label.textContent = tz; }
@@ -54,7 +55,7 @@ public final class Layout {
                   var opts = (el.dataset.timeOnly === '1')
                     ? { timeStyle: 'short', timeZone: tz }
                     : { dateStyle: 'full', timeStyle: 'short', timeZone: tz };
-                  el.textContent = d.toLocaleString([], opts);
+                  el.textContent = d.toLocaleString(LANG, opts);
                 });
               }
               picker.addEventListener('change', render);
@@ -91,9 +92,16 @@ public final class Layout {
               var byDate = {};
               sections.forEach(function (s) { byDate[s.dataset.date] = s; });
               var dates = Object.keys(byDate).sort();
-              var DOW = ['Mo','Tu','We','Th','Fr','Sa','Su'];
-              var MONTHS = ['January','February','March','April','May','June','July','August',
-                            'September','October','November','December'];
+              var LANG = document.documentElement.lang || undefined;
+              var MONTHS = [];
+              for (var mi = 0; mi < 12; mi++) {
+                MONTHS.push(new Intl.DateTimeFormat(LANG, {month:'long'}).format(new Date(2021, mi, 1)));
+              }
+              // week starts Monday: 2021-03-01 is a Monday
+              var DOW = [];
+              for (var di = 0; di < 7; di++) {
+                DOW.push(new Intl.DateTimeFormat(LANG, {weekday:'short'}).format(new Date(2021, 2, 1 + di)));
+              }
 
               function parse(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
               function iso(d) {
