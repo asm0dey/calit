@@ -72,6 +72,7 @@ multi-node-safe via Postgres `SELECT … FOR UPDATE SKIP LOCKED` with no leader 
 | `/{username}/{slug}` | Public booking page for one meeting type. |
 | `/setup` | First-run bootstrap (404 once a user exists). |
 | `/signup` | Self-service registration (404 unless `SIGNUP_ENABLED=true`). |
+| `/privacy`, `/terms` | Public privacy policy and terms of service (operator-customizable; required for Google OAuth verification). |
 
 ---
 
@@ -233,6 +234,14 @@ the same values must be present on every replica.
 | `PER_EMAIL_DAILY_CAP` | `10` | Max bookings one invitee email may create per day (abuse guard). |
 | `SIGNUP_ENABLED` | `false` | Allow public self-service sign-up at `/signup`. When `false`, `/signup` returns 404. |
 
+### Public site & Google verification (optional)
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `GOOGLE_SITE_VERIFICATION` | _(empty)_ | Google Search Console domain-verification token. When set, every page renders `<meta name="google-site-verification">`. Leave empty to verify via DNS TXT instead. |
+| `OPERATOR_NAME` | `APP_BASE_URL` | Legal entity shown as the data controller on `/privacy` and `/terms`. |
+| `PRIVACY_CONTACT_EMAIL` | _(empty)_ | Contact address shown on `/privacy` for privacy/data requests. Hidden when unset. |
+
 ### Google Calendar sync (optional)
 
 Leave these unset to run in **degraded mode**: bookings still work, but no calendar events or Meet
@@ -277,6 +286,8 @@ One switch turns on **both** the booking-form widget and server-side verificatio
 7. After deploy, each user connects their calendar **once** from the management UI (`/me/google` →
    Connect Google), grants offline access, and selects which calendars to read for busy time and which
    one to write events to. The refresh token is stored in Postgres, so any replica can call Google.
+
+For Google to remove the "unverified app" warning and lift the 100-user cap, complete OAuth verification in Google Cloud Console: set `OPERATOR_NAME` and `PRIVACY_CONTACT_EMAIL`, link `${APP_BASE_URL}/privacy` as the consent-screen privacy policy, and verify domain ownership (via `GOOGLE_SITE_VERIFICATION` or a DNS TXT record). Calendar scopes are *sensitive* (not *restricted*), so no third-party security assessment is required.
 
 ### Cloudflare Turnstile
 
