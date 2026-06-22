@@ -35,10 +35,10 @@ class SlotServiceTest {
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
         assertEquals(2, slots.size());
-        assertEquals(LocalTime.of(9, 0), slots.get(0).start().toLocalTime());
-        assertEquals(LocalTime.of(10, 0), slots.get(0).end().toLocalTime());
+        assertEquals(LocalTime.of(9, 0), slots.getFirst().start().toLocalTime());
+        assertEquals(LocalTime.of(10, 0), slots.getFirst().end().toLocalTime());
         assertEquals(LocalTime.of(10, 0), slots.get(1).start().toLocalTime());
-        assertEquals(ZoneId.of("Europe/Amsterdam"), slots.get(0).start().getZone());
+        assertEquals(ZoneId.of("Europe/Amsterdam"), slots.getFirst().start().getZone());
     }
 
     @Test
@@ -51,7 +51,7 @@ class SlotServiceTest {
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
         assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(9, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(9, 0), slots.getFirst().start().toLocalTime());
     }
 
     @Test
@@ -65,7 +65,7 @@ class SlotServiceTest {
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
         assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(13, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(13, 0), slots.getFirst().start().toLocalTime());
     }
 
     @Test
@@ -104,7 +104,7 @@ class SlotServiceTest {
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
         assertEquals(2, slots.size());
-        assertEquals(LocalTime.of(9, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(9, 0), slots.getFirst().start().toLocalTime());
         assertEquals(LocalTime.of(10, 0), slots.get(1).start().toLocalTime());
     }
 
@@ -120,7 +120,7 @@ class SlotServiceTest {
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
         assertEquals(3, slots.size());
-        assertEquals(LocalTime.of(9, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(9, 0), slots.getFirst().start().toLocalTime());
         assertEquals(LocalTime.of(9, 30), slots.get(1).start().toLocalTime());
         assertEquals(LocalTime.of(10, 0), slots.get(2).start().toLocalTime());
     }
@@ -137,7 +137,7 @@ class SlotServiceTest {
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
         assertEquals(2, slots.size());
-        assertEquals(LocalTime.of(9, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(9, 0), slots.getFirst().start().toLocalTime());
         assertEquals(LocalTime.of(10, 30), slots.get(1).start().toLocalTime());
     }
 

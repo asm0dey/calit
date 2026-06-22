@@ -22,7 +22,7 @@ class DefaultAvailabilitySeederTest {
             assertTrue(r.dayOfWeek != DayOfWeek.SATURDAY && r.dayOfWeek != DayOfWeek.SUNDAY,
                     "weekdays only");
         }
-        assertEquals(DayOfWeek.MONDAY, rules.get(0).dayOfWeek);
+        assertEquals(DayOfWeek.MONDAY, rules.getFirst().dayOfWeek);
         assertEquals(DayOfWeek.FRIDAY, rules.get(4).dayOfWeek);
     }
 }

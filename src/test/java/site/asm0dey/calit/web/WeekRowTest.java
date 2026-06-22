@@ -24,9 +24,9 @@ class WeekRowTest {
     void buildsSevenRowsInIsoOrderEvenWhenEmpty() {
         List<WeekRow> rows = WeekRow.fromRules(List.of());
         assertEquals(7, rows.size());
-        assertEquals(DayOfWeek.MONDAY, rows.get(0).day());
+        assertEquals(DayOfWeek.MONDAY, rows.getFirst().day());
         assertEquals(DayOfWeek.SUNDAY, rows.get(6).day());
-        assertTrue(rows.get(0).frames().isEmpty());
+        assertTrue(rows.getFirst().frames().isEmpty());
     }
 
     @Test
@@ -36,9 +36,9 @@ class WeekRowTest {
                 rule(DayOfWeek.MONDAY, "09:00", "12:00"),
                 rule(DayOfWeek.WEDNESDAY, "10:00", "11:00")));
 
-        WeekRow monday = rows.get(0);
+        WeekRow monday = rows.getFirst();
         assertEquals(2, monday.frames().size());
-        assertEquals(LocalTime.parse("09:00"), monday.frames().get(0).startTime); // sorted
+        assertEquals(LocalTime.parse("09:00"), monday.frames().getFirst().startTime); // sorted
         assertEquals(LocalTime.parse("13:00"), monday.frames().get(1).startTime);
 
         assertTrue(rows.get(1).frames().isEmpty()); // TUESDAY

@@ -35,9 +35,9 @@ class AvailabilityRuleTest {
         List<AvailabilityRule> typedRules = AvailabilityRule.forMeetingType(1L, type.id, DayOfWeek.MONDAY);
 
         assertEquals(1, globals.size());
-        assertEquals(LocalTime.of(9, 0), globals.get(0).startTime);
+        assertEquals(LocalTime.of(9, 0), globals.getFirst().startTime);
         assertEquals(1, typedRules.size());
-        assertEquals(LocalTime.of(13, 0), typedRules.get(0).startTime);
+        assertEquals(LocalTime.of(13, 0), typedRules.getFirst().startTime);
         assertTrue(AvailabilityRule.forMeetingType(1L, type.id, DayOfWeek.TUESDAY).isEmpty());
     }
 

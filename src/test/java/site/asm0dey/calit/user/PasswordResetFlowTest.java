@@ -59,7 +59,7 @@ class PasswordResetFlowTest {
 
         List<Mail> sent = mailbox.getMailsSentTo(ADMIN_EMAIL);
         assertEquals(1, sent.size(), "exactly one reset mail to the account address");
-        Mail m = sent.get(0);
+        Mail m = sent.getFirst();
         assertTrue(m.getSubject().toLowerCase().contains("reset"), "subject mentions reset");
 
         Matcher tok = Pattern.compile("/reset-password\\?token=([A-Za-z0-9_-]+)").matcher(m.getHtml());

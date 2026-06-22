@@ -44,7 +44,7 @@ class DateOverrideTest {
         DateOverride resolved = DateOverride.resolve(1L, type.id, D);
         assertEquals(typed.id, resolved.id);
         assertEquals(1, resolved.windows.size());
-        assertEquals(LocalTime.of(13, 0), resolved.windows.get(0).startTime);
+        assertEquals(LocalTime.of(13, 0), resolved.windows.getFirst().startTime);
     }
 
     @Test
@@ -57,7 +57,7 @@ class DateOverrideTest {
         // A meeting type with no per-type override falls through to the global one.
         DateOverride resolved = DateOverride.resolve(1L, 987_654L, D);
         assertEquals(global.id, resolved.id);
-        assertEquals(LocalTime.of(8, 0), resolved.windows.get(0).startTime);
+        assertEquals(LocalTime.of(8, 0), resolved.windows.getFirst().startTime);
     }
 
     @Test
@@ -82,7 +82,7 @@ class DateOverrideTest {
 
         DateOverride resolved = DateOverride.resolve(1L, 42L, D);
         assertEquals(2, resolved.windows.size());
-        assertEquals(LocalTime.of(9, 0), resolved.windows.get(0).startTime);
+        assertEquals(LocalTime.of(9, 0), resolved.windows.getFirst().startTime);
         assertEquals(LocalTime.of(14, 0), resolved.windows.get(1).startTime);
     }
 

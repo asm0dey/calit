@@ -133,7 +133,7 @@ class EmailLocaleTest {
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee must receive confirmation email");
 
-        Mail inviteeMail = toInvitee.get(0);
+        Mail inviteeMail = toInvitee.getFirst();
         String html = inviteeMail.getHtml();
 
         // German weekday for 2026-06-08 (Monday) = "Montag"
@@ -196,7 +196,7 @@ class EmailLocaleTest {
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
         assertEquals(1, toOwner.size(), "owner must receive confirmation email");
 
-        Mail ownerMail = toOwner.get(0);
+        Mail ownerMail = toOwner.getFirst();
         // English owner → English date pattern includes "at" not "um"
         String html = ownerMail.getHtml();
         assertTrue(html.contains("Monday") || html.contains("at"),
@@ -252,7 +252,7 @@ class EmailLocaleTest {
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee must receive one confirmation email");
-        String html = toInvitee.get(0).getHtml();
+        String html = toInvitee.getFirst().getHtml();
 
         // German body strings added by task 9d — both must be present (body-specific, not just subject)
         assertTrue(html.contains("Hallo"),
@@ -310,7 +310,7 @@ class EmailLocaleTest {
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee must receive one confirmation email");
-        String html = toInvitee.get(0).getHtml();
+        String html = toInvitee.getFirst().getHtml();
 
         // English body strings from task 9d — both must be present (body-specific)
         assertTrue(html.contains("Hi "),
@@ -369,7 +369,7 @@ class EmailLocaleTest {
         // Invitee email: footer must say "Empfänger" (not raw "invitee")
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee must receive confirmation email");
-        String inviteeHtml = toInvitee.get(0).getHtml();
+        String inviteeHtml = toInvitee.getFirst().getHtml();
         assertTrue(inviteeHtml.contains("Empfänger"),
                 "German invitee footer must contain 'Empfänger'; got: " + inviteeHtml);
         assertFalse(inviteeHtml.contains(">invitee<") || inviteeHtml.contains(" invitee ") || inviteeHtml.contains(" invitee."),
@@ -378,7 +378,7 @@ class EmailLocaleTest {
         // Owner email: footer must say "Veranstalter" (not raw "owner")
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
         assertEquals(1, toOwner.size(), "owner must receive confirmation email");
-        String ownerHtml = toOwner.get(0).getHtml();
+        String ownerHtml = toOwner.getFirst().getHtml();
         assertTrue(ownerHtml.contains("Veranstalter"),
                 "German owner footer must contain 'Veranstalter'; got: " + ownerHtml);
         assertFalse(ownerHtml.contains(">owner<") || ownerHtml.contains(" owner ") || ownerHtml.contains(" owner."),
@@ -435,14 +435,14 @@ class EmailLocaleTest {
         // German invitee email must have lang="de"
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee must receive confirmation email");
-        String inviteeHtml = toInvitee.get(0).getHtml();
+        String inviteeHtml = toInvitee.getFirst().getHtml();
         assertTrue(inviteeHtml.contains("lang=\"de\""),
                 "German invitee email must have <html lang=\"de\">; got: " + inviteeHtml);
 
         // English owner email must have lang="en"
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
         assertEquals(1, toOwner.size(), "owner must receive confirmation email");
-        String ownerHtml = toOwner.get(0).getHtml();
+        String ownerHtml = toOwner.getFirst().getHtml();
         assertTrue(ownerHtml.contains("lang=\"en\""),
                 "English owner email must have <html lang=\"en\">; got: " + ownerHtml);
     }

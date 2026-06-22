@@ -37,7 +37,7 @@ class SlotServiceOverrideTest {
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
         assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(13, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(13, 0), slots.getFirst().start().toLocalTime());
     }
 
     @Test
@@ -64,7 +64,7 @@ class SlotServiceOverrideTest {
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
         assertEquals(2, slots.size());
-        assertEquals(LocalTime.of(9, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(9, 0), slots.getFirst().start().toLocalTime());
         assertEquals(LocalTime.of(10, 0), slots.get(1).start().toLocalTime());
     }
 

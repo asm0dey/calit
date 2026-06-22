@@ -48,7 +48,7 @@ class BookingFieldTest {
         List<BookingField> form = BookingField.formFor(1L, type.id);
 
         assertEquals(2, form.size());
-        assertEquals("vat", form.get(0).fieldKey);     // position 0 first
+        assertEquals("vat", form.getFirst().fieldKey);     // position 0 first
         assertEquals("company", form.get(1).fieldKey); // global description NOT included
     }
 

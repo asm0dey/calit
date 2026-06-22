@@ -30,7 +30,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z")));
 
         assertEquals(2, merged.size());
-        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z"), merged.get(0));
+        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z"), merged.getFirst());
         assertEquals(bi("2026-06-08T11:00:00Z", "2026-06-08T12:00:00Z"), merged.get(1));
     }
 
@@ -41,7 +41,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z")));
 
         assertEquals(1, merged.size());
-        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"), merged.get(0));
+        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"), merged.getFirst());
     }
 
     @Test
@@ -51,7 +51,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z")));
 
         assertEquals(1, merged.size());
-        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"), merged.get(0));
+        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"), merged.getFirst());
     }
 
     @Test
@@ -61,7 +61,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z")));
 
         assertEquals(1, merged.size());
-        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T12:00:00Z"), merged.get(0));
+        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T12:00:00Z"), merged.getFirst());
     }
 
     @Test
@@ -73,7 +73,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T14:30:00Z", "2026-06-08T16:00:00Z")));
 
         assertEquals(2, merged.size());
-        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"), merged.get(0));
+        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"), merged.getFirst());
         assertEquals(bi("2026-06-08T14:00:00Z", "2026-06-08T16:00:00Z"), merged.get(1));
     }
 }

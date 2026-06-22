@@ -20,6 +20,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
+import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
@@ -56,8 +57,8 @@ class AdminPendingTest {
             r.meetingTypeId = null;
             r.persist();
         }
-        var slot = bookingService.availableSlots(t, java.time.LocalDate.now(),
-                java.time.LocalDate.now().plusDays(14)).get(0);
+        var slot = bookingService.availableSlots(t, now(),
+                now().plusDays(14)).getFirst();
         Booking b = bookingService.book(1L, slug, slot.start().toInstant(),
                 "Pending Pat", "pat@example.com", java.util.Map.of(), "", "", "en");
         return b.id; // status == PENDING

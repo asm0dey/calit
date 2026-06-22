@@ -23,7 +23,7 @@ class AppLocalesDiscoveryTest {
     void supportedContainsEnglishAndGerman() {
         List<Locale> supported = AppLocales.supported();
         // Default (en) must be first
-        assertEquals(Locale.ENGLISH, supported.get(0), "Default locale must be first");
+        assertEquals(Locale.ENGLISH, supported.getFirst(), "Default locale must be first");
         assertTrue(supported.contains(Locale.GERMAN), "German must be discovered from msg_de.properties");
         assertEquals(2, supported.size(), "Exactly two locales expected: en + de");
     }

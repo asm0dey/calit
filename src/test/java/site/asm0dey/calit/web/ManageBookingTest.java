@@ -19,6 +19,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
+import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
@@ -55,8 +56,8 @@ class ManageBookingTest {
             r.meetingTypeId = null;
             r.persist();
         }
-        var slot = bookingService.availableSlots(t, java.time.LocalDate.now(),
-                java.time.LocalDate.now().plusDays(14)).get(0);
+        var slot = bookingService.availableSlots(t, now(),
+                now().plusDays(14)).getFirst();
         // Auto type, no abuse guards configured → empty Turnstile token + blank honeypot.
         Booking b = bookingService.book(1L, "manage-type", slot.start().toInstant(),
                 "Manage Me", "manage@example.com", java.util.Map.of(), "", "", "en");

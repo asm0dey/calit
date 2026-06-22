@@ -202,7 +202,7 @@ public class PublicResource {
         for (Map.Entry<String, java.util.List<String>> e : form.entrySet()) {
             if (e.getKey().startsWith("answers.")) {
                 answers.put(e.getKey().substring("answers.".length()),
-                            e.getValue().isEmpty() ? "" : e.getValue().get(0));
+                        e.getValue().isEmpty() ? "" : e.getValue().getFirst());
             }
         }
 

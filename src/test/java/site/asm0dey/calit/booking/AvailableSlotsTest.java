@@ -65,7 +65,7 @@ class AvailableSlotsTest {
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
         assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(10, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(10, 0), slots.getFirst().start().toLocalTime());
     }
 
     @Test
@@ -102,7 +102,7 @@ class AvailableSlotsTest {
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
         assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(10, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(10, 0), slots.getFirst().start().toLocalTime());
     }
 
     @Test
@@ -121,7 +121,7 @@ class AvailableSlotsTest {
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
         assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(10, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(10, 0), slots.getFirst().start().toLocalTime());
     }
 
     @Test
@@ -138,7 +138,7 @@ class AvailableSlotsTest {
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
         assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(10, 0), slots.get(0).start().toLocalTime());
+        assertEquals(LocalTime.of(10, 0), slots.getFirst().start().toLocalTime());
         // freeBusy must NOT be consulted when disconnected.
         verify(calendarPort, never()).freeBusy(anyLong(), any(), any());
     }

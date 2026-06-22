@@ -40,7 +40,7 @@ public class GoogleSignInService {
         if (identity.emailVerified() && identity.email() != null) {
             List<Long> owners = OwnerSettings.findOwnerIdsByEmail(identity.email());
             if (owners.size() == 1) {
-                AppUser linked = AppUser.findById(owners.get(0));
+                AppUser linked = AppUser.findById(owners.getFirst());
                 linked.googleSub = identity.sub(); // managed entity -> dirty-checked in this tx
                 return linked;
             }
