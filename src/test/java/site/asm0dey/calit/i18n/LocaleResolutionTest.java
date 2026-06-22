@@ -29,4 +29,18 @@ class LocaleResolutionTest {
                 .then().statusCode(200)
                 .body(containsString("cancel=Cancel")).body(containsString("lang=en"));
     }
+
+    @Test
+    void publicCookieHeRendersHebrew() {
+        given().cookie("calit_lang", "he").when().get("/__i18n_probe")
+                .then().statusCode(200)
+                .body(containsString("lang=he")).body(containsString("cancel=ביטול"));
+    }
+
+    @Test
+    void publicAcceptLanguageHe() {
+        given().header("Accept-Language", "he").when().get("/__i18n_probe")
+                .then().statusCode(200)
+                .body(containsString("cancel=ביטול")).body(containsString("lang=he"));
+    }
 }
