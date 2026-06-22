@@ -68,6 +68,16 @@ The hardcoded `Europe/Amsterdam` lives only in the **no-saved-settings** (`{#els
 
 **Sync note:** the policy now lives in two places — `docs-site` `privacy.md` (canonical, public docs) and the app `privacy.html` (operator-injected, same-origin). Both carry a comment pointing at the other so a future edit updates both. Rarely-changing legal text; manual sync is acceptable (a shared renderer was rejected as too heavy).
 
+### Item 7: Theme consistency on the fixed-palette landing
+
+**Found during implementation (Firefox dark-OS):** the marketing landing (`PublicResource/index.html`) hardcodes its own cream palette (`body.lp-body` → `--paper`/`--ink` hex) but does not pin a daisyUI theme. The shared footer (Item 1) uses theme-aware `text-base-content`, which in dark-OS resolves to the dark theme's light text → invisible on the forced-cream background. It is the **only** page that mixes a fixed background with theme-aware text; every other page uses daisyUI semantic colors for both, so they are correct in light and dark already.
+
+Fix (structural, no CSS hacks):
+- **Pin the landing to its theme.** `base.html` gains an optional `forceTheme` param; when set it renders `data-theme="{forceTheme}"` on `<body>`. The landing passes `forceTheme="calit-light"`. daisyUI reads the nearest ancestor `data-theme`, so every daisyUI element on the landing (and the appended footer, before it is suppressed below) resolves to the light palette matching its cream design, in any OS theme. This also future-proofs: any daisyUI component later dropped on the landing stays consistent.
+- **De-duplicate the landing footer.** `base.html` makes the shared-footer include opt-out: `{#if !ownFooter}{#include footer /}{/if}`. The landing passes `ownFooter=true` (it already has its own `lp-foot`) and gains `/privacy` + `/terms` links inside `lp-foot`, styled with the existing `lp-navlink` hex classes (theme-independent → always visible). No language switcher on the landing (keep the marketing footer minimal).
+
+Principle captured: a page must be either all-daisyUI-theme-colors (they flip together) or all-its-own-fixed-palette (never flips) — never mix theme-aware foreground onto a fixed background.
+
 ## Components / files
 
 - **Create:** `templates/footer.html`.

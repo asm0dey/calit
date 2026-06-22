@@ -550,6 +550,131 @@ git commit -m "feat(web): canonical privacy policy + landing-style legal pages"
 
 ---
 
+### Task 6: Pin the landing theme + de-duplicate its footer
+
+**Files:**
+- Modify: `src/main/resources/templates/base.html` (body tag: add `forceTheme` data-theme; footer include: make opt-out via `ownFooter`)
+- Modify: `src/main/resources/templates/PublicResource/index.html` (pass `forceTheme`/`ownFooter` to the base include; add Privacy/Terms to `lp-foot`)
+- Test: `src/test/java/site/asm0dey/calit/web/LandingFooterTest.java`
+
+**Interfaces:**
+- Consumes: the shared `footer.html` (Task 1), the `base` template, existing `lp-navlink` CSS class in `index.html`.
+- Produces: the landing pins `data-theme="calit-light"` on `<body>` and renders only its own `lp-foot` (no appended shared footer); other pages keep the shared footer.
+
+**Why:** The marketing landing hardcodes a cream palette but does not pin a theme, so the theme-aware shared footer goes invisible in dark-OS. Pinning the landing to its light theme keeps every daisyUI element on it consistent; opt-out of the shared footer removes the duplicate (the landing has its own).
+
+- [ ] **Step 1: Write the failing test**
+
+```java
+package site.asm0dey.calit.web;
+
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+
+@QuarkusTest
+class LandingFooterTest {
+
+    @Test
+    void landingPinsLightThemeAndOwnsItsFooter() {
+        given().when().get("/").then().statusCode(200)
+            // landing body is pinned to the light theme so its daisyUI bits match its cream palette
+            .body(containsString("data-theme=\"calit-light\""))
+            // legal links live in the landing's own footer
+            .body(containsString("href=\"/privacy\""))
+            .body(containsString("href=\"/terms\""))
+            // the shared daisyUI footer (with the language dropdown) is NOT appended on the landing
+            .body(not(containsString("class=\"dropdown")));
+    }
+}
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `./mvnw -o test -Dtest=LandingFooterTest`
+Expected: FAIL — landing currently has no `data-theme="calit-light"`, the `lp-foot` lacks `/privacy`/`/terms`, and the shared footer (with `class="dropdown"`) is appended.
+
+- [ ] **Step 3: Make `base.html` theme-pinnable and footer opt-out**
+
+In `src/main/resources/templates/base.html`:
+
+(a) The `<body>` tag (line 24) currently:
+
+```html
+<body class="canvas {bodyClass ?: ''} bg-base-200 text-base-content min-h-screen">
+```
+
+becomes (add an optional `data-theme` when `forceTheme` is provided):
+
+```html
+<body class="canvas {bodyClass ?: ''} bg-base-200 text-base-content min-h-screen"{#if forceTheme} data-theme="{forceTheme}"{/if}>
+```
+
+(b) The shared-footer include (the `{#include footer /}` line added in Task 1) becomes opt-out:
+
+```html
+  {#if !ownFooter}{#include footer /}{/if}
+```
+
+(`forceTheme` and `ownFooter` are undeclared optional params — Qute treats them as null/false when a caller omits them, exactly like the existing `{bodyClass ?: ''}` usage, so all other callers are unaffected: they still get the shared footer and no forced theme.)
+
+- [ ] **Step 4: Update the landing `index.html`**
+
+In `src/main/resources/templates/PublicResource/index.html`:
+
+(a) Change the include directive (line 4) from:
+
+```html
+{#include base title=title bodyClass="lp-body"}
+```
+
+to:
+
+```html
+{#include base title=title bodyClass="lp-body" forceTheme="calit-light" ownFooter=true}
+```
+
+(b) Add Privacy/Terms links to the landing's own footer. Change the footer (around line 316):
+
+```html
+  <footer class="lp-wrap lp-foot">
+    <a class="lp-brand" href="/"><span class="chip">c</span> calit</a>
+    <span class="meta">{msg:pub_landing_footer_meta}</span>
+  </footer>
+```
+
+to:
+
+```html
+  <footer class="lp-wrap lp-foot">
+    <a class="lp-brand" href="/"><span class="chip">c</span> calit</a>
+    <nav class="lp-foot-links">
+      <a class="lp-navlink" href="/privacy">Privacy</a>
+      <a class="lp-navlink" href="/terms">Terms</a>
+    </nav>
+    <span class="meta">{msg:pub_landing_footer_meta}</span>
+  </footer>
+```
+
+(`lp-navlink` is the landing's existing hex-colored link class — theme-independent, always visible. No new CSS needed; `lp-foot-links` is just a grouping `<nav>` and needs no style to function.)
+
+- [ ] **Step 5: Run test to verify it passes**
+
+Run: `./mvnw -o test -Dtest=LandingFooterTest,FooterPolishTest`
+Expected: PASS — `LandingFooterTest` green, and `FooterPolishTest` (Task 1) still green because `/login` and `/me` do not pass `ownFooter`, so they keep the shared footer.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/main/resources/templates/base.html src/main/resources/templates/PublicResource/index.html src/test/java/site/asm0dey/calit/web/LandingFooterTest.java
+git commit -m "fix(web): pin landing to light theme + de-duplicate its footer"
+```
+
+---
+
 ### Task 5: docs-site sync pointer (follow-up, separate branch)
 
 This is a checklist item, not a `main`-branch code change. On the **`docs-site`** branch, add a short HTML comment near the top of `docs-site/src/content/docs/privacy.md` noting that the app serves the same policy at `${APP_BASE_URL}/privacy` and that edits should be mirrored into `src/main/resources/templates/LegalResource/privacy.html`. Commit + push docs-site (Pages redeploys). Do this after the feature branch merges; it does not block this plan.
