@@ -7,7 +7,11 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.10.0
+
+Hebrew (right-to-left) localization, plus a round of booking-email improvements:
+approve/decline straight from email, role-specific owner and invitee copies, valid
+calendar invites, an in-email cancel link, and immediate locale switching in Settings.
 
 - **Hebrew localization with right-to-left (RTL) support.** The entire UI —
   public booking pages, the owner admin UI, and all notification emails — is now
