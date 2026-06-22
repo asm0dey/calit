@@ -16,6 +16,9 @@
       } catch (e) {}
     })();
   </script>
+  {#if inject:site.googleVerification}
+  <meta name="google-site-verification" content="{inject:site.googleVerification}">
+  {/if}
   {#insert head}{/insert}
 </head>
 <body class="canvas {bodyClass ?: ''} bg-base-200 text-base-content min-h-screen">

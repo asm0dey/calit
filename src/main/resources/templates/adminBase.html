@@ -15,6 +15,9 @@
       try { var t = localStorage.getItem('calit-theme'); if (t) { document.documentElement.setAttribute('data-theme', t); } } catch (e) {}
     })();
   </script>
+  {#if inject:site.googleVerification}
+  <meta name="google-site-verification" content="{inject:site.googleVerification}">
+  {/if}
 </head>
 <body class="admin-canvas">
   <div class="admin-shell">
