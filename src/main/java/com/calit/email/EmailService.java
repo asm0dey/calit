@@ -189,8 +189,8 @@ public class EmailService {
         String inviteeStart = format(l.booking.startUtc, l.zone, inviteeLocale);
         String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
         sendForKindLocaleAware(InviteeRule.ALWAYS, l, location,
-                inviteeLocale, messages.forLocale(inviteeLocale).email_requested_subject(l.meetingType.name),
-                ownerLocale, messages.forLocale(ownerLocale).email_requested_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_requested_subject(l.meetingType.name),
+                messages.forLocale(ownerLocale).email_requested_subject(l.meetingType.name),
                 role -> {
                     Locale locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     String start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -219,8 +219,8 @@ public class EmailService {
         String inviteeStart = format(l.booking.startUtc, l.zone, inviteeLocale);
         String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
         sendForKindLocaleAware(InviteeRule.FALLBACK, l, location,
-                inviteeLocale, messages.forLocale(inviteeLocale).email_confirmed_subject(l.meetingType.name),
-                ownerLocale, messages.forLocale(ownerLocale).email_confirmed_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_confirmed_subject(l.meetingType.name),
+                messages.forLocale(ownerLocale).email_confirmed_subject(l.meetingType.name),
                 role -> {
                     Locale locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     String start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -250,8 +250,8 @@ public class EmailService {
         String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
         // Same body as confirmed (now confirmed after approval); only subject differs.
         sendForKindLocaleAware(InviteeRule.FALLBACK, l, location,
-                inviteeLocale, messages.forLocale(inviteeLocale).email_approved_subject(l.meetingType.name),
-                ownerLocale, messages.forLocale(ownerLocale).email_approved_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_approved_subject(l.meetingType.name),
+                messages.forLocale(ownerLocale).email_approved_subject(l.meetingType.name),
                 role -> {
                     Locale locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     String start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -285,8 +285,8 @@ public class EmailService {
         String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
         // No Google event ever existed -> always notify the invitee. No answers, no location link.
         sendForKindLocaleAware(InviteeRule.ALWAYS, l, resolveLocation(l),
-                inviteeLocale, messages.forLocale(inviteeLocale).email_declined_subject(l.meetingType.name),
-                ownerLocale, messages.forLocale(ownerLocale).email_declined_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_declined_subject(l.meetingType.name),
+                messages.forLocale(ownerLocale).email_declined_subject(l.meetingType.name),
                 role -> {
                     Locale locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     String start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -321,8 +321,8 @@ public class EmailService {
         String inviteeOldStart = format(e.oldStartUtc(), l.zone, inviteeLocale);
         String ownerOldStart = format(e.oldStartUtc(), l.zone, ownerLocale);
         sendForKindLocaleAware(InviteeRule.FALLBACK, l, location,
-                inviteeLocale, messages.forLocale(inviteeLocale).email_rescheduled_subject(l.meetingType.name),
-                ownerLocale, messages.forLocale(ownerLocale).email_rescheduled_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_rescheduled_subject(l.meetingType.name),
+                messages.forLocale(ownerLocale).email_rescheduled_subject(l.meetingType.name),
                 role -> {
                     Locale locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     String newStart = INVITEE_ROLE.equals(role) ? inviteeNewStart : ownerNewStart;
@@ -353,8 +353,8 @@ public class EmailService {
         String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
         // No location/meet link in the cancellation body; .ics still attached describing the removed event.
         sendForKindLocaleAware(InviteeRule.FALLBACK, l, resolveLocation(l),
-                inviteeLocale, messages.forLocale(inviteeLocale).email_cancelled_subject(l.meetingType.name),
-                ownerLocale, messages.forLocale(ownerLocale).email_cancelled_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_cancelled_subject(l.meetingType.name),
+                messages.forLocale(ownerLocale).email_cancelled_subject(l.meetingType.name),
                 role -> {
                     Locale locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     String start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -384,8 +384,8 @@ public class EmailService {
         String inviteeStart = format(l.booking.startUtc, l.zone, inviteeLocale);
         String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
         sendForKindLocaleAware(InviteeRule.FALLBACK, l, location,
-                inviteeLocale, messages.forLocale(inviteeLocale).email_reminder_subject(l.meetingType.name),
-                ownerLocale, messages.forLocale(ownerLocale).email_reminder_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_reminder_subject(l.meetingType.name),
+                messages.forLocale(ownerLocale).email_reminder_subject(l.meetingType.name),
                 role -> {
                     Locale locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     String start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -420,12 +420,10 @@ public class EmailService {
      * body renderings according to their respective locales.
      */
     private void sendForKindLocaleAware(InviteeRule rule, Loaded l, String icsLocation,
-                                        Locale inviteeLocale, String inviteeSubject,
-                                        Locale ownerLocale, String ownerSubject,
+                                        String inviteeSubject, String ownerSubject,
                                         UnaryOperator<String> bodyForRole) {
         sendForKindLocaleAware(rule, l, icsLocation,
-                inviteeLocale, inviteeSubject,
-                ownerLocale, ownerSubject,
+                inviteeSubject, ownerSubject,
                 bodyForRole, mailSender::send);
     }
 
@@ -436,8 +434,7 @@ public class EmailService {
      * {@code calendarPort.isConnected()}. No mail if the recipient set is empty.
      */
     private void sendForKindLocaleAware(InviteeRule rule, Loaded l, String icsLocation,
-                                        Locale inviteeLocale, String inviteeSubject,
-                                        Locale ownerLocale, String ownerSubject,
+                                        String inviteeSubject, String ownerSubject,
                                         UnaryOperator<String> bodyForRole, MailSink sink) {
         boolean sendInvitee = rule == InviteeRule.ALWAYS || !calendarPort.isConnected(l.owner.ownerId);
         boolean sendOwner = l.owner.ownerNotificationsEnabled;

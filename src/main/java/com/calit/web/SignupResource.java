@@ -66,7 +66,7 @@ public class SignupResource {
         String normalized;
         try {
             normalized = Usernames.validateNew(username, AppUser::usernameTaken); // throws on invalid/reserved/taken
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             String error = messages.forLocale(activeLocale.current()).auth_signup_error();
             return Response.ok(Templates.signup(title, error)).build();
         }

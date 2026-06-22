@@ -43,6 +43,8 @@ import java.util.List;
 public class AdminResource {
 
     @CheckedTemplate
+    // S107: Qute @CheckedTemplate signatures pass one arg per template variable; param count is inherent.
+    @SuppressWarnings("java:S107")
     public static class Templates {
         public static native TemplateInstance dashboard(List<Booking> upcoming, long pendingCount, String tzScript, boolean isAdmin, String title);
 

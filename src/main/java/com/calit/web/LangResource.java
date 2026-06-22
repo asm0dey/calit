@@ -46,7 +46,7 @@ public class LangResource {
             if (uri.getRawQuery() != null) local.append('?').append(uri.getRawQuery());
             if (uri.getRawFragment() != null) local.append('#').append(uri.getRawFragment());
             return local.toString();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             return "/";
         }
     }

@@ -21,30 +21,30 @@
       <div class="collapse-content">
         <form method="post" action="/me/meeting-types/{type.id}/edit" class="fieldset">
           <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-          <label class="label">{adm:adm_detail_label_name}</label>
-          <input class="input w-full" type="text" name="name" data-slug-name value="{type.name}" required>
-          <label class="label">{adm:adm_detail_label_slug} <span class="text-base-content/60">{adm:adm_detail_slug_hint}</span></label>
-          <input class="input w-full" type="text" name="slug" data-slug-autofill value="{type.slug}">
-          <label class="label">{adm:adm_detail_label_duration}</label>
-          <input class="input w-full" type="number" name="durationMinutes" value="{type.durationMinutes}" required>
-          <label class="label">{adm:adm_detail_label_buffer_before}</label>
-          <input class="input w-full" type="number" name="bufferBeforeMinutes" value="{type.bufferBeforeMinutes}" min="0">
-          <label class="label">{adm:adm_detail_label_buffer_after}</label>
-          <input class="input w-full" type="number" name="bufferAfterMinutes" value="{type.bufferAfterMinutes}" min="0">
-          <label class="label">{adm:adm_detail_label_slot_interval}</label>
-          <input class="input w-full" type="number" name="slotIntervalMinutes" value="{#if type.slotIntervalMinutes}{type.slotIntervalMinutes}{/if}">
-          <label class="label">{adm:adm_detail_label_min_notice}</label>
-          <input class="input w-full" type="number" name="minNoticeMinutes" value="{type.minNoticeMinutes}" required>
-          <label class="label">{adm:adm_detail_label_horizon}</label>
-          <input class="input w-full" type="number" name="horizonDays" value="{type.horizonDays}" required>
-          <label class="label">{adm:adm_detail_label_location}</label>
-          <select class="select w-full" name="locationType">
+          <label class="label" for="mt-name">{adm:adm_detail_label_name}</label>
+          <input id="mt-name" class="input w-full" type="text" name="name" data-slug-name value="{type.name}" required>
+          <label class="label" for="mt-slug">{adm:adm_detail_label_slug} <span class="text-base-content/60">{adm:adm_detail_slug_hint}</span></label>
+          <input id="mt-slug" class="input w-full" type="text" name="slug" data-slug-autofill value="{type.slug}">
+          <label class="label" for="mt-duration">{adm:adm_detail_label_duration}</label>
+          <input id="mt-duration" class="input w-full" type="number" name="durationMinutes" value="{type.durationMinutes}" required>
+          <label class="label" for="mt-buffer-before">{adm:adm_detail_label_buffer_before}</label>
+          <input id="mt-buffer-before" class="input w-full" type="number" name="bufferBeforeMinutes" value="{type.bufferBeforeMinutes}" min="0">
+          <label class="label" for="mt-buffer-after">{adm:adm_detail_label_buffer_after}</label>
+          <input id="mt-buffer-after" class="input w-full" type="number" name="bufferAfterMinutes" value="{type.bufferAfterMinutes}" min="0">
+          <label class="label" for="mt-slot-interval">{adm:adm_detail_label_slot_interval}</label>
+          <input id="mt-slot-interval" class="input w-full" type="number" name="slotIntervalMinutes" value="{#if type.slotIntervalMinutes}{type.slotIntervalMinutes}{/if}">
+          <label class="label" for="mt-min-notice">{adm:adm_detail_label_min_notice}</label>
+          <input id="mt-min-notice" class="input w-full" type="number" name="minNoticeMinutes" value="{type.minNoticeMinutes}" required>
+          <label class="label" for="mt-horizon">{adm:adm_detail_label_horizon}</label>
+          <input id="mt-horizon" class="input w-full" type="number" name="horizonDays" value="{type.horizonDays}" required>
+          <label class="label" for="mt-location">{adm:adm_detail_label_location}</label>
+          <select id="mt-location" class="select w-full" name="locationType">
             {#for loc in locationTypes}
               <option value="{loc}"{#if type.locationType == loc} selected{/if}>{display:of(loc)}</option>
             {/for}
           </select>
-          <label class="label">{adm:adm_detail_label_location_detail}</label>
-          <input class="input w-full" type="text" name="locationDetail" value="{#if type.locationDetail}{type.locationDetail}{/if}">
+          <label class="label" for="mt-location-detail">{adm:adm_detail_label_location_detail}</label>
+          <input id="mt-location-detail" class="input w-full" type="text" name="locationDetail" value="{#if type.locationDetail}{type.locationDetail}{/if}">
           <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="secret" class="checkbox checkbox-sm"{#if type.secret} checked{/if}> {adm:adm_detail_label_secret}</label>
           <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="requiresApproval" class="checkbox checkbox-sm"{#if type.requiresApproval} checked{/if}> {adm:adm_detail_label_approval}</label>
           <script>
@@ -84,12 +84,12 @@
         </div>
         <form method="post" action="/me/meeting-types/{type.id}/booking-fields" class="fieldset">
           <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-          <label class="label">{adm:adm_detail_label_field_label}</label>
-          <input class="input w-full" type="text" name="label" required>
-          <label class="label">{adm:adm_detail_label_field_key}</label>
-          <input class="input w-full" type="text" name="fieldKey" required>
-          <label class="label">{adm:adm_detail_label_field_type}</label>
-          <select class="select w-full" name="type">{#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}</select>
+          <label class="label" for="mt-field-label">{adm:adm_detail_label_field_label}</label>
+          <input id="mt-field-label" class="input w-full" type="text" name="label" required>
+          <label class="label" for="mt-field-key">{adm:adm_detail_label_field_key}</label>
+          <input id="mt-field-key" class="input w-full" type="text" name="fieldKey" required>
+          <label class="label" for="mt-field-type">{adm:adm_detail_label_field_type}</label>
+          <select id="mt-field-type" class="select w-full" name="type">{#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}</select>
           <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="required" class="checkbox checkbox-sm"> {adm:adm_detail_label_field_required}</label>
           <label class="label">{adm:adm_detail_label_field_position}</label>
           <input class="input w-full" type="number" name="position" value="0" required>

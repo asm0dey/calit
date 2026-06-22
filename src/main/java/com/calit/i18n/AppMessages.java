@@ -11,6 +11,8 @@ import io.quarkus.qute.i18n.MessageBundle;
  * Keys follow <area>_<screen>_<what>: pub_*, adm_*, auth_*, email_*, common_*.
  */
 @MessageBundle // default namespace "msg"
+// S100: snake_case method names are intentional — Qute maps each @Message method name to its .properties key.
+@SuppressWarnings("java:S100")
 public interface AppMessages {
 
     @Message("Cancel")

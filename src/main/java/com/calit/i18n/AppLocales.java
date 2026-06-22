@@ -98,7 +98,7 @@ public final class AppLocales {
             List<Locale.LanguageRange> ranges = Locale.LanguageRange.parse(header);
             Locale best = Locale.lookup(ranges, supported);
             return best != null ? best : DEFAULT;
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             return DEFAULT;
         }
     }

@@ -20,12 +20,12 @@
   <h2 class="text-xl font-semibold mb-3">{adm:adm_bookingFields_add_h2}</h2>
   <form method="post" action="/me/booking-fields" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-    <label class="label">{adm:adm_bookingFields_label_label}</label>
-    <input class="input w-full" type="text" name="label" required>
-    <label class="label">{adm:adm_bookingFields_label_key}</label>
-    <input class="input w-full" type="text" name="fieldKey" required>
-    <label class="label">{adm:adm_bookingFields_label_type}</label>
-    <select class="select w-full" name="type">{#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}</select>
+    <label class="label" for="bf-label">{adm:adm_bookingFields_label_label}</label>
+    <input id="bf-label" class="input w-full" type="text" name="label" required>
+    <label class="label" for="bf-key">{adm:adm_bookingFields_label_key}</label>
+    <input id="bf-key" class="input w-full" type="text" name="fieldKey" required>
+    <label class="label" for="bf-type">{adm:adm_bookingFields_label_type}</label>
+    <select id="bf-type" class="select w-full" name="type">{#for ft in fieldTypes}<option value="{ft}">{display:of(ft)}</option>{/for}</select>
     <label class="label cursor-pointer justify-start gap-2"><input type="checkbox" name="required" class="checkbox checkbox-sm"> {adm:adm_bookingFields_label_required}</label>
     <label class="label">{adm:adm_bookingFields_label_position}</label>
     <input class="input w-full" type="number" name="position" value="0" required>

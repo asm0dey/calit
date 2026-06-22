@@ -12,6 +12,8 @@ import io.quarkus.qute.i18n.MessageBundle;
  * Keys: adm_*, google_*, users_*, mesetup_*.
  */
 @MessageBundle("adm")
+// S100: snake_case method names are intentional — Qute maps each @Message method name to its .properties key.
+@SuppressWarnings("java:S100")
 public interface AdminMessages {
 
     // ---- Common / shared ----

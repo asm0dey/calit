@@ -9,12 +9,12 @@
   <h1 class="text-2xl font-bold mb-4">{adm:adm_settings_h1}</h1>
   <form method="post" action="/me/settings" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-    <label class="label">{adm:adm_settings_label_name}</label>
-    <input class="input w-full" type="text" name="ownerName" required value="{#if settings}{settings.ownerName}{/if}">
-    <label class="label">{adm:adm_settings_label_email}</label>
-    <input class="input w-full" type="email" name="ownerEmail" required value="{#if settings}{settings.ownerEmail}{/if}">
-    <label class="label">{adm:adm_settings_label_timezone}</label>
-    <select class="select w-full" name="timezone" required>
+    <label class="label" for="set-name">{adm:adm_settings_label_name}</label>
+    <input id="set-name" class="input w-full" type="text" name="ownerName" required value="{#if settings}{settings.ownerName}{/if}">
+    <label class="label" for="set-email">{adm:adm_settings_label_email}</label>
+    <input id="set-email" class="input w-full" type="email" name="ownerEmail" required value="{#if settings}{settings.ownerEmail}{/if}">
+    <label class="label" for="set-timezone">{adm:adm_settings_label_timezone}</label>
+    <select id="set-timezone" class="select w-full" name="timezone" required>
       {#for z in zones}
         {#if settings}
         <option value="{z}"{#if settings.timezone == z} selected{/if}>{z}</option>

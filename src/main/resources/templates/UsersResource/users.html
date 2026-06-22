@@ -13,10 +13,10 @@
   <form method="post" action="/me/users" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md mb-6">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
     <h2 class="font-semibold">{adm:users_create_h2}</h2>
-    <label class="label">{adm:users_label_username}</label>
-    <input class="input w-full" type="text" name="username" required>
-    <label class="label">{adm:users_label_temp_password}</label>
-    <input class="input w-full" type="text" name="tempPassword" required>
+    <label class="label" for="usr-username">{adm:users_label_username}</label>
+    <input id="usr-username" class="input w-full" type="text" name="username" required>
+    <label class="label" for="usr-temp-password">{adm:users_label_temp_password}</label>
+    <input id="usr-temp-password" class="input w-full" type="text" name="tempPassword" required>
     <button type="submit" class="btn btn-primary mt-2">{adm:users_btn_create}</button>
   </form>
 
