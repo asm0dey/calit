@@ -1,0 +1,27 @@
+{! Shared footer: build info, legal links, no-JS language switcher. Included by base.html and adminBase.html. !}
+<!-- CALIT_BUILD_FOOTER -->
+<footer class="container py-6 text-center text-xs text-base-content/70">
+  <a href="https://github.com/asm0dey/calit" class="link link-hover text-base-content">calit</a>
+  <span class="mx-1">{inject:build.version} &middot; {inject:build.commit}</span>
+  <div class="mt-1">
+    <a href="/privacy" class="link link-hover text-base-content">Privacy</a>
+    <span class="mx-1">&middot;</span>
+    <a href="/terms" class="link link-hover text-base-content">Terms</a>
+  </div>
+  <details class="dropdown dropdown-top dropdown-end mt-2">
+    <summary class="btn btn-ghost btn-xs" aria-label="{msg:common_language}">
+      {#for o in localeOptions}{#if o.active}{o.label}{/if}{/for} &#9662;
+    </summary>
+    <ul class="menu dropdown-content bg-base-100 rounded-box z-10 w-44 p-2 shadow-sm max-h-64 overflow-y-auto text-left text-base-content">
+      {#for o in localeOptions}
+        <li>
+          {#if o.active}
+          <span class="menu-active" aria-current="true">{o.label}</span>
+          {#else}
+          <a href="{o.href}">{o.label}</a>
+          {/if}
+        </li>
+      {/for}
+    </ul>
+  </details>
+</footer>

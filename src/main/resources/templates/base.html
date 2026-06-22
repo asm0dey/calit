@@ -32,26 +32,7 @@
   <main class="container py-8">
     {#insert}{/insert}
   </main>
-  <!-- CALIT_BUILD_FOOTER -->
-  <footer class="container py-6 text-center text-xs text-base-content/50">
-    <a href="https://github.com/asm0dey/calit" class="link link-hover">calit</a>
-    {inject:build.version} &middot; {inject:build.commit}
-    <div class="mt-1">
-      <a href="/privacy" class="link link-hover">Privacy</a>
-      <span class="mx-1">&middot;</span>
-      <a href="/terms" class="link link-hover">Terms</a>
-    </div>
-    <nav class="mt-2" aria-label="{msg:common_language}">
-      {#for o in localeOptions}
-        {#if o_index > 0}<span class="mx-1">&middot;</span>{/if}
-        {#if o.active}
-          <span class="font-semibold" aria-current="true">{o.label}</span>
-        {#else}
-          <a class="link link-hover" href="{o.href}">{o.label}</a>
-        {/if}
-      {/for}
-    </nav>
-  </footer>
+  {#include footer /}
   <script>
     /* Persist the manual theme choice; default (no attr) falls back to OS via prefersdark. */
     (function () {

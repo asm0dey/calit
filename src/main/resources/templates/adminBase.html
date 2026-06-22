@@ -62,11 +62,7 @@
       <main class="container py-8">
         {#insert}{/insert}
       </main>
-      <!-- CALIT_BUILD_FOOTER -->
-      <footer class="container pb-6 text-center text-xs text-base-content/50">
-        <a href="https://github.com/asm0dey/calit" class="link link-hover">calit</a>
-        {inject:build.version} &middot; {inject:build.commit}
-      </footer>
+      {#include footer /}
     </div>
   </div>
   <script>
