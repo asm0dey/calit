@@ -302,6 +302,29 @@ public interface AppMessages {
     @Message("Book a different time")
     String pub_cancelled_btn();
 
+    // ---- Public — booking-summary labels + invitee cancel confirmation ----
+
+    @Message("Meeting:")
+    String pub_booking_meeting_label();
+
+    @Message("When:")
+    String pub_booking_when_label();
+
+    @Message("Cancel booking")
+    String pub_cancel_confirm_title();
+
+    @Message("Cancel this booking?")
+    String pub_cancel_confirm_h1();
+
+    @Message("This frees the slot and notifies everyone. It can't be undone.")
+    String pub_cancel_confirm_desc();
+
+    @Message("Confirm cancellation")
+    String pub_cancel_confirm_btn();
+
+    @Message("Keep booking")
+    String pub_cancel_keep_btn();
+
     // ---- Manage booking page (manage.html) ----
 
     @Message("Manage booking")

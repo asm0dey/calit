@@ -1,0 +1,21 @@
+{@java.lang.String title}
+{@site.asm0dey.calit.booking.Booking booking}
+{@site.asm0dey.calit.domain.MeetingType type}
+{@java.lang.String tzScript}
+{#include base title=title}
+  <div class="card bg-base-100 border border-base-300 shadow-sm max-w-xl mx-auto">
+    <div class="card-body items-start gap-3">
+      <h1 class="text-2xl font-bold">{msg:pub_cancel_confirm_h1}</h1>
+      <p class="text-base-content/70">{msg:pub_cancel_confirm_desc}</p>
+      <ul class="list-disc ms-5">
+        <li><strong>{msg:pub_booking_meeting_label}</strong> {type.name}</li>
+        <li><strong>{msg:pub_booking_when_label}</strong> <time data-utc="{booking.startUtc}">{booking.startUtc} UTC</time></li>
+      </ul>
+      <div class="flex gap-2">
+        <form method="post" action="/booking/{booking.manageToken}/cancel"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error">{msg:pub_cancel_confirm_btn}</button></form>
+        <a class="btn btn-ghost" href="/booking/{booking.manageToken}/manage">{msg:pub_cancel_keep_btn}</a>
+      </div>
+    </div>
+  </div>
+  {tzScript.raw}
+{/include}
