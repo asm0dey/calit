@@ -1,26 +1,28 @@
 {@java.lang.String title}
 {#include base title=title}
 {! ponytail: English-only legal copy. Add msg: keys only if bilingual terms are requested. !}
-<article class="prose max-w-2xl mx-auto bg-base-100 border border-base-300 rounded-box p-6">
+<div class="max-w-3xl mx-auto">
   <!-- CALIT_LEGAL_TERMS -->
-  <h1 class="text-2xl font-bold">Terms of Service</h1>
-  <p class="text-base-content/70">This calit instance is operated by <strong>{inject:site.operatorName}</strong> at {inject:site.baseUrl}.</p>
+  <header class="mb-6">
+    <h1 class="text-3xl font-bold">Terms of Service</h1>
+    <p class="text-base-content/70">This calit instance is operated by <strong>{inject:site.operatorName}</strong>.</p>
+  </header>
 
-  <h2 class="text-xl font-semibold mt-4">The service</h2>
-  <p>calit is a scheduling service provided by the operator. By creating an account or booking a meeting you agree to these terms.</p>
+  <h2 class="text-xl font-semibold mt-6">The service</h2>
+  <p class="mt-2">calit is a scheduling service provided by the operator. By creating an account or booking a meeting you agree to these terms.</p>
 
-  <h2 class="text-xl font-semibold mt-4">Acceptable use</h2>
-  <p>Do not use this service to send spam, harass others, or violate any applicable law. The operator may suspend accounts that do.</p>
+  <h2 class="text-xl font-semibold mt-6">Acceptable use</h2>
+  <p class="mt-2">Do not use this service to send spam, harass others, or violate any applicable law. The operator may suspend accounts that do.</p>
 
-  <h2 class="text-xl font-semibold mt-4">No warranty</h2>
-  <p>The service is provided "as is", without warranty of any kind. The operator is not liable for missed meetings, lost data, or any indirect damages arising from use of the service.</p>
+  <h2 class="text-xl font-semibold mt-6">No warranty</h2>
+  <p class="mt-2">The service is provided "as is", without warranty of any kind. The operator is not liable for missed meetings, lost data, or any indirect damages arising from use of the service.</p>
 
-  <h2 class="text-xl font-semibold mt-4">Changes</h2>
-  <p>The operator may update these terms; continued use after a change constitutes acceptance.</p>
+  <h2 class="text-xl font-semibold mt-6">Changes</h2>
+  <p class="mt-2">The operator may update these terms; continued use after a change constitutes acceptance.</p>
 
   {#if inject:site.contactEmail}
-  <h2 class="text-xl font-semibold mt-4">Contact</h2>
-  <p><a class="link" href="mailto:{inject:site.contactEmail}">{inject:site.contactEmail}</a></p>
+  <h2 class="text-xl font-semibold mt-6">Contact</h2>
+  <p class="mt-2"><a class="link" href="mailto:{inject:site.contactEmail}">{inject:site.contactEmail}</a></p>
   {/if}
-</article>
+</div>
 {/include}
