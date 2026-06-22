@@ -79,7 +79,7 @@ To use the published image from GitHub Container Registry instead of building lo
 ### Native image (lower footprint)
 
 Every published tag also has a GraalVM **native** counterpart with a `-native` suffix
-(`:latest-native`, `:edge-native`, `:1.10.0-native`, …). It runs the same application
+(`:latest-native`, `:edge-native`, `:1.11.0-native`, …). It runs the same application
 compiled ahead-of-time on a minimal Alpaquita musl base — no JRE.
 
 | | `:latest` (JVM) | `:latest-native` |
