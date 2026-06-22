@@ -1,15 +1,13 @@
 package site.asm0dey.calit.availability;
 
-import site.asm0dey.calit.domain.AvailabilityRule;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.AvailabilityRule;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class DefaultAvailabilitySeederTest {
 

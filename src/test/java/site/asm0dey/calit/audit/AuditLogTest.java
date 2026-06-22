@@ -2,8 +2,8 @@ package site.asm0dey.calit.audit;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Unit tests for the audit emitter's log-injection guard. {@code safe()} is package-private so the

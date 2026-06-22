@@ -1,8 +1,8 @@
 package site.asm0dey.calit.web;
 
+import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
-import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;
 

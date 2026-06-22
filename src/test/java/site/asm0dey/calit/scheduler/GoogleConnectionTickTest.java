@@ -1,14 +1,14 @@
 package site.asm0dey.calit.scheduler;
 
-import site.asm0dey.calit.email.EmailService;
-import site.asm0dey.calit.google.GoogleCredential;
-import site.asm0dey.calit.google.GoogleTokenService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import site.asm0dey.calit.email.EmailService;
+import site.asm0dey.calit.google.GoogleCredential;
+import site.asm0dey.calit.google.GoogleTokenService;
 
 import java.time.Instant;
 

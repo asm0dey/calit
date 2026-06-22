@@ -1,7 +1,7 @@
 package site.asm0dey.calit.web;
 
-import site.asm0dey.calit.domain.AvailabilityRule;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.AvailabilityRule;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;

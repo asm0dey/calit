@@ -1,10 +1,10 @@
 package site.asm0dey.calit.availability;
 
-import site.asm0dey.calit.domain.AvailabilityRule;
 import io.quarkus.arc.profile.UnlessBuildProfile;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
+import site.asm0dey.calit.domain.AvailabilityRule;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;

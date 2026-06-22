@@ -1,8 +1,8 @@
 package site.asm0dey.calit.web;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.PasswordHasher;
-import io.quarkus.narayana.jta.QuarkusTransaction;
 
 import static io.restassured.RestAssured.given;
 

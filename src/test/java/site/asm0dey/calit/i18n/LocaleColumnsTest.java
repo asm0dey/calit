@@ -1,13 +1,12 @@
 package site.asm0dey.calit.i18n;
 
-import site.asm0dey.calit.domain.OwnerSettings;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.OwnerSettings;
 
-import java.math.BigInteger;
 import java.time.Instant;
 import java.util.UUID;
 

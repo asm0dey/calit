@@ -1,6 +1,5 @@
 package site.asm0dey.calit.user;
 
-import site.asm0dey.calit.domain.OwnerSettings;
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -8,6 +7,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.OwnerSettings;
 
 import java.util.List;
 import java.util.regex.Matcher;

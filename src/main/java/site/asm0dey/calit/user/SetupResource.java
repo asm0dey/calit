@@ -1,20 +1,16 @@
 package site.asm0dey.calit.user;
 
-import site.asm0dey.calit.i18n.ActiveLocale;
-import site.asm0dey.calit.i18n.AppMessages;
-import site.asm0dey.calit.i18n.AppMessageResolver;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.FormParam;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.NotFoundException;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import site.asm0dey.calit.i18n.ActiveLocale;
+import site.asm0dey.calit.i18n.AppMessageResolver;
+import site.asm0dey.calit.i18n.AppMessages;
+
 import java.net.URI;
 
 /**

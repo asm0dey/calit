@@ -1,20 +1,17 @@
 package site.asm0dey.calit.google;
 
-import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.user.AppUser;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.user.AppUser;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 @TestProfile(GoogleSignInProvisionTest.SignupEnabledProfile.class)

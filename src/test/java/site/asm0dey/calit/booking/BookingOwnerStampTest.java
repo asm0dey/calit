@@ -1,13 +1,13 @@
 package site.asm0dey.calit.booking;
 
-import site.asm0dey.calit.domain.AvailabilityRule;
-import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.user.AppUser;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.AvailabilityRule;
+import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.user.AppUser;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;

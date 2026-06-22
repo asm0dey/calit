@@ -1,7 +1,7 @@
 package site.asm0dey.calit.web;
 
-import site.asm0dey.calit.user.AppUser;
 import io.quarkus.test.TestTransaction;
+import site.asm0dey.calit.user.AppUser;
 
 /** Test helper: resolves seeded AppUser ids by username for owner-scoped seeding/asserts. */
 final class TestOwners {

@@ -1,9 +1,9 @@
 package site.asm0dey.calit.booking;
 
-import site.asm0dey.calit.domain.MeetingType;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.MeetingType;
 
 import java.time.Instant;
 import java.util.List;

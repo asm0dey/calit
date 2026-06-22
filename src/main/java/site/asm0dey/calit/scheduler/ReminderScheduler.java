@@ -1,13 +1,5 @@
 package site.asm0dey.calit.scheduler;
 
-import site.asm0dey.calit.booking.Booking;
-import site.asm0dey.calit.booking.events.BookingApproved;
-import site.asm0dey.calit.booking.events.BookingCancelled;
-import site.asm0dey.calit.booking.events.BookingConfirmed;
-import site.asm0dey.calit.booking.events.BookingDeclined;
-import site.asm0dey.calit.booking.events.BookingRequested;
-import site.asm0dey.calit.booking.events.BookingRescheduled;
-import site.asm0dey.calit.email.EmailService;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
@@ -17,6 +9,9 @@ import jakarta.enterprise.event.TransactionPhase;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.events.*;
+import site.asm0dey.calit.email.EmailService;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

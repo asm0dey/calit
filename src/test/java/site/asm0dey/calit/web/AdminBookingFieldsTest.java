@@ -1,11 +1,11 @@
 package site.asm0dey.calit.web;
 
-import site.asm0dey.calit.domain.BookingField;
-import site.asm0dey.calit.domain.BookingField.FieldType;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.BookingField;
+import site.asm0dey.calit.domain.BookingField.FieldType;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;

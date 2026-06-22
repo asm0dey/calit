@@ -1,12 +1,12 @@
 package site.asm0dey.calit.test;
 
-import site.asm0dey.calit.user.AppUser;
-import site.asm0dey.calit.user.PasswordHasher;
 import io.quarkus.arc.Arc;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.callback.QuarkusTestBeforeEachCallback;
 import io.quarkus.test.junit.callback.QuarkusTestMethodContext;
 import jakarta.persistence.EntityManager;
+import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.user.PasswordHasher;
 
 /**
  * Gives every {@code @QuarkusTest} method a clean, known database even though {@code reuseForks=true}

@@ -1,10 +1,5 @@
 package site.asm0dey.calit.availability;
 
-import site.asm0dey.calit.domain.AvailabilityRule;
-import site.asm0dey.calit.domain.DateOverride;
-import site.asm0dey.calit.domain.DateOverrideWindow;
-import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.OwnerSettings;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -12,6 +7,7 @@ import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.*;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;

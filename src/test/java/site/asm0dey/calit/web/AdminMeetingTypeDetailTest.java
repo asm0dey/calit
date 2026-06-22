@@ -1,14 +1,14 @@
 package site.asm0dey.calit.web;
 
-import site.asm0dey.calit.domain.AvailabilityRule;
-import site.asm0dey.calit.domain.BookingField;
-import site.asm0dey.calit.domain.DateOverride;
-import site.asm0dey.calit.domain.MeetingType;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.AvailabilityRule;
+import site.asm0dey.calit.domain.BookingField;
+import site.asm0dey.calit.domain.DateOverride;
+import site.asm0dey.calit.domain.MeetingType;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;

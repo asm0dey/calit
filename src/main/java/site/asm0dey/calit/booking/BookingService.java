@@ -1,14 +1,24 @@
 package site.asm0dey.calit.booking;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
+import jakarta.persistence.PersistenceException;
+import jakarta.transaction.Transactional;
+import jakarta.ws.rs.NotFoundException;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.hibernate.exception.ConstraintViolationException;
 import site.asm0dey.calit.availability.SlotService;
 import site.asm0dey.calit.availability.TimeSlot;
+import site.asm0dey.calit.booking.events.*;
+import site.asm0dey.calit.domain.BookingField;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.BusyInterval;
 import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.google.CreatedEvent;
 import site.asm0dey.calit.i18n.AppLocales;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -16,22 +26,6 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-
-import site.asm0dey.calit.booking.events.BookingApproved;
-import site.asm0dey.calit.booking.events.BookingCancelled;
-import site.asm0dey.calit.booking.events.BookingConfirmed;
-import site.asm0dey.calit.booking.events.BookingDeclined;
-import site.asm0dey.calit.booking.events.BookingRequested;
-import site.asm0dey.calit.booking.events.BookingRescheduled;
-import site.asm0dey.calit.domain.BookingField;
-import site.asm0dey.calit.domain.MeetingType.LocationType;
-import site.asm0dey.calit.google.CreatedEvent;
-import jakarta.enterprise.event.Event;
-import jakarta.persistence.PersistenceException;
-import jakarta.transaction.Transactional;
-import jakarta.ws.rs.NotFoundException;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.hibernate.exception.ConstraintViolationException;
 import java.util.Map;
 import java.util.UUID;
 

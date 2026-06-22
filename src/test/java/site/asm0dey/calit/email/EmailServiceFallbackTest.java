@@ -1,12 +1,5 @@
 package site.asm0dey.calit.email;
 
-import site.asm0dey.calit.booking.Booking;
-import site.asm0dey.calit.booking.BookingStatus;
-import site.asm0dey.calit.booking.events.BookingDeclined;
-import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.MeetingType.LocationType;
-import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -14,15 +7,20 @@ import io.quarkus.test.junit.mockito.InjectSpy;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.booking.events.BookingDeclined;
+import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingType.LocationType;
+import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.google.CalendarPort;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 

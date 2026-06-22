@@ -1,12 +1,12 @@
 package site.asm0dey.calit.health;
 
-import site.asm0dey.calit.google.GoogleOAuthConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.HealthCheckResponseBuilder;
 import org.eclipse.microprofile.health.Readiness;
+import site.asm0dey.calit.google.GoogleOAuthConfig;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;

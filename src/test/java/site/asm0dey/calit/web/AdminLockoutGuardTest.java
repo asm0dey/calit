@@ -1,10 +1,10 @@
 package site.asm0dey.calit.web;
 
-import site.asm0dey.calit.user.AppUser;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.user.AppUser;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;

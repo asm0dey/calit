@@ -1,11 +1,11 @@
 package site.asm0dey.calit.scheduler;
 
-import site.asm0dey.calit.booking.Booking;
-import site.asm0dey.calit.booking.BookingStatus;
-import site.asm0dey.calit.domain.MeetingType;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.domain.MeetingType;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

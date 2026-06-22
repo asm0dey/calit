@@ -59,7 +59,7 @@ public final class AppLocales {
         if (langCode == null || langCode.isBlank()) return langCode;
         Locale locale = Locale.forLanguageTag(langCode.trim());
         String display = locale.getDisplayLanguage(locale);
-        if (display == null || display.isBlank()) return langCode;
+        if (display.isBlank()) return langCode;
         // Capitalize first letter (some JDK locales already do; this is a no-op for those).
         return Character.toUpperCase(display.charAt(0)) + display.substring(1);
     }

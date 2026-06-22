@@ -1,12 +1,12 @@
 package site.asm0dey.calit.scheduler;
 
-import site.asm0dey.calit.booking.Booking;
-import site.asm0dey.calit.booking.BookingStatus;
-import site.asm0dey.calit.domain.MeetingType;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.domain.MeetingType;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

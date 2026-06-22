@@ -1,11 +1,11 @@
 package site.asm0dey.calit.google;
 
-import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.user.AppUser;
-import site.asm0dey.calit.user.Usernames;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.user.Usernames;
 
 import java.util.List;
 

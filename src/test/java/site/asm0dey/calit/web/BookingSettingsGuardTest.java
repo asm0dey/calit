@@ -1,13 +1,13 @@
 package site.asm0dey.calit.web;
 
-import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.MeetingType.LocationType;
-import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.user.AppUser;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingType.LocationType;
+import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.user.AppUser;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;

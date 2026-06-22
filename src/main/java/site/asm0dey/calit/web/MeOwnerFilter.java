@@ -1,7 +1,5 @@
 package site.asm0dey.calit.web;
 
-import site.asm0dey.calit.user.AppUser;
-import site.asm0dey.calit.user.CurrentOwner;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -9,6 +7,8 @@ import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.ext.Provider;
+import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.user.CurrentOwner;
 
 /**
  * Resolves the request's owner for /me, /me/* and /api/google* from the authenticated

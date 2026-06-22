@@ -1,21 +1,5 @@
 package site.asm0dey.calit.email;
 
-import site.asm0dey.calit.booking.Booking;
-import site.asm0dey.calit.booking.events.BookingApproved;
-import site.asm0dey.calit.booking.events.BookingCancelled;
-import site.asm0dey.calit.booking.events.BookingConfirmed;
-import site.asm0dey.calit.booking.events.BookingDeclined;
-import site.asm0dey.calit.booking.events.BookingRequested;
-import site.asm0dey.calit.booking.events.BookingRescheduled;
-import site.asm0dey.calit.booking.events.ReminderDue;
-import site.asm0dey.calit.domain.BookingField;
-import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.MeetingType.LocationType;
-import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.i18n.AppLocales;
-import site.asm0dey.calit.i18n.AppMessages;
-import site.asm0dey.calit.i18n.AppMessageResolver;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
@@ -24,6 +8,16 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.TransactionPhase;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.events.*;
+import site.asm0dey.calit.domain.BookingField;
+import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingType.LocationType;
+import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.i18n.AppLocales;
+import site.asm0dey.calit.i18n.AppMessageResolver;
+import site.asm0dey.calit.i18n.AppMessages;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;

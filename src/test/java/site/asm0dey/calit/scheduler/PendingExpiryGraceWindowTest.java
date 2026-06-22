@@ -1,9 +1,5 @@
 package site.asm0dey.calit.scheduler;
 
-import site.asm0dey.calit.booking.Booking;
-import site.asm0dey.calit.booking.BookingStatus;
-import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.OwnerSettings;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -11,6 +7,10 @@ import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.OwnerSettings;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

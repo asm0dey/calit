@@ -1,7 +1,5 @@
 package site.asm0dey.calit.google;
 
-import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.user.AppUser;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -11,6 +9,8 @@ import io.restassured.filter.cookie.CookieFilter;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.user.AppUser;
 
 import java.time.Instant;
 import java.util.Map;

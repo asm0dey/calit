@@ -1,12 +1,13 @@
 package site.asm0dey.calit.web;
 
-import site.asm0dey.calit.i18n.AppLocales;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
+import site.asm0dey.calit.i18n.AppLocales;
+
 import java.net.URI;
 
 /** Invitee language switch. GET (no state mutation beyond a preference cookie) -> no CSRF token. */
