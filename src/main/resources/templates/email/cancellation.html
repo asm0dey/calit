@@ -1,5 +1,6 @@
+{@java.lang.String lang}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}">
 <head><title>{msg:email_cancellation_title}</title></head>
 <body>
 <p>{msg:email_body_greeting(inviteeName)}</p>
@@ -9,6 +10,6 @@
   <li><strong>{msg:email_cancellation_was_scheduled}</strong> {startTime}</li>
   <li><strong>{msg:email_body_duration_label}</strong> {msg:email_body_duration_minutes(durationMinutes)}</li>
 </ul>
-<p>{msg:email_body_recipient_note(recipientRole)}</p>
+<p>{msg:email_body_recipient_note(recipientRoleDisplay)}</p>
 </body>
 </html>

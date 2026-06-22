@@ -413,6 +413,12 @@ public interface AppMessages {
     @Message("This message was sent to the {role}.")
     String email_body_recipient_note(String role);
 
+    @Message("invitee")
+    String email_role_invitee();
+
+    @Message("organizer")
+    String email_role_owner();
+
     @Message("Requested time:")
     String email_body_requested_time_label();
 

@@ -39,6 +39,7 @@ import java.util.function.UnaryOperator;
 public class EmailService {
 
     public static final String RECIPIENT_ROLE = "recipientRole";
+    public static final String RECIPIENT_ROLE_DISPLAY = "recipientRoleDisplay";
     public static final String INVITEE_NAME = "inviteeName";
     public static final String MEETING_TYPE_NAME = "meetingTypeName";
     public static final String START_TIME = "startTime";
@@ -99,7 +100,9 @@ public class EmailService {
      * {@code locale} drives any {msg:} keys rendered in the template body.
      */
     public void sendPasswordReset(String toEmail, String resetUrl, Instant expiresAt, Locale locale) {
-        String body = passwordReset.instance().setLocale(locale).data("resetUrl", resetUrl).render();
+        String body = passwordReset.instance().setLocale(locale)
+                .data("lang", locale.getLanguage())
+                .data("resetUrl", resetUrl).render();
         mailSender.send(toEmail, "Reset your calit password", body, null, expiresAt);
     }
 
@@ -112,6 +115,7 @@ public class EmailService {
     public void sendGoogleDisconnected(String toEmail, String accountEmail, Locale locale) {
         String reconnectUrl = baseUrl + "/me/google";
         String body = googleDisconnected.instance().setLocale(locale)
+                .data("lang", locale.getLanguage())
                 .data("accountEmail", accountEmail == null ? "your account" : accountEmail)
                 .data("reconnectUrl", reconnectUrl)
                 .render();
@@ -189,6 +193,8 @@ public class EmailService {
                     String start = "invitee".equals(role) ? inviteeStart : ownerStart;
                     return requested.instance().setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
+                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
+                            .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
@@ -217,6 +223,8 @@ public class EmailService {
                     String start = "invitee".equals(role) ? inviteeStart : ownerStart;
                     return confirmation.instance().setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
+                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
+                            .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
@@ -246,6 +254,8 @@ public class EmailService {
                     String start = "invitee".equals(role) ? inviteeStart : ownerStart;
                     return confirmation.instance().setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
+                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
+                            .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
@@ -279,6 +289,8 @@ public class EmailService {
                     String start = "invitee".equals(role) ? inviteeStart : ownerStart;
                     return declined.instance().setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
+                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
+                            .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
@@ -314,6 +326,8 @@ public class EmailService {
                     String oldStart = "invitee".equals(role) ? inviteeOldStart : ownerOldStart;
                     return reschedule.instance().setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
+                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
+                            .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, newStart)
@@ -343,6 +357,8 @@ public class EmailService {
                     String start = "invitee".equals(role) ? inviteeStart : ownerStart;
                     return cancellation.instance().setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
+                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
+                            .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
@@ -372,6 +388,8 @@ public class EmailService {
                     String start = "invitee".equals(role) ? inviteeStart : ownerStart;
                     return reminder.instance().setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
+                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
+                            .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, start)
@@ -431,6 +449,12 @@ public class EmailService {
         if (sendOwner) {
             sink.deliver(l.owner.ownerEmail, ownerSubject, bodyForRole.apply("owner"), ics);
         }
+    }
+
+    /** Returns the localized display word for the recipient role in the email footer. */
+    private String localizedRole(String role, Locale locale) {
+        AppMessages m = messages.forLocale(locale);
+        return "invitee".equals(role) ? m.email_role_invitee() : m.email_role_owner();
     }
 
     private String manageUrl(Booking b) {

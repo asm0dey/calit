@@ -1,5 +1,6 @@
+{@java.lang.String lang}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}">
 <head><title>{msg:email_reschedule_title}</title></head>
 <body>
 <p>{msg:email_body_greeting(inviteeName)}</p>
@@ -23,6 +24,6 @@
 </ul>
 {/if}
 <p><a href="{manageUrl}">{msg:email_body_manage_link_text}</a></p>
-<p>{msg:email_body_recipient_note(recipientRole)}</p>
+<p>{msg:email_body_recipient_note(recipientRoleDisplay)}</p>
 </body>
 </html>

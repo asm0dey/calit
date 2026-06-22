@@ -238,9 +238,9 @@ class EmailLocaleTest {
         assertEquals(1, toInvitee.size(), "invitee must receive one confirmation email");
         String html = toInvitee.get(0).getHtml();
 
-        // German body strings added by task 9d
-        assertTrue(html.contains("Hallo") || html.contains("bestätigt"),
-                "German confirmation body must contain 'Hallo' or 'bestätigt'; got: " + html);
+        // German body strings added by task 9d — both must be present (body-specific, not just subject)
+        assertTrue(html.contains("Hallo"),
+                "German confirmation body must contain greeting 'Hallo'; got: " + html);
         assertTrue(html.contains("Minuten"),
                 "German confirmation body must contain 'Minuten' (duration); got: " + html);
     }
@@ -296,10 +296,138 @@ class EmailLocaleTest {
         assertEquals(1, toInvitee.size(), "invitee must receive one confirmation email");
         String html = toInvitee.get(0).getHtml();
 
-        // English body strings from task 9d
-        assertTrue(html.contains("Hi ") || html.contains("confirmed"),
-                "English confirmation body must contain 'Hi' or 'confirmed'; got: " + html);
+        // English body strings from task 9d — both must be present (body-specific)
+        assertTrue(html.contains("Hi "),
+                "English confirmation body must contain greeting 'Hi '; got: " + html);
         assertTrue(html.contains("minutes"),
                 "English confirmation body must contain 'minutes' (duration); got: " + html);
+    }
+
+    // ---- 6. German email footer uses localized role word, not raw "invitee"/"owner" ----
+
+    @Test
+    void germanEmailFooterUsesLocalizedRoleWord() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+
+        long bookingId = QuarkusTransaction.requiringNew().call(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            if (s == null) {
+                s = new OwnerSettings();
+                s.ownerId = 1L;
+            }
+            s.ownerName = "Owner";
+            s.ownerEmail = OWNER_EMAIL;
+            s.timezone = "Europe/Berlin";
+            s.ownerNotificationsEnabled = true;
+            s.locale = "de"; // German owner
+            s.persist();
+
+            MeetingType t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "Role Test";
+            t.slug = "role-test-" + System.nanoTime();
+            t.durationMinutes = 30;
+            t.locationType = LocationType.PHONE;
+            t.locationDetail = "+49 30 0000";
+            t.persist();
+
+            Instant start = Instant.parse("2026-06-08T09:00:00Z");
+            Booking b = new Booking();
+            b.ownerId = 1L;
+            b.meetingTypeId = t.id;
+            b.inviteeName = "Karl Braun";
+            b.inviteeEmail = INVITEE_EMAIL;
+            b.startUtc = start;
+            b.endUtc = start.plus(30, ChronoUnit.MINUTES);
+            b.status = BookingStatus.CONFIRMED;
+            b.manageToken = java.util.UUID.randomUUID().toString();
+            b.createdAt = Instant.now();
+            b.answers = Map.of();
+            b.locale = "de"; // German invitee
+            b.persist();
+            return b.id;
+        });
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        // Invitee email: footer must say "Empfänger" (not raw "invitee")
+        List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
+        assertEquals(1, toInvitee.size(), "invitee must receive confirmation email");
+        String inviteeHtml = toInvitee.get(0).getHtml();
+        assertTrue(inviteeHtml.contains("Empfänger"),
+                "German invitee footer must contain 'Empfänger'; got: " + inviteeHtml);
+        assertFalse(inviteeHtml.contains(">invitee<") || inviteeHtml.contains(" invitee ") || inviteeHtml.contains(" invitee."),
+                "German invitee footer must NOT contain raw 'invitee'; got: " + inviteeHtml);
+
+        // Owner email: footer must say "Veranstalter" (not raw "owner")
+        List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
+        assertEquals(1, toOwner.size(), "owner must receive confirmation email");
+        String ownerHtml = toOwner.get(0).getHtml();
+        assertTrue(ownerHtml.contains("Veranstalter"),
+                "German owner footer must contain 'Veranstalter'; got: " + ownerHtml);
+        assertFalse(ownerHtml.contains(">owner<") || ownerHtml.contains(" owner ") || ownerHtml.contains(" owner."),
+                "German owner footer must NOT contain raw 'owner'; got: " + ownerHtml);
+    }
+
+    // ---- 7. German email has <html lang="de" ----
+
+    @Test
+    void germanEmailHasCorrectHtmlLang() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+
+        long bookingId = QuarkusTransaction.requiringNew().call(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            if (s == null) {
+                s = new OwnerSettings();
+                s.ownerId = 1L;
+            }
+            s.ownerName = "Owner";
+            s.ownerEmail = OWNER_EMAIL;
+            s.timezone = "Europe/Berlin";
+            s.ownerNotificationsEnabled = true;
+            s.locale = "en"; // English owner — should get lang="en"
+            s.persist();
+
+            MeetingType t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "Lang Test";
+            t.slug = "lang-test-" + System.nanoTime();
+            t.durationMinutes = 30;
+            t.locationType = LocationType.PHONE;
+            t.locationDetail = "+49 30 1111";
+            t.persist();
+
+            Instant start = Instant.parse("2026-06-08T09:00:00Z");
+            Booking b = new Booking();
+            b.ownerId = 1L;
+            b.meetingTypeId = t.id;
+            b.inviteeName = "Luisa Meier";
+            b.inviteeEmail = INVITEE_EMAIL;
+            b.startUtc = start;
+            b.endUtc = start.plus(30, ChronoUnit.MINUTES);
+            b.status = BookingStatus.CONFIRMED;
+            b.manageToken = java.util.UUID.randomUUID().toString();
+            b.createdAt = Instant.now();
+            b.answers = Map.of();
+            b.locale = "de"; // German invitee
+            b.persist();
+            return b.id;
+        });
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        // German invitee email must have lang="de"
+        List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
+        assertEquals(1, toInvitee.size(), "invitee must receive confirmation email");
+        String inviteeHtml = toInvitee.get(0).getHtml();
+        assertTrue(inviteeHtml.contains("lang=\"de\""),
+                "German invitee email must have <html lang=\"de\">; got: " + inviteeHtml);
+
+        // English owner email must have lang="en"
+        List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
+        assertEquals(1, toOwner.size(), "owner must receive confirmation email");
+        String ownerHtml = toOwner.get(0).getHtml();
+        assertTrue(ownerHtml.contains("lang=\"en\""),
+                "English owner email must have <html lang=\"en\">; got: " + ownerHtml);
     }
 }
