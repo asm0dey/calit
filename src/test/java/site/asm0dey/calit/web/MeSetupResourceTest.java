@@ -24,10 +24,22 @@ class MeSetupResourceTest {
 
     @Transactional
     Long seed(String username, boolean mustChange) {
+        return seedWithLocale(username, mustChange, "en");
+    }
+
+    @Transactional
+    Long seedWithLocale(String username, boolean mustChange, String locale) {
         AppUser u = AppUser.create(username, HASHER.hash("Initial-pw-12345"), false);
         u.mustChangePassword = mustChange;
         u.settingsComplete = false;
         u.persist();
+        OwnerSettings s = new OwnerSettings();
+        s.ownerId = u.id;
+        s.ownerName = username;
+        s.ownerEmail = username + "@example.com";
+        s.timezone = "UTC";
+        s.locale = locale;
+        s.persist();
         return u.id;
     }
 
@@ -43,6 +55,26 @@ class MeSetupResourceTest {
     void getRendersWizardWithPasswordStepWhenForced() {
         seed("wiz1", true);
         given().when().get("/me/setup").then().statusCode(200).body(containsString("New password"));
+    }
+
+    @Test
+    @TestSecurity(user = "wiz1rtl", roles = {"user"})
+    void setupPageIsRtlForHebrew() {
+        seedWithLocale("wiz1rtl", true, "he");
+        given().when().get("/me/setup")
+            .then().statusCode(200)
+            .body(containsString("lang=\"he\""))
+            .body(containsString("dir=\"rtl\""));
+    }
+
+    @Test
+    @TestSecurity(user = "wiz1ltr", roles = {"user"})
+    void setupPageIsLtrForEnglish() {
+        seedWithLocale("wiz1ltr", true, "en");
+        given().when().get("/me/setup")
+            .then().statusCode(200)
+            .body(containsString("lang=\"en\""))
+            .body(containsString("dir=\"ltr\""));
     }
 
     @Test
