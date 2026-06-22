@@ -7,6 +7,18 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+- **Hebrew localization with right-to-left (RTL) support.** The entire UI —
+  public booking pages, the owner admin UI, and all notification emails — is now
+  available in Hebrew (`עברית`) alongside English and German. When Hebrew is
+  active, calit automatically mirrors the layout right-to-left (`<html dir="rtl">`)
+  for both web pages and emails; no setting controls this, it follows the chosen
+  language. Like German, Hebrew needs no configuration — it is always available,
+  selectable from the footer language switcher (visitors) or **Settings**
+  (owners), with untranslated phrases falling back to English. See
+  [Language & localization](/usage/languages/).
+
 ## 1.9.0
 
 Google OAuth verification, German localization, and footer & first-run polish.
