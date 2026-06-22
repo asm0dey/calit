@@ -34,15 +34,28 @@
     <label class="label" for="ownerEmail">{adm:mesetup_label_email}</label>
     <input id="ownerEmail" class="input w-full" type="email" name="ownerEmail" required value="{#if settings}{settings.ownerEmail}{/if}">
     <label class="label" for="timezone">{adm:mesetup_label_timezone}</label>
-    <select id="timezone" class="select w-full" name="timezone" required>
+    <select id="timezone" class="select w-full" name="timezone" required{#if !settings} data-tz-autodetect{/if}>
       {#for z in zones}
         {#if settings}
         <option value="{z}"{#if settings.timezone == z} selected{/if}>{z}</option>
         {#else}
-        <option value="{z}"{#if z == 'Europe/Amsterdam'} selected{/if}>{z}</option>
+        <option value="{z}"{#if z == 'UTC'} selected{/if}>{z}</option>
         {/if}
       {/for}
     </select>
+    <script>
+    /* CALIT_TZ_AUTODETECT — on first run (no saved timezone), preselect the browser's zone. */
+    (function () {
+      var sel = document.querySelector('select[data-tz-autodetect]');
+      if (!sel) { return; }
+      try {
+        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz && [].some.call(sel.options, function (o) { return o.value === tz; })) {
+          sel.value = tz;
+        }
+      } catch (e) {}
+    })();
+    </script>
 
     <button type="submit" class="btn btn-primary mt-4">{adm:mesetup_btn_finish}</button>
   </form>
