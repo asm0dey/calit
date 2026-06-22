@@ -178,6 +178,11 @@ public class BookingService {
         booking.locale = AppLocales.isSupported(locale) ? locale : "en";
         // Feature 14: approval types hold the slot as PENDING; auto types are CONFIRMED immediately.
         booking.status = type.requiresApproval ? BookingStatus.PENDING : BookingStatus.CONFIRMED;
+        // Approval-required bookings carry an unguessable token used as a CSRF nonce on the owner's
+        // email approve/decline links.
+        if (type.requiresApproval) {
+            booking.approvalToken = UUID.randomUUID().toString();
+        }
 
         // NFR cross-node guard: persist + flush now so a concurrent replica's overlapping
         // held (PENDING|CONFIRMED) row trips the `booking_no_overlap_held` exclusion constraint

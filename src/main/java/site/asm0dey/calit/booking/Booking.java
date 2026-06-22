@@ -61,6 +61,14 @@ public class Booking extends PanacheEntityBase {
     public String locale = "en";
 
     /**
+     * Feature 14 owner-approval nonce: an unguessable random UUID, set only when the meeting type
+     * requires approval. Emailed to the owner inside the authenticated approve/decline links
+     * ({app.base-url}/me/bookings/{id}/approve?t={approvalToken}) as a CSRF nonce. Null otherwise.
+     */
+    @Column(name = "approval_token", length = 36, unique = true)
+    public String approvalToken;
+
+    /**
      * Feature 10: submitted values for the owner-defined custom BookingFields
      * (fieldKey -> value). Built-in full-name/email are NOT stored here — they
      * live in {@link #inviteeName}/{@link #inviteeEmail}. Stored as a JSONB
