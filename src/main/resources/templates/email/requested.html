@@ -1,12 +1,8 @@
-{@java.lang.String lang}
 {@java.lang.String recipientRole}
 {@java.lang.String approveUrl}
 {@java.lang.String declineUrl}
-<!DOCTYPE html>
-<html lang="{lang}" dir="{#if lang == 'he'}rtl{#else}ltr{/if}">
-<head><title>{msg:email_requested_title}</title></head>
-<body>
-<p>{msg:email_body_greeting(greetingName)}</p>
+{#include email/layout}
+{#title}{msg:email_requested_title}{/title}
 {#if recipientRole == 'owner'}
 <p><strong>{msg:email_requested_body_owner(inviteeName)}</strong></p>
 {#else}
@@ -16,25 +12,12 @@
   <li><strong>{msg:email_body_meeting_label}</strong> {meetingTypeName}</li>
   <li><strong>{msg:email_body_requested_time_label}</strong> {startTime}</li>
   <li><strong>{msg:email_body_duration_label}</strong> {msg:email_body_duration_minutes(durationMinutes)}</li>
-  {#if location}
-    {#if isMeetLink}<li><strong>{msg:email_body_meet_label}</strong> <a href="{location}">{location}</a></li>
-    {#else}<li><strong>{msg:email_body_location_label}</strong> {location}</li>{/if}
-  {/if}
+  {#include email/_location /}
 </ul>
-{#if answers}
-<p><strong>{msg:email_body_your_answers_label}</strong></p>
-<ul>
-  {#for line in answers}
-  <li><strong>{line.label}:</strong> {line.value}</li>
-  {/for}
-</ul>
-{/if}
+{#include email/_answers /}
 {#if recipientRole == 'owner'}
   {#if approveUrl}<p><a href="{approveUrl}">{msg:email_body_approve_link_text}</a> &middot; <a href="{declineUrl}">{msg:email_body_decline_link_text}</a></p>{/if}
 {#else}
-  <p><a href="{manageUrl}">{msg:email_body_manage_link_text}</a></p>
-  <p><a href="{cancelUrl}">{msg:email_body_cancel_link_text}</a></p>
+  {#include email/_inviteelinks /}
 {/if}
-<p>{msg:email_body_recipient_note(recipientRoleDisplay)}</p>
-</body>
-</html>
+{/include}

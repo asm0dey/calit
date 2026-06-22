@@ -1,0 +1,8 @@
+{#if answers}
+<p><strong>{msg:email_body_your_answers_label}</strong></p>
+<ul>
+  {#for line in answers}
+  <li><strong>{line.label}:</strong> {line.value}</li>
+  {/for}
+</ul>
+{/if}

@@ -1,0 +1,12 @@
+{@java.lang.String lang}
+{@java.lang.String greetingName}
+{@java.lang.String recipientRoleDisplay}
+<!DOCTYPE html>
+<html lang="{lang}" dir="{#if lang == 'he'}rtl{#else}ltr{/if}">
+<head><title>{#insert title}{/}</title></head>
+<body>
+<p>{msg:email_body_greeting(greetingName)}</p>
+{#insert}{/}
+<p>{msg:email_body_recipient_note(recipientRoleDisplay)}</p>
+</body>
+</html>

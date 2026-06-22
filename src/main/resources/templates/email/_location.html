@@ -1,0 +1,4 @@
+{#if location}
+  {#if isMeetLink}<li><strong>{msg:email_body_meet_label}</strong> <a href="{location}">{location}</a></li>
+  {#else}<li><strong>{msg:email_body_location_label}</strong> {location}</li>{/if}
+{/if}

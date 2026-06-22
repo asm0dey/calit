@@ -1,10 +1,6 @@
-{@java.lang.String lang}
 {@java.lang.String recipientRole}
-<!DOCTYPE html>
-<html lang="{lang}" dir="{#if lang == 'he'}rtl{#else}ltr{/if}">
-<head><title>{msg:email_cancellation_title}</title></head>
-<body>
-<p>{msg:email_body_greeting(greetingName)}</p>
+{#include email/layout}
+{#title}{msg:email_cancellation_title}{/title}
 {#if recipientRole == 'owner'}
 <p><strong>{msg:email_cancellation_body_owner(inviteeName)}</strong></p>
 {#else}
@@ -15,6 +11,4 @@
   <li><strong>{msg:email_cancellation_was_scheduled}</strong> {startTime}</li>
   <li><strong>{msg:email_body_duration_label}</strong> {msg:email_body_duration_minutes(durationMinutes)}</li>
 </ul>
-<p>{msg:email_body_recipient_note(recipientRoleDisplay)}</p>
-</body>
-</html>
+{/include}
