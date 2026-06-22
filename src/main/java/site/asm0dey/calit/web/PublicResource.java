@@ -67,6 +67,10 @@ public class PublicResource {
                 java.util.List<PublicResource.DaySlots> days,
                 String tzBar, String tzScript, String calScript);
 
+        public static native TemplateInstance cancelConfirm(
+                String title, site.asm0dey.calit.booking.Booking booking,
+                site.asm0dey.calit.domain.MeetingType type, String tzScript);
+
         public static native TemplateInstance cancelled(String title);
 
         public static native TemplateInstance notReady(String title);
@@ -288,6 +292,23 @@ public class PublicResource {
         Booking booking = bookingService.reschedule(manageToken, Instant.parse(startUtc));
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         return confirmationPage(booking, type);
+    }
+
+    @GET
+    @Path("/booking/{manageToken}/cancel")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance cancelConfirmPage(@PathParam("manageToken") String manageToken) {
+        var m = messages.forLocale(activeLocale.current());
+        Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
+        if (booking == null) {
+            throw new NotFoundException("No booking for token " + manageToken);
+        }
+        if (booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
+            // Already gone -> the same terminal page the POST cancel renders.
+            return Templates.cancelled(m.pub_cancelled_title());
+        }
+        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        return Templates.cancelConfirm(m.pub_cancel_confirm_title(), booking, type, Layout.TZ_SCRIPT);
     }
 
     @POST
