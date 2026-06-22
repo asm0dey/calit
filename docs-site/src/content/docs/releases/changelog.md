@@ -7,7 +7,9 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.9.0
+
+Google OAuth verification, German localization, and footer & first-run polish.
 
 - **Google OAuth verification support.** A hosted instance can now pass Google's
   OAuth verification: set `OPERATOR_NAME` and `PRIVACY_CONTACT_EMAIL` to serve a
@@ -30,6 +32,15 @@ asset downloads, are on
 - **Build info in the footer.** Every page now shows the running release version
   and short git commit in the footer (e.g. `calit 1.8.0 · a1b2c3d`), so you can
   tell at a glance which build a deployment is running.
+- **Footer, language switcher & first-run polish.** The footer is now a single
+  shared component on every page (public and admin) with improved contrast, and
+  the language switcher is a no-JS dropdown that scales past a handful of
+  languages. `/privacy` and `/terms` are reachable before the first user is
+  created (so Google's verification crawler can read them on a fresh instance).
+  First-run setup auto-detects the visitor's timezone (falling back to UTC
+  instead of a hardcoded zone). The privacy/terms pages now carry the full
+  canonical policy in the site's visual style, and the marketing landing page is
+  pinned to its light theme so its footer stays readable in dark-mode browsers.
 
 ## 1.8.0
 
