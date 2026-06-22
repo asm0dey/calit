@@ -374,6 +374,12 @@ public interface AppMessages {
     @Message("Reminder: {meetingTypeName}")
     String email_reminder_subject(String meetingTypeName);
 
+    @Message("Reset your calit password")
+    String email_password_reset_subject();
+
+    @Message("Action needed: reconnect your Google Calendar")
+    String email_google_disconnected_subject();
+
     // ---- Email date/time formatting ----
 
     /** strftime-like pattern used to format booking date/time in email bodies. */

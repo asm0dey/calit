@@ -29,6 +29,11 @@ public class LangResource {
     /** Only same-site absolute paths; anything else -> "/". Blocks open redirects. */
     private static String safeLocal(String ret) {
         if (ret == null || !ret.startsWith("/") || ret.startsWith("//")) return "/";
+        try {
+            URI.create(ret);
+        } catch (IllegalArgumentException e) {
+            return "/";
+        }
         return ret;
     }
 }

@@ -65,6 +65,22 @@ class EmailLocaleTest {
         assertNotEquals(enSubj, deSubj, "German subject must differ from English");
     }
 
+    @Test
+    void germanPasswordResetSubjectNonBlankAndDiffersFromEnglish() {
+        String enSubj = messages.forTag("en").email_password_reset_subject();
+        String deSubj = messages.forTag("de").email_password_reset_subject();
+        assertFalse(deSubj.isBlank(), "German password-reset subject must not be blank");
+        assertNotEquals(enSubj, deSubj, "German password-reset subject must differ from English");
+    }
+
+    @Test
+    void germanGoogleDisconnectedSubjectNonBlankAndDiffersFromEnglish() {
+        String enSubj = messages.forTag("en").email_google_disconnected_subject();
+        String deSubj = messages.forTag("de").email_google_disconnected_subject();
+        assertFalse(deSubj.isBlank(), "German Google-disconnected subject must not be blank");
+        assertNotEquals(enSubj, deSubj, "German Google-disconnected subject must differ from English");
+    }
+
     // ---- 2. End-to-end: de booking → German date string in body ----
 
     @Test

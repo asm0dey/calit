@@ -31,4 +31,10 @@ class LangResourceTest {
             .header("Location", endsWith("/"))
             .cookie("calit_lang", "de");
     }
+    @Test void rejectsMalformedBackslashReturn() {
+        given().redirects().follow(false)
+            .when().get("/lang/de?return=/\\evil.com")
+            .then().statusCode(303)
+            .header("Location", endsWith("/"));
+    }
 }

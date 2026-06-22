@@ -66,4 +66,29 @@ class OwnerLocaleSettingTest {
                 .then().statusCode(200)
                 .body(containsString("Sprache")); // German wins over en cookie
     }
+
+    /**
+     * Test C: the language select renders iterated locale options, with the saved
+     * locale marked selected (Fix 2 — dynamic option iteration).
+     */
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void settingsPageRendersLocaleOptionsWithDeSelected() {
+        // Save locale=de
+        given()
+                .formParam("ownerName", "Admin")
+                .formParam("ownerEmail", "admin@example.com")
+                .formParam("timezone", "UTC")
+                .formParam("locale", "de")
+                .when().post("/me/settings")
+                .then().statusCode(200);
+
+        // Settings page must render both locale options and mark de as selected
+        given()
+                .when().get("/me/settings")
+                .then().statusCode(200)
+                .body(containsString("value=\"en\""))       // English option present
+                .body(containsString("value=\"de\""))       // German option present
+                .body(containsString("value=\"de\" selected")); // German is selected
+    }
 }

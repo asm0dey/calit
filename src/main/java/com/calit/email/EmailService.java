@@ -103,7 +103,7 @@ public class EmailService {
         String body = passwordReset.instance().setLocale(locale)
                 .data("lang", locale.getLanguage())
                 .data("resetUrl", resetUrl).render();
-        mailSender.send(toEmail, "Reset your calit password", body, null, expiresAt);
+        mailSender.send(toEmail, messages.forLocale(locale).email_password_reset_subject(), body, null, expiresAt);
     }
 
     /**
@@ -119,7 +119,7 @@ public class EmailService {
                 .data("accountEmail", accountEmail == null ? "your account" : accountEmail)
                 .data("reconnectUrl", reconnectUrl)
                 .render();
-        mailSender.send(toEmail, "Action needed: reconnect your Google Calendar", body, null);
+        mailSender.send(toEmail, messages.forLocale(locale).email_google_disconnected_subject(), body, null);
     }
 
     /** Which invitee-delivery rule a kind follows. */

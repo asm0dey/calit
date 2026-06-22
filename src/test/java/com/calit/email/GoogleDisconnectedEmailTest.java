@@ -36,4 +36,21 @@ class GoogleDisconnectedEmailTest {
         assertTrue(body.getValue().contains("/me/google"), "body must link to the Google settings page");
         assertTrue(body.getValue().contains("work@gmail.com"), "body names the affected account");
     }
+
+    @Test
+    void germanLocaleProducesGermanSubject() {
+        emailService.sendGoogleDisconnected("owner@example.com", "work@gmail.com",
+                java.util.Locale.forLanguageTag("de"));
+
+        ArgumentCaptor<String> subject = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(mailSender).send(Mockito.any(), subject.capture(), Mockito.any(),
+                Mockito.isNull());
+
+        String deSubject = subject.getValue();
+        org.junit.jupiter.api.Assertions.assertFalse(deSubject.isBlank(),
+                "German google-disconnected subject must not be blank");
+        org.junit.jupiter.api.Assertions.assertNotEquals(
+                "Action needed: reconnect your Google Calendar", deSubject,
+                "German subject must differ from hardcoded English");
+    }
 }

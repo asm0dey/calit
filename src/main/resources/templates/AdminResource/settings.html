@@ -4,6 +4,7 @@
 {@java.util.List<java.lang.String> zones}
 {@java.lang.Boolean isAdmin}
 {@java.lang.String title}
+{@java.util.List<com.calit.i18n.LocaleOption> localeOptions}
 {#include adminBase title=title pendingCount=pendingCount active="settings" isAdmin=isAdmin}
   <h1 class="text-2xl font-bold mb-4">{adm:adm_settings_h1}</h1>
   <form method="post" action="/me/settings" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">
@@ -24,8 +25,7 @@
     </select>
     <label class="label">{adm:adm_settings_language}</label>
     <select name="locale" class="select w-full">
-      <option value="en"{#if !settings || settings.locale == 'en'} selected{/if}>English</option>
-      <option value="de"{#if settings && settings.locale == 'de'} selected{/if}>Deutsch</option>
+      {#for o in localeOptions}<option value="{o.code}" {#if o.active}selected{/if}>{o.label}</option>{/for}
     </select>
     <label class="label cursor-pointer justify-start gap-2 mt-2">
       <input type="checkbox" name="ownerNotificationsEnabled" class="checkbox checkbox-sm"{#if settings && settings.ownerNotificationsEnabled} checked{/if}>
