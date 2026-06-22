@@ -786,41 +786,40 @@ public class AdminResource {
     @Path("/bookings/{id}/approve")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance approveFromEmail(@PathParam("id") Long id, @QueryParam("t") String token) {
-        Booking b = requireOwnedBooking(id); // 404 if not the current owner's
-        if (token == null || !token.equals(b.approvalToken)) {
-            // CSRF nonce mismatch (GET is not guarded by quarkus-rest-csrf) -> 404, no info leak.
-            throw new jakarta.ws.rs.NotFoundException("No booking " + id);
-        }
-        String h1;
-        String desc;
-        if (b.status == site.asm0dey.calit.booking.BookingStatus.PENDING) {
-            bookingService.approve(id); // PENDING -> CONFIRMED (+ Google event if connected)
-            h1 = m().adm_approve_approved_h1();
-            desc = m().adm_approve_approved_desc();
-        } else {
-            h1 = m().adm_approve_gone_h1();
-            desc = m().adm_approve_gone_desc();
-        }
-        return Templates.approvalResult(pendingCount(), isAdmin(), m().adm_approve_result_title(), h1, desc);
+        return actFromEmail(id, token, true);
     }
 
     @GET
     @Path("/bookings/{id}/decline")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance declineFromEmail(@PathParam("id") Long id, @QueryParam("t") String token) {
+        return actFromEmail(id, token, false);
+    }
+
+    /**
+     * Authenticated one-click approve/decline from the owner's email. Owner-scoped via
+     * {@link #requireOwnedBooking} (404 if not theirs); the {@code token} query param is the CSRF
+     * nonce (GET is not guarded by quarkus-rest-csrf) and must equal {@code approvalToken} (404 on
+     * mismatch, no info leak). Acts only while PENDING, else renders the "already handled" result.
+     */
+    private TemplateInstance actFromEmail(Long id, String token, boolean approve) {
         Booking b = requireOwnedBooking(id);
         if (token == null || !token.equals(b.approvalToken)) {
             throw new jakarta.ws.rs.NotFoundException("No booking " + id);
         }
         String h1;
         String desc;
-        if (b.status == site.asm0dey.calit.booking.BookingStatus.PENDING) {
+        if (b.status != site.asm0dey.calit.booking.BookingStatus.PENDING) {
+            h1 = m().adm_approve_gone_h1();
+            desc = m().adm_approve_gone_desc();
+        } else if (approve) {
+            bookingService.approve(id); // PENDING -> CONFIRMED (+ Google event if connected)
+            h1 = m().adm_approve_approved_h1();
+            desc = m().adm_approve_approved_desc();
+        } else {
             bookingService.decline(id); // PENDING -> DECLINED (frees the slot)
             h1 = m().adm_approve_declined_h1();
             desc = m().adm_approve_declined_desc();
-        } else {
-            h1 = m().adm_approve_gone_h1();
-            desc = m().adm_approve_gone_desc();
         }
         return Templates.approvalResult(pendingCount(), isAdmin(), m().adm_approve_result_title(), h1, desc);
     }

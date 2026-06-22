@@ -16,8 +16,8 @@ class IcsBuilderEscapeTest {
                 "uid\r\nX-EVIL:1",
                 "Meeting",
                 null,
-                "organizer@x.com\r\nATTENDEE:mailto:victim@y.com", "Organizer Name",
-                "attendee@example.com", "Attendee Name",
+                new IcsBuilder.Party("Organizer Name", "organizer@x.com\r\nATTENDEE:mailto:victim@y.com"),
+                new IcsBuilder.Party("Attendee Name", "attendee@example.com"),
                 Instant.parse("2099-01-01T10:00:00Z"),
                 Instant.parse("2099-01-01T10:30:00Z"));
 

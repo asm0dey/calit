@@ -22,20 +22,21 @@ public final class IcsBuilder {
     private IcsBuilder() {
     }
 
+    /** A named calendar participant: display name (CN) + email (mailto). */
+    public record Party(String name, String email) {
+    }
+
     /**
-     * @param uid            stable unique id (we pass the booking's manageToken so updates match)
-     * @param summary        event title (the meeting type name)
-     * @param location       Meet link or locationDetail; null/blank emits no LOCATION line
-     * @param organizerEmail the owner's email
-     * @param organizerName  the owner's display name (CN on ORGANIZER)
-     * @param attendeeEmail  the invitee's email (ATTENDEE — required for a valid REQUEST)
-     * @param attendeeName   the invitee's display name (CN on ATTENDEE)
-     * @param start          meeting start (UTC instant)
-     * @param end            meeting end (UTC instant)
+     * @param uid       stable unique id (we pass the booking's manageToken so updates match)
+     * @param summary   event title (the meeting type name)
+     * @param location  Meet link or locationDetail; null/blank emits no LOCATION line
+     * @param organizer the owner — emitted as ORGANIZER with a CN
+     * @param attendee  the invitee — emitted as ATTENDEE with a CN (required for a valid REQUEST)
+     * @param start     meeting start (UTC instant)
+     * @param end       meeting end (UTC instant)
      */
     public static String build(String uid, String summary, String location,
-                               String organizerEmail, String organizerName,
-                               String attendeeEmail, String attendeeName,
+                               Party organizer, Party attendee,
                                Instant start, Instant end) {
         StringBuilder sb = new StringBuilder();
         sb.append("BEGIN:VCALENDAR\r\n");
@@ -53,10 +54,10 @@ public final class IcsBuilder {
         if (location != null && !location.isBlank()) {
             sb.append("LOCATION:").append(escape(location)).append("\r\n");
         }
-        sb.append("ORGANIZER;CN=").append(cn(organizerName))
-                .append(":mailto:").append(escape(organizerEmail)).append("\r\n");
+        sb.append("ORGANIZER;CN=").append(cn(organizer.name()))
+                .append(":mailto:").append(escape(organizer.email())).append("\r\n");
         sb.append("ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=")
-                .append(cn(attendeeName)).append(":mailto:").append(escape(attendeeEmail)).append("\r\n");
+                .append(cn(attendee.name())).append(":mailto:").append(escape(attendee.email())).append("\r\n");
         sb.append("END:VEVENT\r\n");
         sb.append("END:VCALENDAR\r\n");
         return sb.toString();

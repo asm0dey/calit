@@ -14,8 +14,8 @@ class IcsBuilderTest {
                 "tok-123",
                 "Discovery Call",
                 "https://meet.google.com/abc-defg-hij",
-                "owner@example.com", "Owner Name",
-                "invitee@example.com", "Invitee Name",
+                new IcsBuilder.Party("Owner Name", "owner@example.com"),
+                new IcsBuilder.Party("Invitee Name", "invitee@example.com"),
                 Instant.parse("2026-06-08T09:00:00Z"),
                 Instant.parse("2026-06-08T09:30:00Z"));
 
@@ -34,8 +34,9 @@ class IcsBuilderTest {
     @Test
     void omitsLocationLineWhenNull() {
         String ics = IcsBuilder.build(
-                "tok-x", "Phone Call", null, "owner@example.com", "Owner Name",
-                "invitee@example.com", "Invitee Name",
+                "tok-x", "Phone Call", null,
+                new IcsBuilder.Party("Owner Name", "owner@example.com"),
+                new IcsBuilder.Party("Invitee Name", "invitee@example.com"),
                 Instant.parse("2026-06-08T09:00:00Z"),
                 Instant.parse("2026-06-08T09:30:00Z"));
         assertTrue(ics.contains("BEGIN:VEVENT"));
@@ -46,8 +47,8 @@ class IcsBuilderTest {
     void requestHasAttendeeAndOrganizer() {
         String ics = IcsBuilder.build(
                 "uid-1", "Intro call", "https://meet.google.com/abc-defg-hij",
-                "owner@example.com", "Olivia Owner",
-                "sam@example.com", "Sam Invitee",
+                new IcsBuilder.Party("Olivia Owner", "owner@example.com"),
+                new IcsBuilder.Party("Sam Invitee", "sam@example.com"),
                 Instant.parse("2026-07-01T09:00:00Z"), Instant.parse("2026-07-01T09:30:00Z"));
 
         assertTrue(ics.contains("METHOD:REQUEST"), "must be an iTIP REQUEST");
