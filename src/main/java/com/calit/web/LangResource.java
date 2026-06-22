@@ -28,12 +28,26 @@ public class LangResource {
 
     /** Only same-site absolute paths; anything else -> "/". Blocks open redirects. */
     private static String safeLocal(String ret) {
-        if (ret == null || !ret.startsWith("/") || ret.startsWith("//")) return "/";
+        if (ret == null || ret.isBlank()) return "/";
         try {
-            URI.create(ret);
+            URI uri = URI.create(ret);
+            String path = uri.getPath();
+            if (uri.isAbsolute()
+                    || uri.getScheme() != null
+                    || uri.getAuthority() != null
+                    || uri.getHost() != null
+                    || uri.getUserInfo() != null
+                    || path == null
+                    || !path.startsWith("/")
+                    || path.startsWith("//")) {
+                return "/";
+            }
+            StringBuilder local = new StringBuilder(path);
+            if (uri.getRawQuery() != null) local.append('?').append(uri.getRawQuery());
+            if (uri.getRawFragment() != null) local.append('#').append(uri.getRawFragment());
+            return local.toString();
         } catch (IllegalArgumentException e) {
             return "/";
         }
-        return ret;
     }
 }
