@@ -2,7 +2,7 @@ package com.calit.web;
 
 import com.calit.domain.OwnerSettings;
 import com.calit.i18n.ActiveLocale;
-import com.calit.i18n.AdminMsgs;
+import com.calit.i18n.AdminMessageResolver;
 import com.calit.user.AppUser;
 import com.calit.user.CurrentOwner;
 import com.calit.user.PasswordHasher;
@@ -41,7 +41,7 @@ public class MeSetupResource {
     PasswordHasher passwordHasher;
 
     @Inject
-    AdminMsgs adminMsgs;
+    AdminMessageResolver adminMsgs;
 
     @Inject
     ActiveLocale activeLocale;

@@ -3,7 +3,7 @@ package com.calit.web;
 import com.calit.booking.Booking;
 import com.calit.booking.BookingStatus;
 import com.calit.i18n.ActiveLocale;
-import com.calit.i18n.AdminMsgs;
+import com.calit.i18n.AdminMessageResolver;
 import com.calit.user.AppUser;
 import com.calit.user.CurrentOwner;
 import com.calit.user.PasswordHasher;
@@ -52,7 +52,7 @@ public class UsersResource {
     com.calit.audit.AuditLog audit;
 
     @Inject
-    AdminMsgs adminMsgs;
+    AdminMessageResolver adminMsgs;
 
     @Inject
     ActiveLocale activeLocale;

@@ -6,26 +6,22 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Locale;
 
 /**
- * Locale-specific AppMessages for Java code (e.g. email subjects).
+ * Locale-specific AdminMessages for Java code (page titles etc).
  * Resolves dynamically via MessageBundles.get so adding a new language
  * requires only new properties files — no config, no Java edits here.
  *
- * For the default locale ("en") we call MessageBundles.get(AppMessages.class)
+ * For the default locale ("en") we call MessageBundles.get(AdminMessages.class)
  * (no Localized qualifier) to match the unqualified default bean; for any other
  * supported locale we use Localized.Literal.of(langTag).
  */
 @ApplicationScoped
-public class Messages {
+public class AdminMessageResolver {
 
-    public AppMessages forLocale(Locale locale) {
+    public AdminMessages forLocale(Locale locale) {
         Locale l = locale != null ? locale : AppLocales.DEFAULT;
         if (l.getLanguage().equals(AppLocales.DEFAULT.getLanguage())) {
-            return MessageBundles.get(AppMessages.class);
+            return MessageBundles.get(AdminMessages.class);
         }
-        return MessageBundles.get(AppMessages.class, Localized.Literal.of(l.getLanguage()));
-    }
-
-    public AppMessages forTag(String tag) {
-        return forLocale(AppLocales.pick(tag));
+        return MessageBundles.get(AdminMessages.class, Localized.Literal.of(l.getLanguage()));
     }
 }

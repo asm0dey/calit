@@ -28,7 +28,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Verifies locale-aware email rendering:
- *  1. Messages accessor returns different (non-blank) German subjects.
+ *  1. AppMessageResolver accessor returns different (non-blank) German subjects.
  *  2. A booking with locale="de" produces a German date string in the email body.
  */
 @QuarkusTest
@@ -38,7 +38,7 @@ class EmailLocaleTest {
     private static final String INVITEE_EMAIL = "invitee-locale@example.com";
 
     @Inject
-    com.calit.i18n.Messages messages;
+    com.calit.i18n.AppMessageResolver messages;
 
     @Inject
     EmailService emailService;

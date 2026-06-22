@@ -15,7 +15,7 @@ import com.calit.domain.OwnerSettings;
 import com.calit.google.CalendarPort;
 import com.calit.i18n.AppLocales;
 import com.calit.i18n.AppMessages;
-import com.calit.i18n.Messages;
+import com.calit.i18n.AppMessageResolver;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
@@ -53,7 +53,7 @@ public class EmailService {
     MailSender mailSender;
 
     @Inject
-    Messages messages;
+    AppMessageResolver messages;
 
     @Inject
     CalendarPort calendarPort;

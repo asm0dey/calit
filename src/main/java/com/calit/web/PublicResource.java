@@ -13,7 +13,7 @@ import com.calit.domain.MeetingType;
 import com.calit.domain.OwnerSettings;
 import com.calit.google.CalendarUnavailableException;
 import com.calit.i18n.ActiveLocale;
-import com.calit.i18n.Messages;
+import com.calit.i18n.AppMessageResolver;
 import com.calit.user.AppUser;
 import com.calit.user.CurrentOwner;
 import com.calit.user.Usernames;
@@ -94,7 +94,7 @@ public class PublicResource {
     ActiveLocale activeLocale;
 
     @Inject
-    Messages messages;
+    AppMessageResolver messages;
 
     @jakarta.inject.Inject
     com.calit.google.CalendarPort calendarPort;

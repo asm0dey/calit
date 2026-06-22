@@ -5,7 +5,7 @@ import com.calit.email.EmailService;
 import com.calit.i18n.ActiveLocale;
 import com.calit.i18n.AppLocales;
 import com.calit.i18n.AppMessages;
-import com.calit.i18n.Messages;
+import com.calit.i18n.AppMessageResolver;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.inject.Inject;
@@ -41,7 +41,7 @@ public class PasswordResetResource {
     EmailService emailService;
 
     @Inject
-    Messages messages;
+    AppMessageResolver messages;
 
     @Inject
     ActiveLocale activeLocale;

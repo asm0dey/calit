@@ -1,7 +1,7 @@
 package com.calit.google;
 
 import com.calit.i18n.ActiveLocale;
-import com.calit.i18n.Messages;
+import com.calit.i18n.AppMessageResolver;
 import com.calit.web.PublicResource;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
@@ -18,7 +18,7 @@ import jakarta.ws.rs.ext.Provider;
 public class CalendarUnavailableMapper implements ExceptionMapper<CalendarUnavailableException> {
 
     @Inject
-    Messages messages;
+    AppMessageResolver messages;
 
     @Inject
     ActiveLocale activeLocale;

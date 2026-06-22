@@ -2,7 +2,7 @@ package com.calit.web;
 
 import com.calit.i18n.ActiveLocale;
 import com.calit.i18n.AppMessages;
-import com.calit.i18n.Messages;
+import com.calit.i18n.AppMessageResolver;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -28,7 +28,7 @@ public class LoginResource {
     SecurityIdentity identity;
 
     @Inject
-    Messages messages;
+    AppMessageResolver messages;
 
     @Inject
     ActiveLocale activeLocale;

@@ -1,7 +1,7 @@
 package com.calit.web;
 
 import com.calit.i18n.ActiveLocale;
-import com.calit.i18n.Messages;
+import com.calit.i18n.AppMessageResolver;
 import com.calit.user.AppUser;
 import com.calit.user.PasswordHasher;
 import com.calit.user.Usernames;
@@ -36,7 +36,7 @@ public class SignupResource {
     PasswordHasher passwordHasher;
 
     @Inject
-    Messages messages;
+    AppMessageResolver messages;
 
     @Inject
     ActiveLocale activeLocale;

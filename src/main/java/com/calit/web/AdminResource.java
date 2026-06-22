@@ -14,7 +14,7 @@ import com.calit.domain.OwnerSettings;
 import com.calit.google.GoogleCalendar;
 import com.calit.i18n.ActiveLocale;
 import com.calit.i18n.AdminMessages;
-import com.calit.i18n.AdminMsgs;
+import com.calit.i18n.AdminMessageResolver;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -91,7 +91,7 @@ public class AdminResource {
     SecurityIdentity identity;
 
     @Inject
-    AdminMsgs adminMsgs;
+    AdminMessageResolver adminMsgs;
 
     @Inject
     ActiveLocale activeLocale;

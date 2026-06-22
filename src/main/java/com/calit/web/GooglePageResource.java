@@ -7,7 +7,7 @@ import com.calit.google.CalendarSelectionService;
 import com.calit.google.GoogleCalendar;
 import com.calit.google.GoogleCredential;
 import com.calit.i18n.ActiveLocale;
-import com.calit.i18n.AdminMsgs;
+import com.calit.i18n.AdminMessageResolver;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -42,7 +42,7 @@ public class GooglePageResource {
     @Inject CalendarSelectionService selectionService;
     @Inject com.calit.user.CurrentOwner currentOwner;
     @Inject SecurityIdentity identity;
-    @Inject AdminMsgs adminMsgs;
+    @Inject AdminMessageResolver adminMsgs;
     @Inject ActiveLocale activeLocale;
 
     private boolean isAdmin() { return identity.hasRole("admin"); }
