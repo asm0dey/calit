@@ -619,6 +619,9 @@ public class AdminResource {
         // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
         s.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
         s.persist();
+        // The locale filter already ran (before this handler) with the OLD value; refresh the
+        // request-scoped locale so THIS response (title, {adm:} keys, language dropdown) is in the new language.
+        activeLocale.set(site.asm0dey.calit.i18n.AppLocales.pick(s.locale));
         return Templates.settings(s, reminderLeadMinutes, pendingCount(), zoneIds(), isAdmin(), m().adm_settings_title());
     }
 
