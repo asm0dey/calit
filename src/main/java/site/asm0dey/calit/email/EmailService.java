@@ -30,6 +30,8 @@ import java.util.Map;
 import java.util.function.UnaryOperator;
 
 @ApplicationScoped
+// S6813: CDI field injection is the established pattern across this codebase's beans.
+@SuppressWarnings("java:S6813")
 public class EmailService {
 
     public static final String RECIPIENT_ROLE = "recipientRole";
