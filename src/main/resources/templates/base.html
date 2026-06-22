@@ -1,6 +1,7 @@
 {@java.lang.String title}
 <!DOCTYPE html>
-<html lang="{lang}">
+{! ponytail: he is calit's only RTL locale; add `|| lang == 'ar'` here + in adminBase/email heads when Arabic lands. !}
+<html lang="{lang}" dir="{#if lang == 'he'}rtl{#else}ltr{/if}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
