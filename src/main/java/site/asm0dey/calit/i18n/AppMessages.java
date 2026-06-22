@@ -502,6 +502,35 @@ public interface AppMessages {
     @Message("New time:")
     String email_reschedule_new_time();
 
+    // ---- Email body — owner-copy variants (name the invitee) ----
+
+    @Message("{name} requested a booking. Review it to approve or decline.")
+    String email_requested_body_owner(String name);
+
+    @Message("{name} booked a meeting with you.")
+    String email_confirmation_body_owner(String name);
+
+    @Message("You declined {name}'s booking request.")
+    String email_declined_body_owner(String name);
+
+    @Message("{name} rescheduled their booking.")
+    String email_reschedule_body_owner(String name);
+
+    @Message("{name}'s booking was cancelled.")
+    String email_cancellation_body_owner(String name);
+
+    @Message("Reminder: upcoming meeting with {name}.")
+    String email_reminder_body_owner(String name);
+
+    @Message("Cancel this booking")
+    String email_body_cancel_link_text();
+
+    @Message("Approve")
+    String email_body_approve_link_text();
+
+    @Message("Decline")
+    String email_body_decline_link_text();
+
     // ---- Email body — declined ----
 
     @Message("Booking declined")
