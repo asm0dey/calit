@@ -43,6 +43,8 @@ public class FirstRunRedirectFilter {
         return path.equals("/")                  // public marketing landing stays open pre-bootstrap
                 || path.startsWith("/img/")       // ...and its screenshots
                 || path.equals("/setup")
+                || path.equals("/privacy")   // public legal pages must be reachable pre-bootstrap
+                || path.equals("/terms")     // (e.g. Google's verification crawler on a fresh instance)
                 || path.equals("/j_security_check")
                 || path.startsWith("/q/")
                 || path.equals("/calit.css")
