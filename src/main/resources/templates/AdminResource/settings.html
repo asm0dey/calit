@@ -13,31 +13,9 @@
     <input id="set-name" class="input w-full" type="text" name="ownerName" required value="{#if settings}{settings.ownerName}{/if}">
     <label class="label" for="set-email">{adm:adm_settings_label_email}</label>
     <input id="set-email" class="input w-full" type="email" name="ownerEmail" required value="{#if settings}{settings.ownerEmail}{/if}">
-    <label class="label" for="set-timezone">{adm:adm_settings_label_timezone}</label>
-    <select id="set-timezone" class="select w-full" name="timezone" required{#if !settings} data-tz-autodetect{/if}>
-      {#for z in zones}
-        {#if settings}
-        <option value="{z}"{#if settings.timezone == z} selected{/if}>{z}</option>
-        {#else}
-        <option value="{z}"{#if z == 'UTC'} selected{/if}>{z}</option>
-        {/if}
-      {/for}
-    </select>
-    <script>
-    /* CALIT_TZ_AUTODETECT — on first run (no saved timezone), preselect the browser's zone. */
-    (function () {
-      var sel = document.querySelector('select[data-tz-autodetect]');
-      if (!sel) { return; }
-      try {
-        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (tz && [].some.call(sel.options, function (o) { return o.value === tz; })) {
-          sel.value = tz;
-        }
-      } catch (e) {}
-    })();
-    </script>
-    <label class="label">{adm:adm_settings_language}</label>
-    <select name="locale" class="select w-full">
+    {#include tzField tzLabel=adm:adm_settings_label_timezone /}
+    <label class="label" for="set-locale">{adm:adm_settings_language}</label>
+    <select id="set-locale" name="locale" class="select w-full">
       {#for o in localeOptions}<option value="{o.code}" {#if o.active}selected{/if}>{o.label}</option>{/for}
     </select>
     <label class="label cursor-pointer justify-start gap-2 mt-2">

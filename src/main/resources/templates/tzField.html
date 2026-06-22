@@ -1,0 +1,30 @@
+{@java.lang.String tzLabel}
+{! Shared timezone label + select + first-run auto-detect. Label and select live together so the
+   for/id association is in one file. The auto-detect gate is a clean wrapper-attribute value (not a
+   Qute conditional inside the select tag) so Sonar reads the select element cleanly.
+   settings and zones come from the including template; tzLabel per include. !}
+<div data-tz-autodetect="{#if settings}off{#else}on{/if}">
+  <label class="label" for="timezone">{tzLabel}</label>
+  <select id="timezone" class="select w-full" name="timezone" required>
+    {#for z in zones}
+      {#if settings}
+      <option value="{z}"{#if settings.timezone == z} selected{/if}>{z}</option>
+      {#else}
+      <option value="{z}"{#if z == 'UTC'} selected{/if}>{z}</option>
+      {/if}
+    {/for}
+  </select>
+</div>
+<script>
+/* CALIT_TZ_AUTODETECT — on first run (no saved timezone), preselect the browser's zone. */
+(function () {
+  var box = document.querySelector('[data-tz-autodetect="on"]');
+  if (!box) { return; }
+  var sel = box.querySelector('select');
+  if (!sel) { return; }
+  var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (tz && Array.prototype.some.call(sel.options, function (o) { return o.value === tz; })) {
+    sel.value = tz;
+  }
+})();
+</script>
