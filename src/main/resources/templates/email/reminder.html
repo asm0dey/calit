@@ -1,6 +1,6 @@
 {@java.lang.String lang}
 <!DOCTYPE html>
-<html lang="{lang}">
+<html lang="{lang}" dir="{#if lang == 'he'}rtl{#else}ltr{/if}">
 <head><title>{msg:email_reminder_title}</title></head>
 <body>
 <p>{msg:email_body_greeting(inviteeName)}</p>
