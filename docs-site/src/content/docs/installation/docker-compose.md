@@ -76,6 +76,29 @@ To use the published image from GitHub Container Registry instead of building lo
     restart: unless-stopped
 ```
 
+### Native image (lower footprint)
+
+Every published tag also has a GraalVM **native** counterpart with a `-native` suffix
+(`:latest-native`, `:edge-native`, `:1.10.0-native`, …). It runs the same application
+compiled ahead-of-time on a minimal Alpaquita musl base — no JRE.
+
+| | `:latest` (JVM) | `:latest-native` |
+| --- | --- | --- |
+| Image size | ~205 MB | ~115 MB |
+| Memory (idle) | ~300 MB | ~60 MB |
+| Startup | ~2.4 s | ~0.4 s |
+
+Use it by appending `-native` to the tag:
+
+```yaml
+  app:
+    image: ghcr.io/asm0dey/calit:latest-native
+```
+
+The native image is functionally identical and multi-arch (amd64 + arm64). Its smaller
+memory footprint suits small VPS hosts. The JVM image remains the default; pick whichever
+fits your deployment.
+
 ## Scaling
 
 calit is stateless — scale the `app` service horizontally behind your own load balancer:
