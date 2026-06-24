@@ -68,6 +68,22 @@ public final class AppLocales {
     // Pure static helpers (accept explicit list — unit-testable without CDI)
     // -------------------------------------------------------------------------
 
+    /**
+     * First day of the week for the given locale, as a JS {@code Date.getDay()} index
+     * (0=Sunday … 6=Saturday) — the value the booking calendar grid uses for its first column.
+     *
+     * <p>Why not {@link java.time.temporal.WeekFields}? CLDR stores first-day-of-week as
+     * <em>territory</em> data, but calit's locales are language-only tags (e.g. {@code "de"}),
+     * for which {@code WeekFields} falls back to Sunday. So this is an explicit per-language
+     * policy: Hebrew starts Sunday (Israel); every other language defaults to Monday (ISO 8601,
+     * which is correct for German and most of the world). Add a case here only when a new
+     * language's convention differs from Monday.
+     */
+    public static int firstDayOfWeekIndex(Locale locale) {
+        String lang = (locale != null) ? locale.getLanguage() : DEFAULT.getLanguage();
+        return "iw".equals(lang) || "he".equals(lang) ? 0 : 1; // "iw" = JDK legacy code for Hebrew
+    }
+
     /** Whether {@code tag} matches (by language) any locale in the given list. */
     public static boolean isSupported(String tag, List<Locale> supported) {
         if (tag == null || tag.isBlank()) return false;

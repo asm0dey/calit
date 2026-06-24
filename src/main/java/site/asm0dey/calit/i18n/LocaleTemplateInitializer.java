@@ -48,12 +48,13 @@ public class LocaleTemplateInitializer implements TemplateInstance.Initializer {
                 }
             }
         }
+        Locale effective = (locale != null) ? locale : AppLocales.DEFAULT;
         if (locale != null) {
             instance.setLocale(locale);
-            instance.data("lang", locale.toLanguageTag());
-        } else {
-            instance.data("lang", AppLocales.DEFAULT.toLanguageTag());
         }
+        instance.data("lang", effective.toLanguageTag());
+        // First column of the booking calendar grid, as a JS Date.getDay() index (0=Sun..6=Sat).
+        instance.data("firstDow", AppLocales.firstDayOfWeekIndex(effective));
         instance.data("returnPath", returnPath);
         instance.data("localeOptions", localeOptions);
     }
