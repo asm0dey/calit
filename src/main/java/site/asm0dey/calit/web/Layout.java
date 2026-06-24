@@ -97,10 +97,13 @@ public final class Layout {
               for (var mi = 0; mi < 12; mi++) {
                 MONTHS.push(new Intl.DateTimeFormat(LANG, {month:'long'}).format(new Date(2021, mi, 1)));
               }
-              // week starts Monday: 2021-03-01 is a Monday
+              // First weekday column from the active locale (0=Sun..6=Sat), via data-first-dow.
+              var FIRST = parseInt(cal.dataset.firstDow, 10);
+              if (isNaN(FIRST) || FIRST < 0 || FIRST > 6) { FIRST = 1; } // fallback: Monday
+              // 2021-08-01 is a Sunday, so new Date(2021,7,1+k) has getDay() === k.
               var DOW = [];
               for (var di = 0; di < 7; di++) {
-                DOW.push(new Intl.DateTimeFormat(LANG, {weekday:'short'}).format(new Date(2021, 2, 1 + di)));
+                DOW.push(new Intl.DateTimeFormat(LANG, {weekday:'short'}).format(new Date(2021, 7, 1 + ((FIRST + di) % 7))));
               }
 
               function parse(iso) { var p = iso.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
@@ -129,7 +132,7 @@ public final class Layout {
                   + '<button type="button" class="calendar__nav" data-step="1"' + (nextDisabled?' disabled':'') + '>&rsaquo;</button>'
                   + '</div><div class="calendar__grid">';
                 DOW.forEach(function (d) { html += '<span class="calendar__dow">' + d + '</span>'; });
-                var firstDow = (new Date(y, m, 1).getDay() + 6) % 7; // Mon=0
+                var firstDow = ((new Date(y, m, 1).getDay() - FIRST) + 7) % 7; // blanks before day 1
                 for (var i = 0; i < firstDow; i++) { html += '<span class="calendar__day calendar__day--empty"></span>'; }
                 var days = new Date(y, m+1, 0).getDate();
                 for (var d = 1; d <= days; d++) {
