@@ -58,6 +58,9 @@ public class LocaleResolutionFilter implements ContainerRequestFilter {
     }
 
     private Locale resolve(ContainerRequestContext ctx) {
+        // Shareable per-request override: ?lang=xx wins over owner/cookie/header. Ephemeral — sets no cookie.
+        String q = ctx.getUriInfo().getQueryParameters().getFirst("lang");
+        if (q != null && AppLocales.isSupported(q)) return AppLocales.pick(q);
         if (currentOwner.isSet()) {
             OwnerSettings s = OwnerSettings.forOwner(currentOwner.id());
             return AppLocales.pick(s != null ? s.locale : null);
