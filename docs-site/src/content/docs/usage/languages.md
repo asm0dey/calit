@@ -20,6 +20,20 @@ A **language switcher in the page footer** lets visitors choose between **Englis
 - Reloads the page in the chosen language immediately.
 - Saves the choice in a `calit_lang` cookie so it persists across page loads and future visits.
 
+### Shareable language links (`?lang=`)
+
+Append `?lang=en`, `?lang=de`, or `?lang=he` to any booking URL to force that language for whoever opens the link — useful for sharing a page in a specific language regardless of the recipient's browser settings:
+
+```
+https://your.calit.example/alice/intro?lang=he
+```
+
+This override wins over the owner setting, the `calit_lang` cookie, and the browser's `Accept-Language`. It is **ephemeral**: it sets no cookie and does not change the visitor's saved preference. An unknown or unsupported code is ignored and normal detection applies.
+
+### Week start
+
+The booking calendar starts the week on the visitor's regional convention — Sunday in the US and Israel, Monday in Germany and most of the world. This follows the **browser's** locale (region included), not the page's display language, so it is correct even when the two differ.
+
 ### Email language
 
 The language a visitor uses when booking is remembered for that booking. Any follow-up emails they receive — confirmation, reminder, cancellation, reschedule, and declined notices — are sent in that same language.
