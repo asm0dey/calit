@@ -450,6 +450,33 @@ public interface AppMessages {
     @Message("organizer")
     String email_role_owner();
 
+    @Message("guest")
+    String email_role_guest();
+
+    @Message("You're invited to a meeting")
+    String email_guest_invite_title();
+
+    @Message("{inviterName} has invited you to a meeting.")
+    String email_guest_invite_body(String inviterName);
+
+    @Message("Can't attend? Decline this invitation")
+    String email_guest_decline_link_text();
+
+    @Message("Meeting cancelled")
+    String email_guest_cancel_title();
+
+    @Message("This meeting has been cancelled. It has been removed from your calendar.")
+    String email_guest_cancel_body();
+
+    @Message("A guest declined: {meetingTypeName}")
+    String email_guest_declined_subject(String meetingTypeName);
+
+    @Message("A guest can't attend")
+    String email_guest_declined_title();
+
+    @Message("{guestEmail} declined your meeting invitation. You may want to reschedule.")
+    String email_guest_declined_body(String guestEmail);
+
     @Message("Requested time:")
     String email_body_requested_time_label();
 

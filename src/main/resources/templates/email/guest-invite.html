@@ -1,0 +1,11 @@
+{#include email/layout}
+{#title}{msg:email_guest_invite_title}{/title}
+<p>{msg:email_guest_invite_body(inviteeName)}</p>
+<ul>
+  <li><strong>{msg:email_body_meeting_label}</strong> {meetingTypeName}</li>
+  <li><strong>{msg:email_body_when_label}</strong> {startTime}</li>
+  <li><strong>{msg:email_body_duration_label}</strong> {msg:email_body_duration_minutes(durationMinutes)}</li>
+  {#include email/_location /}
+</ul>
+<p><a href="{declineGuestUrl}">{msg:email_guest_decline_link_text}</a></p>
+{/include}
