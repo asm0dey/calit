@@ -48,8 +48,13 @@ class EmailServiceGuestTest {
         });
     }
 
-    /** Seeds a CONFIRMED booking with one INVITED guest; returns the booking id. */
+    /** Seeds a CONFIRMED booking (icsSequence 0) with one guest of the given status; returns the booking id. */
     private long seedWithGuest(GuestStatus guestStatus) {
+        return seedWithGuest(guestStatus, BookingStatus.CONFIRMED, 0);
+    }
+
+    /** Seeds a booking with the given status + icsSequence and one guest; returns the booking id. */
+    private long seedWithGuest(GuestStatus guestStatus, BookingStatus bookingStatus, int icsSequence) {
         return QuarkusTransaction.requiringNew().call(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);
             if (s == null) { s = new OwnerSettings(); s.ownerId = 1L; }
@@ -61,8 +66,8 @@ class EmailServiceGuestTest {
             Booking b = new Booking();
             b.ownerId = 1L; b.meetingTypeId = t.id; b.inviteeName = "Sam Invitee"; b.inviteeEmail = INVITEE_EMAIL;
             b.startUtc = Instant.parse("2026-06-08T09:00:00Z"); b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
-            b.meetLink = "https://meet.google.com/abc"; b.status = BookingStatus.CONFIRMED;
-            b.manageToken = "tok-" + System.nanoTime(); b.createdAt = Instant.now(); b.icsSequence = 0;
+            b.meetLink = "https://meet.google.com/abc"; b.status = bookingStatus;
+            b.manageToken = "tok-" + System.nanoTime(); b.createdAt = Instant.now(); b.icsSequence = icsSequence;
             b.persist();
             BookingGuest g = new BookingGuest();
             g.ownerId = 1L; g.bookingId = b.id; g.email = GUEST_EMAIL; g.status = guestStatus;
@@ -162,5 +167,26 @@ class EmailServiceGuestTest {
 
         assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "removed guest gets a cancel");
         assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL).isEmpty(), "invitee initiated removal — not notified");
+    }
+
+    @Test
+    void declinedAfterRescheduleSendsGuestCancelToInvitedGuest() {
+        // Confirmed/approved (guests invited) then rescheduled back to PENDING -> icsSequence>0.
+        long bookingId = seedWithGuest(GuestStatus.INVITED, BookingStatus.PENDING, 1);
+
+        emailService.handleDeclined(new BookingDeclined(bookingId));
+
+        assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "previously-invited guest gets a cancel");
+        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL).getFirst().getSubject().toLowerCase().contains("cancel"));
+    }
+
+    @Test
+    void declinedNeverConfirmedSendsNoGuestMail() {
+        // Never confirmed -> icsSequence==0 -> guests never received an invite -> no cancel.
+        long bookingId = seedWithGuest(GuestStatus.INVITED, BookingStatus.PENDING, 0);
+
+        emailService.handleDeclined(new BookingDeclined(bookingId));
+
+        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL).isEmpty(), "never-invited guest gets no cancel");
     }
 }

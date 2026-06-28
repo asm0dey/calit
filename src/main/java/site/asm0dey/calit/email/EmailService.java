@@ -439,6 +439,13 @@ public class EmailService {
         Loaded l = load(e.bookingId());
         if (l == null) return;
         deliverDeclined(l, mailSender::send);
+        // Guests of an approval booking that was confirmed/approved then rescheduled back to PENDING
+        // (icsSequence>0) hold a stale calendar event; a now-declined re-approval must cancel it for
+        // them. A never-confirmed PENDING booking (icsSequence==0) never sent guest invites -> no cancel.
+        if (l.booking.icsSequence > 0) {
+            sendGuestCancels(l, messages.forLocale(AppLocales.pick(l.booking.locale))
+                    .email_cancelled_subject(l.meetingType.name));
+        }
     }
 
     /** Renders + delivers the declined email through the given sink (direct or outbox). */
