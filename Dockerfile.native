@@ -13,7 +13,7 @@ RUN bun run css:build
 # --- Build stage: BellSoft Liberica Native Image Kit on Alpaquita musl ---
 # The builder OS is musl, so native-image compiles a musl-linked binary natively:
 # no --libc=musl flag, no manual musl toolchain install (which the UBI Mandrel image needs).
-FROM bellsoft/liberica-native-image-kit-container:jdk-25-nik-25.0.3-musl AS build
+FROM bellsoft/liberica-native-image-kit-container:jdk-25-nik-25.0.3-musl@sha256:d84b54a0efbe82f186f6ebea6c8d4ae96b0e92f2b7abf67ee4144f7e4df33806 AS build
 WORKDIR /build
 
 # Warm the dependency cache on the POM first so source-only edits don't re-download everything.
@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken"
 
 # --- Runtime stage: Alpaquita musl base (~3.9MB) — no JDK, just the native binary ---
-FROM bellsoft/alpaquita-linux-base:stream-musl AS runtime
+FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:689b53bee5b106c80a214b7d14c16e0b846526999d8a03521f0f9f08de5f61d1 AS runtime
 WORKDIR /app
 # ca-certificates: outbound TLS to Google API + SMTP. zlib: the binary links libz.so.1.
 RUN apk add --no-cache ca-certificates zlib && update-ca-certificates
