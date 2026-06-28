@@ -97,9 +97,11 @@ public final class Layout {
               for (var mi = 0; mi < 12; mi++) {
                 MONTHS.push(new Intl.DateTimeFormat(LANG, {month:'long'}).format(new Date(2021, mi, 1)));
               }
-              // First weekday column from the active locale (0=Sun..6=Sat), via data-first-dow.
-              var FIRST = parseInt(cal.dataset.firstDow, 10);
-              if (isNaN(FIRST) || FIRST < 0 || FIRST > 6) { FIRST = 1; } // fallback: Monday
+              // First weekday column from the viewer's *browser* locale (region-aware: en-US=Sun,
+              // de-DE=Mon, he-IL=Sun). getWeekInfo().firstDay is 1=Mon..7=Sun; %7 maps to getDay()
+              // index 0=Sun..6=Sat. Falls back to Monday on old browsers lacking Intl.Locale weekInfo.
+              var FIRST = 1; // Monday fallback
+              try { FIRST = new Intl.Locale(navigator.language).getWeekInfo().firstDay % 7; } catch (e) {}
               // 2021-08-01 is a Sunday, so new Date(2021,7,1+k) has getDay() === k.
               var DOW = [];
               for (var di = 0; di < 7; di++) {

@@ -1,5 +1,4 @@
 {@java.lang.String title}
-{@java.lang.Integer firstDow}
 {@site.asm0dey.calit.domain.MeetingType type}
 {@java.lang.String user}
 {@java.util.List<site.asm0dey.calit.web.PublicResource$DaySlots> days}
@@ -55,7 +54,7 @@
             <form method="post" action="/{user}/{type.slug}" class="space-y-4">
               <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
               <div class="booking-grid">
-                <div id="calendar" class="calendar" data-first-dow="{firstDow}"></div>
+                <div id="calendar" class="calendar"></div>
                 <div class="time-column">
                   {#for day in days}
                     <section class="day-slots" data-date="{day.isoDate}">
