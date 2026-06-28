@@ -79,6 +79,14 @@ public class Booking extends PanacheEntityBase {
     public Map<String, String> answers = new java.util.HashMap<>();
 
     /**
+     * iTIP SEQUENCE for this booking's guest .ics invites. Starts at 0; reschedule() increments it so
+     * a guest's calendar client supersedes the prior event (and so a CANCEL with an equal-or-higher
+     * SEQUENCE removes it). Only guest .ics uses it today; the invitee/owner .ics still emits SEQUENCE:0.
+     */
+    @Column(name = "ics_sequence", nullable = false)
+    public int icsSequence = 0;
+
+    /**
      * This owner's HELD (PENDING or CONFIRMED) bookings whose [startUtc, endUtc) overlaps the
      * window [from, to). These are the bookings that block THIS OWNER's calendar (a pending
      * approval request holds its slot too — feature 14). CANCELLED/DECLINED are excluded.
