@@ -25,7 +25,7 @@ public class StartupSecretCheck {
      * exact value match instead of by marker match.
      */
     private static final String TOKEN_KEY_DEV_DEFAULT =
-        "0000000000000000000000000000000000000000000000000000000000000000";
+            "0000000000000000000000000000000000000000000000000000000000000000";
 
     @ConfigProperty(name = "google.oauth.state-secret")
     String stateSecret;
@@ -47,8 +47,8 @@ public class StartupSecretCheck {
         validate("TOKEN_ENCRYPTION_KEY", tokenKey, 64);
         if (TOKEN_KEY_DEV_DEFAULT.equals(tokenKey)) {
             throw new IllegalStateException(
-                "TOKEN_ENCRYPTION_KEY is still the insecure all-zeros development default — "
-                + "set a real key (openssl rand -hex 32).");
+                    "TOKEN_ENCRYPTION_KEY is still the insecure all-zeros development default — "
+                            + "set a real key (openssl rand -hex 32).");
         }
     }
 
@@ -58,11 +58,11 @@ public class StartupSecretCheck {
         }
         if (value.contains(DEV_MARKER)) {
             throw new IllegalStateException(
-                envName + " is still the insecure development default — set a real secret.");
+                    envName + " is still the insecure development default — set a real secret.");
         }
         if (value.length() < minLength) {
             throw new IllegalStateException(
-                envName + " is too short (" + value.length() + " chars); require >= " + minLength + ".");
+                    envName + " is too short (" + value.length() + " chars); require >= " + minLength + ".");
         }
     }
 }

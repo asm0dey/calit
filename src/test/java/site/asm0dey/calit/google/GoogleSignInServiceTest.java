@@ -1,14 +1,14 @@
 package site.asm0dey.calit.google;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @QuarkusTest
 class GoogleSignInServiceTest {
@@ -32,7 +32,10 @@ class GoogleSignInServiceTest {
         AppUser u = AppUser.create("pw-acct", "hash", false);
         u.persistAndFlush();
         OwnerSettings s = new OwnerSettings();
-        s.ownerId = u.id; s.ownerName = "n"; s.ownerEmail = "link@x.com"; s.timezone = "UTC";
+        s.ownerId = u.id;
+        s.ownerName = "n";
+        s.ownerEmail = "link@x.com";
+        s.timezone = "UTC";
         s.persistAndFlush();
 
         AppUser got = signIn.resolveOrProvision(new GoogleIdentity("sub-new", "link@x.com", true));
@@ -47,10 +50,14 @@ class GoogleSignInServiceTest {
         AppUser u = AppUser.create("pw-acct2", "hash", false);
         u.persistAndFlush();
         OwnerSettings s = new OwnerSettings();
-        s.ownerId = u.id; s.ownerName = "n"; s.ownerEmail = "unv@x.com"; s.timezone = "UTC";
+        s.ownerId = u.id;
+        s.ownerName = "n";
+        s.ownerEmail = "unv@x.com";
+        s.timezone = "UTC";
         s.persistAndFlush();
 
-        GoogleSignInException ex = assertThrows(GoogleSignInException.class,
+        GoogleSignInException ex = assertThrows(
+                GoogleSignInException.class,
                 () -> signIn.resolveOrProvision(new GoogleIdentity("sub-x", "unv@x.com", false)));
         assertEquals(GoogleSignInException.Reason.SIGNUP_DISABLED, ex.reason);
     }
@@ -58,7 +65,8 @@ class GoogleSignInServiceTest {
     @Test
     @TestTransaction
     void unknownIdentityRejectedWhenSignupDisabled() {
-        GoogleSignInException ex = assertThrows(GoogleSignInException.class,
+        GoogleSignInException ex = assertThrows(
+                GoogleSignInException.class,
                 () -> signIn.resolveOrProvision(new GoogleIdentity("sub-none", "new@x.com", true)));
         assertEquals(GoogleSignInException.Reason.SIGNUP_DISABLED, ex.reason);
     }

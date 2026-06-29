@@ -7,11 +7,10 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.net.URI;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AppMessageResolver;
 import site.asm0dey.calit.i18n.AppMessages;
-
-import java.net.URI;
 
 /**
  * First-run bootstrap. While no user exists, renders/creates the first (admin) user. Once any
@@ -45,8 +44,7 @@ public class SetupResource {
     @POST
     @Transactional
     @Produces(MediaType.TEXT_HTML)
-    public Response createFirstUser(@FormParam("username") String username,
-                                    @FormParam("password") String password) {
+    public Response createFirstUser(@FormParam("username") String username, @FormParam("password") String password) {
         requireUnbootstrapped();
         AppMessages m = messages.forLocale(activeLocale.current());
         final String normalized;
@@ -54,17 +52,23 @@ public class SetupResource {
             normalized = Usernames.validateNew(username, AppUser::usernameTaken);
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Templates.setup(m.auth_setup_title(), true)).type(MediaType.TEXT_HTML).build();
+                    .entity(Templates.setup(m.auth_setup_title(), true))
+                    .type(MediaType.TEXT_HTML)
+                    .build();
         }
         if (password == null || password.isBlank()) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Templates.setup(m.auth_setup_title(), true)).type(MediaType.TEXT_HTML).build();
+                    .entity(Templates.setup(m.auth_setup_title(), true))
+                    .type(MediaType.TEXT_HTML)
+                    .build();
         }
         AppUser u = AppUser.create(normalized, passwordHasher.hash(password), true);
         u.mustChangePassword = false;
         u.settingsComplete = false;
         u.persist();
-        return Response.status(Response.Status.FOUND).location(URI.create("/login")).build();
+        return Response.status(Response.Status.FOUND)
+                .location(URI.create("/login"))
+                .build();
     }
 
     /** 404 once the instance has any user. */

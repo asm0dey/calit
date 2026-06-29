@@ -1,5 +1,7 @@
 package site.asm0dey.calit.user;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.credential.PasswordCredential;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -10,8 +12,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 class LoginTicketAuthTest {
@@ -26,8 +26,7 @@ class LoginTicketAuthTest {
 
     @BeforeEach
     void freezeClock() {
-        QuarkusMock.installMockForType(
-            java.time.Clock.fixed(FIXED, java.time.ZoneOffset.UTC), java.time.Clock.class);
+        QuarkusMock.installMockForType(java.time.Clock.fixed(FIXED, java.time.ZoneOffset.UTC), java.time.Clock.class);
     }
 
     private static UsernamePasswordAuthenticationRequest req(String user, String pass) {
@@ -56,8 +55,8 @@ class LoginTicketAuthTest {
         String token = tickets.issue(u.id, FIXED);
 
         // Token is valid but submitted under the wrong username -> reject (defence in depth).
-        assertThrows(AuthenticationFailedException.class,
-                () -> provider.authenticateBlocking(req("someone-else", token)));
+        assertThrows(
+                AuthenticationFailedException.class, () -> provider.authenticateBlocking(req("someone-else", token)));
     }
 
     @Test
@@ -79,7 +78,7 @@ class LoginTicketAuthTest {
         String token = tickets.issue(u.id, FIXED);
 
         // A valid ticket must NOT log in a disabled account (the enabled gate).
-        assertThrows(AuthenticationFailedException.class,
-                () -> provider.authenticateBlocking(req("disabled-tkt", token)));
+        assertThrows(
+                AuthenticationFailedException.class, () -> provider.authenticateBlocking(req("disabled-tkt", token)));
     }
 }

@@ -1,8 +1,8 @@
 package site.asm0dey.calit.user;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
 
 class UsernamesTest {
 
@@ -22,23 +22,23 @@ class UsernamesTest {
 
     @Test
     void isValidRejectsBadHandles() {
-        assertFalse(Usernames.isValid("a"));           // too short
-        assertFalse(Usernames.isValid("-bob"));        // leading hyphen
-        assertFalse(Usernames.isValid("bob-"));        // trailing hyphen
-        assertFalse(Usernames.isValid("bob--smith"));  // double hyphen
-        assertFalse(Usernames.isValid("Bob"));         // uppercase
-        assertFalse(Usernames.isValid("bob_smith"));   // underscore
-        assertFalse(Usernames.isValid("a".repeat(65)));// too long
+        assertFalse(Usernames.isValid("a")); // too short
+        assertFalse(Usernames.isValid("-bob")); // leading hyphen
+        assertFalse(Usernames.isValid("bob-")); // trailing hyphen
+        assertFalse(Usernames.isValid("bob--smith")); // double hyphen
+        assertFalse(Usernames.isValid("Bob")); // uppercase
+        assertFalse(Usernames.isValid("bob_smith")); // underscore
+        assertFalse(Usernames.isValid("a".repeat(65))); // too long
         assertFalse(Usernames.isValid(""));
         assertFalse(Usernames.isValid(null));
     }
 
     @Test
     void isReservedCoversAllReservedWords() {
-        for (String w : new String[]{
-                "me", "login", "logout", "signup", "setup",
-                "booking", "api", "q", "health", "calit", "index",
-                "privacy", "terms"}) {
+        for (String w : new String[] {
+            "me", "login", "logout", "signup", "setup", "booking", "api", "q", "health", "calit", "index", "privacy",
+            "terms"
+        }) {
             assertTrue(Usernames.isReserved(w), w + " should be reserved");
         }
         assertFalse(Usernames.isReserved("alice"));

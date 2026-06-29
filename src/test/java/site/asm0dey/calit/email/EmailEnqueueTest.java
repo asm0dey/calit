@@ -1,24 +1,23 @@
 package site.asm0dey.calit.email;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.when;
 
 @QuarkusTest
 class EmailEnqueueTest {
@@ -38,7 +37,7 @@ class EmailEnqueueTest {
     @Test
     void enqueueReminderWritesOutboxRowsAndDoesNotSendDirectly() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false); // Google off -> invitee fallback
-        Long bookingId = seed();
+        var bookingId = seed();
         mailbox.clear();
 
         QuarkusTransaction.requiringNew().run(() -> emailService.enqueueReminder(bookingId));
@@ -86,7 +85,7 @@ class EmailEnqueueTest {
             b.meetingTypeId = t.id;
             b.inviteeName = "Sam Invitee";
             b.inviteeEmail = INVITEE_EMAIL;
-            Instant start = Instant.now().plus(500, ChronoUnit.HOURS);
+            var start = Instant.now().plus(500, ChronoUnit.HOURS);
             b.startUtc = start;
             b.endUtc = start.plus(30, ChronoUnit.MINUTES);
             b.status = BookingStatus.CONFIRMED;

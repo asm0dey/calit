@@ -6,12 +6,11 @@ import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import java.util.List;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.email.EmailService;
-
-import java.util.List;
 
 /**
  * Feature 14: auto-expire approval-mode (PENDING) bookings whose hold window has
@@ -56,8 +55,7 @@ public class PendingExpiryScheduler {
     void claimAndDeclineExpired() {
         QuarkusTransaction.requiringNew().run(() -> {
             @SuppressWarnings("unchecked")
-            List<Number> ids = em.createNativeQuery(
-                    "SELECT id FROM booking "
+            List<Number> ids = em.createNativeQuery("SELECT id FROM booking "
                             + "WHERE status = 'PENDING' "
                             + "AND LEAST(created_at + (:holdHours * INTERVAL '1 hour'), start_utc) "
                             + "    <= now() + make_interval(secs => :graceSeconds) "
@@ -71,8 +69,8 @@ public class PendingExpiryScheduler {
             for (Number n : ids) {
                 Long id = n.longValue();
                 Booking b = Booking.findById(id);
-                b.status = BookingStatus.DECLINED;   // flipped within the lock-holding transaction
-                Reminder.deleteUnsentFor(id);        // was ReminderScheduler.onDeclined observer
+                b.status = BookingStatus.DECLINED; // flipped within the lock-holding transaction
+                Reminder.deleteUnsentFor(id); // was ReminderScheduler.onDeclined observer
                 // Guard covers a render/load failure (throws before any persist): the flip + cleanup
                 // still commit, one mail dropped. A crash (not caught) rolls back the whole tx pre-commit
                 // and the row is reclaimed next tick -- the crash-safety guarantee.

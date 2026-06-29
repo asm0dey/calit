@@ -28,10 +28,15 @@ public interface CalendarPort {
      *                       event location instead, and the returned meetLink is null
      * @param locationText   per-type location text used when {@code createMeetLink} is false (may be null)
      */
-    CreatedEvent createEvent(Long ownerId, String summary, String description,
-                             Instant start, Instant end,
-                             List<String> attendeeEmails,
-                             boolean createMeetLink, String locationText);
+    CreatedEvent createEvent(
+            Long ownerId,
+            String summary,
+            String description,
+            Instant start,
+            Instant end,
+            List<String> attendeeEmails,
+            boolean createMeetLink,
+            String locationText);
 
     /** Move an existing event to a new time window (reschedule); {@code sendUpdates=all}. */
     void updateEvent(Long ownerId, String eventId, Instant start, Instant end);

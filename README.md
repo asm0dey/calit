@@ -102,6 +102,10 @@ mvn quarkus:dev
 
 (`/calit.css` is gitignored, so build it at least once or the pages render unstyled.)
 
+`bun install` also wires a [lefthook](https://github.com/evilmartians/lefthook) pre-commit hook that
+auto-formats staged files: Java with **Spotless + palantir-java-format**, and JS/CSS with **Prettier**
+(run `bun run format` to format the whole tree manually; `mvn verify` fails on unformatted Java).
+
 - Public booking site: <http://localhost:8080/>
 - Management UI: <http://localhost:8080/me> (form login at `/login`). On a fresh database, visit any
   page and you'll be redirected to `/setup` to create the first (admin) user — there is **no** default

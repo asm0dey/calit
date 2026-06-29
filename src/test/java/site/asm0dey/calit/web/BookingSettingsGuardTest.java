@@ -1,5 +1,8 @@
 package site.asm0dey.calit.web;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
@@ -9,16 +12,16 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
-
 @QuarkusTest
 class BookingSettingsGuardTest {
 
     @Transactional
     void removeSettingsAndSeedType() {
         AppUser owner = AppUser.findByUsername("bob");
-        if (owner == null) { owner = AppUser.create("bob", "x", false); owner.persistAndFlush(); } // create() builds but does not persist; flush to assign id
+        if (owner == null) {
+            owner = AppUser.create("bob", "x", false);
+            owner.persistAndFlush();
+        } // create() builds but does not persist; flush to assign id
         Long ownerId = owner.id;
         // Drop bob's settings so the booking page hits the notReady() guard — but bob the
         // AppUser must still exist so resolveOwner({user}) binds instead of 404ing first.
@@ -26,7 +29,9 @@ class BookingSettingsGuardTest {
         MeetingType.delete("ownerId = ?1 and slug = ?2", ownerId, "guard-type");
         MeetingType t = new MeetingType();
         t.ownerId = ownerId;
-        t.name = "Guard Type"; t.slug = "guard-type"; t.durationMinutes = 30;
+        t.name = "Guard Type";
+        t.slug = "guard-type";
+        t.durationMinutes = 30;
         t.locationType = LocationType.GOOGLE_MEET;
         t.persist();
     }
@@ -39,7 +44,9 @@ class BookingSettingsGuardTest {
         if (owner != null && OwnerSettings.forOwner(owner.id) == null) {
             OwnerSettings s = new OwnerSettings();
             s.ownerId = owner.id;
-            s.ownerName = "Owner"; s.ownerEmail = "owner@example.com"; s.timezone = "Europe/Amsterdam";
+            s.ownerName = "Owner";
+            s.ownerEmail = "owner@example.com";
+            s.timezone = "Europe/Amsterdam";
             s.persist();
         }
     }
@@ -48,8 +55,10 @@ class BookingSettingsGuardTest {
     void bookPageShowsFriendlyMessageWhenSettingsMissing() {
         removeSettingsAndSeedType();
         // "isn't ready yet" renders as "isn&#39;t ready yet" in escaped HTML — match the stable part.
-        given().when().get("/bob/guard-type")
-            .then().statusCode(200)
+        given().when()
+                .get("/bob/guard-type")
+                .then()
+                .statusCode(200)
                 .body(containsString("booking page"))
                 .body(containsString("ready yet"));
     }

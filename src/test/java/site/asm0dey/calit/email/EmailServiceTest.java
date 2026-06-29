@@ -1,11 +1,19 @@
 package site.asm0dey.calit.email;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -17,15 +25,6 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.when;
 
 @QuarkusTest
 class EmailServiceTest {
@@ -58,11 +57,15 @@ class EmailServiceTest {
     @Test
     void confirmedWhenGoogleDisconnectedSendsToInviteeAndOwnerWithLocationManageLinkAnswersAndIcs() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        long bookingId = seed(b -> {
-            b.status = BookingStatus.CONFIRMED;
-            b.meetLink = "https://meet.google.com/abc-defg-hij";
-            b.answers = Map.of("description", "Pricing tiers", "company", "Acme");
-        }, true, LocationType.GOOGLE_MEET, null);
+        long bookingId = seed(
+                b -> {
+                    b.status = BookingStatus.CONFIRMED;
+                    b.meetLink = "https://meet.google.com/abc-defg-hij";
+                    b.answers = Map.of("description", "Pricing tiers", "company", "Acme");
+                },
+                true,
+                LocationType.GOOGLE_MEET,
+                null);
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
@@ -95,17 +98,21 @@ class EmailServiceTest {
     @Test
     void confirmedWhenGoogleConnectedSuppressesInviteeButOwnerStillGetsMail() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        long bookingId = seed(b -> {
-            b.status = BookingStatus.CONFIRMED;
-            b.meetLink = "https://meet.google.com/xyz";
-        }, true, LocationType.GOOGLE_MEET, null);
+        long bookingId = seed(
+                b -> {
+                    b.status = BookingStatus.CONFIRMED;
+                    b.meetLink = "https://meet.google.com/xyz";
+                },
+                true,
+                LocationType.GOOGLE_MEET,
+                null);
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
-        assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL).isEmpty(),
+        assertTrue(
+                mailbox.getMailsSentTo(INVITEE_EMAIL).isEmpty(),
                 "connected -> Google emails the invitee, app must not");
-        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size(),
-                "owner still gets the app mail");
+        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size(), "owner still gets the app mail");
         assertEquals(1, mailbox.getTotalMessagesSent());
         assertHasIcsAttachment(mailbox.getMailsSentTo(OWNER_EMAIL).getFirst());
     }
@@ -115,15 +122,21 @@ class EmailServiceTest {
     @Test
     void requestedAlwaysSendsToInviteeAndOwnerEvenWhenGoogleConnected() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true); // connected, but no Google event exists yet
-        long bookingId = seed(b -> {
-            b.status = BookingStatus.PENDING;
-            b.meetLink = null;
-            b.answers = Map.of("description", "Need a demo");
-        }, true, LocationType.GOOGLE_MEET, null);
+        long bookingId = seed(
+                b -> {
+                    b.status = BookingStatus.PENDING;
+                    b.meetLink = null;
+                    b.answers = Map.of("description", "Need a demo");
+                },
+                true,
+                LocationType.GOOGLE_MEET,
+                null);
 
         emailService.handleRequested(new BookingRequested(bookingId));
 
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
+        assertEquals(
+                1,
+                mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
                 "requested is an always-send exception (no Google event)");
         assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
         assertEquals(2, mailbox.getTotalMessagesSent());
@@ -138,14 +151,20 @@ class EmailServiceTest {
     @Test
     void declinedAlwaysSendsToInviteeEvenWhenGoogleConnected() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        long bookingId = seed(b -> {
-            b.status = BookingStatus.DECLINED;
-            b.meetLink = null;
-        }, true, LocationType.GOOGLE_MEET, null);
+        long bookingId = seed(
+                b -> {
+                    b.status = BookingStatus.DECLINED;
+                    b.meetLink = null;
+                },
+                true,
+                LocationType.GOOGLE_MEET,
+                null);
 
         emailService.handleDeclined(new BookingDeclined(bookingId));
 
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
+        assertEquals(
+                1,
+                mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
                 "declined is an always-send exception (no Google event)");
         assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
         Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
@@ -157,31 +176,38 @@ class EmailServiceTest {
     @Test
     void ownerOptedOutGetsNothingInviteeStillFallbackWhenDisconnected() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        long bookingId = seed(b -> {
-            b.status = BookingStatus.CONFIRMED;
-            b.meetLink = "https://meet.google.com/opt-out";
-        }, false /* ownerNotificationsEnabled = false */, LocationType.GOOGLE_MEET, null);
+        long bookingId = seed(
+                b -> {
+                    b.status = BookingStatus.CONFIRMED;
+                    b.meetLink = "https://meet.google.com/opt-out";
+                },
+                false /* ownerNotificationsEnabled = false */,
+                LocationType.GOOGLE_MEET,
+                null);
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         assertTrue(mailbox.getMailsSentTo(OWNER_EMAIL).isEmpty(), "owner opted out -> no owner mail");
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
-                "invitee still gets fallback (disconnected)");
+        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(), "invitee still gets fallback (disconnected)");
         assertEquals(1, mailbox.getTotalMessagesSent());
     }
 
     @Test
     void ownerOptedOutAndGoogleConnectedSendsNothing() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        long bookingId = seed(b -> {
-            b.status = BookingStatus.CONFIRMED;
-            b.meetLink = "https://meet.google.com/none";
-        }, false, LocationType.GOOGLE_MEET, null);
+        long bookingId = seed(
+                b -> {
+                    b.status = BookingStatus.CONFIRMED;
+                    b.meetLink = "https://meet.google.com/none";
+                },
+                false,
+                LocationType.GOOGLE_MEET,
+                null);
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
-        assertEquals(0, mailbox.getTotalMessagesSent(),
-                "connected (invitee suppressed) + owner opted out -> zero mail");
+        assertEquals(
+                0, mailbox.getTotalMessagesSent(), "connected (invitee suppressed) + owner opted out -> zero mail");
     }
 
     // ---- Non-Meet location (PHONE) renders locationDetail, not a link ----
@@ -189,10 +215,14 @@ class EmailServiceTest {
     @Test
     void confirmedPhoneLocationRendersLocationDetail() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        long bookingId = seed(b -> {
-            b.status = BookingStatus.CONFIRMED;
-            b.meetLink = null;
-        }, true, LocationType.PHONE, "+1 555 0100");
+        long bookingId = seed(
+                b -> {
+                    b.status = BookingStatus.CONFIRMED;
+                    b.meetLink = null;
+                },
+                true,
+                LocationType.PHONE,
+                "+1 555 0100");
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
@@ -206,19 +236,27 @@ class EmailServiceTest {
     @Test
     void rescheduleWhenConnectedSuppressesInviteeOwnerStillGets() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        Instant newStart = Instant.parse("2026-06-10T09:00:00Z");
-        long bookingId = seedAt(newStart, b -> {
-            b.status = BookingStatus.CONFIRMED;
-            b.meetLink = "https://meet.google.com/resch";
-        }, true, LocationType.GOOGLE_MEET, null);
-        Instant oldStart = Instant.parse("2026-06-08T09:00:00Z");
+        var newStart = Instant.parse("2026-06-10T09:00:00Z");
+        long bookingId = seedAt(
+                newStart,
+                b -> {
+                    b.status = BookingStatus.CONFIRMED;
+                    b.meetLink = "https://meet.google.com/resch";
+                },
+                true,
+                LocationType.GOOGLE_MEET,
+                null);
+        var oldStart = Instant.parse("2026-06-08T09:00:00Z");
 
         emailService.handleRescheduled(new BookingRescheduled(bookingId, oldStart));
 
         assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL).isEmpty());
         assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
-        assertTrue(mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getSubject()
-                .toLowerCase().contains("reschedul"));
+        assertTrue(mailbox.getMailsSentTo(OWNER_EMAIL)
+                .getFirst()
+                .getSubject()
+                .toLowerCase()
+                .contains("reschedul"));
     }
 
     // ---- Cancellation: fallback rule, no location/meet link in body ----
@@ -226,10 +264,14 @@ class EmailServiceTest {
     @Test
     void cancellationWhenDisconnectedSendsToBothWithoutMeetLink() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        long bookingId = seed(b -> {
-            b.status = BookingStatus.CANCELLED;
-            b.meetLink = "https://meet.google.com/will-not-appear";
-        }, true, LocationType.GOOGLE_MEET, null);
+        long bookingId = seed(
+                b -> {
+                    b.status = BookingStatus.CANCELLED;
+                    b.meetLink = "https://meet.google.com/will-not-appear";
+                },
+                true,
+                LocationType.GOOGLE_MEET,
+                null);
 
         emailService.handleCancelled(new BookingCancelled(bookingId));
 
@@ -237,8 +279,7 @@ class EmailServiceTest {
         assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
         Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
         assertTrue(m.getSubject().toLowerCase().contains("cancel"));
-        assertFalse(m.getHtml().contains("will-not-appear"),
-                "cancellation body must not include a meet link");
+        assertFalse(m.getHtml().contains("will-not-appear"), "cancellation body must not include a meet link");
     }
 
     // ---- Reminder follows the fallback rule ----
@@ -246,41 +287,55 @@ class EmailServiceTest {
     @Test
     void reminderWhenDisconnectedSendsToBoth() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        long bookingId = seed(b -> {
-            b.status = BookingStatus.CONFIRMED;
-            b.meetLink = "https://meet.google.com/rem";
-        }, true, LocationType.GOOGLE_MEET, null);
+        long bookingId = seed(
+                b -> {
+                    b.status = BookingStatus.CONFIRMED;
+                    b.meetLink = "https://meet.google.com/rem";
+                },
+                true,
+                LocationType.GOOGLE_MEET,
+                null);
 
         emailService.handleReminder(new ReminderDue(bookingId));
 
         assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size());
         assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
-        assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getSubject()
-                .toLowerCase().contains("reminder"));
+        assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL)
+                .getFirst()
+                .getSubject()
+                .toLowerCase()
+                .contains("reminder"));
     }
 
     // --- attachment assertion: every app-sent mail carries an .ics ---
 
     private static void assertHasIcsAttachment(Mail m) {
         assertFalse(m.getAttachments().isEmpty(), "mail must carry an attachment");
-        assertTrue(m.getAttachments().stream().anyMatch(a ->
-                        "invite.ics".equals(a.getName())
+        assertTrue(
+                m.getAttachments().stream()
+                        .anyMatch(a -> "invite.ics".equals(a.getName())
                                 || (a.getContentType() != null
-                                    && a.getContentType().contains("text/calendar"))),
+                                        && a.getContentType().contains("text/calendar"))),
                 "an .ics (text/calendar) attachment must be present");
     }
 
     // --- seeding helpers ---
 
-    private long seed(java.util.function.Consumer<Booking> tweak, boolean ownerNotificationsEnabled,
-                      LocationType locationType, String locationDetail) {
-        return seedAt(Instant.parse("2026-06-08T09:00:00Z"), tweak, ownerNotificationsEnabled,
-                locationType, locationDetail);
+    private long seed(
+            java.util.function.Consumer<Booking> tweak,
+            boolean ownerNotificationsEnabled,
+            LocationType locationType,
+            String locationDetail) {
+        return seedAt(
+                Instant.parse("2026-06-08T09:00:00Z"), tweak, ownerNotificationsEnabled, locationType, locationDetail);
     }
 
-    private long seedAt(Instant startUtc, java.util.function.Consumer<Booking> tweak,
-                        boolean ownerNotificationsEnabled, LocationType locationType,
-                        String locationDetail) {
+    private long seedAt(
+            Instant startUtc,
+            java.util.function.Consumer<Booking> tweak,
+            boolean ownerNotificationsEnabled,
+            LocationType locationType,
+            String locationDetail) {
         return QuarkusTransaction.requiringNew().call(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);
             if (s == null) {

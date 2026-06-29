@@ -2,7 +2,6 @@ package site.asm0dey.calit.user;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-
 import java.time.Instant;
 
 /**
@@ -59,7 +58,7 @@ public class AppUser extends PanacheEntityBase {
      * created_at. Lifecycle flags default to false (caller sets them as needed before persist).
      */
     public static AppUser create(String username, String passwordHash, boolean admin) {
-        AppUser u = new AppUser();
+        var u = new AppUser();
         u.username = Usernames.normalize(username);
         u.passwordHash = passwordHash;
         u.isAdmin = admin;
@@ -73,7 +72,7 @@ public class AppUser extends PanacheEntityBase {
      * must already be uniquified by the caller (see Usernames.uniquify); it is normalized here.
      */
     public static AppUser createGoogleUser(String username, String googleSub) {
-        AppUser u = new AppUser();
+        var u = new AppUser();
         u.username = Usernames.normalize(username);
         u.passwordHash = null;
         u.googleSub = googleSub;

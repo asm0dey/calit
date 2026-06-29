@@ -4,10 +4,9 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import site.asm0dey.calit.i18n.ActiveLocale;
-
 import java.time.Instant;
 import java.util.Map;
+import site.asm0dey.calit.i18n.ActiveLocale;
 
 /**
  * Public JSON booking API. SECURITY (SEC-AUTHZ-02): every mutation MUST route through
@@ -26,8 +25,15 @@ public class BookingResource {
     @Inject
     ActiveLocale activeLocale;
 
-    public record BookRequest(String user, String slug, String startUtc, String inviteeName, String inviteeEmail,
-                              Map<String, String> answers, String turnstileToken, String honeypot) {}
+    public record BookRequest(
+            String user,
+            String slug,
+            String startUtc,
+            String inviteeName,
+            String inviteeEmail,
+            Map<String, String> answers,
+            String turnstileToken,
+            String honeypot) {}
 
     public record RescheduleRequest(String newStartUtc) {}
 
@@ -37,23 +43,32 @@ public class BookingResource {
         // Owner-scoped (carry-forward M1): the booking targets a specific owner identified by {user};
         // the meeting type is resolved within that owner so colliding slugs across owners never alias.
         if (req.user() == null || req.user().isBlank()) {
-            throw new jakarta.ws.rs.NotFoundException("Missing user");
+            throw new NotFoundException("Missing user");
         }
         site.asm0dey.calit.user.AppUser owner =
                 site.asm0dey.calit.user.AppUser.findByUsername(site.asm0dey.calit.user.Usernames.normalize(req.user()));
         if (owner == null) {
-            throw new jakarta.ws.rs.NotFoundException("No user " + req.user());
+            throw new NotFoundException("No user " + req.user());
         }
-        site.asm0dey.calit.domain.MeetingType type = site.asm0dey.calit.domain.MeetingType.findBySlug(owner.id, req.slug());
+        site.asm0dey.calit.domain.MeetingType type =
+                site.asm0dey.calit.domain.MeetingType.findBySlug(owner.id, req.slug());
         if (type == null) {
-            throw new jakarta.ws.rs.NotFoundException("No meeting type with slug " + req.slug());
+            throw new NotFoundException("No meeting type with slug " + req.slug());
         }
         // All abuse guards (Turnstile + honeypot + per-email/day cap) are enforced inside book().
         // Locale is resolved server-side from the request (ignore any client-supplied locale).
         String locale = activeLocale.current().getLanguage();
-        Booking b = bookingService.book(owner.id, req.slug(), Instant.parse(req.startUtc()),
-                req.inviteeName(), req.inviteeEmail(), req.answers(), req.turnstileToken(), req.honeypot(),
-                locale, java.util.List.of());
+        Booking b = bookingService.book(
+                owner.id,
+                req.slug(),
+                Instant.parse(req.startUtc()),
+                req.inviteeName(),
+                req.inviteeEmail(),
+                req.answers(),
+                req.turnstileToken(),
+                req.honeypot(),
+                locale,
+                java.util.List.of());
         return Response.status(Response.Status.CREATED).entity(b).build();
     }
 

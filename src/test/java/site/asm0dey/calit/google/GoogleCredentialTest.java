@@ -1,13 +1,12 @@
 package site.asm0dey.calit.google;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class GoogleCredentialTest {
@@ -57,15 +56,20 @@ class GoogleCredentialTest {
     @Transactional
     void multipleAccountsPerOwnerAreFoundByOwnerAndSub() {
         GoogleCredential a = new GoogleCredential();
-        a.ownerId = 1L; a.refreshToken = "rt-A"; a.googleSub = "sub-A"; a.accountEmail = "a@example.com";
+        a.ownerId = 1L;
+        a.refreshToken = "rt-A";
+        a.googleSub = "sub-A";
+        a.accountEmail = "a@example.com";
         a.persist();
         GoogleCredential b = new GoogleCredential();
-        b.ownerId = 1L; b.refreshToken = "rt-B"; b.googleSub = "sub-B"; b.accountEmail = "b@example.com";
+        b.ownerId = 1L;
+        b.refreshToken = "rt-B";
+        b.googleSub = "sub-B";
+        b.accountEmail = "b@example.com";
         b.persist();
 
         assertEquals(2, GoogleCredential.countForOwner(1L));
-        assertEquals("a@example.com",
-                GoogleCredential.findByOwnerAndSub(1L, "sub-A").accountEmail);
+        assertEquals("a@example.com", GoogleCredential.findByOwnerAndSub(1L, "sub-A").accountEmail);
         assertNull(GoogleCredential.findByOwnerAndSub(1L, "sub-missing"));
     }
 }

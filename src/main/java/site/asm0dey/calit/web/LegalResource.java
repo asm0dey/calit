@@ -19,7 +19,9 @@ public class LegalResource {
     @CheckedTemplate
     public static class Templates {
         private Templates() {}
+
         public static native TemplateInstance privacy(String title);
+
         public static native TemplateInstance terms(String title);
     }
 

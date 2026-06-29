@@ -2,12 +2,11 @@ package site.asm0dey.calit.google;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
+import java.util.List;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.Usernames;
-
-import java.util.List;
 
 /**
  * Maps a verified {@link GoogleIdentity} to the {@link AppUser} that should be logged in:

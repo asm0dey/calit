@@ -1,10 +1,18 @@
 package site.asm0dey.calit.email;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -14,15 +22,6 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.when;
 
 // When SMTP is down, a booking notification must NOT throw out of the observer -- it must land in the outbox.
 @QuarkusTest
@@ -50,8 +49,9 @@ class EmailServiceFallbackTest {
     void declinedWithSmtpDownQueuesInsteadOfThrowing() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         doThrow(new RuntimeException("smtp down"))
-                .when(mailSender).sendNow(anyString(), anyString(), anyString(), any());
-        long bookingId = seedDeclined();
+                .when(mailSender)
+                .sendNow(anyString(), anyString(), anyString(), any());
+        var bookingId = seedDeclined();
 
         // Must not throw.
         emailService.handleDeclined(new BookingDeclined(bookingId));
@@ -64,7 +64,10 @@ class EmailServiceFallbackTest {
     private long seedDeclined() {
         return QuarkusTransaction.requiringNew().call(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);
-            if (s == null) { s = new OwnerSettings(); s.ownerId = 1L; }
+            if (s == null) {
+                s = new OwnerSettings();
+                s.ownerId = 1L;
+            }
             s.ownerName = "Owner";
             s.ownerEmail = "owner@example.com";
             s.timezone = "Europe/Amsterdam";

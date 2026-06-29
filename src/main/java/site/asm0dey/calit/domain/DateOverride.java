@@ -2,7 +2,6 @@ package site.asm0dey.calit.domain;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,18 +55,16 @@ public class DateOverride extends PanacheEntityBase {
      */
     public static DateOverride resolve(Long ownerId, Long meetingTypeId, LocalDate date) {
         DateOverride typed = find(
-                "ownerId = ?1 and meetingTypeId = ?2 and overrideDate = ?3",
-                ownerId, meetingTypeId, date).firstResult();
+                        "ownerId = ?1 and meetingTypeId = ?2 and overrideDate = ?3", ownerId, meetingTypeId, date)
+                .firstResult();
         if (typed != null) {
-            typed.windows = DateOverrideWindow
-                    .list("dateOverrideId = ?1 order by startTime asc", typed.id);
+            typed.windows = DateOverrideWindow.list("dateOverrideId = ?1 order by startTime asc", typed.id);
             return typed;
         }
-        DateOverride global = find(
-                "ownerId = ?1 and meetingTypeId is null and overrideDate = ?2", ownerId, date).firstResult();
+        DateOverride global = find("ownerId = ?1 and meetingTypeId is null and overrideDate = ?2", ownerId, date)
+                .firstResult();
         if (global != null) {
-            global.windows = DateOverrideWindow
-                    .list("dateOverrideId = ?1 order by startTime asc", global.id);
+            global.windows = DateOverrideWindow.list("dateOverrideId = ?1 order by startTime asc", global.id);
         }
         return global;
     }

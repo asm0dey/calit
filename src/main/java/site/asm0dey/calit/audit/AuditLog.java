@@ -14,8 +14,7 @@ public class AuditLog {
     private static final Logger LOG = Logger.getLogger("audit");
 
     public void event(String actor, String action, String target, String sourceIp) {
-        LOG.infof("AUDIT actor=%s action=%s target=%s ip=%s",
-                safe(actor), safe(action), safe(target), safe(sourceIp));
+        LOG.infof("AUDIT actor=%s action=%s target=%s ip=%s", safe(actor), safe(action), safe(target), safe(sourceIp));
     }
 
     /** Strip CR/LF so a hostile field value cannot forge a fake audit line (log injection). */

@@ -1,0 +1,15 @@
+# Auto-format staged Java with Spotless (palantir + cleanthat) before commit.
+# Installed via `bun install` (package.json "prepare": "lefthook install").
+pre-commit:
+  commands:
+    format-java:
+      glob: "*.java"
+      # spotlessFiles is a regex full-matched against the absolute path, so wrap the staged
+      # paths as `.*(a|b|...)` to anchor the suffix.
+      run: ./mvnw -q spotless:apply "-DspotlessFiles=.*($(echo {staged_files} | tr ' ' '|'))"
+      stage_fixed: true
+    format-fe:
+      glob: "*.{js,ts,css}"
+      # Prettier takes file paths directly — no regex wrapper needed.
+      run: bunx prettier --write {staged_files}
+      stage_fixed: true

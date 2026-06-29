@@ -194,7 +194,8 @@ public interface AdminMessages {
     @Message("Location")
     String adm_meetingTypes_section_location();
 
-    @Message("Pick where the meeting happens. Google Meet generates a link after booking (requires Google connected); for the others, fill in the detail below.")
+    @Message(
+            "Pick where the meeting happens. Google Meet generates a link after booking (requires Google connected); for the others, fill in the detail below.")
     String adm_meetingTypes_location_hint();
 
     @Message("Location detail (phone / address / custom; ignored for Google Meet)")
@@ -212,7 +213,8 @@ public interface AdminMessages {
     @Message("Working hours")
     String adm_meetingTypes_section_working_hours();
 
-    @Message("Weekly hours for this meeting type. Leave a day blank to use the global default; fill a day to override it for this type.")
+    @Message(
+            "Weekly hours for this meeting type. Leave a day blank to use the global default; fill a day to override it for this type.")
     String adm_meetingTypes_working_hours_hint();
 
     @Message("to")
@@ -221,7 +223,8 @@ public interface AdminMessages {
     @Message("Date override")
     String adm_meetingTypes_section_date_override();
 
-    @Message("Optional. An override REPLACES this date's normal hours for this type. Set a date and leave the windows blank to mark it a day off; add windows to set the only bookable times.")
+    @Message(
+            "Optional. An override REPLACES this date's normal hours for this type. Set a date and leave the windows blank to mark it a day off; add windows to set the only bookable times.")
     String adm_meetingTypes_date_override_hint();
 
     @Message("Date")
@@ -325,7 +328,8 @@ public interface AdminMessages {
     @Message("Working hours")
     String adm_detail_section_working_hours();
 
-    @Message("Weekly hours for this meeting type. When any frame is set for a day, it replaces the global default hours for that day. Each day can hold several time frames; use the copy buttons to mirror one day, then Save.")
+    @Message(
+            "Weekly hours for this meeting type. When any frame is set for a day, it replaces the global default hours for that day. Each day can hold several time frames; use the copy buttons to mirror one day, then Save.")
     String adm_detail_working_hours_hint();
 
     @Message("to")
@@ -346,7 +350,8 @@ public interface AdminMessages {
     @Message("Date overrides")
     String adm_detail_section_overrides();
 
-    @Message("An override REPLACES this date's normal hours for this meeting type. Leave the windows blank to mark the date as a day off.")
+    @Message(
+            "An override REPLACES this date's normal hours for this meeting type. Leave the windows blank to mark the date as a day off.")
     String adm_detail_overrides_hint();
 
     @Message("day off")
@@ -381,7 +386,8 @@ public interface AdminMessages {
     @Message("Availability (work hours)")
     String adm_availability_h1();
 
-    @Message("Your default weekly schedule. Each day can hold several time frames. Use the copy buttons to mirror one day across the week, then Save.")
+    @Message(
+            "Your default weekly schedule. Each day can hold several time frames. Use the copy buttons to mirror one day across the week, then Save.")
     String adm_availability_hint();
 
     @Message("+ Frame")
@@ -407,7 +413,8 @@ public interface AdminMessages {
     @Message("Date-specific overrides")
     String adm_dateOverrides_h1();
 
-    @Message("An override REPLACES that date's normal work hours. Adding windows sets the only bookable times; leaving the windows empty marks the whole date as a day off.")
+    @Message(
+            "An override REPLACES that date's normal work hours. Adding windows sets the only bookable times; leaving the windows empty marks the whole date as a day off.")
     String adm_dateOverrides_hint();
 
     @Message("day off")
@@ -454,7 +461,8 @@ public interface AdminMessages {
     @Message("Default booking fields")
     String adm_bookingFields_h1();
 
-    @Message("Full name and email are always asked. These default extra fields apply to every meeting type that has no fields of its own. Set per-type fields from each meeting type's page.")
+    @Message(
+            "Full name and email are always asked. These default extra fields apply to every meeting type that has no fields of its own. Set per-type fields from each meeting type's page.")
     String adm_bookingFields_hint();
 
     @Message("required")
@@ -564,7 +572,8 @@ public interface AdminMessages {
     @Message("Google Calendar")
     String google_h1();
 
-    @Message("Connect Google accounts so calit can read your busy times and create events. Pick which calendars block availability, and one calendar to create booking events on.")
+    @Message(
+            "Connect Google accounts so calit can read your busy times and create events. Pick which calendars block availability, and one calendar to create booking events on.")
     String google_hint();
 
     @Message("Connect a Google account")

@@ -24,8 +24,8 @@ public class FirstRunRedirectFilter {
             rc.next();
             return;
         }
-        rc.vertx().executeBlocking(
-                        () -> QuarkusTransaction.requiringNew().call(() -> AppUser.count() == 0), false)
+        rc.vertx()
+                .executeBlocking(() -> QuarkusTransaction.requiringNew().call(() -> AppUser.count() == 0), false)
                 .onSuccess(noUsers -> {
                     if (Boolean.TRUE.equals(noUsers)) {
                         rc.redirect("/setup");
@@ -40,11 +40,11 @@ public class FirstRunRedirectFilter {
         // Note: /login is NOT exempt — while unbootstrapped there is nobody to log in as, so /login
         // redirects to /setup (first-user creation) like every other app path. /j_security_check stays
         // exempt so the redirect target is reachable; it no-ops with no users.
-        return path.equals("/")                  // public marketing landing stays open pre-bootstrap
-                || path.startsWith("/img/")       // ...and its screenshots
+        return path.equals("/") // public marketing landing stays open pre-bootstrap
+                || path.startsWith("/img/") // ...and its screenshots
                 || path.equals("/setup")
-                || path.equals("/privacy")   // public legal pages must be reachable pre-bootstrap
-                || path.equals("/terms")     // (e.g. Google's verification crawler on a fresh instance)
+                || path.equals("/privacy") // public legal pages must be reachable pre-bootstrap
+                || path.equals("/terms") // (e.g. Google's verification crawler on a fresh instance)
                 || path.equals("/j_security_check")
                 || path.startsWith("/q/")
                 || path.equals("/calit.css")

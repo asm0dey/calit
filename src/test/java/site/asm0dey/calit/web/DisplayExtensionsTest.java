@@ -1,12 +1,11 @@
 package site.asm0dey.calit.web;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.time.DayOfWeek;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
-
-import java.time.DayOfWeek;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class DisplayExtensionsTest {
 

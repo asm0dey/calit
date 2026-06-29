@@ -5,13 +5,12 @@ import io.quarkus.arc.InstanceHandle;
 import io.quarkus.arc.Unremovable;
 import io.quarkus.qute.i18n.Localized;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.eclipse.microprofile.config.ConfigProvider;
-
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.TreeSet;
+import org.eclipse.microprofile.config.ConfigProvider;
 
 /**
  * Discovers the supported locale set at runtime by enumerating all Arc-managed
@@ -50,13 +49,12 @@ public class AppLocaleDiscovery {
     }
 
     private List<Locale> discover() {
-        Locale defaultLocale = defaultLocale();
+        var defaultLocale = defaultLocale();
 
         // Use a TreeSet keyed on language tag for stable, deduplicated ordering.
         TreeSet<String> extras = new TreeSet<>();
 
-        List<InstanceHandle<AppMessages>> handles =
-                Arc.container().listAll(AppMessages.class);
+        List<InstanceHandle<AppMessages>> handles = Arc.container().listAll(AppMessages.class);
         for (InstanceHandle<AppMessages> h : handles) {
             try {
                 for (Annotation q : h.getBean().getQualifiers()) {

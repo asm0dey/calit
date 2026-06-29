@@ -2,14 +2,18 @@ package site.asm0dey.calit.domain;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-
 import java.util.List;
 
 @Entity
 @Table(name = "meeting_type")
 public class MeetingType extends PanacheEntityBase {
 
-    public enum LocationType { GOOGLE_MEET, PHONE, IN_PERSON, CUSTOM }
+    public enum LocationType {
+        GOOGLE_MEET,
+        PHONE,
+        IN_PERSON,
+        CUSTOM
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

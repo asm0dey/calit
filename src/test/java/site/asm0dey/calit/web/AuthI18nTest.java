@@ -1,10 +1,10 @@
 package site.asm0dey.calit.web;
 
-import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Test;
-
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
 
 /**
  * Task 9c: verifies that the auth / bootstrap pages render in the correct language
@@ -27,10 +27,10 @@ class AuthI18nTest {
 
     @Test
     void loginPageRendersGermanViaCookie() {
-        given()
-            .cookie("calit_lang", "de")
-            .when().get("/login")
-            .then()
+        given().cookie("calit_lang", "de")
+                .when()
+                .get("/login")
+                .then()
                 .statusCode(200)
                 .body(containsString("<html lang=\"de\""))
                 .body(containsString("Anmelden"));
@@ -38,9 +38,9 @@ class AuthI18nTest {
 
     @Test
     void loginPageRendersEnglishByDefault() {
-        given()
-            .when().get("/login")
-            .then()
+        given().when()
+                .get("/login")
+                .then()
                 .statusCode(200)
                 .body(containsString("<html lang=\"en\""))
                 .body(containsString("Sign in"));
@@ -48,29 +48,25 @@ class AuthI18nTest {
 
     @Test
     void loginPageGermanTitle() {
-        given()
-            .cookie("calit_lang", "de")
-            .when().get("/login")
-            .then()
+        given().cookie("calit_lang", "de")
+                .when()
+                .get("/login")
+                .then()
                 .statusCode(200)
                 .body(containsString("<title>Anmelden — calit</title>"));
     }
 
     @Test
     void loginPageEnglishTitle() {
-        given()
-            .when().get("/login")
-            .then()
-                .statusCode(200)
-                .body(containsString("<title>Sign in — calit</title>"));
+        given().when().get("/login").then().statusCode(200).body(containsString("<title>Sign in — calit</title>"));
     }
 
     @Test
     void loginPageGermanLabels() {
-        given()
-            .cookie("calit_lang", "de")
-            .when().get("/login")
-            .then()
+        given().cookie("calit_lang", "de")
+                .when()
+                .get("/login")
+                .then()
                 .statusCode(200)
                 .body(containsString("Benutzername"))
                 .body(containsString("Passwort"))
@@ -79,20 +75,20 @@ class AuthI18nTest {
 
     @Test
     void loginPageGermanGoogleNotice() {
-        given()
-            .cookie("calit_lang", "de")
-            .when().get("/login?notice=google_signup_disabled")
-            .then()
+        given().cookie("calit_lang", "de")
+                .when()
+                .get("/login?notice=google_signup_disabled")
+                .then()
                 .statusCode(200)
                 .body(containsString("Registrierungen sind deaktiviert"));
     }
 
     @Test
     void loginPageGermanGenericGoogleNotice() {
-        given()
-            .cookie("calit_lang", "de")
-            .when().get("/login?notice=google")
-            .then()
+        given().cookie("calit_lang", "de")
+                .when()
+                .get("/login?notice=google")
+                .then()
                 .statusCode(200)
                 .body(containsString("Google-Anmeldung konnte nicht abgeschlossen werden"));
     }
@@ -101,10 +97,10 @@ class AuthI18nTest {
 
     @Test
     void forgotPageRendersGermanViaCookie() {
-        given()
-            .cookie("calit_lang", "de")
-            .when().get("/forgot-password")
-            .then()
+        given().cookie("calit_lang", "de")
+                .when()
+                .get("/forgot-password")
+                .then()
                 .statusCode(200)
                 .body(containsString("<html lang=\"de\""))
                 .body(containsString("Passwort vergessen"));
@@ -112,9 +108,9 @@ class AuthI18nTest {
 
     @Test
     void forgotPageRendersEnglishByDefault() {
-        given()
-            .when().get("/forgot-password")
-            .then()
+        given().when()
+                .get("/forgot-password")
+                .then()
                 .statusCode(200)
                 .body(containsString("<html lang=\"en\""))
                 .body(containsString("Forgot password"));
@@ -122,20 +118,20 @@ class AuthI18nTest {
 
     @Test
     void forgotPageGermanTitle() {
-        given()
-            .cookie("calit_lang", "de")
-            .when().get("/forgot-password")
-            .then()
+        given().cookie("calit_lang", "de")
+                .when()
+                .get("/forgot-password")
+                .then()
                 .statusCode(200)
                 .body(containsString("<title>Passwort vergessen — calit</title>"));
     }
 
     @Test
     void forgotPageGermanSubmitButton() {
-        given()
-            .cookie("calit_lang", "de")
-            .when().get("/forgot-password")
-            .then()
+        given().cookie("calit_lang", "de")
+                .when()
+                .get("/forgot-password")
+                .then()
                 .statusCode(200)
                 .body(containsString("Zurücksetzen-Link senden"));
     }
@@ -144,10 +140,10 @@ class AuthI18nTest {
 
     @Test
     void resetPageRendersGermanViaCookie() {
-        given()
-            .cookie("calit_lang", "de")
-            .when().get("/reset-password?token=sometoken")
-            .then()
+        given().cookie("calit_lang", "de")
+                .when()
+                .get("/reset-password?token=sometoken")
+                .then()
                 .statusCode(200)
                 .body(containsString("<html lang=\"de\""))
                 .body(containsString("Passwort zurücksetzen"));
@@ -155,9 +151,9 @@ class AuthI18nTest {
 
     @Test
     void resetPageRendersEnglishByDefault() {
-        given()
-            .when().get("/reset-password?token=sometoken")
-            .then()
+        given().when()
+                .get("/reset-password?token=sometoken")
+                .then()
                 .statusCode(200)
                 .body(containsString("<html lang=\"en\""))
                 .body(containsString("Reset password"));
@@ -165,10 +161,10 @@ class AuthI18nTest {
 
     @Test
     void resetPageGermanTitle() {
-        given()
-            .cookie("calit_lang", "de")
-            .when().get("/reset-password?token=sometoken")
-            .then()
+        given().cookie("calit_lang", "de")
+                .when()
+                .get("/reset-password?token=sometoken")
+                .then()
                 .statusCode(200)
                 .body(containsString("<title>Passwort zurücksetzen — calit</title>"));
     }
@@ -176,10 +172,10 @@ class AuthI18nTest {
     @Test
     void resetPageInvalidLinkGerman() {
         // No token → expired/invalid branch
-        given()
-            .cookie("calit_lang", "de")
-            .when().get("/reset-password")
-            .then()
+        given().cookie("calit_lang", "de")
+                .when()
+                .get("/reset-password")
+                .then()
                 .statusCode(200)
                 .body(containsString("ungültig oder abgelaufen"))
                 .body(containsString("Neuen Link anfordern"));

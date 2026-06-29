@@ -6,9 +6,6 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -18,6 +15,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * The SIGN-IN OAuth flow, kept separate from the calendar-connect flow in GoogleTokenService so
@@ -56,18 +55,18 @@ public class GoogleLoginService {
 
     /** Mint a signed, time-stamped, login-purpose state. Stateless: nothing stored. */
     public String issueLoginState(Instant now) {
-        String payload = b64(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8))
-                + ":" + PURPOSE + ":" + now.getEpochSecond();
+        var payload = b64(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8)) + ":" + PURPOSE + ":"
+                + now.getEpochSecond();
         return payload + "." + b64(hmac(payload));
     }
 
     /** True when {@code state} is a valid, unexpired, login-purpose state. */
     public boolean validateLoginState(String state, Instant now) {
         if (state == null || state.isBlank()) return false;
-        int dot = state.lastIndexOf('.');
+        var dot = state.lastIndexOf('.');
         if (dot <= 0) return false;
-        String payload = state.substring(0, dot);
-        byte[] expected = hmac(payload);
+        var payload = state.substring(0, dot);
+        var expected = hmac(payload);
         byte[] actual;
         try {
             actual = Base64.getUrlDecoder().decode(state.substring(dot + 1));
@@ -77,12 +76,12 @@ public class GoogleLoginService {
         if (!MessageDigest.isEqual(expected, actual)) return false;
 
         // payload = b64(nonce) ":" PURPOSE ":" issuedAtEpochSec
-        int lastColon = payload.lastIndexOf(':');
-        int prevColon = lastColon <= 0 ? -1 : payload.lastIndexOf(':', lastColon - 1);
+        var lastColon = payload.lastIndexOf(':');
+        var prevColon = lastColon <= 0 ? -1 : payload.lastIndexOf(':', lastColon - 1);
         if (prevColon <= 0) return false;
         if (!PURPOSE.equals(payload.substring(prevColon + 1, lastColon))) return false;
         try {
-            Instant issued = Instant.ofEpochSecond(Long.parseLong(payload.substring(lastColon + 1)));
+            var issued = Instant.ofEpochSecond(Long.parseLong(payload.substring(lastColon + 1)));
             return !issued.isAfter(now) && !issued.plus(STATE_TTL).isBefore(now);
         } catch (NumberFormatException _) {
             return false;
@@ -104,9 +103,13 @@ public class GoogleLoginService {
         GsonFactory json = GsonFactory.getDefaultInstance();
         try {
             var resp = new GoogleAuthorizationCodeTokenRequest(
-                    transport, json, TOKEN_ENDPOINT,
-                    config.oauth().clientId(), config.oauth().clientSecret(),
-                    code, config.oauth().loginRedirectUri())
+                            transport,
+                            json,
+                            TOKEN_ENDPOINT,
+                            config.oauth().clientId(),
+                            config.oauth().clientSecret(),
+                            code,
+                            config.oauth().loginRedirectUri())
                     .execute();
             String idToken = resp.getIdToken();
             if (idToken == null) {
@@ -124,9 +127,8 @@ public class GoogleLoginService {
 
     private byte[] hmac(String payload) {
         try {
-            Mac mac = Mac.getInstance(HMAC_ALGO);
-            mac.init(new SecretKeySpec(
-                    config.oauth().stateSecret().getBytes(StandardCharsets.UTF_8), HMAC_ALGO));
+            var mac = Mac.getInstance(HMAC_ALGO);
+            mac.init(new SecretKeySpec(config.oauth().stateSecret().getBytes(StandardCharsets.UTF_8), HMAC_ALGO));
             return mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("Cannot sign login state", e);

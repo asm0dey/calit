@@ -1,10 +1,10 @@
 package site.asm0dey.calit.web;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @QuarkusTest
 class BuildInfoTest {

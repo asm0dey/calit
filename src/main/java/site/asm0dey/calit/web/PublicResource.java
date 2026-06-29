@@ -6,6 +6,14 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestForm;
 import site.asm0dey.calit.availability.TimeSlot;
@@ -20,15 +28,6 @@ import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
 import site.asm0dey.calit.user.Usernames;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 @Path("/")
 public class PublicResource {
 
@@ -38,14 +37,15 @@ public class PublicResource {
     public static class Templates {
         public static native TemplateInstance index(String title, boolean authenticated, String username);
 
-        public static native TemplateInstance landing(String title, List<MeetingType> types, String user, String ownerName);
+        public static native TemplateInstance landing(
+                String title, List<MeetingType> types, String user, String ownerName);
 
         public static native TemplateInstance book(
                 String title,
                 String user,
                 MeetingType type,
-                java.util.List<PublicResource.DaySlots> days,
-                java.util.List<site.asm0dey.calit.domain.BookingField> fields,
+                List<PublicResource.DaySlots> days,
+                List<site.asm0dey.calit.domain.BookingField> fields,
                 String error,
                 String tzBar,
                 String tzScript,
@@ -58,26 +58,38 @@ public class PublicResource {
 
         public static native TemplateInstance confirmation(
                 String title,
-                site.asm0dey.calit.booking.Booking booking, site.asm0dey.calit.domain.MeetingType type,
-                boolean pending, String location, String whenLabel, String startUtcIso,
-                String tzBar, String tzScript);
+                Booking booking,
+                MeetingType type,
+                boolean pending,
+                String location,
+                String whenLabel,
+                String startUtcIso,
+                String tzBar,
+                String tzScript);
 
         public static native TemplateInstance manage(
                 String title,
-                site.asm0dey.calit.booking.Booking booking, String currentLabel, String currentUtcIso,
-                java.util.List<PublicResource.DaySlots> days,
-                String tzBar, String tzScript, String calScript, String initialGuests);
+                Booking booking,
+                String currentLabel,
+                String currentUtcIso,
+                List<PublicResource.DaySlots> days,
+                String tzBar,
+                String tzScript,
+                String calScript,
+                String initialGuests);
 
         public static native TemplateInstance guestDeclineConfirm(
-                String title, site.asm0dey.calit.booking.Booking booking,
-                site.asm0dey.calit.domain.MeetingType type, String guestEmail,
-                String guestDeclineToken, String tzScript);
+                String title,
+                Booking booking,
+                MeetingType type,
+                String guestEmail,
+                String guestDeclineToken,
+                String tzScript);
 
         public static native TemplateInstance guestDeclined(String title);
 
         public static native TemplateInstance cancelConfirm(
-                String title, site.asm0dey.calit.booking.Booking booking,
-                site.asm0dey.calit.domain.MeetingType type, String tzScript);
+                String title, Booking booking, MeetingType type, String tzScript);
 
         public static native TemplateInstance cancelled(String title);
 
@@ -121,7 +133,7 @@ public class PublicResource {
     public record SlotView(String label, String startUtc) {}
 
     /** One day's worth of selectable slots: ISO date (for the JS calendar), a human label, and the slots. */
-    public record DaySlots(String isoDate, String label, java.util.List<SlotView> slots) {}
+    public record DaySlots(String isoDate, String label, List<SlotView> slots) {}
 
     @GET
     @Produces(MediaType.TEXT_HTML)
@@ -129,7 +141,7 @@ public class PublicResource {
         // Root is a generic product page — NOT any owner's landing. Per-owner landings live at /{user}.
         // Auth-aware: a logged-in visitor sees Settings/Log out + their dashboard, not "Sign in".
         var m = messages.forLocale(activeLocale.current());
-        boolean authenticated = !identity.isAnonymous();
+        var authenticated = !identity.isAnonymous();
         String username = authenticated ? identity.getPrincipal().getName() : null;
         return Templates.index(m.pub_index_title(), authenticated, username);
     }
@@ -145,7 +157,8 @@ public class PublicResource {
             return Templates.notReady(m.pub_not_ready_title());
         }
         // listPublic(ownerId) = that owner's active && !secret types.
-        return Templates.landing(m.pub_user_title(), MeetingType.listPublic(owner.id), owner.username, settings.ownerName);
+        return Templates.landing(
+                m.pub_user_title(), MeetingType.listPublic(owner.id), owner.username, settings.ownerName);
     }
 
     @GET
@@ -175,10 +188,21 @@ public class PublicResource {
         // flag (type.requiresApproval) + locationType/locationDetail are read off `type`
         // directly in the template for the button wording + location line.
         String bookTitle = m.pub_book_title_prefix() + " " + type.name;
-        return Templates.book(bookTitle, owner.username, type, byDate, fields, null,
-                              Layout.TZ_BAR, Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT,
-                              turnstileEnabled, turnstileSiteKey(), calendarPort.isConnected(owner.id),
-                              settings.ownerName, "");
+        return Templates.book(
+                bookTitle,
+                owner.username,
+                type,
+                byDate,
+                fields,
+                null,
+                Layout.TZ_BAR,
+                Layout.TZ_SCRIPT,
+                Layout.CALENDAR_SCRIPT,
+                turnstileEnabled,
+                turnstileSiteKey(),
+                calendarPort.isConnected(owner.id),
+                settings.ownerName,
+                "");
     }
 
     private String turnstileSiteKey() {
@@ -192,21 +216,24 @@ public class PublicResource {
             return List.of();
         }
         return java.util.Arrays.stream(raw.split("[,\\s]+"))
-                .map(String::trim).filter(s -> !s.isBlank()).toList();
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
     }
 
     @POST
     @Path("/{user}/{slug}")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance submitBooking(@PathParam("user") String user,
-                                          @PathParam("slug") String slug,
-                                          @RestForm String startUtc,
-                                          @RestForm String inviteeName,
-                                          @RestForm String inviteeEmail,
-                                          @RestForm String website,                 // honeypot
-                                          @RestForm("cf-turnstile-response") String turnstileToken,
-                                          MultivaluedMap<String, String> form) {
+    public TemplateInstance submitBooking(
+            @PathParam("user") String user,
+            @PathParam("slug") String slug,
+            @RestForm String startUtc,
+            @RestForm String inviteeName,
+            @RestForm String inviteeEmail,
+            @RestForm String website, // honeypot
+            @RestForm("cf-turnstile-response") String turnstileToken,
+            MultivaluedMap<String, String> form) {
         var m = messages.forLocale(activeLocale.current());
         AppUser owner = resolveOwner(user); // 404 if unknown; binds CurrentOwner
         MeetingType type = MeetingType.findBySlug(owner.id, slug);
@@ -223,7 +250,8 @@ public class PublicResource {
         Map<String, String> answers = new HashMap<>();
         for (Map.Entry<String, java.util.List<String>> e : form.entrySet()) {
             if (e.getKey().startsWith("answers.")) {
-                answers.put(e.getKey().substring("answers.".length()),
+                answers.put(
+                        e.getKey().substring("answers.".length()),
                         e.getValue().isEmpty() ? "" : e.getValue().getFirst());
             }
         }
@@ -235,18 +263,35 @@ public class PublicResource {
             // Locale is resolved server-side from the request (set by LocaleResolutionFilter).
             String locale = activeLocale.current().getLanguage();
             booking = bookingService.book(
-                    owner.id, slug, Instant.parse(startUtc), inviteeName, inviteeEmail, answers,
-                    turnstileToken, website, locale, parseGuests(form));
-        } catch (BookingValidationException | AbuseException | RateLimitException
-                 | BookingConflictException be) {
+                    owner.id,
+                    slug,
+                    Instant.parse(startUtc),
+                    inviteeName,
+                    inviteeEmail,
+                    answers,
+                    turnstileToken,
+                    website,
+                    locale,
+                    parseGuests(form));
+        } catch (BookingValidationException | AbuseException | RateLimitException | BookingConflictException be) {
             // Required-field 422 OR an abuse-guard rejection (filled honeypot / failed Turnstile /
             // per-email cap) / slot conflict. Re-render the form inline with the message; do NOT
             // 500, NOT confirm. (Plan 3 has no common BookingException superclass, so catch each.)
-            return Templates.book(bookTitle, owner.username, type, daySlots(type), BookingField.formFor(owner.id, type.id),
-                                  be.getMessage(),
-                                  Layout.TZ_BAR, Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT,
-                                  turnstileEnabled, turnstileSiteKey(), calendarPort.isConnected(owner.id),
-                                  settings.ownerName, "");
+            return Templates.book(
+                    bookTitle,
+                    owner.username,
+                    type,
+                    daySlots(type),
+                    BookingField.formFor(owner.id, type.id),
+                    be.getMessage(),
+                    Layout.TZ_BAR,
+                    Layout.TZ_SCRIPT,
+                    Layout.CALENDAR_SCRIPT,
+                    turnstileEnabled,
+                    turnstileSiteKey(),
+                    calendarPort.isConnected(owner.id),
+                    settings.ownerName,
+                    "");
         }
         return confirmationPage(booking, type);
     }
@@ -257,17 +302,17 @@ public class PublicResource {
         // Server fallback label is owner-tz; the page also carries the booked instant as a
         // data-utc attribute so the shared script can relabel it to the viewer's zone.
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
-        String when = booking.startUtc.atZone(zone)
-                .format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
+        String when =
+                booking.startUtc.atZone(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
         String startUtcIso = booking.startUtc.toString(); // absolute instant for data-utc
         // Approval types come back PENDING → "request sent" page (no Meet link yet); auto types
         // come back CONFIRMED → location/Meet confirmation.
-        boolean pending = booking.status == BookingStatus.PENDING;
+        var pending = booking.status == BookingStatus.PENDING;
         String title = pending ? m.pub_conf_title_pending() : m.pub_conf_title_confirmed();
-        String location = (type.locationType == MeetingType.LocationType.GOOGLE_MEET)
-                ? booking.meetLink : type.locationDetail;
-        return Templates.confirmation(title, booking, type, pending, location, when, startUtcIso,
-                                      Layout.TZ_BAR, Layout.TZ_SCRIPT);
+        String location =
+                (type.locationType == MeetingType.LocationType.GOOGLE_MEET) ? booking.meetLink : type.locationDetail;
+        return Templates.confirmation(
+                title, booking, type, pending, location, when, startUtcIso, Layout.TZ_BAR, Layout.TZ_SCRIPT);
     }
 
     @GET
@@ -291,22 +336,32 @@ public class PublicResource {
         } catch (CalendarUnavailableException e) {
             return Templates.unavailable(m.pub_unavailable_title());
         }
-        String current = booking.startUtc.atZone(zone)
-                .format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
+        String current =
+                booking.startUtc.atZone(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
         String currentUtcIso = booking.startUtc.toString(); // absolute instant for data-utc
         String guestsCsv = BookingGuest.activeForBooking(booking.id).stream()
-                .map(g -> g.email).collect(java.util.stream.Collectors.joining(","));
-        return Templates.manage(m.pub_manage_title(), booking, current, currentUtcIso, byDate,
-                                Layout.TZ_BAR, Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT, guestsCsv);
+                .map(g -> g.email)
+                .collect(java.util.stream.Collectors.joining(","));
+        return Templates.manage(
+                m.pub_manage_title(),
+                booking,
+                current,
+                currentUtcIso,
+                byDate,
+                Layout.TZ_BAR,
+                Layout.TZ_SCRIPT,
+                Layout.CALENDAR_SCRIPT,
+                guestsCsv);
     }
 
     @POST
     @Path("/booking/{manageToken}/reschedule")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance rescheduleBooking(@PathParam("manageToken") String manageToken,
-                                              @RestForm String startUtc,
-                                              MultivaluedMap<String, String> form) {
+    public TemplateInstance rescheduleBooking(
+            @PathParam("manageToken") String manageToken,
+            @RestForm String startUtc,
+            MultivaluedMap<String, String> form) {
         // startUtc is the absolute UTC instant the invitee chose; the viewer's display zone
         // never altered it (the picker only relabels). reschedule(...) is keyed by the token.
         // For approval types Plan 3 returns the booking to PENDING; auto types stay CONFIRMED.
@@ -356,8 +411,8 @@ public class PublicResource {
         }
         Booking booking = Booking.findById(guest.bookingId);
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        return Templates.guestDeclineConfirm(m.pub_guest_decline_confirm_title(), booking, type,
-                guest.email, declineToken, Layout.TZ_SCRIPT);
+        return Templates.guestDeclineConfirm(
+                m.pub_guest_decline_confirm_title(), booking, type, guest.email, declineToken, Layout.TZ_SCRIPT);
     }
 
     @POST
@@ -383,17 +438,19 @@ public class PublicResource {
     /** Available slots as an ordered per-day list (ISO date + label), chronological. */
     private List<DaySlots> daySlots(MeetingType type) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
-        LocalDate from = LocalDate.now(zone);
+        var from = LocalDate.now(zone);
         // Show the full configured booking horizon; availableSlots(...) also clamps to the same
         // horizon (now + horizonDays) and to min-notice, so this only sets the candidate range.
         LocalDate to = from.plusDays(type.horizonDays);
         Map<String, DaySlots> byIso = new LinkedHashMap<>();
         for (TimeSlot slot : bookingService.availableSlots(type, from, to)) {
             String isoDate = slot.start().toLocalDate().toString();
-            DaySlots day = byIso.computeIfAbsent(isoDate,
-                    k -> new DaySlots(k, slot.start().format(DATE_FMT), new java.util.ArrayList<>()));
-            day.slots().add(new SlotView(slot.start().format(TIME_FMT),
-                                         slot.start().toInstant().toString()));
+            DaySlots day = byIso.computeIfAbsent(
+                    isoDate, k -> new DaySlots(k, slot.start().format(DATE_FMT), new java.util.ArrayList<>()));
+            day.slots()
+                    .add(new SlotView(
+                            slot.start().format(TIME_FMT),
+                            slot.start().toInstant().toString()));
         }
         return new java.util.ArrayList<>(byIso.values());
     }

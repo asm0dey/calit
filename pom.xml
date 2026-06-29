@@ -156,6 +156,61 @@
           </includeOnlyProperties>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>2.44.5</version>
+        <configuration>
+          <java>
+            <includes>
+              <include>src/main/java/**/*.java</include>
+              <include>src/test/java/**/*.java</include>
+            </includes>
+            <toggleOffOn />
+            <!-- CleanThat refactors first, palantir formats the result. -->
+            <cleanthat>
+              <sourceJdk>25</sourceJdk>
+              <mutators>
+                <mutator>SafeAndConsensual</mutator>
+                <mutator>UseDiamondOperator</mutator>
+                <mutator>UseDiamondOperatorJdk8</mutator>
+                <mutator>LambdaIsMethodReference</mutator>
+                <mutator>LambdaReturnsSingleStatement</mutator>
+                <mutator>UnnecessaryLambdaEnclosingParameters</mutator>
+                <mutator>PrimitiveWrapperInstantiation</mutator>
+                <mutator>UnnecessarySemicolon</mutator>
+                <mutator>UnnecessaryImport</mutator>
+                <mutator>UnnecessaryFullyQualifiedName</mutator>
+                <mutator>UsePredefinedStandardCharset</mutator>
+                <mutator>RemoveNewStringConstructor</mutator>
+                <mutator>EnumsWithoutEquals</mutator>
+                <mutator>EmptyControlStatement</mutator>
+                <mutator>RedundantLogicalComplementsInStream</mutator>
+                <mutator>OptionalMapIdentity</mutator>
+                <mutator>StreamMapIdentity</mutator>
+                <mutator>ObjectsHashCodePrimitive</mutator>
+                <mutator>LocalVariableTypeInference</mutator>
+                <mutator>UseTextBlocks</mutator>
+              </mutators>
+            </cleanthat>
+            <palantirJavaFormat>
+              <version>2.94.0</version>
+              <style>PALANTIR</style>
+            </palantirJavaFormat>
+            <formatAnnotations />
+            <removeUnusedImports />
+          </java>
+        </configuration>
+        <executions>
+          <execution>
+            <id>spotless-check</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>

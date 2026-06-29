@@ -45,7 +45,8 @@ public class OwnerSettings extends PanacheEntityBase {
         if (email == null || email.isBlank()) {
             return java.util.List.of();
         }
-        return OwnerSettings.find("lower(ownerEmail) = ?1", email.trim().toLowerCase())
-                .<OwnerSettings>list().stream().map(s -> s.ownerId).toList();
+        return OwnerSettings.find("lower(ownerEmail) = ?1", email.trim().toLowerCase()).<OwnerSettings>list().stream()
+                .map(s -> s.ownerId)
+                .toList();
     }
 }

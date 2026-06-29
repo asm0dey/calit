@@ -1,12 +1,11 @@
 package site.asm0dey.calit.booking;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 class IntervalTest {
 
@@ -48,8 +47,7 @@ class IntervalTest {
     void overlapsAnyMatchesAtLeastOne() {
         Interval slot = iv("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z");
         List<Interval> busy = List.of(
-                iv("2026-06-08T07:00:00Z", "2026-06-08T08:00:00Z"),
-                iv("2026-06-08T09:30:00Z", "2026-06-08T09:45:00Z"));
+                iv("2026-06-08T07:00:00Z", "2026-06-08T08:00:00Z"), iv("2026-06-08T09:30:00Z", "2026-06-08T09:45:00Z"));
         assertTrue(slot.overlapsAny(busy));
     }
 
@@ -57,8 +55,7 @@ class IntervalTest {
     void overlapsAnyFalseWhenAllDisjoint() {
         Interval slot = iv("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z");
         List<Interval> busy = List.of(
-                iv("2026-06-08T07:00:00Z", "2026-06-08T08:00:00Z"),
-                iv("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z"));
+                iv("2026-06-08T07:00:00Z", "2026-06-08T08:00:00Z"), iv("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z"));
         assertFalse(slot.overlapsAny(busy));
     }
 }

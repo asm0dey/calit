@@ -1,26 +1,33 @@
 package site.asm0dey.calit.booking;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.domain.MeetingType;
-
 import java.time.Instant;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.MeetingType;
 
 @QuarkusTest
 class BookingGuestTest {
 
     private Long createBooking() {
         MeetingType t = new MeetingType();
-        t.ownerId = 1L; t.name = "g"; t.slug = "g-" + System.nanoTime(); t.durationMinutes = 30;
+        t.ownerId = 1L;
+        t.name = "g";
+        t.slug = "g-" + System.nanoTime();
+        t.durationMinutes = 30;
         t.persist();
         Booking b = new Booking();
-        b.ownerId = 1L; b.meetingTypeId = t.id; b.inviteeName = "Sam"; b.inviteeEmail = "sam@example.com";
-        b.startUtc = Instant.parse("2026-06-08T07:00:00Z"); b.endUtc = b.startUtc.plusSeconds(1800);
-        b.status = BookingStatus.CONFIRMED; b.createdAt = Instant.now();
+        b.ownerId = 1L;
+        b.meetingTypeId = t.id;
+        b.inviteeName = "Sam";
+        b.inviteeEmail = "sam@example.com";
+        b.startUtc = Instant.parse("2026-06-08T07:00:00Z");
+        b.endUtc = b.startUtc.plusSeconds(1800);
+        b.status = BookingStatus.CONFIRMED;
+        b.createdAt = Instant.now();
         b.manageToken = java.util.UUID.randomUUID().toString();
         b.persist();
         return b.id;
@@ -28,8 +35,12 @@ class BookingGuestTest {
 
     private BookingGuest guest(Long bookingId, String email, GuestStatus status) {
         BookingGuest g = new BookingGuest();
-        g.ownerId = 1L; g.bookingId = bookingId; g.email = email; g.status = status;
-        g.declineToken = java.util.UUID.randomUUID().toString(); g.createdAt = Instant.now();
+        g.ownerId = 1L;
+        g.bookingId = bookingId;
+        g.email = email;
+        g.status = status;
+        g.declineToken = java.util.UUID.randomUUID().toString();
+        g.createdAt = Instant.now();
         g.persist();
         return g;
     }
@@ -37,7 +48,7 @@ class BookingGuestTest {
     @Test
     @TestTransaction
     void persistsAndReadsBackGuestFields() {
-        Long bookingId = createBooking();
+        var bookingId = createBooking();
         BookingGuest g = guest(bookingId, "ana@example.com", GuestStatus.INVITED);
 
         BookingGuest loaded = BookingGuest.findById(g.id);
@@ -51,7 +62,7 @@ class BookingGuestTest {
     @Test
     @TestTransaction
     void activeForBookingReturnsOnlyInvited() {
-        Long bookingId = createBooking();
+        var bookingId = createBooking();
         guest(bookingId, "ana@example.com", GuestStatus.INVITED);
         guest(bookingId, "bob@example.com", GuestStatus.DECLINED);
         guest(bookingId, "cyd@example.com", GuestStatus.REMOVED);
@@ -65,7 +76,7 @@ class BookingGuestTest {
     @Test
     @TestTransaction
     void findByDeclineTokenAndFindInBookingResolve() {
-        Long bookingId = createBooking();
+        var bookingId = createBooking();
         BookingGuest g = guest(bookingId, "Ana@Example.com", GuestStatus.INVITED);
 
         assertEquals(g.id, BookingGuest.findByDeclineToken(g.declineToken).id);
@@ -77,7 +88,7 @@ class BookingGuestTest {
     @Test
     @TestTransaction
     void bookingIcsSequenceDefaultsToZeroAndRoundTrips() {
-        Long bookingId = createBooking();
+        var bookingId = createBooking();
         Booking b = Booking.findById(bookingId);
         assertEquals(0, b.icsSequence);
         b.icsSequence = 2;

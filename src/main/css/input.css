@@ -81,50 +81,159 @@
    ============================================================ */
 @layer components {
   /* Reading column widths (kept from Pico-era layout). */
-  main.container { max-width: 48rem; margin-inline: auto; padding-inline: 1rem; }
-  body.book-page main.container { max-width: 58rem; }
+  main.container {
+    max-width: 48rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  body.book-page main.container {
+    max-width: 58rem;
+  }
 
   /* Timezone bar (invitee pages). */
-  .tz-bar { font-size: .85rem; color: color-mix(in oklch, var(--color-base-content) 60%, transparent); margin: .5rem 0 1rem; }
-  .tz-bar select { display: inline; width: auto; margin: 0 0 0 .25rem; }
+  .tz-bar {
+    font-size: 0.85rem;
+    color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+    margin: 0.5rem 0 1rem;
+  }
+  .tz-bar select {
+    display: inline;
+    width: auto;
+    margin: 0 0 0 0.25rem;
+  }
 
   /* Two-pane booking grid: calendar left, times right. */
-  .booking-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; align-items: start; }
+  .booking-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
   @media (min-width: 48rem) {
-    .booking-grid { grid-template-columns: minmax(18rem, 1fr) minmax(12rem, 16rem); }
+    .booking-grid {
+      grid-template-columns: minmax(18rem, 1fr) minmax(12rem, 16rem);
+    }
   }
 
   /* Calendar widget (DOM built by calScript). */
-  .calendar { border: 1px solid var(--color-base-300); border-radius: var(--radius-box); padding: 1rem; background: var(--color-base-100); }
-  .calendar__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
-  .calendar__title { font-weight: 600; }
-  .calendar__nav { background: none; border: none; color: var(--color-primary); font-size: 1.2rem; padding: .2rem .6rem; width: auto; margin: 0; cursor: pointer; }
-  .calendar__nav[disabled] { color: color-mix(in oklch, var(--color-base-content) 40%, transparent); cursor: not-allowed; }
-  .calendar__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .25rem; text-align: center; }
-  .calendar__dow { font-size: .7rem; color: color-mix(in oklch, var(--color-base-content) 60%, transparent); padding: .25rem 0; }
-  .calendar__day { aspect-ratio: 1; border: none; border-radius: 50%; background: none; color: var(--color-base-content); padding: 0; margin: 0; width: 100%; font-size: .9rem; cursor: pointer; }
-  .calendar__day[disabled] { color: color-mix(in oklch, var(--color-base-content) 40%, transparent); opacity: .4; cursor: default; }
-  .calendar__day--available { font-weight: 600; background: color-mix(in oklch, var(--color-primary) 18%, transparent); color: var(--color-primary); }
-  .calendar__day--selected { outline: 2px solid var(--color-primary); outline-offset: 1px; }
-  .calendar__day--empty { visibility: hidden; }
+  .calendar {
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box);
+    padding: 1rem;
+    background: var(--color-base-100);
+  }
+  .calendar__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .calendar__title {
+    font-weight: 600;
+  }
+  .calendar__nav {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-size: 1.2rem;
+    padding: 0.2rem 0.6rem;
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+  }
+  .calendar__nav[disabled] {
+    color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
+    cursor: not-allowed;
+  }
+  .calendar__grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+    text-align: center;
+  }
+  .calendar__dow {
+    font-size: 0.7rem;
+    color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+    padding: 0.25rem 0;
+  }
+  .calendar__day {
+    aspect-ratio: 1;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--color-base-content);
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .calendar__day[disabled] {
+    color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
+    opacity: 0.4;
+    cursor: default;
+  }
+  .calendar__day--available {
+    font-weight: 600;
+    background: color-mix(in oklch, var(--color-primary) 18%, transparent);
+    color: var(--color-primary);
+  }
+  .calendar__day--selected {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+  }
+  .calendar__day--empty {
+    visibility: hidden;
+  }
 
   /* Time column: a day's slots as a vertical list of pill buttons. */
-  .time-column h3 { font-size: .95rem; margin: 0 0 .75rem; }
-  .day-slots { margin: 0; }
-  .day-slots[hidden] { display: none; }
-  .slot { display: block; margin: 0 0 .5rem; }
-  .slot input[type="radio"] { position: absolute; opacity: 0; }
-  .slot time { display: block; text-align: center; padding: .55rem .75rem; border: 1px solid var(--color-primary); border-radius: var(--radius-field); background: var(--color-base-100); color: var(--color-primary); cursor: pointer; }
-  .slot input[type="radio"]:checked + time { background: var(--color-primary); color: var(--color-primary-content); }
-  .slot input[type="radio"]:focus-visible + time { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  .time-column h3 {
+    font-size: 0.95rem;
+    margin: 0 0 0.75rem;
+  }
+  .day-slots {
+    margin: 0;
+  }
+  .day-slots[hidden] {
+    display: none;
+  }
+  .slot {
+    display: block;
+    margin: 0 0 0.5rem;
+  }
+  .slot input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+  }
+  .slot time {
+    display: block;
+    text-align: center;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-field);
+    background: var(--color-base-100);
+    color: var(--color-primary);
+    cursor: pointer;
+  }
+  .slot input[type="radio"]:checked + time {
+    background: var(--color-primary);
+    color: var(--color-primary-content);
+  }
+  .slot input[type="radio"]:focus-visible + time {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
 
   /* Honeypot stays invisible regardless of resets. */
-  input[name="website"] { display: none !important; }
+  input[name="website"] {
+    display: none !important;
+  }
 
   /* daisyUI's .input sets appearance:none + a fixed 20rem width, which strips the
      native date/time picker UI and makes the fields far too wide. Restore the native
      controls and let them size to content for all date/time inputs. */
-  .input[type="time"], .input[type="date"] {
+  .input[type="time"],
+  .input[type="date"] {
     /* !important to override daisyUI's .input rule, which lives in a later @layer
        (later layers win over earlier ones by normal cascade, so specificity alone
        can't reach it). */
@@ -134,19 +243,68 @@
   }
 
   /* Admin shell: sticky left sidebar. */
-  body.admin-canvas { background: var(--color-base-200); color: var(--color-base-content); }
-  .admin-shell { display: grid; grid-template-columns: 1fr; min-height: 100vh; }
-  @media (min-width: 48rem) {
-    .admin-shell { grid-template-columns: 250px 1fr; }
-    .admin-side { position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  body.admin-canvas {
+    background: var(--color-base-200);
+    color: var(--color-base-content);
   }
-  .admin-side { background: var(--color-base-100); border-right: 1px solid var(--color-base-300); padding: 1rem .75rem; display: flex; flex-direction: column; }
-  .admin-brand { display: flex; align-items: center; gap: .5rem; font-weight: 800; padding: .4rem .6rem 1rem; }
-  .admin-brand .chip { width: 1.7rem; height: 1.7rem; border-radius: .5rem; background: var(--color-primary); color: var(--color-primary-content); display: flex; align-items: center; justify-content: center; font-size: .85rem; }
-  .admin-main { min-width: 0; }
-  .admin-main .container { max-width: 60rem; }
+  .admin-shell {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-height: 100vh;
+  }
+  @media (min-width: 48rem) {
+    .admin-shell {
+      grid-template-columns: 250px 1fr;
+    }
+    .admin-side {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+  }
+  .admin-side {
+    background: var(--color-base-100);
+    border-right: 1px solid var(--color-base-300);
+    padding: 1rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+  }
+  .admin-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 800;
+    padding: 0.4rem 0.6rem 1rem;
+  }
+  .admin-brand .chip {
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 0.5rem;
+    background: var(--color-primary);
+    color: var(--color-primary-content);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+  }
+  .admin-main {
+    min-width: 0;
+  }
+  .admin-main .container {
+    max-width: 60rem;
+  }
   @media (max-width: 47.99rem) {
-    .admin-side { flex-direction: row; align-items: center; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--color-base-300); }
-    .admin-brand, .admin-create { display: none; }
+    .admin-side {
+      flex-direction: row;
+      align-items: center;
+      overflow-x: auto;
+      border-right: 0;
+      border-bottom: 1px solid var(--color-base-300);
+    }
+    .admin-brand,
+    .admin-create {
+      display: none;
+    }
   }
 }

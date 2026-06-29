@@ -2,14 +2,19 @@ package site.asm0dey.calit.domain;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-
 import java.util.List;
 
 @Entity
 @Table(name = "booking_field")
 public class BookingField extends PanacheEntityBase {
 
-    public enum FieldType { SHORT_TEXT, LONG_TEXT, EMAIL, PHONE, NUMBER }
+    public enum FieldType {
+        SHORT_TEXT,
+        LONG_TEXT,
+        EMAIL,
+        PHONE,
+        NUMBER
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -49,8 +54,8 @@ public class BookingField extends PanacheEntityBase {
      * the owner's, but the global fallback MUST be the owner's globals, never another owner's.
      */
     public static List<BookingField> formFor(Long ownerId, Long meetingTypeId) {
-        List<BookingField> typed = list(
-                "ownerId = ?1 and meetingTypeId = ?2 order by position", ownerId, meetingTypeId);
+        List<BookingField> typed =
+                list("ownerId = ?1 and meetingTypeId = ?2 order by position", ownerId, meetingTypeId);
         return typed.isEmpty() ? globalForOwner(ownerId) : typed;
     }
 }

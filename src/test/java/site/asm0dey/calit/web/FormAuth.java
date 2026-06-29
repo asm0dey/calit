@@ -1,10 +1,10 @@
 package site.asm0dey.calit.web;
 
+import static io.restassured.RestAssured.given;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.PasswordHasher;
-
-import static io.restassured.RestAssured.given;
 
 /** Test helper: seeds a DB admin user, performs a form login, returns the credential cookie. */
 public final class FormAuth {
@@ -26,11 +26,15 @@ public final class FormAuth {
     /** Logs in as the seeded test admin and returns the `quarkus-credential` cookie value. */
     public static String login() {
         ensureAdminSeeded();
-        return given().redirects().follow(false)
+        return given().redirects()
+                .follow(false)
                 .contentType("application/x-www-form-urlencoded")
                 .formParam("j_username", "admin")
                 .formParam("j_password", "testpass")
-                .when().post("/j_security_check")
-                .then().extract().cookie("quarkus-credential");
+                .when()
+                .post("/j_security_check")
+                .then()
+                .extract()
+                .cookie("quarkus-credential");
     }
 }

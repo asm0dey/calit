@@ -6,6 +6,14 @@ import jakarta.inject.Inject;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.hibernate.exception.ConstraintViolationException;
 import site.asm0dey.calit.availability.SlotService;
@@ -19,15 +27,6 @@ import site.asm0dey.calit.google.BusyInterval;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.google.CreatedEvent;
 import site.asm0dey.calit.i18n.AppLocales;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 @ApplicationScoped
 public class BookingService {
@@ -44,10 +43,11 @@ public class BookingService {
     public static final int MAX_GUESTS_PER_BOOKING = 10;
 
     @Inject
-    public BookingService(SlotService slotService, CalendarPort calendarPort,
-                          TurnstileVerifier turnstileVerifier,
-                          @ConfigProperty(name = "calit.abuse.per-email-daily-cap", defaultValue = "10")
-                          long perEmailDailyCap) {
+    public BookingService(
+            SlotService slotService,
+            CalendarPort calendarPort,
+            TurnstileVerifier turnstileVerifier,
+            @ConfigProperty(name = "calit.abuse.per-email-daily-cap", defaultValue = "10") long perEmailDailyCap) {
         this.slotService = slotService;
         this.calendarPort = calendarPort;
         this.turnstileVerifier = turnstileVerifier;
@@ -89,16 +89,15 @@ public class BookingService {
      * the min-notice and horizon filters relative to {@code now} (feature 11). {@code excludeBookingId}
      * omits one booking from the busy set (used by reschedule so a booking can move within its own window).
      */
-    public List<TimeSlot> availableSlots(MeetingType type, LocalDate from, LocalDate to,
-                                         Long excludeBookingId) {
+    public List<TimeSlot> availableSlots(MeetingType type, LocalDate from, LocalDate to, Long excludeBookingId) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
-        Instant fromInstant = from.atStartOfDay(zone).toInstant();
-        Instant toInstant = to.plusDays(1).atStartOfDay(zone).toInstant();
+        var fromInstant = from.atStartOfDay(zone).toInstant();
+        var toInstant = to.plusDays(1).atStartOfDay(zone).toInstant();
 
         List<Interval> busy = busyIntervals(type.ownerId, fromInstant, toInstant, excludeBookingId);
 
         // Feature 11 bounds, captured once relative to request time.
-        Instant now = Instant.now();
+        var now = Instant.now();
         Instant earliest = now.plusSeconds(60L * type.minNoticeMinutes);
         Instant latest = now.plus(type.horizonDays, ChronoUnit.DAYS);
 
@@ -142,25 +141,31 @@ public class BookingService {
     }
 
     @Transactional
-    public Booking book(Long ownerId, String meetingTypeSlug, Instant startUtc,
-                        String inviteeName, String inviteeEmail,
-                        Map<String, String> answers, String turnstileToken, String honeypot,
-                        String locale, List<String> guestEmails) {
+    public Booking book(
+            Long ownerId,
+            String meetingTypeSlug,
+            Instant startUtc,
+            String inviteeName,
+            String inviteeEmail,
+            Map<String, String> answers,
+            String turnstileToken,
+            String honeypot,
+            String locale,
+            List<String> guestEmails) {
         validateInviteeEmail(inviteeEmail);
         validateInputBounds(inviteeName, answers);
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
         if (type == null) {
-            throw new NotFoundException("No meeting type with slug " + meetingTypeSlug
-                    + " for owner " + ownerId);
+            throw new NotFoundException("No meeting type with slug " + meetingTypeSlug + " for owner " + ownerId);
         }
 
         // Feature 16: all three abuse guards run first, inside book(). The Plan 5 web layer
         // just forwards the cf-turnstile-response (turnstileToken) and website (honeypot) form values.
-        turnstileVerifier.verify(turnstileToken);          // -> AbuseException (400) when enabled & invalid
-        if (honeypot != null && !honeypot.isBlank()) {     // a bot filled the hidden field
-            throw new AbuseException("Honeypot field was filled.");  // -> AbuseException (400)
+        turnstileVerifier.verify(turnstileToken); // -> AbuseException (400) when enabled & invalid
+        if (honeypot != null && !honeypot.isBlank()) { // a bot filled the hidden field
+            throw new AbuseException("Honeypot field was filled."); // -> AbuseException (400)
         }
-        enforcePerEmailDailyCap(type, inviteeEmail);       // -> RateLimitException (429) over cap
+        enforcePerEmailDailyCap(type, inviteeEmail); // -> RateLimitException (429) over cap
 
         Map<String, String> submitted = answers == null ? Map.of() : answers;
 
@@ -200,8 +205,7 @@ public class BookingService {
             booking.persistAndFlush();
         } catch (PersistenceException ex) {
             if (isNoOverlapViolation(ex)) {
-                throw new BookingConflictException(
-                        "Slot " + startUtc + " is not available for " + type.slug);
+                throw new BookingConflictException("Slot " + startUtc + " is not available for " + type.slug);
             }
             throw ex;
         }
@@ -252,10 +256,11 @@ public class BookingService {
         }
         java.util.LinkedHashMap<String, String> byLower = new java.util.LinkedHashMap<>();
         for (String raw : guestEmails) {
-            String email = raw == null ? "" : raw.trim();
+            var email = raw == null ? "" : raw.trim();
             // Drop blanks/over-length, the invitee's own address (they already get every mail), and
             // malformed addresses — silently, so one bad entry never fails the booking. Cap at the max.
-            boolean acceptable = !email.isEmpty() && email.length() <= 254
+            var acceptable = !email.isEmpty()
+                    && email.length() <= 254
                     && !email.equalsIgnoreCase(inviteeEmail)
                     && isPlausibleEmail(email);
             if (acceptable && byLower.size() < MAX_GUESTS_PER_BOOKING) {
@@ -277,7 +282,8 @@ public class BookingService {
                 type.ownerId,
                 type.name + " with " + booking.inviteeName,
                 "Booked via calit.",
-                booking.startUtc, booking.endUtc,
+                booking.startUtc,
+                booking.endUtc,
                 List.of(booking.inviteeEmail, owner.ownerEmail),
                 type.locationType == LocationType.GOOGLE_MEET,
                 type.locationDetail);
@@ -322,17 +328,17 @@ public class BookingService {
     // dot and no empty labels, and no whitespace or comma anywhere — the latter blocks header/ICS
     // injection and CRLF smuggling. Not a full RFC 5322 parser (SEC-INPUT-01).
     private static boolean isPlausibleEmail(String email) {
-        for (int i = 0; i < email.length(); i++) {
-            char ch = email.charAt(i);
+        for (var i = 0; i < email.length(); i++) {
+            var ch = email.charAt(i);
             if (ch == ',' || Character.isWhitespace(ch)) {
                 return false; // commas and CR/LF/space/tab are injection vectors — reject
             }
         }
-        int at = email.indexOf('@');
+        var at = email.indexOf('@');
         if (at <= 0 || at != email.lastIndexOf('@') || at == email.length() - 1) {
             return false; // need exactly one '@', neither first nor last char
         }
-        String domain = email.substring(at + 1);
+        var domain = email.substring(at + 1);
         if (domain.startsWith(".") || domain.endsWith(".") || domain.contains("..")) {
             return false; // no empty domain labels
         }
@@ -341,12 +347,11 @@ public class BookingService {
 
     private void enforcePerEmailDailyCap(MeetingType type, String inviteeEmail) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
-        LocalDate today = Instant.now().atZone(zone).toLocalDate();
-        Instant dayStart = today.atStartOfDay(zone).toInstant();
-        Instant dayEnd = today.plusDays(1).atStartOfDay(zone).toInstant();
+        var today = Instant.now().atZone(zone).toLocalDate();
+        var dayStart = today.atStartOfDay(zone).toInstant();
+        var dayEnd = today.plusDays(1).atStartOfDay(zone).toInstant();
         if (Booking.countByEmailCreatedBetween(inviteeEmail, dayStart, dayEnd) >= perEmailDailyCap) {
-            throw new RateLimitException(
-                    "Daily booking cap reached for " + inviteeEmail);
+            throw new RateLimitException("Daily booking cap reached for " + inviteeEmail);
         }
     }
 
@@ -359,8 +364,7 @@ public class BookingService {
             if (field.required) {
                 String value = answers.get(field.fieldKey);
                 if (value == null || value.isBlank()) {
-                    throw new BookingValidationException(
-                            "Required field '" + field.fieldKey + "' is missing or blank");
+                    throw new BookingValidationException("Required field '" + field.fieldKey + "' is missing or blank");
                 }
             }
         }
@@ -368,7 +372,7 @@ public class BookingService {
 
     /** True if {@code ex} (or a cause) is the no-overlap exclusion-constraint violation. */
     private boolean isNoOverlapViolation(Throwable ex) {
-        for (Throwable t = ex; t != null; t = t.getCause()) {
+        for (var t = ex; t != null; t = t.getCause()) {
             if (t instanceof ConstraintViolationException cve
                     && "booking_no_overlap_held".equals(cve.getConstraintName())) {
                 return true;
@@ -380,12 +384,11 @@ public class BookingService {
     /** Throws BookingConflictException unless an available slot starts exactly at {@code startUtc}. */
     private void assertSlotAvailable(MeetingType type, Instant startUtc, Long excludeBookingId) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
-        LocalDate day = startUtc.atZone(zone).toLocalDate();
+        var day = startUtc.atZone(zone).toLocalDate();
         boolean ok = availableSlots(type, day, day, excludeBookingId).stream()
                 .anyMatch(s -> s.start().toInstant().equals(startUtc));
         if (!ok) {
-            throw new BookingConflictException(
-                    "Slot " + startUtc + " is not available for " + type.slug);
+            throw new BookingConflictException("Slot " + startUtc + " is not available for " + type.slug);
         }
     }
 
@@ -430,9 +433,7 @@ public class BookingService {
     @Transactional
     public Booking reschedule(String manageToken, Instant newStartUtc, List<String> guestEmails) {
         Booking booking = Booking.findByManageToken(manageToken);
-        if (booking == null
-                || booking.status == BookingStatus.CANCELLED
-                || booking.status == BookingStatus.DECLINED) {
+        if (booking == null || booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
             throw new NotFoundException("No active booking for token " + manageToken);
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
@@ -504,7 +505,7 @@ public class BookingService {
         for (String e : wanted) wantedLower.add(e.toLowerCase());
 
         // Existing rows for this booking, keyed by lowercase email.
-        java.util.Map<String, BookingGuest> existing = new java.util.HashMap<>();
+        Map<String, BookingGuest> existing = new java.util.HashMap<>();
         for (BookingGuest g : BookingGuest.<BookingGuest>allForBooking(booking.id)) {
             existing.put(g.email.toLowerCase(), g);
         }

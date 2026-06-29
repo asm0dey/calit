@@ -12,5 +12,4 @@ public record LocaleOption(
         /** True when this locale is the currently-active one (render as span, not link). */
         boolean active,
         /** URL for switching to this locale, e.g. "/lang/de?return=%2Falice%2Fintro". */
-        String href
-) {}
+        String href) {}

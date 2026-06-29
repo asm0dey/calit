@@ -1,13 +1,11 @@
 package site.asm0dey.calit.user;
 
 import jakarta.enterprise.context.ApplicationScoped;
-
-import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
-import org.bouncycastle.crypto.params.Argon2Parameters;
-
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
+import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
+import org.bouncycastle.crypto.params.Argon2Parameters;
 
 /**
  * Argon2id password hashing with OWASP-recommended parameters
@@ -33,9 +31,9 @@ public class PasswordHasher {
     private static final Base64.Decoder B64D = Base64.getDecoder();
 
     public String hash(String raw) {
-        byte[] salt = new byte[SALT_LEN];
+        var salt = new byte[SALT_LEN];
         RNG.nextBytes(salt);
-        byte[] out = derive(raw, salt);
+        var out = derive(raw, salt);
         return "$argon2id$v=19$m=" + MEMORY_KIB + ",t=" + ITERATIONS + ",p=" + PARALLELISM
                 + "$" + B64.encodeToString(salt)
                 + "$" + B64.encodeToString(out);
@@ -45,7 +43,7 @@ public class PasswordHasher {
         if (raw == null || encoded == null) {
             return false;
         }
-        String[] parts = encoded.split("\\$");
+        var parts = encoded.split("\\$");
         if (parts.length != 6 || !"argon2id".equals(parts[1])) {
             return false;
         }
@@ -57,7 +55,7 @@ public class PasswordHasher {
         } catch (IllegalArgumentException e) {
             return false;
         }
-        byte[] actual = derive(raw, salt, expected.length);
+        var actual = derive(raw, salt, expected.length);
         return constantTimeEquals(actual, expected);
     }
 
@@ -75,7 +73,7 @@ public class PasswordHasher {
                 .build();
         Argon2BytesGenerator gen = new Argon2BytesGenerator();
         gen.init(params);
-        byte[] out = new byte[outLen];
+        var out = new byte[outLen];
         gen.generateBytes(raw.getBytes(StandardCharsets.UTF_8), out, 0, out.length);
         return out;
     }
@@ -84,8 +82,8 @@ public class PasswordHasher {
         if (a.length != b.length) {
             return false;
         }
-        int diff = 0;
-        for (int i = 0; i < a.length; i++) {
+        var diff = 0;
+        for (var i = 0; i < a.length; i++) {
             diff |= a[i] ^ b[i];
         }
         return diff == 0;

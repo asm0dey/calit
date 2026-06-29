@@ -1,12 +1,12 @@
 package site.asm0dey.calit.user;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.request.TrustedAuthenticationRequest;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * The trusted (cookie re-establish) provider must NOT throw an authentication failure when the

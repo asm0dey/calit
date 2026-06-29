@@ -26,8 +26,8 @@ public class AppUserTrustedIdentityProvider implements IdentityProvider<TrustedA
     }
 
     @Override
-    public Uni<SecurityIdentity> authenticate(TrustedAuthenticationRequest request,
-                                              AuthenticationRequestContext context) {
+    public Uni<SecurityIdentity> authenticate(
+            TrustedAuthenticationRequest request, AuthenticationRequestContext context) {
         return context.runBlocking(() -> build(request));
     }
 

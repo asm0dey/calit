@@ -1,5 +1,8 @@
 package site.asm0dey.calit.google;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -7,16 +10,12 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.filter.cookie.CookieFilter;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
-
-import java.time.Instant;
-import java.util.Map;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
 
 /**
  * End-to-end Google sign-in proving the two end-user journeys:
@@ -36,19 +35,26 @@ class GoogleSignInFlowTest {
     @Inject
     GoogleLoginService loginService; // resolves to the installed mock below (CDI client proxy)
 
-    private static final java.time.Instant FIXED = java.time.Instant.parse("2026-06-12T12:00:00Z");
+    private static final Instant FIXED = java.time.Instant.parse("2026-06-12T12:00:00Z");
 
     @BeforeEach
     void freezeClock() {
-        QuarkusMock.installMockForType(
-            java.time.Clock.fixed(FIXED, java.time.ZoneOffset.UTC), java.time.Clock.class);
+        QuarkusMock.installMockForType(java.time.Clock.fixed(FIXED, java.time.ZoneOffset.UTC), java.time.Clock.class);
     }
 
     /** Stub returning a chosen identity; inherits the real state issue/validate. */
     static class StubFor extends GoogleLoginService {
         private final GoogleIdentity identity;
-        StubFor(GoogleOAuthConfig c, GoogleIdentity identity) { super(c); this.identity = identity; }
-        @Override public GoogleIdentity exchangeForIdentity(String code, Instant now) { return identity; }
+
+        StubFor(GoogleOAuthConfig c, GoogleIdentity identity) {
+            super(c);
+            this.identity = identity;
+        }
+
+        @Override
+        public GoogleIdentity exchangeForIdentity(String code, Instant now) {
+            return identity;
+        }
     }
 
     private void stubIdentity(GoogleIdentity id) {
@@ -74,14 +80,23 @@ class GoogleSignInFlowTest {
     private void signIn(CookieFilter session) {
         String state = loginService.issueLoginState(FIXED);
         String html = given().filter(session)
-                .when().get("/api/google/login/callback?code=c&state=" + state)
-                .then().statusCode(200).extract().asString();
-        String username = between(html, "name=\"j_username\" value=\"", "\"");
-        String token = between(html, "name=\"j_password\" value=\"", "\"");
-        given().filter(session).redirects().follow(false)
-                .formParam("j_username", username).formParam("j_password", token)
-                .when().post("/j_security_check")
-                .then().statusCode(302);
+                .when()
+                .get("/api/google/login/callback?code=c&state=" + state)
+                .then()
+                .statusCode(200)
+                .extract()
+                .asString();
+        var username = between(html, "name=\"j_username\" value=\"", "\"");
+        var token = between(html, "name=\"j_password\" value=\"", "\"");
+        given().filter(session)
+                .redirects()
+                .follow(false)
+                .formParam("j_username", username)
+                .formParam("j_password", token)
+                .when()
+                .post("/j_security_check")
+                .then()
+                .statusCode(302);
     }
 
     @Test
@@ -91,9 +106,13 @@ class GoogleSignInFlowTest {
         CookieFilter session = new CookieFilter();
         signIn(session);
         // Onboarded user: /me loads (200), NOT redirected to /me/setup.
-        given().filter(session).redirects().follow(false)
-            .when().get("/me")
-            .then().statusCode(200);
+        given().filter(session)
+                .redirects()
+                .follow(false)
+                .when()
+                .get("/me")
+                .then()
+                .statusCode(200);
     }
 
     @Test
@@ -102,24 +121,33 @@ class GoogleSignInFlowTest {
         CookieFilter session = new CookieFilter();
         signIn(session);
         // Freshly provisioned (settingsComplete=false) -> /me bounces to /me/setup.
-        given().filter(session).redirects().follow(false)
-            .when().get("/me")
-            .then().statusCode(302).header("Location", containsString("/me/setup"));
+        given().filter(session)
+                .redirects()
+                .follow(false)
+                .when()
+                .get("/me")
+                .then()
+                .statusCode(302)
+                .header("Location", containsString("/me/setup"));
         // Wizard pre-fills the Google email from the pre-created OwnerSettings row.
         given().filter(session)
-            .when().get("/me/setup")
-            .then().statusCode(200).body(containsString("fresh.person@x.com"));
+                .when()
+                .get("/me/setup")
+                .then()
+                .statusCode(200)
+                .body(containsString("fresh.person@x.com"));
     }
 
     private static String between(String s, String start, String end) {
-        int i = s.indexOf(start);
+        var i = s.indexOf(start);
         if (i < 0) throw new AssertionError("missing '" + start + "' in: " + s);
-        int from = i + start.length();
+        var from = i + start.length();
         return s.substring(from, s.indexOf(end, from));
     }
 
     public static class SignupOnProfile implements QuarkusTestProfile {
-        @Override public Map<String, String> getConfigOverrides() {
+        @Override
+        public Map<String, String> getConfigOverrides() {
             return Map.of("calit.signup.enabled", "true");
         }
     }

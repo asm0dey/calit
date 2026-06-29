@@ -1,9 +1,17 @@
 package site.asm0dey.calit.booking;
 
-import io.quarkus.test.junit.QuarkusTest;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
@@ -11,20 +19,12 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-
 @QuarkusTest
 class ApprovalTokenTest {
 
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
-    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    private static final LocalDate DAY =
+            Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
     private static final Instant SLOT = DAY.atTime(9, 0).atZone(ZONE).toInstant();
 
     @Inject
@@ -97,8 +97,8 @@ class ApprovalTokenTest {
     void approvalBookingGetsToken() {
         seedSettings();
         approvalType("approve"); // requiresApproval = true
-        Booking b = bookingService.book(1L, "approve", SLOT, "Sam", "sam@example.com",
-                Map.of(), "tok", "", "en", java.util.List.of());
+        Booking b = bookingService.book(
+                1L, "approve", SLOT, "Sam", "sam@example.com", Map.of(), "tok", "", "en", java.util.List.of());
         assertNotNull(b.approvalToken, "approval-required booking must mint an approvalToken");
     }
 
@@ -107,8 +107,8 @@ class ApprovalTokenTest {
     void autoBookingHasNoToken() {
         seedSettings();
         autoType("auto"); // requiresApproval = false
-        Booking b = bookingService.book(1L, "auto", SLOT, "Sam", "sam@example.com",
-                Map.of(), "tok", "", "en", java.util.List.of());
+        Booking b = bookingService.book(
+                1L, "auto", SLOT, "Sam", "sam@example.com", Map.of(), "tok", "", "en", java.util.List.of());
         assertNull(b.approvalToken, "auto-confirmed booking needs no approvalToken");
     }
 }

@@ -1,13 +1,13 @@
 package site.asm0dey.calit.web;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
 
 @QuarkusTest
 class AdminSettingsTest {
@@ -29,10 +29,10 @@ class AdminSettingsTest {
 
     @Test
     void settingsPageHasNotifyToggleAndReminderLead() {
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/me/settings")
-            .then()
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/settings")
+                .then()
                 .statusCode(200)
                 // Owner-notify opt-out toggle (overview: OwnerSettings.ownerNotificationsEnabled).
                 .body(containsString("name=\"ownerNotificationsEnabled\""))
@@ -43,35 +43,34 @@ class AdminSettingsTest {
     @Test
     void updateSettingsTogglesOwnerNotifications() {
         // Save with the notify checkbox OFF (omitted → unchecked) and assert it persists false.
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("ownerName", "New Owner")
-            .formParam("ownerEmail", "new@example.com")
-            .formParam("timezone", "Europe/Berlin")
-            // ownerNotificationsEnabled intentionally omitted → unchecked → false
-            .when().post("/me/settings")
-            .then()
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("ownerName", "New Owner")
+                .formParam("ownerEmail", "new@example.com")
+                .formParam("timezone", "Europe/Berlin")
+                // ownerNotificationsEnabled intentionally omitted → unchecked → false
+                .when()
+                .post("/me/settings")
+                .then()
                 .statusCode(200)
                 .body(containsString("New Owner"))
                 .body(containsString("Europe/Berlin"));
 
         org.junit.jupiter.api.Assertions.assertFalse(
-                readNotificationsEnabled(),
-                "omitting the notify checkbox must turn owner notifications OFF");
+                readNotificationsEnabled(), "omitting the notify checkbox must turn owner notifications OFF");
 
         // Now save with it ON and assert it flips back to true.
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("ownerName", "New Owner")
-            .formParam("ownerEmail", "new@example.com")
-            .formParam("timezone", "Europe/Berlin")
-            .formParam("ownerNotificationsEnabled", "on")
-            .when().post("/me/settings")
-            .then().statusCode(200);
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("ownerName", "New Owner")
+                .formParam("ownerEmail", "new@example.com")
+                .formParam("timezone", "Europe/Berlin")
+                .formParam("ownerNotificationsEnabled", "on")
+                .when()
+                .post("/me/settings")
+                .then()
+                .statusCode(200);
 
-        org.junit.jupiter.api.Assertions.assertTrue(
-                readNotificationsEnabled());
+        org.junit.jupiter.api.Assertions.assertTrue(readNotificationsEnabled());
     }
 }

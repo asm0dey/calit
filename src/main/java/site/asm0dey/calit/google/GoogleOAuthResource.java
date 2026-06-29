@@ -7,7 +7,6 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-
 import java.net.URI;
 import java.time.Instant;
 
@@ -15,15 +14,13 @@ import java.time.Instant;
 @Path("/api/google")
 public class GoogleOAuthResource {
 
-    private static final org.jboss.logging.Logger LOG =
-            org.jboss.logging.Logger.getLogger(GoogleOAuthResource.class);
+    private static final org.jboss.logging.Logger LOG = org.jboss.logging.Logger.getLogger(GoogleOAuthResource.class);
 
     private final GoogleTokenService tokenService;
     private final site.asm0dey.calit.user.CurrentOwner currentOwner;
 
     @Inject
-    public GoogleOAuthResource(GoogleTokenService tokenService,
-                               site.asm0dey.calit.user.CurrentOwner currentOwner) {
+    public GoogleOAuthResource(GoogleTokenService tokenService, site.asm0dey.calit.user.CurrentOwner currentOwner) {
         this.tokenService = tokenService;
         this.currentOwner = currentOwner;
     }
@@ -42,19 +39,19 @@ public class GoogleOAuthResource {
     @GET
     @Path("/callback")
     @Produces(MediaType.TEXT_PLAIN)
-    public Response callback(@QueryParam("code") String code,
-                             @QueryParam("state") String state,
-                             @QueryParam("error") String error) {
+    public Response callback(
+            @QueryParam("code") String code, @QueryParam("state") String state, @QueryParam("error") String error) {
         if (error != null) {
             // Do not reflect attacker-controlled ?error= into the response (SEC-INPUT-03).
-            LOG.warnf("Google OAuth callback returned error: %s",
+            LOG.warnf(
+                    "Google OAuth callback returned error: %s",
                     error.replace('\r', ' ').replace('\n', ' '));
             return Response.status(Response.Status.BAD_REQUEST)
                     .header("X-Content-Type-Options", "nosniff")
                     .entity("Google authorization failed. Please try connecting again.")
                     .build();
         }
-        Instant now = Instant.now();
+        var now = Instant.now();
         // The owner is recovered from the trusted, HMAC-signed state — NOT from CurrentOwner —
         // because Google's redirect may arrive without the session. /connect and /callback may
         // be served by different replicas, so verification uses only the shared signing secret.

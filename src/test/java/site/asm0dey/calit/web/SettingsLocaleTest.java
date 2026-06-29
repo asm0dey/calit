@@ -1,11 +1,11 @@
 package site.asm0dey.calit.web;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.specification.RequestSpecification;
 import org.junit.jupiter.api.Test;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
 
 @QuarkusTest
 class SettingsLocaleTest {
@@ -25,8 +25,10 @@ class SettingsLocaleTest {
                 .formParam("timezone", "UTC")
                 .formParam("locale", "de")
                 .formParam("ownerNotificationsEnabled", "on")
-                .when().post("/me/settings")
-                .then().statusCode(200)
+                .when()
+                .post("/me/settings")
+                .then()
+                .statusCode(200)
                 .body(containsString("value=\"de\" selected"));
     }
 }

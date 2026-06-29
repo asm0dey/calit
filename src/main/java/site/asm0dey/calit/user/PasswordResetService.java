@@ -2,7 +2,6 @@ package site.asm0dey.calit.user;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
@@ -26,9 +25,9 @@ public class PasswordResetService {
     /** Mint a token for {@code userId}, persist its hash, and return the raw token (emailed once). */
     @Transactional
     public String issue(Long userId, Instant now) {
-        byte[] raw = new byte[32];
+        var raw = new byte[32];
         RNG.nextBytes(raw);
-        String token = B64URL.encodeToString(raw);
+        var token = B64URL.encodeToString(raw);
 
         PasswordResetToken t = new PasswordResetToken();
         t.userId = userId;

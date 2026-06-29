@@ -1,14 +1,14 @@
 package site.asm0dey.calit.domain;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.user.TestOwners;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 @QuarkusTest
 class OwnerSettingsForOwnerTest {
@@ -22,10 +22,16 @@ class OwnerSettingsForOwnerTest {
         TestOwners.ensure(em, 1001L);
         TestOwners.ensure(em, 1002L);
         OwnerSettings a = new OwnerSettings();
-        a.ownerId = 1001L; a.ownerName = "A"; a.ownerEmail = "a@x.com"; a.timezone = "UTC";
+        a.ownerId = 1001L;
+        a.ownerName = "A";
+        a.ownerEmail = "a@x.com";
+        a.timezone = "UTC";
         a.persist();
         OwnerSettings b = new OwnerSettings();
-        b.ownerId = 1002L; b.ownerName = "B"; b.ownerEmail = "b@x.com"; b.timezone = "Europe/Berlin";
+        b.ownerId = 1002L;
+        b.ownerName = "B";
+        b.ownerEmail = "b@x.com";
+        b.timezone = "Europe/Berlin";
         b.persist();
 
         assertEquals("A", OwnerSettings.forOwner(1001L).ownerName);

@@ -2,7 +2,6 @@ package site.asm0dey.calit.google;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -61,13 +60,14 @@ public class GoogleCalendar extends PanacheEntityBase {
      * an owner may connect/pick a Meet-capable calendar later) or when the target supports Meet.
      */
     public static boolean writeTargetBlocksMeet(Long ownerId) {
-        GoogleCalendar wt = writeTarget(ownerId);
+        var wt = writeTarget(ownerId);
         return wt != null && !wt.supportsMeet;
     }
 
     /** This owner's calendar with the given Google id, or null. */
     public static GoogleCalendar findByGoogleId(Long ownerId, String googleCalendarId) {
-        return find("ownerId = ?1 and googleCalendarId = ?2", ownerId, googleCalendarId).firstResult();
+        return find("ownerId = ?1 and googleCalendarId = ?2", ownerId, googleCalendarId)
+                .firstResult();
     }
 
     /** Remove all of this owner's calendar selections (used before re-saving). */
@@ -77,7 +77,6 @@ public class GoogleCalendar extends PanacheEntityBase {
 
     /** This owner's read-for-busy calendars grouped by the credential (account) they belong to. */
     public static Map<Long, List<GoogleCalendar>> readForBusyByCredential(Long ownerId) {
-        return readForBusy(ownerId).stream()
-                .collect(Collectors.groupingBy(c -> c.googleCredentialId));
+        return readForBusy(ownerId).stream().collect(Collectors.groupingBy(c -> c.googleCredentialId));
     }
 }

@@ -1,12 +1,11 @@
 package site.asm0dey.calit.i18n;
 
-import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
+import io.quarkus.test.junit.QuarkusTest;
 import java.util.List;
 import java.util.Locale;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * Verifies that {@link AppLocales#supported()} auto-discovers the correct set of locales

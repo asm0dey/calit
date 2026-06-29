@@ -1,9 +1,9 @@
 package site.asm0dey.calit.audit;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests for the audit emitter's log-injection guard. {@code safe()} is package-private so the
@@ -15,7 +15,7 @@ class AuditLogTest {
     @Test
     void safeStripsCarriageReturnAndNewline() {
         // A forged second line "AUDIT actor=evil..." injected via a field must be flattened to spaces.
-        String hostile = "alice\nAUDIT actor=evil action=grant-admin\rtarget=user:1";
+        var hostile = "alice\nAUDIT actor=evil action=grant-admin\rtarget=user:1";
         String result = AuditLog.safe(hostile);
         assertEquals("alice AUDIT actor=evil action=grant-admin target=user:1", result);
         // No CR/LF survives, so the value cannot break out onto its own audit line.

@@ -1,0 +1,4 @@
+node_modules
+target
+# Generated Tailwind/daisyUI bundle (gitignored, minified — never hand-formatted).
+**/META-INF/resources/calit.css

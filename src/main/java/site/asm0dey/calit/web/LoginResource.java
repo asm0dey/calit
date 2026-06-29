@@ -10,11 +10,10 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.net.URI;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AppMessageResolver;
 import site.asm0dey.calit.i18n.AppMessages;
-
-import java.net.URI;
 
 @Path("/login")
 public class LoginResource {
@@ -44,9 +43,10 @@ public class LoginResource {
         if (!identity.isAnonymous()) {
             return Response.seeOther(URI.create("/me")).build();
         }
-        boolean googleEnabled = googleClientId != null && !googleClientId.isBlank();
+        var googleEnabled = googleClientId != null && !googleClientId.isBlank();
         AppMessages m = messages.forLocale(activeLocale.current());
-        return Response.ok(Templates.login(m.auth_login_title(), error, googleEnabled, noticeMessage(m, notice))).build();
+        return Response.ok(Templates.login(m.auth_login_title(), error, googleEnabled, noticeMessage(m, notice)))
+                .build();
     }
 
     /** Map a notice code from the Google sign-in flow to a localized human message, or null for none. */

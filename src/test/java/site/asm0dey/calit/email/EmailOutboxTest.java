@@ -1,18 +1,18 @@
 package site.asm0dey.calit.email;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 class EmailOutboxTest {
 
     @Test
     void enqueuePersistsADueUnsentRow() {
-        Long id = QuarkusTransaction.requiringNew().call(() ->
-                EmailOutbox.enqueue("a@b.com", "Subj", "<p>hi</p>", new byte[]{1, 2}, null, "boom"));
+        Long id = QuarkusTransaction.requiringNew()
+                .call(() -> EmailOutbox.enqueue("a@b.com", "Subj", "<p>hi</p>", new byte[] {1, 2}, null, "boom"));
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox r = EmailOutbox.findById(id);
@@ -27,8 +27,8 @@ class EmailOutboxTest {
 
     @Test
     void backoffBumpsAttemptsAndPushesNextAttempt() {
-        Long id = QuarkusTransaction.requiringNew().call(() ->
-                EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
+        Long id = QuarkusTransaction.requiringNew()
+                .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox r = EmailOutbox.findById(id);
@@ -42,8 +42,8 @@ class EmailOutboxTest {
 
     @Test
     void attemptCapMarksRowDead() {
-        Long id = QuarkusTransaction.requiringNew().call(() ->
-                EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
+        Long id = QuarkusTransaction.requiringNew()
+                .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox r = EmailOutbox.findById(id);
@@ -56,7 +56,7 @@ class EmailOutboxTest {
 
     @Test
     void pastDeadlineAndMarkExpired() {
-        java.time.Instant now = java.time.Instant.parse("2026-06-15T12:00:00Z");
+        var now = java.time.Instant.parse("2026-06-15T12:00:00Z");
         EmailOutbox r = new EmailOutbox();
         // No deadline -> never past it.
         r.notAfter = null;

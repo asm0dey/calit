@@ -6,9 +6,8 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import org.jboss.logging.Logger;
-
 import java.util.List;
+import org.jboss.logging.Logger;
 
 /**
  * One-time, idempotent backfill: encrypt any Google token rows still stored as plaintext
@@ -34,16 +33,16 @@ public class TokenBackfill {
 
     void encryptLegacy() {
         @SuppressWarnings("unchecked")
-        List<Object[]> rows = em.createNativeQuery(
-                "select id, refresh_token, access_token from google_credential "
+        List<Object[]> rows = em.createNativeQuery("select id, refresh_token, access_token from google_credential "
                         + "where refresh_token not like 'enc:v1:%' or access_token not like 'enc:v1:%' "
-                        + "for update skip locked").getResultList();
-        int migrated = 0;
+                        + "for update skip locked")
+                .getResultList();
+        var migrated = 0;
         for (Object[] row : rows) {
             Long id = ((Number) row[0]).longValue();
-            String refresh = (String) row[1];
-            String access = (String) row[2];
-            boolean changed = false;
+            var refresh = (String) row[1];
+            var access = (String) row[2];
+            var changed = false;
             if (refresh != null && !cipher.looksEncrypted(refresh)) {
                 refresh = cipher.encrypt(refresh);
                 changed = true;
@@ -54,7 +53,7 @@ public class TokenBackfill {
             }
             if (changed) {
                 em.createNativeQuery(
-                        "update google_credential set refresh_token = :r, access_token = :a where id = :id")
+                                "update google_credential set refresh_token = :r, access_token = :a where id = :id")
                         .setParameter("r", refresh)
                         .setParameter("a", access)
                         .setParameter("id", id)

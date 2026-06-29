@@ -1,13 +1,12 @@
 package site.asm0dey.calit.domain;
 
-import io.quarkus.test.TestTransaction;
-import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import io.quarkus.test.TestTransaction;
+import io.quarkus.test.junit.QuarkusTest;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class BookingFieldTest {
@@ -17,8 +16,7 @@ class BookingFieldTest {
     void globalFormIncludesSeededDescription() {
         // Global default fields are now per-owner (the V1 singleton seed was dropped by V8), so seed
         // owner 1L's global "description" field explicitly, then resolve it via the global form.
-        BookingField desc = field(null, "description", "Description",
-                BookingField.FieldType.LONG_TEXT, false, 0);
+        BookingField desc = field(null, "description", "Description", BookingField.FieldType.LONG_TEXT, false, 0);
         desc.persist();
 
         // No per-type fields for this id -> falls back to the owner's global default form.
@@ -38,22 +36,20 @@ class BookingFieldTest {
         type.durationMinutes = 30;
         type.persist();
 
-        BookingField company = field(type.id, "company", "Company",
-                BookingField.FieldType.SHORT_TEXT, true, 1);
+        BookingField company = field(type.id, "company", "Company", BookingField.FieldType.SHORT_TEXT, true, 1);
         company.persist();
-        BookingField vat = field(type.id, "vat", "VAT ID",
-                BookingField.FieldType.SHORT_TEXT, false, 0);
+        BookingField vat = field(type.id, "vat", "VAT ID", BookingField.FieldType.SHORT_TEXT, false, 0);
         vat.persist();
 
         List<BookingField> form = BookingField.formFor(1L, type.id);
 
         assertEquals(2, form.size());
-        assertEquals("vat", form.getFirst().fieldKey);     // position 0 first
+        assertEquals("vat", form.getFirst().fieldKey); // position 0 first
         assertEquals("company", form.get(1).fieldKey); // global description NOT included
     }
 
-    private BookingField field(Long typeId, String key, String label,
-                               BookingField.FieldType type, boolean required, int position) {
+    private BookingField field(
+            Long typeId, String key, String label, BookingField.FieldType type, boolean required, int position) {
         BookingField f = new BookingField();
         f.ownerId = 1L;
         f.meetingTypeId = typeId;

@@ -1,11 +1,11 @@
 package site.asm0dey.calit.user;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
 
 @QuarkusTest
 class EnabledUserAugmentorTest {
@@ -28,24 +28,35 @@ class EnabledUserAugmentorTest {
     @Test
     void disabledUserCookieIsRejected() {
         upsert("lockme", true);
-        String cookie = given().redirects().follow(false)
+        String cookie = given().redirects()
+                .follow(false)
                 .contentType("application/x-www-form-urlencoded")
                 .formParam("j_username", "lockme")
                 .formParam("j_password", "pw12345")
-                .when().post("/j_security_check")
-                .then().statusCode(302).extract().cookie("quarkus-credential");
+                .when()
+                .post("/j_security_check")
+                .then()
+                .statusCode(302)
+                .extract()
+                .cookie("quarkus-credential");
 
         // Sanity: cookie works while enabled.
         given().cookie("quarkus-credential", cookie)
-                .when().get("/me")
-                .then().statusCode(200).body(containsString("Dashboard"));
+                .when()
+                .get("/me")
+                .then()
+                .statusCode(200)
+                .body(containsString("Dashboard"));
 
         // Disable the user; the still-valid cookie must now be rejected.
         upsert("lockme", false);
-        given().redirects().follow(false)
+        given().redirects()
+                .follow(false)
                 .cookie("quarkus-credential", cookie)
-                .when().get("/me")
-                .then().statusCode(302)
+                .when()
+                .get("/me")
+                .then()
+                .statusCode(302)
                 .header("Location", containsString("/login"));
     }
 }

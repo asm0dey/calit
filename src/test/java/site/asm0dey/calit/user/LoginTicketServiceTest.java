@@ -1,14 +1,13 @@
 package site.asm0dey.calit.user;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-
 import java.time.Duration;
 import java.time.Instant;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class LoginTicketServiceTest {
@@ -25,8 +24,8 @@ class LoginTicketServiceTest {
     @Test
     @TestTransaction
     void issuedTicketIsConsumedExactlyOnce() {
-        Instant now = Instant.parse("2026-06-12T12:00:00Z");
-        Long uid = newUserId();
+        var now = Instant.parse("2026-06-12T12:00:00Z");
+        var uid = newUserId();
 
         String raw = tickets.issue(uid, now);
         assertNotNull(raw, "issue returns the raw token");
@@ -41,8 +40,8 @@ class LoginTicketServiceTest {
     @Test
     @TestTransaction
     void expiredTicketIsRejected() {
-        Instant now = Instant.parse("2026-06-12T12:00:00Z");
-        Long uid = newUserId();
+        var now = Instant.parse("2026-06-12T12:00:00Z");
+        var uid = newUserId();
         String raw = tickets.issue(uid, now);
 
         Instant tooLate = now.plus(LoginTicketService.TTL).plus(Duration.ofSeconds(1));
@@ -52,7 +51,7 @@ class LoginTicketServiceTest {
     @Test
     @TestTransaction
     void unknownOrNullTokenRejected() {
-        Instant now = Instant.parse("2026-06-12T12:00:00Z");
+        var now = Instant.parse("2026-06-12T12:00:00Z");
         assertNull(tickets.consume("not-a-real-token", now));
         assertNull(tickets.consume(null, now));
     }
@@ -60,16 +59,16 @@ class LoginTicketServiceTest {
     @Test
     @TestTransaction
     void eachIssueProducesADistinctToken() {
-        Instant now = Instant.parse("2026-06-12T12:00:00Z");
-        Long uid = newUserId();
+        var now = Instant.parse("2026-06-12T12:00:00Z");
+        var uid = newUserId();
         assertNotEquals(tickets.issue(uid, now), tickets.issue(uid, now), "tokens are random");
     }
 
     @Test
     @TestTransaction
     void consumeReturnsNullWhenUserWasDeleted() {
-        Instant now = Instant.parse("2026-06-12T12:00:00Z");
-        Long uid = newUserId();
+        var now = Instant.parse("2026-06-12T12:00:00Z");
+        var uid = newUserId();
         String raw = tickets.issue(uid, now);
 
         // User deleted between ticket issuance and consumption -> consume yields null.

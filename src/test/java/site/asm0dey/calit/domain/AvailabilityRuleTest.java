@@ -1,15 +1,14 @@
 package site.asm0dey.calit.domain;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Test;
-
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class AvailabilityRuleTest {
@@ -38,7 +37,8 @@ class AvailabilityRuleTest {
         assertEquals(LocalTime.of(9, 0), globals.getFirst().startTime);
         assertEquals(1, typedRules.size());
         assertEquals(LocalTime.of(13, 0), typedRules.getFirst().startTime);
-        assertTrue(AvailabilityRule.forMeetingType(1L, type.id, DayOfWeek.TUESDAY).isEmpty());
+        assertTrue(
+                AvailabilityRule.forMeetingType(1L, type.id, DayOfWeek.TUESDAY).isEmpty());
     }
 
     private AvailabilityRule rule(DayOfWeek dow, String start, String end, Long meetingTypeId) {

@@ -13,11 +13,8 @@ public final class Slugs {
         if (input == null) {
             return "";
         }
-        String stripped = Normalizer.normalize(input, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}+", "");
-        return stripped.toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9]+", "-")
-                .replaceAll("(^-+)|(-+$)", "");
+        var stripped = Normalizer.normalize(input, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        return stripped.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("(^-+)|(-+$)", "");
     }
 
     /**
@@ -26,9 +23,9 @@ public final class Slugs {
      * re-saving a type with its own current slug is allowed.
      */
     public static String uniqueMeetingTypeSlug(Long ownerId, String base, Long excludeId) {
-        String root = (base == null || base.isBlank()) ? "meeting" : base;
-        String candidate = root;
-        int n = 1;
+        var root = (base == null || base.isBlank()) ? "meeting" : base;
+        var candidate = root;
+        var n = 1;
         while (slugTaken(ownerId, candidate, excludeId)) {
             n++;
             candidate = root + "-" + n;

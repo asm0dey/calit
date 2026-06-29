@@ -1,11 +1,10 @@
 package site.asm0dey.calit.email;
 
-import org.junit.jupiter.api.Test;
-
-import java.time.Instant;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.Instant;
+import org.junit.jupiter.api.Test;
 
 class IcsBuilderTest {
 
@@ -61,9 +60,11 @@ class IcsBuilderTest {
                 .build());
 
         assertTrue(ics.contains("METHOD:REQUEST"), "must be an iTIP REQUEST");
-        assertTrue(ics.contains("ATTENDEE;") && ics.contains("mailto:sam@example.com"),
+        assertTrue(
+                ics.contains("ATTENDEE;") && ics.contains("mailto:sam@example.com"),
                 "invitee must appear as ATTENDEE (what Gmail needs to render the card)");
-        assertTrue(ics.contains("ORGANIZER;CN=\"Olivia Owner\":mailto:owner@example.com"),
+        assertTrue(
+                ics.contains("ORGANIZER;CN=\"Olivia Owner\":mailto:owner@example.com"),
                 "owner must be the ORGANIZER with a CN");
         assertTrue(ics.contains("SEQUENCE:0"), "REQUEST needs a SEQUENCE");
         assertTrue(ics.contains("STATUS:CONFIRMED"), "event needs a STATUS");

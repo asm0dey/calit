@@ -2,7 +2,6 @@ package site.asm0dey.calit.google;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-
 import java.util.List;
 
 /**
@@ -16,11 +15,20 @@ import java.util.List;
 public class CalendarSelectionService {
 
     /** One chosen calendar belonging to a specific connected account. */
-    public record Selection(Long googleCredentialId, String googleCalendarId, String summary,
-                            boolean readForBusy, boolean writeTarget, boolean meetSupported) {
+    public record Selection(
+            Long googleCredentialId,
+            String googleCalendarId,
+            String summary,
+            boolean readForBusy,
+            boolean writeTarget,
+            boolean meetSupported) {
         /** Convenience for callers/tests that don't track Meet capability (defaults true, as before). */
-        public Selection(Long googleCredentialId, String googleCalendarId, String summary,
-                         boolean readForBusy, boolean writeTarget) {
+        public Selection(
+                Long googleCredentialId,
+                String googleCalendarId,
+                String summary,
+                boolean readForBusy,
+                boolean writeTarget) {
             this(googleCredentialId, googleCalendarId, summary, readForBusy, writeTarget, true);
         }
     }

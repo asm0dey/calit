@@ -2,14 +2,13 @@ package site.asm0dey.calit.health;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.HealthCheckResponseBuilder;
 import org.eclipse.microprofile.health.Readiness;
 import site.asm0dey.calit.google.GoogleOAuthConfig;
-
-import java.net.InetSocketAddress;
-import java.net.Socket;
 
 /**
  * Informational readiness check for Google OAuth/Calendar connectivity — always reports UP.
@@ -37,11 +36,13 @@ public class GoogleHealthCheck implements HealthCheck {
         if (clientId == null || clientId.isBlank()) {
             return r.up().withData(STATE, "not-configured").build();
         }
-        try (Socket s = new Socket()) {
+        try (var s = new Socket()) {
             s.connect(new InetSocketAddress("oauth2.googleapis.com", 443), 2000);
             return r.up().withData(STATE, "reachable").build();
         } catch (Exception e) {
-            return r.up().withData(STATE, "unreachable").withData("error", e.getMessage()).build();
+            return r.up().withData(STATE, "unreachable")
+                    .withData("error", e.getMessage())
+                    .build();
         }
     }
 }

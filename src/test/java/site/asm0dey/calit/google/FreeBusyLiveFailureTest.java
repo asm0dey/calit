@@ -1,15 +1,14 @@
 package site.asm0dey.calit.google;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-
-import java.time.Instant;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * freeBusy is fail-CLOSED: a broken busy-feeding account must make the whole call throw
@@ -27,21 +26,23 @@ class FreeBusyLiveFailureTest {
 
     @Test
     void liveFailureThrowsCalendarUnavailable() {
-        Long credId = seedHealthyCredWithReadCalendar("sub-live");
+        var credId = seedHealthyCredWithReadCalendar("sub-live");
         // validAccessToken is called first inside client(cred); throwing here drives the live-failure path.
         Mockito.when(tokenService.validAccessToken(Mockito.any(), Mockito.any()))
                 .thenThrow(new IllegalStateException("token dead"));
 
-        assertThrows(CalendarUnavailableException.class, () ->
-                port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)));
+        assertThrows(
+                CalendarUnavailableException.class,
+                () -> port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)));
     }
 
     @Test
     void knownBrokenAccountThrowsCalendarUnavailableWithoutCallingGoogle() {
         seedReadCalendarForCred(seedCred("sub-broken", true)); // pre-flagged needsReconnect
 
-        assertThrows(CalendarUnavailableException.class, () ->
-                port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)));
+        assertThrows(
+                CalendarUnavailableException.class,
+                () -> port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)));
         // No tokenService interaction: a known-broken account short-circuits before any Google call.
         Mockito.verifyNoInteractions(tokenService);
     }
@@ -50,7 +51,7 @@ class FreeBusyLiveFailureTest {
 
     private Long seedHealthyCredWithReadCalendar(String sub) {
         return QuarkusTransaction.requiringNew().call(() -> {
-            Long id = seedCred(sub, false);
+            var id = seedCred(sub, false);
             seedReadCalendarForCred(id);
             return id;
         });

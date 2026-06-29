@@ -1,8 +1,6 @@
 package site.asm0dey.calit.booking;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -12,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
  * Feature 16: server-side Cloudflare Turnstile verification. When the flag is off, {@link #verify}
@@ -30,7 +29,8 @@ public class TurnstileVerifier {
     @ConfigProperty(name = "calit.abuse.turnstile.secret")
     Optional<String> secret;
 
-    @ConfigProperty(name = "calit.abuse.turnstile.verify-url",
+    @ConfigProperty(
+            name = "calit.abuse.turnstile.verify-url",
             defaultValue = "https://challenges.cloudflare.com/turnstile/v0/siteverify")
     String verifyUrl;
 
@@ -53,9 +53,9 @@ public class TurnstileVerifier {
             throw new AbuseException("Missing Turnstile token");
         }
         try {
-            String body = "secret=" + URLEncoder.encode(secret.orElse(""), StandardCharsets.UTF_8)
-                    + "&response=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
-            HttpRequest req = HttpRequest.newBuilder(URI.create(verifyUrl))
+            var body = "secret=" + URLEncoder.encode(secret.orElse(""), StandardCharsets.UTF_8) + "&response="
+                    + URLEncoder.encode(token, StandardCharsets.UTF_8);
+            var req = HttpRequest.newBuilder(URI.create(verifyUrl))
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .timeout(Duration.ofSeconds(10))
                     .POST(HttpRequest.BodyPublishers.ofString(body))

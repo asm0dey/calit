@@ -6,7 +6,6 @@ import io.quarkus.mailer.Mailer;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-
 import java.time.Instant;
 
 /**
@@ -20,6 +19,7 @@ public class MailSender {
 
     /** ponytail: the only attachment calit sends. Generalize if a second type ever appears. */
     private static final String ICS_FILENAME = "invite.ics";
+
     private static final String ICS_CONTENT_TYPE = "text/calendar; charset=UTF-8; method=REQUEST";
 
     @Inject
@@ -48,8 +48,8 @@ public class MailSender {
         try {
             sendNow(to, subject, html, ics);
         } catch (Exception e) {
-            QuarkusTransaction.requiringNew().run(() ->
-                    EmailOutbox.enqueue(to, subject, html, ics, notAfter, e.getMessage()));
+            QuarkusTransaction.requiringNew()
+                    .run(() -> EmailOutbox.enqueue(to, subject, html, ics, notAfter, e.getMessage()));
             Log.warnf(e, "SMTP send failed, queued to outbox: to=%s subject=%s", to, subject);
         }
     }

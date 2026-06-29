@@ -2,9 +2,8 @@ package site.asm0dey.calit.web;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
 import java.util.Optional;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
  * Per-instance public site metadata exposed to Qute as {@code {inject:site.*}}.

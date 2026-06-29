@@ -5,18 +5,17 @@ import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailService;
 import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.google.GoogleTokenService;
 import site.asm0dey.calit.i18n.AppLocales;
-
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 
 /**
  * Feature: Google disconnect detection. Runs on EVERY replica every probe-interval. Multi-node-safe
@@ -53,18 +52,17 @@ public class GoogleConnectionScheduler {
      */
     public void probeDueCredentials() {
         List<Long> ids = claimDueForProbe();
-        Instant now = Instant.now();
+        var now = Instant.now();
         for (Long id : ids) {
             tokens.probe(id, now); // own @Transactional; sets/clears needs_reconnect
         }
     }
 
     List<Long> claimDueForProbe() {
-        long graceSeconds = Math.max(1, probeInterval.toSeconds() / 2);
+        var graceSeconds = Math.max(1, probeInterval.toSeconds() / 2);
         return QuarkusTransaction.requiringNew().call(() -> {
             @SuppressWarnings("unchecked")
-            List<Number> ids = em.createNativeQuery(
-                    "SELECT id FROM google_credential "
+            List<Number> ids = em.createNativeQuery("SELECT id FROM google_credential "
                             + "WHERE last_probed_at IS NULL "
                             + "   OR last_probed_at <= now() - make_interval(secs => :secs) "
                             + "ORDER BY last_probed_at NULLS FIRST "
@@ -73,7 +71,7 @@ public class GoogleConnectionScheduler {
                     .setParameter("secs", (double) graceSeconds)
                     .getResultList();
             List<Long> claimed = new ArrayList<>();
-            Instant now = Instant.now();
+            var now = Instant.now();
             for (Number n : ids) {
                 Long id = n.longValue();
                 GoogleCredential c = GoogleCredential.findById(id);
@@ -101,14 +99,13 @@ public class GoogleConnectionScheduler {
     List<Pending> claimUnnotifiedDisconnects() {
         return QuarkusTransaction.requiringNew().call(() -> {
             @SuppressWarnings("unchecked")
-            List<Number> ids = em.createNativeQuery(
-                    "SELECT id FROM google_credential "
+            List<Number> ids = em.createNativeQuery("SELECT id FROM google_credential "
                             + "WHERE needs_reconnect = true AND reconnect_notified_at IS NULL "
                             + "FOR UPDATE SKIP LOCKED "
                             + "LIMIT 50")
                     .getResultList();
             List<Pending> out = new ArrayList<>();
-            Instant now = Instant.now();
+            var now = Instant.now();
             for (Number n : ids) {
                 GoogleCredential c = GoogleCredential.findById(n.longValue());
                 c.reconnectNotifiedAt = now; // claim: prevents any replica re-sending

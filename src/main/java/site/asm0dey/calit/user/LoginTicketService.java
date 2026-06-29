@@ -2,7 +2,6 @@ package site.asm0dey.calit.user;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -30,9 +29,9 @@ public class LoginTicketService {
     /** Mint a ticket for {@code userId}, persist its hash, and return the raw token (shown once). */
     @Transactional
     public String issue(Long userId, Instant now) {
-        byte[] raw = new byte[32];
+        var raw = new byte[32];
         RNG.nextBytes(raw);
-        String token = B64URL.encodeToString(raw);
+        var token = B64URL.encodeToString(raw);
 
         LoginTicket t = new LoginTicket();
         t.userId = userId;
@@ -66,8 +65,7 @@ public class LoginTicketService {
 
     static String sha256Hex(String value) {
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            var digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 unavailable", e);

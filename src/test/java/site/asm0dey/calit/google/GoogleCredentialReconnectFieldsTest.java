@@ -1,13 +1,12 @@
 package site.asm0dey.calit.google;
 
-import io.quarkus.test.TestTransaction;
-import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Test;
-
-import java.time.Instant;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+
+import io.quarkus.test.TestTransaction;
+import io.quarkus.test.junit.QuarkusTest;
+import java.time.Instant;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class GoogleCredentialReconnectFieldsTest {
@@ -15,7 +14,7 @@ class GoogleCredentialReconnectFieldsTest {
     @Test
     @TestTransaction
     void persistsAndReadsReconnectTrackingFields() {
-        Instant t = Instant.parse("2026-06-15T10:00:00Z");
+        var t = Instant.parse("2026-06-15T10:00:00Z");
         GoogleCredential c = new GoogleCredential();
         c.ownerId = 1L;
         c.refreshToken = "rt";

@@ -1,5 +1,9 @@
 package site.asm0dey.calit.web;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
@@ -9,10 +13,6 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.PasswordHasher;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 class MeSetupResourceTest {
@@ -51,49 +51,64 @@ class MeSetupResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "wiz1", roles = {"user"})
+    @TestSecurity(
+            user = "wiz1",
+            roles = {"user"})
     void getRendersWizardWithPasswordStepWhenForced() {
         seed("wiz1", true);
         given().when().get("/me/setup").then().statusCode(200).body(containsString("New password"));
     }
 
     @Test
-    @TestSecurity(user = "wiz1rtl", roles = {"user"})
+    @TestSecurity(
+            user = "wiz1rtl",
+            roles = {"user"})
     void setupPageIsRtlForHebrew() {
         seedWithLocale("wiz1rtl", true, "he");
-        given().when().get("/me/setup")
-            .then().statusCode(200)
-            .body(containsString("lang=\"he\""))
-            .body(containsString("dir=\"rtl\""));
+        given().when()
+                .get("/me/setup")
+                .then()
+                .statusCode(200)
+                .body(containsString("lang=\"he\""))
+                .body(containsString("dir=\"rtl\""));
     }
 
     @Test
-    @TestSecurity(user = "wiz1ltr", roles = {"user"})
+    @TestSecurity(
+            user = "wiz1ltr",
+            roles = {"user"})
     void setupPageIsLtrForEnglish() {
         seedWithLocale("wiz1ltr", true, "en");
-        given().when().get("/me/setup")
-            .then().statusCode(200)
-            .body(containsString("lang=\"en\""))
-            .body(containsString("dir=\"ltr\""));
+        given().when()
+                .get("/me/setup")
+                .then()
+                .statusCode(200)
+                .body(containsString("lang=\"en\""))
+                .body(containsString("dir=\"ltr\""));
     }
 
     @Test
-    @TestSecurity(user = "wiz2", roles = {"user"})
+    @TestSecurity(
+            user = "wiz2",
+            roles = {"user"})
     void postCompletesPasswordAndSettings() {
-        Long id = seed("wiz2", true);
+        var id = seed("wiz2", true);
         given().contentType("application/x-www-form-urlencoded")
-            .formParam("newPassword", "Brand-new-pw-12345")
-            .formParam("ownerName", "Wiz Two")
-            .formParam("ownerEmail", "wiz2@example.com")
-            .formParam("timezone", "Europe/Amsterdam")
-            .redirects().follow(false)
-            .when().post("/me/setup").then().statusCode(303);
+                .formParam("newPassword", "Brand-new-pw-12345")
+                .formParam("ownerName", "Wiz Two")
+                .formParam("ownerEmail", "wiz2@example.com")
+                .formParam("timezone", "Europe/Amsterdam")
+                .redirects()
+                .follow(false)
+                .when()
+                .post("/me/setup")
+                .then()
+                .statusCode(303);
 
         AppUser after = reload(id);
         assertFalse(after.mustChangePassword);
         assertTrue(after.settingsComplete);
-        assertTrue(HASHER.verify("Brand-new-pw-12345", after.passwordHash),
-            "password should have been updated");
+        assertTrue(HASHER.verify("Brand-new-pw-12345", after.passwordHash), "password should have been updated");
 
         OwnerSettings s = OwnerSettings.forOwner(id);
         assertNotNull(s);
@@ -103,15 +118,21 @@ class MeSetupResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "wiz3", roles = {"user"})
+    @TestSecurity(
+            user = "wiz3",
+            roles = {"user"})
     void postSkipsPasswordWhenNotForced() {
-        Long id = seed("wiz3", false); // self-service user: no forced reset
+        var id = seed("wiz3", false); // self-service user: no forced reset
         given().contentType("application/x-www-form-urlencoded")
-            .formParam("ownerName", "Wiz Three")
-            .formParam("ownerEmail", "wiz3@example.com")
-            .formParam("timezone", "Europe/Amsterdam")
-            .redirects().follow(false)
-            .when().post("/me/setup").then().statusCode(303);
+                .formParam("ownerName", "Wiz Three")
+                .formParam("ownerEmail", "wiz3@example.com")
+                .formParam("timezone", "Europe/Amsterdam")
+                .redirects()
+                .follow(false)
+                .when()
+                .post("/me/setup")
+                .then()
+                .statusCode(303);
 
         AppUser after = reload(id);
         assertTrue(after.settingsComplete);
@@ -119,37 +140,49 @@ class MeSetupResourceTest {
     }
 
     @Test
-    @TestSecurity(user = "wiz4", roles = {"user"})
+    @TestSecurity(
+            user = "wiz4",
+            roles = {"user"})
     void notForcedUserCannotChangePasswordViaWizard() {
-        Long id = seed("wiz4", false);
+        var id = seed("wiz4", false);
         // Even if a non-forced user posts a newPassword, the wizard must ignore it (password-change
         // path is structurally gated on mustChangePassword).
         given().contentType("application/x-www-form-urlencoded")
-            .formParam("newPassword", "Sneaky-new-pw-12345")
-            .formParam("ownerName", "Wiz Four")
-            .formParam("ownerEmail", "wiz4@example.com")
-            .formParam("timezone", "Europe/Amsterdam")
-            .redirects().follow(false)
-            .when().post("/me/setup").then().statusCode(303);
+                .formParam("newPassword", "Sneaky-new-pw-12345")
+                .formParam("ownerName", "Wiz Four")
+                .formParam("ownerEmail", "wiz4@example.com")
+                .formParam("timezone", "Europe/Amsterdam")
+                .redirects()
+                .follow(false)
+                .when()
+                .post("/me/setup")
+                .then()
+                .statusCode(303);
 
         AppUser after = reload(id);
         assertTrue(after.settingsComplete);
-        assertTrue(HASHER.verify("Initial-pw-12345", after.passwordHash),
-            "non-forced user's password must be unchanged even when newPassword is supplied");
+        assertTrue(
+                HASHER.verify("Initial-pw-12345", after.passwordHash),
+                "non-forced user's password must be unchanged even when newPassword is supplied");
         assertFalse(HASHER.verify("Sneaky-new-pw-12345", after.passwordHash));
     }
 
     @Test
-    @TestSecurity(user = "wiz5", roles = {"user"})
+    @TestSecurity(
+            user = "wiz5",
+            roles = {"user"})
     void forcedUserWithBlankPasswordReRendersAndDoesNotComplete() {
-        Long id = seed("wiz5", true);
+        var id = seed("wiz5", true);
         given().contentType("application/x-www-form-urlencoded")
-            // newPassword omitted (blank) while mustChangePassword is set.
-            .formParam("ownerName", "Wiz Five")
-            .formParam("ownerEmail", "wiz5@example.com")
-            .formParam("timezone", "Europe/Amsterdam")
-            .when().post("/me/setup")
-            .then().statusCode(200).body(containsString("Please choose a new password"));
+                // newPassword omitted (blank) while mustChangePassword is set.
+                .formParam("ownerName", "Wiz Five")
+                .formParam("ownerEmail", "wiz5@example.com")
+                .formParam("timezone", "Europe/Amsterdam")
+                .when()
+                .post("/me/setup")
+                .then()
+                .statusCode(200)
+                .body(containsString("Please choose a new password"));
 
         AppUser after = reload(id);
         assertTrue(after.mustChangePassword, "still forced — onboarding not advanced");
