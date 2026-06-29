@@ -13,7 +13,7 @@ RUN bun run css:build
 # --- Build stage: BellSoft Liberica Native Image Kit on Alpaquita musl ---
 # The builder OS is musl, so native-image compiles a musl-linked binary natively:
 # no --libc=musl flag, no manual musl toolchain install (which the UBI Mandrel image needs).
-FROM bellsoft/liberica-native-image-kit-container:jdk-25-nik-25.0.3-musl@sha256:d84b54a0efbe82f186f6ebea6c8d4ae96b0e92f2b7abf67ee4144f7e4df33806 AS build
+FROM bellsoft/liberica-native-image-kit-container:jdk-25-nik-25.0.3-musl@sha256:4ec81f8f9c50e7dc13aa590494c3f26d7f17859747ef0c790820e3567cfd03f7 AS build
 WORKDIR /build
 
 # Warm the dependency cache on the POM first so source-only edits don't re-download everything.
