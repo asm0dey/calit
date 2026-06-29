@@ -300,7 +300,7 @@ class CrossOwnerIsolationTest {
     @Test
     @TestTransaction
     void seededOwnersAreDistinct() {
-        var ignored = seedOwnerB();
+        seedOwnerB(); // seed owner B; return value unused here
         org.junit.jupiter.api.Assertions.assertNotEquals(
                 AppUser.findByUsername("admin").id, AppUser.findByUsername("ownerb").id);
     }

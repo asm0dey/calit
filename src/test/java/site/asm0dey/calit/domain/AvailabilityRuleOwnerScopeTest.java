@@ -10,6 +10,7 @@ import jakarta.persistence.EntityManager;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Month;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.user.TestOwners;
 
@@ -61,7 +62,7 @@ class AvailabilityRuleOwnerScopeTest {
     @Test
     @TestTransaction
     void dateOverrideGlobalResolveIsOwnerScoped() {
-        var day = LocalDate.of(2026, 7, 1);
+        var day = LocalDate.of(2026, Month.JULY, 1);
         TestOwners.ensure(em, 4001L);
         TestOwners.ensure(em, 4002L);
         DateOverride a = new DateOverride();
