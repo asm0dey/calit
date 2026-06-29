@@ -107,8 +107,14 @@ public class GoogleCalendarPort implements CalendarPort {
         var ctx = writeContext(ownerId);
         GoogleCalendar target = ctx.target();
         GoogleCredential cred = ctx.cred();
-        Event event =
-                buildEvent(ownerId, summary, description, start, end, attendeeEmails, createMeetLink, locationText);
+        Event event = buildEvent(
+                summary,
+                description,
+                eventTime(ownerId, start),
+                eventTime(ownerId, end),
+                attendeeEmails,
+                createMeetLink,
+                locationText);
 
         try {
             Event created = insert(cred, target, event, createMeetLink);
@@ -123,19 +129,18 @@ public class GoogleCalendarPort implements CalendarPort {
 
     /** Assemble the Google {@link Event}: summary/description/time, optional attendees, and either a Meet conference or a location. */
     private Event buildEvent(
-            Long ownerId,
             String summary,
             String description,
-            Instant start,
-            Instant end,
+            EventDateTime startTime,
+            EventDateTime endTime,
             List<String> attendeeEmails,
             boolean createMeetLink,
             String locationText) {
         Event event = new Event()
                 .setSummary(summary)
                 .setDescription(description)
-                .setStart(eventTime(ownerId, start))
-                .setEnd(eventTime(ownerId, end));
+                .setStart(startTime)
+                .setEnd(endTime);
 
         if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
             event.setAttendees(attendeeEmails.stream()

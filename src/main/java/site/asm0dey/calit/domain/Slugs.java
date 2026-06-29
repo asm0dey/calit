@@ -14,9 +14,18 @@ public final class Slugs {
             return "";
         }
         var stripped = Normalizer.normalize(input, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
-        // Possessive quantifiers (-++) trim leading/trailing hyphens without backtracking,
-        // avoiding polynomial ReDoS on user-provided input with long hyphen runs.
-        return stripped.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("(?:^-++)|(?:-++$)", "");
+        var collapsed = stripped.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-");
+        // Trim leading/trailing hyphens by hand: a regex trim on this user-provided value is either
+        // ReDoS-prone or trips Sonar's regex rules, while a manual scan is unambiguously linear.
+        var from = 0;
+        var to = collapsed.length();
+        while (from < to && collapsed.charAt(from) == '-') {
+            from++;
+        }
+        while (to > from && collapsed.charAt(to - 1) == '-') {
+            to--;
+        }
+        return collapsed.substring(from, to);
     }
 
     /**
