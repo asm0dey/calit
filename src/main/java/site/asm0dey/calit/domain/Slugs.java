@@ -16,7 +16,7 @@ public final class Slugs {
         var stripped = Normalizer.normalize(input, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
         // Possessive quantifiers (-++) trim leading/trailing hyphens without backtracking,
         // avoiding polynomial ReDoS on user-provided input with long hyphen runs.
-        return stripped.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-++|-++$", "");
+        return stripped.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("(?:^-++)|(?:-++$)", "");
     }
 
     /**
