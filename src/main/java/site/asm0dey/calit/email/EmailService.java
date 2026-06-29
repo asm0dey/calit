@@ -73,6 +73,14 @@ public class EmailService {
     @ConfigProperty(name = "app.base-url")
     String baseUrl;
 
+    /**
+     * The address every mail is actually sent From. Gmail refuses to render an iTIP REQUEST whose
+     * ORGANIZER differs from the message sender ("Unable to load event"), so the .ics ORGANIZER must
+     * use this address; the owner's real name is kept as the ORGANIZER CN. (Gmail ignores SENT-BY.)
+     */
+    @ConfigProperty(name = "quarkus.mailer.from")
+    String mailFrom;
+
     @Inject
     @Location("email/requested.html")
     Template requested;
@@ -617,7 +625,7 @@ public class EmailService {
                         .uid(l.booking.manageToken)
                         .summary(l.meetingType.name)
                         .location(location)
-                        .organizer(new IcsBuilder.Party(l.owner.ownerName, l.owner.ownerEmail))
+                        .organizer(new IcsBuilder.Party(l.owner.ownerName, mailFrom))
                         .attendee(new IcsBuilder.Party(g.email, g.email))
                         .start(l.booking.startUtc)
                         .end(l.booking.endUtc)
@@ -669,7 +677,7 @@ public class EmailService {
                         .uid(l.booking.manageToken)
                         .summary(l.meetingType.name)
                         .location(icsLocation)
-                        .organizer(new IcsBuilder.Party(l.owner.ownerName, l.owner.ownerEmail))
+                        .organizer(new IcsBuilder.Party(l.owner.ownerName, mailFrom))
                         .attendee(new IcsBuilder.Party(l.booking.inviteeName, l.booking.inviteeEmail))
                         .start(l.booking.startUtc)
                         .end(l.booking.endUtc)
