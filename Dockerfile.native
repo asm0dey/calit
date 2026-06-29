@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken"
 
 # --- Runtime stage: Alpaquita musl base (~3.9MB) — no JDK, just the native binary ---
-FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:689b53bee5b106c80a214b7d14c16e0b846526999d8a03521f0f9f08de5f61d1 AS runtime
+FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:809895bbee2fc6b583b10ea5f38ed13758fdee7badc54fc51caaec0726988747 AS runtime
 WORKDIR /app
 # ca-certificates: outbound TLS to Google API + SMTP. zlib: the binary links libz.so.1.
 RUN apk add --no-cache ca-certificates zlib && update-ca-certificates
