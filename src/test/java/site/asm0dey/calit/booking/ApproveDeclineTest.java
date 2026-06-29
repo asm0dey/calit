@@ -1,9 +1,20 @@
 package site.asm0dey.calit.booking;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.domain.AvailabilityRule;
@@ -12,18 +23,6 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.google.CreatedEvent;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 @QuarkusTest
 class ApproveDeclineTest {
@@ -35,7 +34,8 @@ class ApproveDeclineTest {
     CalendarPort calendarPort;
 
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
-    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    private static final LocalDate DAY =
+            Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
     private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant(); // 09:00 local
 
     @Test
@@ -46,10 +46,12 @@ class ApproveDeclineTest {
         approvalType("approve");
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), eq(SLOT_09), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), anyString(), anyString(), eq(SLOT_09), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-ap", "https://meet.google.com/ap-1-2", "h"));
 
-        Booking b = bookingService.book(1L, "approve", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        Booking b = bookingService.book(
+                1L, "approve", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
         assertEquals(BookingStatus.PENDING, b.status);
 
         bookingService.approve(b.id);
@@ -59,9 +61,16 @@ class ApproveDeclineTest {
         assertEquals("evt-ap", loaded.googleEventId);
         assertEquals("https://meet.google.com/ap-1-2", loaded.meetLink);
         // The event is created at approve time (createMeetLink=true for GOOGLE_MEET), not at book time.
-        verify(calendarPort, times(1)).createEvent(anyLong(), anyString(), anyString(), eq(SLOT_09),
-                eq(SLOT_09.plusSeconds(3600)), eq(List.of("sam@example.com", "owner@example.com")),
-                eq(true), eq(null));
+        verify(calendarPort, times(1))
+                .createEvent(
+                        anyLong(),
+                        anyString(),
+                        anyString(),
+                        eq(SLOT_09),
+                        eq(SLOT_09.plusSeconds(3600)),
+                        eq(List.of("sam@example.com", "owner@example.com")),
+                        eq(true),
+                        eq(null));
     }
 
     @Test
@@ -73,7 +82,8 @@ class ApproveDeclineTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
 
-        Booking b = bookingService.book(1L, "decline", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        Booking b = bookingService.book(
+                1L, "decline", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
         // While PENDING, the 09:00 slot is held.
         assertTrue(bookingService.availableSlots(t, DAY, DAY).stream()
                 .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
@@ -82,7 +92,8 @@ class ApproveDeclineTest {
 
         Booking loaded = Booking.findById(b.id);
         assertEquals(BookingStatus.DECLINED, loaded.status);
-        verify(calendarPort, never()).createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+        verify(calendarPort, never())
+                .createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
         // DECLINED leaves the partial constraint -> 09:00 is bookable again.
         List<TimeSlot> avail = bookingService.availableSlots(t, DAY, DAY);
         assertTrue(avail.stream().anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));

@@ -1,24 +1,24 @@
 package site.asm0dey.calit.web;
 
-import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.Slugs;
-
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.Slugs;
 
 @QuarkusTest
 class AdminMeetingTypeFormTest {
 
     @Test
     void createFormExposesBufferInputs() {
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/me/meeting-types")
-            .then()
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/meeting-types")
+                .then()
                 .statusCode(200)
                 .body(containsString("name=\"bufferBeforeMinutes\""))
                 .body(containsString("name=\"bufferAfterMinutes\""));
@@ -26,22 +26,23 @@ class AdminMeetingTypeFormTest {
 
     @Test
     void createPersistsSeparateBuffers() {
-        String slug = "buffers-" + System.nanoTime();
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("name", "Buffered Call")
-            .formParam("slug", slug)
-            .formParam("durationMinutes", "30")
-            .formParam("bufferBeforeMinutes", "10")
-            .formParam("bufferAfterMinutes", "15")
-            .formParam("minNoticeMinutes", "0")
-            .formParam("horizonDays", "60")
-            .formParam("locationType", "GOOGLE_MEET")
-            .formParam("locationDetail", "")
-            .formParam("slotIntervalMinutes", "")
-            .when().post("/me/meeting-types")
-            .then().statusCode(200);
+        var slug = "buffers-" + System.nanoTime();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Buffered Call")
+                .formParam("slug", slug)
+                .formParam("durationMinutes", "30")
+                .formParam("bufferBeforeMinutes", "10")
+                .formParam("bufferAfterMinutes", "15")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "GOOGLE_MEET")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                .when()
+                .post("/me/meeting-types")
+                .then()
+                .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
         assertNotNull(t);
@@ -51,20 +52,21 @@ class AdminMeetingTypeFormTest {
 
     @Test
     void blankSlugIsGeneratedFromName() {
-        String name = "Discovery Chat " + System.nanoTime();
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("name", name)
-            .formParam("slug", "") // blank -> server generates
-            .formParam("durationMinutes", "30")
-            .formParam("minNoticeMinutes", "0")
-            .formParam("horizonDays", "60")
-            .formParam("locationType", "GOOGLE_MEET")
-            .formParam("locationDetail", "")
-            .formParam("slotIntervalMinutes", "")
-            .when().post("/me/meeting-types")
-            .then().statusCode(200);
+        var name = "Discovery Chat " + System.nanoTime();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", name)
+                .formParam("slug", "") // blank -> server generates
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "GOOGLE_MEET")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                .when()
+                .post("/me/meeting-types")
+                .then()
+                .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, Slugs.slugify(name));
         org.junit.jupiter.api.Assertions.assertNotNull(t);
@@ -72,22 +74,23 @@ class AdminMeetingTypeFormTest {
 
     @Test
     void duplicateGeneratedSlugGetsSuffix() {
-        String name = "Repeat Topic " + System.nanoTime();
+        var name = "Repeat Topic " + System.nanoTime();
         String base = Slugs.slugify(name);
-        for (int i = 0; i < 2; i++) {
-            given()
-                .cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", name)
-                .formParam("slug", "")
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "GOOGLE_MEET")
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                .when().post("/me/meeting-types")
-                .then().statusCode(200);
+        for (var i = 0; i < 2; i++) {
+            given().cookie("quarkus-credential", FormAuth.login())
+                    .contentType("application/x-www-form-urlencoded")
+                    .formParam("name", name)
+                    .formParam("slug", "")
+                    .formParam("durationMinutes", "30")
+                    .formParam("minNoticeMinutes", "0")
+                    .formParam("horizonDays", "60")
+                    .formParam("locationType", "GOOGLE_MEET")
+                    .formParam("locationDetail", "")
+                    .formParam("slotIntervalMinutes", "")
+                    .when()
+                    .post("/me/meeting-types")
+                    .then()
+                    .statusCode(200);
         }
         org.junit.jupiter.api.Assertions.assertNotNull(MeetingType.findBySlug(1L, base));
         org.junit.jupiter.api.Assertions.assertNotNull(MeetingType.findBySlug(1L, base + "-2"));
@@ -96,10 +99,10 @@ class AdminMeetingTypeFormTest {
     @Test
     void createFormHasDynamicMinNoticeDefault() {
         // Static fallback = default duration 30 * 4 = 120; marker = script hook for live recompute.
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/me/meeting-types")
-            .then()
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/meeting-types")
+                .then()
                 .statusCode(200)
                 .body(containsString("name=\"minNoticeMinutes\" value=\"120\""))
                 .body(containsString("data-min-notice-auto"));
@@ -107,20 +110,20 @@ class AdminMeetingTypeFormTest {
 
     @Test
     void slugInputHasLiveFillScript() {
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/me/meeting-types")
-            .then()
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/meeting-types")
+                .then()
                 .statusCode(200)
                 .body(containsString("data-slug-autofill")); // marker the JS hooks onto
     }
 
     @Test
     void createFormExposesWorkingHoursAndOverrideInputs() {
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/me/meeting-types")
-            .then()
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/meeting-types")
+                .then()
                 .statusCode(200)
                 .body(containsString("name=\"ruleDay\""))
                 .body(containsString("name=\"ruleStart\""))
@@ -130,24 +133,25 @@ class AdminMeetingTypeFormTest {
 
     @Test
     void createPersistsPerTypeWorkingHours() {
-        String slug = "wh-create-" + System.nanoTime();
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("name", "With Hours")
-            .formParam("slug", slug)
-            .formParam("durationMinutes", "30")
-            .formParam("minNoticeMinutes", "0")
-            .formParam("horizonDays", "60")
-            .formParam("locationType", "GOOGLE_MEET")
-            .formParam("locationDetail", "")
-            .formParam("slotIntervalMinutes", "")
-            // one filled weekday row + one blank row (must be skipped)
-            .formParam("ruleDay", "MONDAY", "TUESDAY")
-            .formParam("ruleStart", "09:00", "")
-            .formParam("ruleEnd", "17:00", "")
-            .when().post("/me/meeting-types")
-            .then().statusCode(200);
+        var slug = "wh-create-" + System.nanoTime();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "With Hours")
+                .formParam("slug", slug)
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "GOOGLE_MEET")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                // one filled weekday row + one blank row (must be skipped)
+                .formParam("ruleDay", "MONDAY", "TUESDAY")
+                .formParam("ruleStart", "09:00", "")
+                .formParam("ruleEnd", "17:00", "")
+                .when()
+                .post("/me/meeting-types")
+                .then()
+                .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
         assertNotNull(t);
@@ -157,48 +161,51 @@ class AdminMeetingTypeFormTest {
 
     @Test
     void createPersistsPerTypeDateOverrideWithWindow() {
-        String slug = "ov-create-" + System.nanoTime();
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("name", "With Override")
-            .formParam("slug", slug)
-            .formParam("durationMinutes", "30")
-            .formParam("minNoticeMinutes", "0")
-            .formParam("horizonDays", "60")
-            .formParam("locationType", "GOOGLE_MEET")
-            .formParam("locationDetail", "")
-            .formParam("slotIntervalMinutes", "")
-            .formParam("overrideDate", "2026-12-24")
-            .formParam("windowStart", "09:00")
-            .formParam("windowEnd", "11:00")
-            .when().post("/me/meeting-types")
-            .then().statusCode(200);
+        var slug = "ov-create-" + System.nanoTime();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "With Override")
+                .formParam("slug", slug)
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "GOOGLE_MEET")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                .formParam("overrideDate", "2026-12-24")
+                .formParam("windowStart", "09:00")
+                .formParam("windowEnd", "11:00")
+                .when()
+                .post("/me/meeting-types")
+                .then()
+                .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
         assertNotNull(t);
-        site.asm0dey.calit.domain.DateOverride o =
-                site.asm0dey.calit.domain.DateOverride.find("meetingTypeId = ?1", t.id).firstResult();
+        site.asm0dey.calit.domain.DateOverride o = site.asm0dey.calit.domain.DateOverride.find(
+                        "meetingTypeId = ?1", t.id)
+                .firstResult();
         assertNotNull(o);
         assertEquals(1, site.asm0dey.calit.domain.DateOverrideWindow.count("dateOverrideId = ?1", o.id));
     }
 
     @Test
     void createWithoutWorkingHoursMakesNoRules() {
-        String slug = "nowh-create-" + System.nanoTime();
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("name", "No Hours")
-            .formParam("slug", slug)
-            .formParam("durationMinutes", "30")
-            .formParam("minNoticeMinutes", "0")
-            .formParam("horizonDays", "60")
-            .formParam("locationType", "GOOGLE_MEET")
-            .formParam("locationDetail", "")
-            .formParam("slotIntervalMinutes", "")
-            .when().post("/me/meeting-types")
-            .then().statusCode(200);
+        var slug = "nowh-create-" + System.nanoTime();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "No Hours")
+                .formParam("slug", slug)
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "GOOGLE_MEET")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                .when()
+                .post("/me/meeting-types")
+                .then()
+                .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
         assertNotNull(t);

@@ -62,7 +62,8 @@ public interface AppMessages {
     String pub_landing_hero_h1_em();
 
     /** Hero sub-heading, fragment before &lt;strong&gt;. */
-    @Message("calit gives every user their own scheduling space — a personal booking page, availability, and Google Calendar — running entirely on")
+    @Message(
+            "calit gives every user their own scheduling space — a personal booking page, availability, and Google Calendar — running entirely on")
     String pub_landing_hero_sub_pre();
 
     /** The strong-emphasised word in the hero sub ("your" server). */
@@ -97,14 +98,16 @@ public interface AppMessages {
     @Message("One app. Three surfaces.")
     String pub_landing_gallery_h2();
 
-    @Message("A public page for invitees, a personal landing for every user, and an owner console to run it all — each isolated to its owner, served from the same self-hosted instance.")
+    @Message(
+            "A public page for invitees, a personal landing for every user, and an owner console to run it all — each isolated to its owner, served from the same self-hosted instance.")
     String pub_landing_gallery_lede();
 
     @Message("The owner console")
     String pub_landing_cap_console_title();
 
     /** Gallery caption for the owner console card. Plain text — /me rendered separately. */
-    @Message("Manage meeting types, availability, booking fields, Google sync, and — for admins — the whole team's users at")
+    @Message(
+            "Manage meeting types, availability, booking fields, Google sync, and — for admins — the whole team's users at")
     String pub_landing_cap_console_desc_pre();
 
     /** Gallery caption for the per-user landing card. Plain text — /their-name rendered separately. */
@@ -129,7 +132,8 @@ public interface AppMessages {
     @Message("Built to be run, not rented.")
     String pub_landing_features_h2();
 
-    @Message("Everything you expect from a scheduling tool — plus true multi-tenancy and the peace of mind of owning your data.")
+    @Message(
+            "Everything you expect from a scheduling tool — plus true multi-tenancy and the peace of mind of owning your data.")
     String pub_landing_features_lede();
 
     @Message("Isolation")
@@ -138,7 +142,8 @@ public interface AppMessages {
     @Message("Per-user tenancy")
     String pub_landing_feat_isolation_h3();
 
-    @Message("Every meeting type, booking, and setting carries an owner. One user can never see or touch another's data.")
+    @Message(
+            "Every meeting type, booking, and setting carries an owner. One user can never see or touch another's data.")
     String pub_landing_feat_isolation_p();
 
     @Message("Calendar")
@@ -147,7 +152,8 @@ public interface AppMessages {
     @Message("Google sync & Meet")
     String pub_landing_feat_calendar_h3();
 
-    @Message("Connect each user's own Google account. Bookings create events and auto-generate a Meet link — or run fully degraded.")
+    @Message(
+            "Connect each user's own Google account. Bookings create events and auto-generate a Meet link — or run fully degraded.")
     String pub_landing_feat_calendar_p();
 
     @Message("Control")
@@ -165,7 +171,8 @@ public interface AppMessages {
     @Message("Real authentication")
     String pub_landing_feat_trust_h3();
 
-    @Message("Passwords hashed with argon2id, stateless encrypted cookies, instant lockout — no embedded admin password.")
+    @Message(
+            "Passwords hashed with argon2id, stateless encrypted cookies, instant lockout — no embedded admin password.")
     String pub_landing_feat_trust_p();
 
     @Message("Defense")
@@ -174,7 +181,8 @@ public interface AppMessages {
     @Message("Abuse protection")
     String pub_landing_feat_defense_h3();
 
-    @Message("Cloudflare Turnstile, a honeypot, and a per-email daily cap guard every public booking form out of the box.")
+    @Message(
+            "Cloudflare Turnstile, a honeypot, and a per-email daily cap guard every public booking form out of the box.")
     String pub_landing_feat_defense_p();
 
     @Message("Ops")
@@ -183,7 +191,8 @@ public interface AppMessages {
     @Message("One binary + Postgres")
     String pub_landing_feat_ops_h3();
 
-    @Message("A single Quarkus app and a database. Self-host it anywhere, invite your team, done. Opt-in public sign-up too.")
+    @Message(
+            "A single Quarkus app and a database. Self-host it anywhere, invite your team, done. Opt-in public sign-up too.")
     String pub_landing_feat_ops_p();
 
     @Message("Get started")
@@ -192,7 +201,8 @@ public interface AppMessages {
     @Message("Spin up your own in minutes.")
     String pub_landing_close_h2();
 
-    @Message("Point it at a Postgres database and open the site — the first visit creates your admin account. No license, no waitlist, no seat math.")
+    @Message(
+            "Point it at a Postgres database and open the site — the first visit creates your admin account. No license, no waitlist, no seat math.")
     String pub_landing_close_p();
 
     @Message("Open your dashboard")
@@ -302,7 +312,8 @@ public interface AppMessages {
     @Message("Request sent — pending owner approval")
     String pub_conf_h1_pending();
 
-    @Message("Thanks, {inviteeName}. Your requested time is held while {meetingTypeName}'s owner reviews it. You'll get an email once it's approved or declined.")
+    @Message(
+            "Thanks, {inviteeName}. Your requested time is held while {meetingTypeName}'s owner reviews it. You'll get an email once it's approved or declined.")
     String pub_conf_pending_desc(String inviteeName, String meetingTypeName);
 
     @Message("You're booked, {inviteeName}!")
@@ -621,7 +632,8 @@ public interface AppMessages {
     @Message("Or paste this link into your browser:")
     String email_paste_link_hint();
 
-    @Message("This link expires in 30 minutes and can be used once. If you didn't request this, ignore this email — your password stays unchanged.")
+    @Message(
+            "This link expires in 30 minutes and can be used once. If you didn't request this, ignore this email — your password stays unchanged.")
     String email_password_reset_expiry();
 
     // ---- Email body — Google disconnected ----
@@ -635,13 +647,15 @@ public interface AppMessages {
     @Message("calit can no longer access your Google Calendar account {accountEmail}.")
     String email_google_disconnected_body(String accountEmail);
 
-    @Message("While it stays disconnected, your booking page is paused — new bookings are blocked so nobody can book over events calit can't see.")
+    @Message(
+            "While it stays disconnected, your booking page is paused — new bookings are blocked so nobody can book over events calit can't see.")
     String email_google_disconnected_paused();
 
     @Message("Reconnect Google Calendar")
     String email_google_disconnected_btn();
 
-    @Message("This usually happens when access was revoked, your password changed, or the connection sat unused for a long time. Reconnecting takes a few seconds.")
+    @Message(
+            "This usually happens when access was revoked, your password changed, or the connection sat unused for a long time. Reconnecting takes a few seconds.")
     String email_google_disconnected_why();
 
     // ---- Auth / bootstrap pages ----
@@ -765,7 +779,8 @@ public interface AppMessages {
     @Message("Username invalid, reserved, or taken — try another.")
     String auth_setup_error();
 
-    @Message("That username can't be used — it may be invalid, reserved, or already taken. Use 2–64 lowercase letters or digits, with single hyphens between.")
+    @Message(
+            "That username can't be used — it may be invalid, reserved, or already taken. Use 2–64 lowercase letters or digits, with single hyphens between.")
     String auth_signup_error();
 
     @Message("Username")

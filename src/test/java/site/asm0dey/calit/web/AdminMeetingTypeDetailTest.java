@@ -1,5 +1,9 @@
 package site.asm0dey.calit.web;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -9,10 +13,6 @@ import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.BookingField;
 import site.asm0dey.calit.domain.DateOverride;
 import site.asm0dey.calit.domain.MeetingType;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @QuarkusTest
 class AdminMeetingTypeDetailTest {
@@ -36,18 +36,20 @@ class AdminMeetingTypeDetailTest {
     Long seedType(String slug) {
         MeetingType t = new MeetingType();
         t.ownerId = 1L;
-        t.name = "Detail Seed"; t.slug = slug; t.durationMinutes = 30;
+        t.name = "Detail Seed";
+        t.slug = slug;
+        t.durationMinutes = 30;
         t.persist();
         return t.id;
     }
 
     @Test
     void detailPageRendersSectionsAndEditForm() {
-        Long id = seedType("detail-render-" + System.nanoTime());
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .when().get("/me/meeting-types/" + id)
-            .then()
+        var id = seedType("detail-render-" + System.nanoTime());
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/meeting-types/" + id)
+                .then()
                 .statusCode(200)
                 .body(containsString("Detail Seed"))
                 .body(containsString("Booking fields"))
@@ -59,30 +61,34 @@ class AdminMeetingTypeDetailTest {
 
     @Test
     void detailPageRequiresAuth() {
-        Long id = seedType("detail-auth-" + System.nanoTime());
-        given().redirects().follow(false)
-            .when().get("/me/meeting-types/" + id)
-            .then().statusCode(302);
+        var id = seedType("detail-auth-" + System.nanoTime());
+        given().redirects()
+                .follow(false)
+                .when()
+                .get("/me/meeting-types/" + id)
+                .then()
+                .statusCode(302);
     }
 
     @Test
     void editPersistsBasicsAndBuffers() {
-        Long id = seedType("detail-edit-" + System.nanoTime());
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("name", "Renamed Type")
-            .formParam("slug", "")  // blank -> regenerate from name
-            .formParam("durationMinutes", "45")
-            .formParam("bufferBeforeMinutes", "5")
-            .formParam("bufferAfterMinutes", "20")
-            .formParam("minNoticeMinutes", "0")
-            .formParam("horizonDays", "60")
-            .formParam("locationType", "PHONE")
-            .formParam("locationDetail", "+1-555-0123")
-            .formParam("slotIntervalMinutes", "")
-            .when().post("/me/meeting-types/" + id + "/edit")
-            .then().statusCode(200);
+        var id = seedType("detail-edit-" + System.nanoTime());
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Renamed Type")
+                .formParam("slug", "") // blank -> regenerate from name
+                .formParam("durationMinutes", "45")
+                .formParam("bufferBeforeMinutes", "5")
+                .formParam("bufferAfterMinutes", "20")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "PHONE")
+                .formParam("locationDetail", "+1-555-0123")
+                .formParam("slotIntervalMinutes", "")
+                .when()
+                .post("/me/meeting-types/" + id + "/edit")
+                .then()
+                .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
         assertEquals("Renamed Type", t.name);
@@ -95,18 +101,20 @@ class AdminMeetingTypeDetailTest {
 
     @Test
     void addsBookingFieldScopedToThisType() {
-        Long id = seedType("detail-fields-" + System.nanoTime());
-        String key = "linkedin-" + System.nanoTime();
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("label", "LinkedIn")
-            .formParam("fieldKey", key)
-            .formParam("type", "SHORT_TEXT")
-            .formParam("required", "on")
-            .formParam("position", "1")
-            .when().post("/me/meeting-types/" + id + "/booking-fields")
-            .then().statusCode(200).body(containsString("LinkedIn"));
+        var id = seedType("detail-fields-" + System.nanoTime());
+        var key = "linkedin-" + System.nanoTime();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("label", "LinkedIn")
+                .formParam("fieldKey", key)
+                .formParam("type", "SHORT_TEXT")
+                .formParam("required", "on")
+                .formParam("position", "1")
+                .when()
+                .post("/me/meeting-types/" + id + "/booking-fields")
+                .then()
+                .statusCode(200)
+                .body(containsString("LinkedIn"));
 
         BookingField f = BookingField.find("fieldKey", key).firstResult();
         org.junit.jupiter.api.Assertions.assertNotNull(f);
@@ -115,37 +123,43 @@ class AdminMeetingTypeDetailTest {
 
     @Test
     void deletesBookingFieldFromThisType() {
-        Long id = seedType("detail-fielddel-" + System.nanoTime());
-        String key = "todelete-" + System.nanoTime();
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("label", "Temp").formParam("fieldKey", key)
-            .formParam("type", "SHORT_TEXT").formParam("position", "1")
-            .when().post("/me/meeting-types/" + id + "/booking-fields")
-            .then().statusCode(200);
+        var id = seedType("detail-fielddel-" + System.nanoTime());
+        var key = "todelete-" + System.nanoTime();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("label", "Temp")
+                .formParam("fieldKey", key)
+                .formParam("type", "SHORT_TEXT")
+                .formParam("position", "1")
+                .when()
+                .post("/me/meeting-types/" + id + "/booking-fields")
+                .then()
+                .statusCode(200);
 
         BookingField f = BookingField.find("fieldKey", key).firstResult();
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .when().post("/me/meeting-types/" + id + "/booking-fields/" + f.id + "/delete")
-            .then().statusCode(200);
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .when()
+                .post("/me/meeting-types/" + id + "/booking-fields/" + f.id + "/delete")
+                .then()
+                .statusCode(200);
 
         org.junit.jupiter.api.Assertions.assertNull(reloadField(f.id));
     }
 
     @Test
     void addsWorkingHourRuleScopedToThisType() {
-        Long id = seedType("detail-hours-" + System.nanoTime());
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("dayOfWeek", "WEDNESDAY")
-            .formParam("startTime", "09:00")
-            .formParam("endTime", "12:00")
-            .when().post("/me/meeting-types/" + id + "/availability")
-            .then().statusCode(200).body(containsString("Wednesday")); // humanized label
+        var id = seedType("detail-hours-" + System.nanoTime());
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("dayOfWeek", "WEDNESDAY")
+                .formParam("startTime", "09:00")
+                .formParam("endTime", "12:00")
+                .when()
+                .post("/me/meeting-types/" + id + "/availability")
+                .then()
+                .statusCode(200)
+                .body(containsString("Wednesday")); // humanized label
 
         long count = AvailabilityRule.count("meetingTypeId = ?1", id);
         assertEquals(1, count);
@@ -153,15 +167,17 @@ class AdminMeetingTypeDetailTest {
 
     @Test
     void addsDateOverrideScopedToThisType() {
-        Long id = seedType("detail-override-" + System.nanoTime());
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("date", "2026-12-24")
-            .formParam("windowStart", "09:00")
-            .formParam("windowEnd", "11:00")
-            .when().post("/me/meeting-types/" + id + "/date-overrides")
-            .then().statusCode(200).body(containsString("2026-12-24"));
+        var id = seedType("detail-override-" + System.nanoTime());
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("date", "2026-12-24")
+                .formParam("windowStart", "09:00")
+                .formParam("windowEnd", "11:00")
+                .when()
+                .post("/me/meeting-types/" + id + "/date-overrides")
+                .then()
+                .statusCode(200)
+                .body(containsString("2026-12-24"));
 
         long count = DateOverride.count("meetingTypeId = ?1", id);
         assertEquals(1, count);
@@ -169,25 +185,33 @@ class AdminMeetingTypeDetailTest {
 
     @Test
     void editingUnknownTypeReturns404() {
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("name", "Nope").formParam("slug", "")
-            .formParam("durationMinutes", "30").formParam("minNoticeMinutes", "0")
-            .formParam("horizonDays", "60").formParam("locationType", "GOOGLE_MEET")
-            .formParam("locationDetail", "").formParam("slotIntervalMinutes", "")
-            .when().post("/me/meeting-types/99999999/edit")
-            .then().statusCode(404);
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Nope")
+                .formParam("slug", "")
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "GOOGLE_MEET")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                .when()
+                .post("/me/meeting-types/99999999/edit")
+                .then()
+                .statusCode(404);
     }
 
     @Test
     void addingFieldToUnknownTypeReturns404() {
-        given()
-            .cookie("quarkus-credential", FormAuth.login())
-            .contentType("application/x-www-form-urlencoded")
-            .formParam("label", "X").formParam("fieldKey", "x").formParam("type", "SHORT_TEXT")
-            .formParam("position", "0")
-            .when().post("/me/meeting-types/99999999/booking-fields")
-            .then().statusCode(404);
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("label", "X")
+                .formParam("fieldKey", "x")
+                .formParam("type", "SHORT_TEXT")
+                .formParam("position", "0")
+                .when()
+                .post("/me/meeting-types/99999999/booking-fields")
+                .then()
+                .statusCode(404);
     }
 }

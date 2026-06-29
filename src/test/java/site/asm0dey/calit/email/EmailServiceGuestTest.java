@@ -1,11 +1,18 @@
 package site.asm0dey.calit.email;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -18,14 +25,6 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.when;
-
 @QuarkusTest
 class EmailServiceGuestTest {
 
@@ -33,9 +32,14 @@ class EmailServiceGuestTest {
     private static final String INVITEE_EMAIL = "invitee@example.com";
     private static final String GUEST_EMAIL = "guest@example.com";
 
-    @Inject EmailService emailService;
-    @Inject MockMailbox mailbox;
-    @InjectMock CalendarPort calendarPort;
+    @Inject
+    EmailService emailService;
+
+    @Inject
+    MockMailbox mailbox;
+
+    @InjectMock
+    CalendarPort calendarPort;
 
     @BeforeEach
     void init() {
@@ -57,21 +61,43 @@ class EmailServiceGuestTest {
     private long seedWithGuest(GuestStatus guestStatus, BookingStatus bookingStatus, int icsSequence) {
         return QuarkusTransaction.requiringNew().call(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);
-            if (s == null) { s = new OwnerSettings(); s.ownerId = 1L; }
-            s.ownerName = "Owner"; s.ownerEmail = OWNER_EMAIL; s.timezone = "Europe/Amsterdam";
-            s.ownerNotificationsEnabled = true; s.persist();
+            if (s == null) {
+                s = new OwnerSettings();
+                s.ownerId = 1L;
+            }
+            s.ownerName = "Owner";
+            s.ownerEmail = OWNER_EMAIL;
+            s.timezone = "Europe/Amsterdam";
+            s.ownerNotificationsEnabled = true;
+            s.persist();
             MeetingType t = new MeetingType();
-            t.ownerId = 1L; t.name = "Discovery Call"; t.slug = "disc-" + System.nanoTime();
-            t.durationMinutes = 30; t.locationType = LocationType.GOOGLE_MEET; t.persist();
+            t.ownerId = 1L;
+            t.name = "Discovery Call";
+            t.slug = "disc-" + System.nanoTime();
+            t.durationMinutes = 30;
+            t.locationType = LocationType.GOOGLE_MEET;
+            t.persist();
             Booking b = new Booking();
-            b.ownerId = 1L; b.meetingTypeId = t.id; b.inviteeName = "Sam Invitee"; b.inviteeEmail = INVITEE_EMAIL;
-            b.startUtc = Instant.parse("2026-06-08T09:00:00Z"); b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
-            b.meetLink = "https://meet.google.com/abc"; b.status = bookingStatus;
-            b.manageToken = "tok-" + System.nanoTime(); b.createdAt = Instant.now(); b.icsSequence = icsSequence;
+            b.ownerId = 1L;
+            b.meetingTypeId = t.id;
+            b.inviteeName = "Sam Invitee";
+            b.inviteeEmail = INVITEE_EMAIL;
+            b.startUtc = Instant.parse("2026-06-08T09:00:00Z");
+            b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
+            b.meetLink = "https://meet.google.com/abc";
+            b.status = bookingStatus;
+            b.manageToken = "tok-" + System.nanoTime();
+            b.createdAt = Instant.now();
+            b.icsSequence = icsSequence;
             b.persist();
             BookingGuest g = new BookingGuest();
-            g.ownerId = 1L; g.bookingId = b.id; g.email = GUEST_EMAIL; g.status = guestStatus;
-            g.declineToken = "dt-" + System.nanoTime(); g.createdAt = Instant.now(); g.persist();
+            g.ownerId = 1L;
+            g.bookingId = b.id;
+            g.email = GUEST_EMAIL;
+            g.status = guestStatus;
+            g.declineToken = "dt-" + System.nanoTime();
+            g.createdAt = Instant.now();
+            g.persist();
             return b.id;
         });
     }
@@ -130,7 +156,11 @@ class EmailServiceGuestTest {
         emailService.handleCancelled(new BookingCancelled(bookingId));
 
         assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "active guest gets a cancellation");
-        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL).getFirst().getSubject().toLowerCase().contains("cancel"));
+        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL)
+                .getFirst()
+                .getSubject()
+                .toLowerCase()
+                .contains("cancel"));
     }
 
     @Test
@@ -151,7 +181,8 @@ class EmailServiceGuestTest {
 
         // Guest gets a cancel; invitee gets a "guest declined, you may want to reschedule" notice.
         assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "departing guest gets a cancel .ics");
-        assertFalse(mailbox.getMailsSentTo(GUEST_EMAIL).getFirst().getAttachments().isEmpty(),
+        assertFalse(
+                mailbox.getMailsSentTo(GUEST_EMAIL).getFirst().getAttachments().isEmpty(),
                 "departing guest's cancel mail carries an .ics");
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee notified of the decline");
@@ -177,7 +208,11 @@ class EmailServiceGuestTest {
         emailService.handleDeclined(new BookingDeclined(bookingId));
 
         assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "previously-invited guest gets a cancel");
-        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL).getFirst().getSubject().toLowerCase().contains("cancel"));
+        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL)
+                .getFirst()
+                .getSubject()
+                .toLowerCase()
+                .contains("cancel"));
     }
 
     @Test

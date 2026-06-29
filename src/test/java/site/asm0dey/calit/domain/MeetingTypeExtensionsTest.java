@@ -1,10 +1,10 @@
 package site.asm0dey.calit.domain;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 class MeetingTypeExtensionsTest {

@@ -1,14 +1,13 @@
 package site.asm0dey.calit.google;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class FreeBusyMultiAccountTest {
@@ -24,25 +23,34 @@ class FreeBusyMultiAccountTest {
         GoogleCredential a = cred(1L, "sub-A", true);
         a.persist();
         readCal(1L, a.id, "a-cal");
-        assertThrows(CalendarUnavailableException.class, () ->
-                port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)));
+        assertThrows(
+                CalendarUnavailableException.class,
+                () -> port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)));
     }
 
     @Test
     @Transactional
     void noReadCalendarsYieldsEmpty() {
-        assertTrue(port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)).isEmpty());
+        assertTrue(port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400))
+                .isEmpty());
     }
 
     private static GoogleCredential cred(long owner, String sub, boolean needsReconnect) {
         GoogleCredential c = new GoogleCredential();
-        c.ownerId = owner; c.refreshToken = "rt"; c.googleSub = sub; c.needsReconnect = needsReconnect;
+        c.ownerId = owner;
+        c.refreshToken = "rt";
+        c.googleSub = sub;
+        c.needsReconnect = needsReconnect;
         return c;
     }
 
     private static void readCal(long owner, long credId, String calId) {
         GoogleCalendar g = new GoogleCalendar();
-        g.ownerId = owner; g.googleCredentialId = credId; g.googleCalendarId = calId;
-        g.summary = calId; g.readForBusy = true; g.persist();
+        g.ownerId = owner;
+        g.googleCredentialId = credId;
+        g.googleCalendarId = calId;
+        g.summary = calId;
+        g.readForBusy = true;
+        g.persist();
     }
 }

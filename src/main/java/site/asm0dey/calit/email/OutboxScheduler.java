@@ -5,7 +5,6 @@ import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-
 import java.time.Instant;
 import java.util.List;
 
@@ -43,8 +42,7 @@ public class OutboxScheduler {
     void dispatchDueMail() {
         QuarkusTransaction.requiringNew().run(() -> {
             @SuppressWarnings("unchecked")
-            List<Number> ids = em.createNativeQuery(
-                    "SELECT id FROM email_outbox "
+            List<Number> ids = em.createNativeQuery("SELECT id FROM email_outbox "
                             + "WHERE sent_at IS NULL AND next_attempt_at <= now() "
                             + "ORDER BY next_attempt_at "
                             + "FOR UPDATE SKIP LOCKED "
@@ -63,7 +61,7 @@ public class OutboxScheduler {
                 } else {
                     try {
                         mailSender.sendNow(r.recipient, r.subject, r.htmlBody, r.icsBytes);
-                        r.sentAt = Instant.now();        // marked within the lock-holding tx
+                        r.sentAt = Instant.now(); // marked within the lock-holding tx
                     } catch (Exception e) {
                         r.deadOrBackoff(e.getMessage()); // bump attempts / reschedule / mark dead
                     }

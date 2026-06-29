@@ -29,8 +29,8 @@ public class DisplayExtensions {
         if (e == null) {
             return "";
         }
-        String[] words = e.name().toLowerCase().split("_");
-        StringBuilder sb = new StringBuilder();
+        var words = e.name().toLowerCase().split("_");
+        var sb = new StringBuilder();
         for (String w : words) {
             if (w.isEmpty()) {
                 continue;

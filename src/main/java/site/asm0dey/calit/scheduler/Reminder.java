@@ -2,7 +2,6 @@ package site.asm0dey.calit.scheduler;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-
 import java.time.Instant;
 
 /**

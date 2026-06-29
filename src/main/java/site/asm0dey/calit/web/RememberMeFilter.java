@@ -3,7 +3,6 @@ package site.asm0dey.calit.web;
 import io.quarkus.vertx.web.RouteFilter;
 import io.vertx.core.http.Cookie;
 import io.vertx.ext.web.RoutingContext;
-
 import java.util.Set;
 
 /**
@@ -26,7 +25,7 @@ public class RememberMeFilter {
 
     @RouteFilter(400)
     void rememberMe(RoutingContext rc) {
-        boolean remember = "/j_security_check".equals(rc.request().path())
+        var remember = "/j_security_check".equals(rc.request().path())
                 && "true".equals(rc.request().getParam("remember"));
         if (remember) {
             rc.addHeadersEndHandler(v -> {

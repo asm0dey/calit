@@ -2,9 +2,7 @@ package site.asm0dey.calit.web;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
-
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Properties;
 
 /**
@@ -23,8 +21,8 @@ public class BuildInfo {
     private final String commit;
 
     public BuildInfo() {
-        Properties p = new Properties();
-        try (InputStream in = getClass().getResourceAsStream("/git.properties")) {
+        var p = new Properties();
+        try (var in = getClass().getResourceAsStream("/git.properties")) {
             if (in != null) {
                 p.load(in);
             }

@@ -1,15 +1,14 @@
 package site.asm0dey.calit.crypto;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import javax.crypto.Cipher;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HexFormat;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
  * AES-256-GCM encryption for secrets stored at rest (Google OAuth tokens — SEC-SECRET-02).
@@ -32,10 +31,10 @@ public class TokenCipher {
     private final SecureRandom random = new SecureRandom();
 
     public TokenCipher(@ConfigProperty(name = "token.encryption-key") String hexKey) {
-        byte[] raw = hexToBytes(hexKey);
+        var raw = hexToBytes(hexKey);
         if (raw.length != 32) {
             throw new IllegalStateException(
-                "TOKEN_ENCRYPTION_KEY must decode to 32 bytes (64 hex chars); got " + raw.length);
+                    "TOKEN_ENCRYPTION_KEY must decode to 32 bytes (64 hex chars); got " + raw.length);
         }
         this.key = new SecretKeySpec(raw, "AES");
     }
@@ -49,12 +48,12 @@ public class TokenCipher {
             return null;
         }
         try {
-            byte[] iv = new byte[IV_BYTES];
+            var iv = new byte[IV_BYTES];
             random.nextBytes(iv);
-            Cipher c = Cipher.getInstance(TRANSFORM);
+            var c = Cipher.getInstance(TRANSFORM);
             c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, iv));
-            byte[] ct = c.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
-            byte[] out = new byte[iv.length + ct.length];
+            var ct = c.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+            var out = new byte[iv.length + ct.length];
             System.arraycopy(iv, 0, out, 0, iv.length);
             System.arraycopy(ct, 0, out, iv.length, ct.length);
             return MARKER + Base64.getEncoder().encodeToString(out);
@@ -71,10 +70,10 @@ public class TokenCipher {
             return stored;
         }
         try {
-            byte[] all = Base64.getDecoder().decode(stored.substring(MARKER.length()));
-            Cipher c = Cipher.getInstance(TRANSFORM);
+            var all = Base64.getDecoder().decode(stored.substring(MARKER.length()));
+            var c = Cipher.getInstance(TRANSFORM);
             c.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, all, 0, IV_BYTES));
-            byte[] pt = c.doFinal(all, IV_BYTES, all.length - IV_BYTES);
+            var pt = c.doFinal(all, IV_BYTES, all.length - IV_BYTES);
             return new String(pt, StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new IllegalStateException("Token decryption failed", e);
@@ -85,8 +84,7 @@ public class TokenCipher {
         try {
             return HexFormat.of().parseHex(hex);
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw new IllegalStateException(
-                "TOKEN_ENCRYPTION_KEY must decode to 32 bytes (64 hex chars).", e);
+            throw new IllegalStateException("TOKEN_ENCRYPTION_KEY must decode to 32 bytes (64 hex chars).", e);
         }
     }
 }

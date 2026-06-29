@@ -1,9 +1,16 @@
 package site.asm0dey.calit.scheduler;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -13,14 +20,6 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailOutbox;
 import site.asm0dey.calit.google.CalendarPort;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.when;
 
 @QuarkusTest
 class PendingExpiryDispatchTest {
@@ -56,12 +55,14 @@ class PendingExpiryDispatchTest {
     @Test
     void expiryDeclinesEnqueuesDeclinedEmailAndDropsReminder() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        Long bookingId = seedExpiredPendingWithReminder();
+        var bookingId = seedExpiredPendingWithReminder();
 
         scheduler.expirePendingBookings();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            assertEquals(BookingStatus.DECLINED, ((Booking) Booking.findById(bookingId)).status,
+            assertEquals(
+                    BookingStatus.DECLINED,
+                    ((Booking) Booking.findById(bookingId)).status,
                     "expired PENDING flips to DECLINED");
             assertEquals(1, EmailOutbox.count("recipient", INVITEE_EMAIL), "invitee declined email enqueued");
             assertEquals(1, EmailOutbox.count("recipient", OWNER_EMAIL), "owner declined email enqueued");
@@ -85,7 +86,7 @@ class PendingExpiryDispatchTest {
             b.meetingTypeId = t.id;
             b.inviteeName = "Sam Invitee";
             b.inviteeEmail = INVITEE_EMAIL;
-            Instant start = Instant.now().plus(500, ChronoUnit.HOURS);
+            var start = Instant.now().plus(500, ChronoUnit.HOURS);
             b.startUtc = start;
             b.endUtc = start.plus(30, ChronoUnit.MINUTES);
             b.status = BookingStatus.PENDING;

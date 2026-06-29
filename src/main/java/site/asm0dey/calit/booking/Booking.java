@@ -2,12 +2,11 @@ package site.asm0dey.calit.booking;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "booking")
@@ -94,9 +93,12 @@ public class Booking extends PanacheEntityBase {
      * Overlap predicate: startUtc < to AND from < endUtc.
      */
     public static List<Booking> heldOverlapping(Long ownerId, Instant from, Instant to) {
-        return list("ownerId = ?1 and status in ?2 and startUtc < ?3 and ?4 < endUtc",
+        return list(
+                "ownerId = ?1 and status in ?2 and startUtc < ?3 and ?4 < endUtc",
                 ownerId,
-                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED), to, from);
+                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED),
+                to,
+                from);
     }
 
     /** Loads a booking by its invitee manage-token (reschedule/cancel key), or null. */
@@ -106,7 +108,6 @@ public class Booking extends PanacheEntityBase {
 
     /** Feature 16: how many bookings this invitee email created in [dayStart, dayEnd). */
     public static long countByEmailCreatedBetween(String email, Instant dayStart, Instant dayEnd) {
-        return count("inviteeEmail = ?1 and createdAt >= ?2 and createdAt < ?3",
-                email, dayStart, dayEnd);
+        return count("inviteeEmail = ?1 and createdAt >= ?2 and createdAt < ?3", email, dayStart, dayEnd);
     }
 }

@@ -31,7 +31,7 @@ public class LocaleTemplateInitializer implements TemplateInstance.Initializer {
     @Override
     public void accept(TemplateInstance instance) {
         Locale locale = null;
-        String returnPath = "/";
+        var returnPath = "/";
         List<LocaleOption> localeOptions = Collections.emptyList();
         if (Arc.container().requestContext().isActive()) {
             try (var activeHandle = Arc.container().instance(ActiveLocale.class)) {

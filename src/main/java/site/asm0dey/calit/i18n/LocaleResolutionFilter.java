@@ -7,12 +7,11 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.ext.Provider;
-import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.user.CurrentOwner;
-
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.user.CurrentOwner;
 
 /**
  * Resolves the active locale for every request and stashes it in {@link ActiveLocale}.
@@ -53,7 +52,7 @@ public class LocaleResolutionFilter implements ContainerRequestFilter {
             return "%2F"; // URL-encoded "/"
         }
         String rawQuery = ctx.getUriInfo().getRequestUri().getRawQuery();
-        String raw = (rawQuery != null && !rawQuery.isEmpty()) ? rawPath + "?" + rawQuery : rawPath;
+        var raw = (rawQuery != null && !rawQuery.isEmpty()) ? rawPath + "?" + rawQuery : rawPath;
         return URLEncoder.encode(raw, StandardCharsets.UTF_8);
     }
 

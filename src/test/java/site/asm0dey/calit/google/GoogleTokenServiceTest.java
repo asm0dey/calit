@@ -1,13 +1,12 @@
 package site.asm0dey.calit.google;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class GoogleTokenServiceTest {
@@ -51,13 +50,14 @@ class GoogleTokenServiceTest {
     @Test
     void stateRoundTripsStatelesslyWithinTtl() {
         GoogleTokenService svc = new GoogleTokenService(config);
-        Instant now = Instant.parse("2026-06-08T12:00:00Z");
+        var now = Instant.parse("2026-06-08T12:00:00Z");
         String state = svc.issueState(1L, now);
 
         // A fresh, untampered state validates on any replica and recovers the owner id.
         assertEquals(1L, svc.validateState(state, now.plusSeconds(60)));
         // Expired beyond the TTL window: rejected.
-        assertNull(svc.validateState(state, now.plus(GoogleTokenService.STATE_TTL).plusSeconds(1)));
+        assertNull(
+                svc.validateState(state, now.plus(GoogleTokenService.STATE_TTL).plusSeconds(1)));
         // Tampered signature: rejected.
         assertNull(svc.validateState(state + "x", now.plusSeconds(60)));
         // Garbage / missing: rejected.
@@ -68,10 +68,11 @@ class GoogleTokenServiceTest {
     @Test
     @TestTransaction
     void exchangeCodePersistsRefreshTokenSingleton() {
-        Instant now = Instant.parse("2026-06-08T12:00:00Z");
-        StubTokenService svc = new StubTokenService(config,
-                new GoogleTokenService.TokenResponse("access-1", "refresh-1",
-                        now.plusSeconds(3600), "sub-from-exchange", "owner@example.com"));
+        var now = Instant.parse("2026-06-08T12:00:00Z");
+        var svc = new StubTokenService(
+                config,
+                new GoogleTokenService.TokenResponse(
+                        "access-1", "refresh-1", now.plusSeconds(3600), "sub-from-exchange", "owner@example.com"));
 
         svc.exchangeCode(1L, "auth-code-123", now);
 
@@ -93,7 +94,7 @@ class GoogleTokenServiceTest {
         c.googleSub = "sub-cached";
         c.persist();
 
-        StubTokenService svc = new StubTokenService(config, null); // must NOT be used
+        var svc = new StubTokenService(config, null); // must NOT be used
         String token = svc.validAccessToken(c, Instant.parse("2026-06-08T12:00:00Z"));
 
         assertEquals("cached-access", token);
@@ -110,10 +111,9 @@ class GoogleTokenServiceTest {
         c.googleSub = "sub-stale";
         c.persist();
 
-        Instant now = Instant.parse("2026-06-08T12:00:00Z");
-        StubTokenService svc = new StubTokenService(config,
-                new GoogleTokenService.TokenResponse("fresh-access", null,
-                        now.plusSeconds(3600), null, null));
+        var now = Instant.parse("2026-06-08T12:00:00Z");
+        var svc = new StubTokenService(
+                config, new GoogleTokenService.TokenResponse("fresh-access", null, now.plusSeconds(3600), null, null));
 
         String token = svc.validAccessToken(c, now);
 

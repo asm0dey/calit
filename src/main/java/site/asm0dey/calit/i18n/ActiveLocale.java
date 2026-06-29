@@ -10,10 +10,23 @@ public class ActiveLocale {
     private Locale locale;
     private String returnPath = "/";
 
-    public void set(Locale locale) { this.locale = locale; }
-    public Locale getOrNull() { return locale; }
-    public Locale current() { return locale != null ? locale : AppLocales.DEFAULT; }
+    public void set(Locale locale) {
+        this.locale = locale;
+    }
 
-    public void setReturnPath(String returnPath) { this.returnPath = returnPath; }
-    public String getReturnPath() { return returnPath; }
+    public Locale getOrNull() {
+        return locale;
+    }
+
+    public Locale current() {
+        return locale != null ? locale : AppLocales.DEFAULT;
+    }
+
+    public void setReturnPath(String returnPath) {
+        this.returnPath = returnPath;
+    }
+
+    public String getReturnPath() {
+        return returnPath;
+    }
 }

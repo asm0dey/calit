@@ -8,14 +8,13 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.TransactionPhase;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.events.*;
 import site.asm0dey.calit.email.EmailService;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
 
 @ApplicationScoped
 public class ReminderScheduler {
@@ -121,8 +120,7 @@ public class ReminderScheduler {
     void claimAndMarkDueReminders() {
         QuarkusTransaction.requiringNew().run(() -> {
             @SuppressWarnings("unchecked")
-            List<Number> ids = em.createNativeQuery(
-                    "SELECT id FROM reminder "
+            List<Number> ids = em.createNativeQuery("SELECT id FROM reminder "
                             + "WHERE sent_at IS NULL AND send_at <= now() + make_interval(secs => :graceSeconds) "
                             + "ORDER BY send_at "
                             + "FOR UPDATE SKIP LOCKED "
@@ -130,7 +128,7 @@ public class ReminderScheduler {
                     .setParameter("graceSeconds", (double) graceSeconds)
                     .getResultList();
 
-            Instant now = Instant.now();
+            var now = Instant.now();
             for (Number n : ids) {
                 Reminder r = Reminder.findById(n.longValue());
                 r.sentAt = now; // claim: marked within the lock-holding transaction
@@ -141,8 +139,7 @@ public class ReminderScheduler {
                 try {
                     emailService.enqueueReminder(r.bookingId); // durable intent, same tx
                 } catch (Exception ex) {
-                    Log.errorf(ex, "reminder enqueue failed for booking %d (marked sent, mail dropped)",
-                            r.bookingId);
+                    Log.errorf(ex, "reminder enqueue failed for booking %d (marked sent, mail dropped)", r.bookingId);
                 }
             }
         });

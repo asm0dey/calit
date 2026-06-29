@@ -9,9 +9,6 @@ import com.google.api.client.json.gson.GsonFactory;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -20,6 +17,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Handles the owner OAuth flow: builds the consent URL, exchanges the auth code for tokens
@@ -49,11 +48,15 @@ public class GoogleTokenService {
      * {@code googleSub} and {@code accountEmail} are extracted from the id_token during the
      * authorization_code exchange; both are null for refresh-token responses.
      */
-    public record TokenResponse(String accessToken, String refreshToken, Instant expiry,
-                                String googleSub, String accountEmail) {}
+    public record TokenResponse(
+            String accessToken, String refreshToken, Instant expiry, String googleSub, String accountEmail) {}
 
     /** Outcome of a connection probe. */
-    public enum ProbeResult { OK, INVALID_GRANT, TRANSIENT }
+    public enum ProbeResult {
+        OK,
+        INVALID_GRANT,
+        TRANSIENT
+    }
 
     /**
      * The Google consent URL, carrying a stateless, signed CSRF state bound to {@code ownerId}.
@@ -75,7 +78,7 @@ public class GoogleTokenService {
 
     /** Mint a signed, time-stamped state bound to {@code ownerId}. Stateless: nothing stored. */
     public String issueState(long ownerId, Instant now) {
-        String payload = b64(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8))
+        var payload = b64(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8))
                 + ":" + ownerId
                 + ":" + now.getEpochSecond();
         return payload + "." + b64(hmac(payload));
@@ -88,11 +91,11 @@ public class GoogleTokenService {
      */
     public Long validateState(String state, Instant now) {
         if (state == null || state.isBlank()) return null;
-        int dot = state.lastIndexOf('.');
+        var dot = state.lastIndexOf('.');
         if (dot <= 0) return null;
-        String payload = state.substring(0, dot);
-        String sig = state.substring(dot + 1);
-        byte[] expected = hmac(payload);
+        var payload = state.substring(0, dot);
+        var sig = state.substring(dot + 1);
+        var expected = hmac(payload);
         byte[] actual;
         try {
             actual = Base64.getUrlDecoder().decode(sig);
@@ -103,14 +106,14 @@ public class GoogleTokenService {
         // payload = b64(nonce) ":" ownerId ":" issuedAtEpochSec
         // The nonce is base64url (alphabet A-Za-z0-9-_, no ':'), so the last two colons are always
         // the field delimiters — walk them right-to-left.
-        int lastColon = payload.lastIndexOf(':');
+        var lastColon = payload.lastIndexOf(':');
         if (lastColon <= 0) return null;
-        int prevColon = payload.lastIndexOf(':', lastColon - 1);
+        var prevColon = payload.lastIndexOf(':', lastColon - 1);
         if (prevColon <= 0) return null;
         try {
-            long ownerId = Long.parseLong(payload.substring(prevColon + 1, lastColon));
-            long issuedAt = Long.parseLong(payload.substring(lastColon + 1));
-            Instant issued = Instant.ofEpochSecond(issuedAt);
+            var ownerId = Long.parseLong(payload.substring(prevColon + 1, lastColon));
+            var issuedAt = Long.parseLong(payload.substring(lastColon + 1));
+            var issued = Instant.ofEpochSecond(issuedAt);
             if (issued.isAfter(now) || issued.plus(STATE_TTL).isBefore(now)) return null;
             return ownerId;
         } catch (NumberFormatException e) {
@@ -120,9 +123,8 @@ public class GoogleTokenService {
 
     private byte[] hmac(String payload) {
         try {
-            Mac mac = Mac.getInstance(HMAC_ALGO);
-            mac.init(new SecretKeySpec(
-                    config.oauth().stateSecret().getBytes(StandardCharsets.UTF_8), HMAC_ALGO));
+            var mac = Mac.getInstance(HMAC_ALGO);
+            mac.init(new SecretKeySpec(config.oauth().stateSecret().getBytes(StandardCharsets.UTF_8), HMAC_ALGO));
             return mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("Cannot sign OAuth state", e);
@@ -239,7 +241,7 @@ public class GoogleTokenService {
             c.persist();
             return ProbeResult.OK;
         } catch (GoogleInvalidGrantException e) {
-            c.needsReconnect = true;      // managed entity, flushes with this committed transaction
+            c.needsReconnect = true; // managed entity, flushes with this committed transaction
             c.persist();
             return ProbeResult.INVALID_GRANT;
         } catch (RuntimeException e) {
@@ -261,14 +263,18 @@ public class GoogleTokenService {
         // thread. Fixed destination (no SSRF) — availability hardening.
         HttpRequestInitializer withTimeouts = request -> {
             request.setConnectTimeout(5000); // ms
-            request.setReadTimeout(10000);   // ms
+            request.setReadTimeout(10000); // ms
         };
         try {
             if ("authorization_code".equals(grantType)) {
                 var resp = new GoogleAuthorizationCodeTokenRequest(
-                        transport, json, TOKEN_ENDPOINT,
-                        config.oauth().clientId(), config.oauth().clientSecret(),
-                        codeOrRefreshToken, config.oauth().redirectUri())
+                                transport,
+                                json,
+                                TOKEN_ENDPOINT,
+                                config.oauth().clientId(),
+                                config.oauth().clientSecret(),
+                                codeOrRefreshToken,
+                                config.oauth().redirectUri())
                         .setRequestInitializer(withTimeouts)
                         .execute();
                 // The id_token came directly from Google's token endpoint over TLS, so we read its
@@ -276,32 +282,42 @@ public class GoogleTokenService {
                 String sub = null, email = null;
                 String idToken = resp.getIdToken();
                 if (idToken != null) {
-                    var payload = com.google.api.client.googleapis.auth.oauth2.GoogleIdToken
-                            .parse(json, idToken).getPayload();
+                    var payload = com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.parse(json, idToken)
+                            .getPayload();
                     sub = payload.getSubject();
                     email = payload.getEmail();
                 }
-                return new TokenResponse(resp.getAccessToken(), resp.getRefreshToken(),
-                        now.plusSeconds(resp.getExpiresInSeconds()), sub, email);
+                return new TokenResponse(
+                        resp.getAccessToken(),
+                        resp.getRefreshToken(),
+                        now.plusSeconds(resp.getExpiresInSeconds()),
+                        sub,
+                        email);
             }
             var resp = new GoogleRefreshTokenRequest(
-                    transport, json, codeOrRefreshToken,
-                    config.oauth().clientId(), config.oauth().clientSecret())
+                            transport,
+                            json,
+                            codeOrRefreshToken,
+                            config.oauth().clientId(),
+                            config.oauth().clientSecret())
                     .setRequestInitializer(withTimeouts)
                     .execute();
-            return new TokenResponse(resp.getAccessToken(), resp.getRefreshToken(),
-                    now.plusSeconds(resp.getExpiresInSeconds()), null, null);
+            return new TokenResponse(
+                    resp.getAccessToken(),
+                    resp.getRefreshToken(),
+                    now.plusSeconds(resp.getExpiresInSeconds()),
+                    null,
+                    null);
         } catch (TokenResponseException e) {
             // invalid_grant (HTTP 400) = the refresh token is permanently dead -> flag + notify.
             // Any other OAuth/HTTP status (429, 5xx, ...) is transient -> generic IllegalStateException,
             // which the probe treats as "leave the account alone, try again next hour".
             String error = e.getDetails() != null ? e.getDetails().getError() : null;
             if (e.getStatusCode() == 400 && "invalid_grant".equals(error)) {
-                throw new GoogleInvalidGrantException(
-                        "Google refresh token rejected: invalid_grant", e);
+                throw new GoogleInvalidGrantException("Google refresh token rejected: invalid_grant", e);
             }
-            throw new IllegalStateException("Google token request failed: " + e.getStatusCode()
-                    + " " + e.getMessage(), e);
+            throw new IllegalStateException(
+                    "Google token request failed: " + e.getStatusCode() + " " + e.getMessage(), e);
         } catch (IOException e) {
             throw new IllegalStateException("Google token request I/O error", e);
         }

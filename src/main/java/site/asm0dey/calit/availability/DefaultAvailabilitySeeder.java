@@ -4,12 +4,11 @@ import io.quarkus.arc.profile.UnlessBuildProfile;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
-import site.asm0dey.calit.domain.AvailabilityRule;
-
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import site.asm0dey.calit.domain.AvailabilityRule;
 
 /**
  * Phase 2: boot-time GLOBAL availability seeding is disabled — under owner scoping a rule needs an
@@ -33,8 +32,8 @@ public class DefaultAvailabilitySeeder {
     /** Mon–Fri 09:00–18:00, global (meetingTypeId == null). */
     static List<AvailabilityRule> weekdayDefaults() {
         List<AvailabilityRule> rules = new ArrayList<>();
-        for (DayOfWeek d : List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
-                                   DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)) {
+        for (DayOfWeek d : List.of(
+                DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)) {
             AvailabilityRule r = new AvailabilityRule();
             r.dayOfWeek = d;
             r.startTime = LocalTime.of(9, 0);

@@ -1,12 +1,12 @@
 package site.asm0dey.calit.user;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
 
 @QuarkusTest
 class SetupFlowTest {
@@ -24,7 +24,8 @@ class SetupFlowTest {
     void restoreBaseline() {
         QuarkusTransaction.requiringNew().run(() -> {
             if (AppUser.count() == 0) {
-                AppUser.create("admin", new PasswordHasher().hash("testpass"), true).persist();
+                AppUser.create("admin", new PasswordHasher().hash("testpass"), true)
+                        .persist();
             }
         });
     }
@@ -32,7 +33,8 @@ class SetupFlowTest {
     private void seedOneUser() {
         QuarkusTransaction.requiringNew().run(() -> {
             if (AppUser.count() == 0) {
-                AppUser.create("existing", new PasswordHasher().hash("pw12345"), true).persist();
+                AppUser.create("existing", new PasswordHasher().hash("pw12345"), true)
+                        .persist();
             }
         });
     }
@@ -40,8 +42,10 @@ class SetupFlowTest {
     @Test
     void setupFormRendersWhenNoUsers() {
         deleteAllUsers();
-        given().when().get("/setup")
-                .then().statusCode(200)
+        given().when()
+                .get("/setup")
+                .then()
+                .statusCode(200)
                 .body(containsString("Create the first user"))
                 .body(containsString("name=\"username\""));
     }
@@ -49,9 +53,12 @@ class SetupFlowTest {
     @Test
     void requestsRedirectToSetupWhenNoUsers() {
         deleteAllUsers();
-        given().redirects().follow(false)
-                .when().get("/me")
-                .then().statusCode(302)
+        given().redirects()
+                .follow(false)
+                .when()
+                .get("/me")
+                .then()
+                .statusCode(302)
                 .header("Location", containsString("/setup"));
     }
 
@@ -59,9 +66,12 @@ class SetupFlowTest {
     void loginRedirectsToSetupWhenNoUsers() {
         // Nobody to log in as yet -> /login sends you to first-user creation, not the login form.
         deleteAllUsers();
-        given().redirects().follow(false)
-                .when().get("/login")
-                .then().statusCode(302)
+        given().redirects()
+                .follow(false)
+                .when()
+                .get("/login")
+                .then()
+                .statusCode(302)
                 .header("Location", containsString("/setup"));
     }
 
@@ -70,40 +80,46 @@ class SetupFlowTest {
         // The marketing landing at / is exempt from the first-run redirect — it must render even
         // before the instance is bootstrapped, not 302 to /setup.
         deleteAllUsers();
-        given().redirects().follow(false)
-                .when().get("/")
-                .then().statusCode(200)
-                .body(containsString("actually own"));
+        given().redirects().follow(false).when().get("/").then().statusCode(200).body(containsString("actually own"));
     }
 
     @Test
     void setupCreatesFirstAdminUserThenRedirectsToLogin() {
         deleteAllUsers();
-        given().redirects().follow(false)
+        given().redirects()
+                .follow(false)
                 .contentType("application/x-www-form-urlencoded")
                 .formParam("username", "Boss")
                 .formParam("password", "boss-pw-123")
-                .when().post("/setup")
-                .then().statusCode(302)
+                .when()
+                .post("/setup")
+                .then()
+                .statusCode(302)
                 .header("Location", containsString("/login"));
 
-        given().redirects().follow(false)
+        given().redirects()
+                .follow(false)
                 .contentType("application/x-www-form-urlencoded")
                 .formParam("j_username", "boss")
                 .formParam("j_password", "boss-pw-123")
-                .when().post("/j_security_check")
-                .then().statusCode(302);
+                .when()
+                .post("/j_security_check")
+                .then()
+                .statusCode(302);
     }
 
     @Test
     void setupReturns404OnceAUserExists() {
         seedOneUser();
         given().when().get("/setup").then().statusCode(404);
-        given().redirects().follow(false)
+        given().redirects()
+                .follow(false)
                 .contentType("application/x-www-form-urlencoded")
                 .formParam("username", "second")
                 .formParam("password", "whatever-12")
-                .when().post("/setup")
-                .then().statusCode(404);
+                .when()
+                .post("/setup")
+                .then()
+                .statusCode(404);
     }
 }

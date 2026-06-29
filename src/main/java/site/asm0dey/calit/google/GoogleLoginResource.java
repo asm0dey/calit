@@ -9,11 +9,9 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.net.URI;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.LoginTicketService;
-
-import java.net.URI;
-import java.time.Instant;
 
 /**
  * The "Sign in with Google" flow. /login (GET) bounces to Google; /login/callback (GET) verifies
@@ -41,10 +39,11 @@ public class GoogleLoginResource {
     private final java.time.Clock clock;
 
     @Inject
-    public GoogleLoginResource(GoogleLoginService loginService,
-                               GoogleSignInService signInService,
-                               LoginTicketService loginTickets,
-                               java.time.Clock clock) {
+    public GoogleLoginResource(
+            GoogleLoginService loginService,
+            GoogleSignInService signInService,
+            LoginTicketService loginTickets,
+            java.time.Clock clock) {
         this.loginService = loginService;
         this.signInService = signInService;
         this.loginTickets = loginTickets;
@@ -61,10 +60,9 @@ public class GoogleLoginResource {
     @GET
     @Path("/callback")
     @Produces(MediaType.TEXT_HTML)
-    public Response callback(@QueryParam("code") String code,
-                             @QueryParam("state") String state,
-                             @QueryParam("error") String error) {
-        Instant now = clock.instant();
+    public Response callback(
+            @QueryParam("code") String code, @QueryParam("state") String state, @QueryParam("error") String error) {
+        var now = clock.instant();
         if (error != null) {
             return redirectToLogin(NOTICE_GENERIC);
         }
@@ -87,10 +85,11 @@ public class GoogleLoginResource {
         try {
             user = signInService.resolveOrProvision(identity);
         } catch (GoogleSignInException e) {
-            return redirectToLogin(switch (e.reason) {
-                case SIGNUP_DISABLED -> "google_signup_disabled";
-                case AMBIGUOUS_EMAIL -> "google_ambiguous";
-            });
+            return redirectToLogin(
+                    switch (e.reason) {
+                        case SIGNUP_DISABLED -> "google_signup_disabled";
+                        case AMBIGUOUS_EMAIL -> "google_ambiguous";
+                    });
         }
 
         String token = loginTickets.issue(user.id, now);
@@ -102,8 +101,8 @@ public class GoogleLoginResource {
 
     private static Response redirectToLogin(String notice) {
         return Response.status(Response.Status.FOUND)
-                .location(URI.create("/login?notice="
-                        + java.net.URLEncoder.encode(notice, java.nio.charset.StandardCharsets.UTF_8)))
+                .location(URI.create(
+                        "/login?notice=" + java.net.URLEncoder.encode(notice, java.nio.charset.StandardCharsets.UTF_8)))
                 .build();
     }
 }

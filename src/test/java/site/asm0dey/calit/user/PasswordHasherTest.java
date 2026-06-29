@@ -1,8 +1,8 @@
 package site.asm0dey.calit.user;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
 
 class PasswordHasherTest {
 
@@ -11,9 +11,8 @@ class PasswordHasherTest {
     @Test
     void hashHasArgon2idMcfShape() {
         String encoded = hasher.hash("correct horse battery staple");
-        assertTrue(encoded.startsWith("$argon2id$v=19$m=19456,t=2,p=1$"),
-                "unexpected encoding: " + encoded);
-        String[] parts = encoded.split("\\$");
+        assertTrue(encoded.startsWith("$argon2id$v=19$m=19456,t=2,p=1$"), "unexpected encoding: " + encoded);
+        var parts = encoded.split("\\$");
         assertEquals(6, parts.length, "expected 6 MCF segments, got " + encoded);
     }
 

@@ -1,19 +1,18 @@
 package site.asm0dey.calit.scheduler;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @QuarkusTest
 class PendingExpiryTest {
@@ -47,8 +46,7 @@ class PendingExpiryTest {
     }
 
     // A unique far-future start instant so seeded HELD bookings never overlap one another.
-    private static final java.util.concurrent.atomic.AtomicLong SLOT =
-            new java.util.concurrent.atomic.AtomicLong(0);
+    private static final java.util.concurrent.atomic.AtomicLong SLOT = new java.util.concurrent.atomic.AtomicLong(0);
 
     private Instant uniqueFutureStart() {
         return Instant.now().plus(3650, ChronoUnit.DAYS).plus(SLOT.getAndIncrement(), ChronoUnit.HOURS);
@@ -56,31 +54,26 @@ class PendingExpiryTest {
 
     @Test
     void expiresPendingPastHoldButLeavesFreshPendingAndOtherStatuses() {
-        Long meetingTypeId = seedMeetingType();
+        var meetingTypeId = seedMeetingType();
 
         // Created 25h ago, start far future -> hold (createdAt+24h) elapsed -> expire.
-        Long expired = seedBooking(meetingTypeId,
-                Instant.now().minus(25, ChronoUnit.HOURS),
-                uniqueFutureStart(),
-                BookingStatus.PENDING);
+        Long expired = seedBooking(
+                meetingTypeId, Instant.now().minus(25, ChronoUnit.HOURS), uniqueFutureStart(), BookingStatus.PENDING);
 
         // Created 1h ago, start far future -> within hold -> keep.
-        Long fresh = seedBooking(meetingTypeId,
-                Instant.now().minus(1, ChronoUnit.HOURS),
-                uniqueFutureStart(),
-                BookingStatus.PENDING);
+        Long fresh = seedBooking(
+                meetingTypeId, Instant.now().minus(1, ChronoUnit.HOURS), uniqueFutureStart(), BookingStatus.PENDING);
 
         // Created 1h ago but starts in 30 MIN -> min(createdAt+24h, startUtc)=startUtc>now -> keep.
-        Long soonStart = seedBooking(meetingTypeId,
+        Long soonStart = seedBooking(
+                meetingTypeId,
                 Instant.now().minus(1, ChronoUnit.HOURS),
                 Instant.now().plus(30, ChronoUnit.MINUTES),
                 BookingStatus.PENDING);
 
         // A CONFIRMED booking with an old createdAt must NOT be touched (only PENDING expires).
-        Long confirmed = seedBooking(meetingTypeId,
-                Instant.now().minus(48, ChronoUnit.HOURS),
-                uniqueFutureStart(),
-                BookingStatus.CONFIRMED);
+        Long confirmed = seedBooking(
+                meetingTypeId, Instant.now().minus(48, ChronoUnit.HOURS), uniqueFutureStart(), BookingStatus.CONFIRMED);
 
         scheduler.expirePendingBookings();
 
@@ -92,9 +85,10 @@ class PendingExpiryTest {
 
     @Test
     void expiresPendingPastStartEvenWithinHoldWindow() {
-        Long meetingTypeId = seedMeetingType();
+        var meetingTypeId = seedMeetingType();
         // Created 1h ago (within 24h hold) but START already passed -> min(...)=startUtc<=now -> expire.
-        Long pastStart = seedBooking(meetingTypeId,
+        Long pastStart = seedBooking(
+                meetingTypeId,
                 Instant.now().minus(1, ChronoUnit.HOURS),
                 Instant.now().minus(10, ChronoUnit.MINUTES),
                 BookingStatus.PENDING);
@@ -134,7 +128,6 @@ class PendingExpiryTest {
     }
 
     private BookingStatus reloadStatus(Long id) {
-        return QuarkusTransaction.requiringNew()
-                .call(() -> ((Booking) Booking.findById(id)).status);
+        return QuarkusTransaction.requiringNew().call(() -> ((Booking) Booking.findById(id)).status);
     }
 }

@@ -1,12 +1,11 @@
 package site.asm0dey.calit.domain;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class MeetingTypeTest {
@@ -40,12 +39,16 @@ class MeetingTypeTest {
     void listPublicExcludesSecretButFindBySlugStillReturnsIt() {
         MeetingType pub = new MeetingType();
         pub.ownerId = 1L;
-        pub.name = "Public"; pub.slug = "pub-listpublic"; pub.durationMinutes = 30;
+        pub.name = "Public";
+        pub.slug = "pub-listpublic";
+        pub.durationMinutes = 30;
         pub.persist();
 
         MeetingType hidden = new MeetingType();
         hidden.ownerId = 1L;
-        hidden.name = "Secret"; hidden.slug = "secret-listpublic"; hidden.durationMinutes = 30;
+        hidden.name = "Secret";
+        hidden.slug = "secret-listpublic";
+        hidden.durationMinutes = 30;
         hidden.secret = true;
         hidden.persist();
 

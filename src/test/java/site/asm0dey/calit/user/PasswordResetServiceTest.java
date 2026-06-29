@@ -1,14 +1,13 @@
 package site.asm0dey.calit.user;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-
 import java.time.Duration;
 import java.time.Instant;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class PasswordResetServiceTest {
@@ -25,8 +24,8 @@ class PasswordResetServiceTest {
     @Test
     @TestTransaction
     void tokenConsumedExactlyOnce() {
-        Instant now = Instant.parse("2026-06-12T12:00:00Z");
-        Long uid = newUserId();
+        var now = Instant.parse("2026-06-12T12:00:00Z");
+        var uid = newUserId();
 
         String raw = reset.issue(uid, now);
         assertNotNull(raw);
@@ -41,8 +40,8 @@ class PasswordResetServiceTest {
     @Test
     @TestTransaction
     void expiredTokenRejected() {
-        Instant now = Instant.parse("2026-06-12T12:00:00Z");
-        Long uid = newUserId();
+        var now = Instant.parse("2026-06-12T12:00:00Z");
+        var uid = newUserId();
         String raw = reset.issue(uid, now);
 
         Instant tooLate = now.plus(PasswordResetService.TTL).plus(Duration.ofSeconds(1));
@@ -52,7 +51,7 @@ class PasswordResetServiceTest {
     @Test
     @TestTransaction
     void unknownOrNullTokenRejected() {
-        Instant now = Instant.parse("2026-06-12T12:00:00Z");
+        var now = Instant.parse("2026-06-12T12:00:00Z");
         assertNull(reset.consume("not-a-real-token", now));
         assertNull(reset.consume(null, now));
     }

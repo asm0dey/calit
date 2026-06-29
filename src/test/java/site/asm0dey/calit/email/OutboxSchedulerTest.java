@@ -1,5 +1,10 @@
 package site.asm0dey.calit.email;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
@@ -7,11 +12,6 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
 
 @QuarkusTest
 class OutboxSchedulerTest {
@@ -28,28 +28,29 @@ class OutboxSchedulerTest {
 
     @BeforeEach
     void init() {
-        QuarkusTransaction.requiringNew().run(() ->
-                em.createNativeQuery("DELETE FROM email_outbox").executeUpdate());
+        QuarkusTransaction.requiringNew()
+                .run(() -> em.createNativeQuery("DELETE FROM email_outbox").executeUpdate());
     }
 
     @Test
     void dueRowIsSentAndMarked() {
         doNothing().when(mailSender).sendNow(anyString(), anyString(), anyString(), any());
-        Long id = QuarkusTransaction.requiringNew().call(() ->
-                EmailOutbox.enqueue("a@b.com", "S", "h", null, null, "prev"));
+        Long id = QuarkusTransaction.requiringNew()
+                .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, "prev"));
 
         scheduler.dispatchDueMail();
 
-        QuarkusTransaction.requiringNew().run(() ->
-                assertNotNull(((EmailOutbox) EmailOutbox.findById(id)).sentAt, "marked sent"));
+        QuarkusTransaction.requiringNew()
+                .run(() -> assertNotNull(((EmailOutbox) EmailOutbox.findById(id)).sentAt, "marked sent"));
     }
 
     @Test
     void failedRetryAppliesBackoffAndStaysUnsent() {
         doThrow(new RuntimeException("still down"))
-                .when(mailSender).sendNow(anyString(), anyString(), anyString(), any());
-        Long id = QuarkusTransaction.requiringNew().call(() ->
-                EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
+                .when(mailSender)
+                .sendNow(anyString(), anyString(), anyString(), any());
+        Long id = QuarkusTransaction.requiringNew()
+                .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
 
         scheduler.dispatchDueMail();
 
@@ -74,17 +75,17 @@ class OutboxSchedulerTest {
 
         scheduler.dispatchDueMail();
 
-        QuarkusTransaction.requiringNew().run(() ->
-                assertNull(((EmailOutbox) EmailOutbox.findById(id)).sentAt, "dead row never re-sent"));
+        QuarkusTransaction.requiringNew()
+                .run(() -> assertNull(((EmailOutbox) EmailOutbox.findById(id)).sentAt, "dead row never re-sent"));
     }
 
     @Test
     void deadlinedRowPastDeadlineIsMarkedDeadAndNotSent() {
         doNothing().when(mailSender).sendNow(anyString(), anyString(), anyString(), any());
         // Due now (next_attempt_at <= now) but its usefulness deadline already passed.
-        Long id = QuarkusTransaction.requiringNew().call(() ->
-                EmailOutbox.enqueue("a@b.com", "S", "h", null,
-                        java.time.Instant.now().minusSeconds(1), null));
+        Long id = QuarkusTransaction.requiringNew()
+                .call(() -> EmailOutbox.enqueue(
+                        "a@b.com", "S", "h", null, java.time.Instant.now().minusSeconds(1), null));
 
         scheduler.dispatchDueMail();
 

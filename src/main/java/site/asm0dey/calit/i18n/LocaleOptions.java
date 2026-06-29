@@ -34,10 +34,10 @@ public class LocaleOptions {
 
         List<LocaleOption> result = new ArrayList<>();
         for (Locale supported : AppLocales.supported()) {
-            String code = supported.getLanguage();
+            var code = supported.getLanguage();
             String label = AppLocales.labelFor(code);
-            boolean active = code.equals(current.getLanguage());
-            String href = "/lang/" + code + "?return=" + encodedReturn;
+            var active = code.equals(current.getLanguage());
+            var href = "/lang/" + code + "?return=" + encodedReturn;
             result.add(new LocaleOption(code, label, active, href));
         }
         return result;

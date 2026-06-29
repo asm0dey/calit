@@ -1,12 +1,12 @@
 package site.asm0dey.calit.web;
 
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
 
 /**
  * Task 9b: verifies that admin UI pages render in German when the owner's locale is set to "de",
@@ -19,20 +19,21 @@ class AdminI18nTest {
     /** Set the admin owner's locale to "de" before each test. */
     @BeforeEach
     void setGermanLocale() {
-        given()
-                .formParam("ownerName", "Admin")
+        given().formParam("ownerName", "Admin")
                 .formParam("ownerEmail", "admin@example.com")
                 .formParam("timezone", "UTC")
                 .formParam("locale", "de")
-                .when().post("/me/settings")
-                .then().statusCode(200);
+                .when()
+                .post("/me/settings")
+                .then()
+                .statusCode(200);
     }
 
     @Test
     void dashboardRendersInGerman() {
-        given()
-                .cookie("calit_lang", "en") // cookie must NOT override owner locale
-                .when().get("/me")
+        given().cookie("calit_lang", "en") // cookie must NOT override owner locale
+                .when()
+                .get("/me")
                 .then()
                 .statusCode(200)
                 .body(containsString("lang=\"de\""))
@@ -42,9 +43,9 @@ class AdminI18nTest {
 
     @Test
     void settingsPageRendersInGerman() {
-        given()
-                .cookie("calit_lang", "en")
-                .when().get("/me/settings")
+        given().cookie("calit_lang", "en")
+                .when()
+                .get("/me/settings")
                 .then()
                 .statusCode(200)
                 .body(containsString("lang=\"de\""))
@@ -54,9 +55,9 @@ class AdminI18nTest {
 
     @Test
     void availabilityPageRendersInGerman() {
-        given()
-                .cookie("calit_lang", "en")
-                .when().get("/me/availability")
+        given().cookie("calit_lang", "en")
+                .when()
+                .get("/me/availability")
                 .then()
                 .statusCode(200)
                 .body(containsString("lang=\"de\""))
@@ -65,9 +66,9 @@ class AdminI18nTest {
 
     @Test
     void meetingTypesPageRendersInGerman() {
-        given()
-                .cookie("calit_lang", "en")
-                .when().get("/me/meeting-types")
+        given().cookie("calit_lang", "en")
+                .when()
+                .get("/me/meeting-types")
                 .then()
                 .statusCode(200)
                 .body(containsString("lang=\"de\""))
@@ -76,9 +77,9 @@ class AdminI18nTest {
 
     @Test
     void pendingPageRendersInGerman() {
-        given()
-                .cookie("calit_lang", "en")
-                .when().get("/me/pending")
+        given().cookie("calit_lang", "en")
+                .when()
+                .get("/me/pending")
                 .then()
                 .statusCode(200)
                 .body(containsString("lang=\"de\""))
@@ -87,9 +88,9 @@ class AdminI18nTest {
 
     @Test
     void settingsPageTitleIsGerman() {
-        given()
-                .cookie("calit_lang", "en")
-                .when().get("/me/settings")
+        given().cookie("calit_lang", "en")
+                .when()
+                .get("/me/settings")
                 .then()
                 .statusCode(200)
                 .body(containsString("<title>Admin — Einstellungen</title>"));
@@ -97,9 +98,9 @@ class AdminI18nTest {
 
     @Test
     void dashboardPageTitleIsGerman() {
-        given()
-                .cookie("calit_lang", "en")
-                .when().get("/me")
+        given().cookie("calit_lang", "en")
+                .when()
+                .get("/me")
                 .then()
                 .statusCode(200)
                 .body(containsString("<title>Admin — Dashboard</title>"));
@@ -107,9 +108,9 @@ class AdminI18nTest {
 
     @Test
     void dateOverridesPageContainsBisConnector() {
-        given()
-                .cookie("calit_lang", "en")
-                .when().get("/me/date-overrides")
+        given().cookie("calit_lang", "en")
+                .when()
+                .get("/me/date-overrides")
                 .then()
                 .statusCode(200)
                 .body(containsString("lang=\"de\""))
@@ -120,9 +121,9 @@ class AdminI18nTest {
     void meetingTypesPageContainsCopiedLinkSpan() {
         // The server-rendered span with the translated "Link kopiert" text must be present
         // so that the JS toast reads its localized textContent rather than hardcoded English.
-        given()
-                .cookie("calit_lang", "en")
-                .when().get("/me/meeting-types")
+        given().cookie("calit_lang", "en")
+                .when()
+                .get("/me/meeting-types")
                 .then()
                 .statusCode(200)
                 .body(containsString("lang=\"de\""))

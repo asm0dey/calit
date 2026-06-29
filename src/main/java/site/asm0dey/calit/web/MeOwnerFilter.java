@@ -48,7 +48,7 @@ public class MeOwnerFilter implements ContainerRequestFilter {
 
         // Phase 4: force the first-login wizard until onboarding completes — for the /me UI only.
         // NOT /api/google (OAuth must not be redirected) and NOT the wizard page itself (no self-loop).
-        boolean onboarded = !user.mustChangePassword && user.settingsComplete;
+        var onboarded = !user.mustChangePassword && user.settingsComplete;
         if (isMeUiPath(path) && !isSetupPath(path) && !onboarded) {
             ctx.abortWith(Response.status(Response.Status.FOUND) // 302
                     .location(UriBuilder.fromUri("/me/setup").build())

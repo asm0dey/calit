@@ -1,11 +1,20 @@
 package site.asm0dey.calit.email;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -15,16 +24,6 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.when;
 
 /**
  * Verifies locale-aware email rendering:
@@ -111,7 +110,7 @@ class EmailLocaleTest {
             t.locationDetail = "+49 30 12345";
             t.persist();
 
-            Instant start = Instant.parse("2026-06-08T09:00:00Z"); // Monday
+            var start = Instant.parse("2026-06-08T09:00:00Z"); // Monday
             Booking b = new Booking();
             b.ownerId = 1L;
             b.meetingTypeId = t.id;
@@ -137,12 +136,14 @@ class EmailLocaleTest {
         String html = inviteeMail.getHtml();
 
         // German weekday for 2026-06-08 (Monday) = "Montag"
-        assertTrue(html.contains("Montag") || html.contains("um"),
+        assertTrue(
+                html.contains("Montag") || html.contains("um"),
                 "German date in invitee body must contain 'Montag' (Monday) or German 'um' connector; got: " + html);
 
         // Subject must be the German confirmation subject
         String subject = inviteeMail.getSubject();
-        assertTrue(subject.contains("bestätigt") || subject.toLowerCase().contains("buchung"),
+        assertTrue(
+                subject.contains("bestätigt") || subject.toLowerCase().contains("buchung"),
                 "German invitee subject must be in German; got: " + subject);
     }
 
@@ -174,7 +175,7 @@ class EmailLocaleTest {
             t.locationDetail = "+44 1234";
             t.persist();
 
-            Instant start = Instant.parse("2026-06-08T09:00:00Z"); // Monday
+            var start = Instant.parse("2026-06-08T09:00:00Z"); // Monday
             Booking b = new Booking();
             b.ownerId = 1L;
             b.meetingTypeId = t.id;
@@ -199,7 +200,8 @@ class EmailLocaleTest {
         Mail ownerMail = toOwner.getFirst();
         // English owner → English date pattern includes "at" not "um"
         String html = ownerMail.getHtml();
-        assertTrue(html.contains("Monday") || html.contains("at"),
+        assertTrue(
+                html.contains("Monday") || html.contains("at"),
                 "English owner email must use English date; got: " + html);
     }
 
@@ -231,7 +233,7 @@ class EmailLocaleTest {
             t.locationDetail = "+49 30 999";
             t.persist();
 
-            Instant start = Instant.parse("2026-06-08T10:00:00Z");
+            var start = Instant.parse("2026-06-08T10:00:00Z");
             Booking b = new Booking();
             b.ownerId = 1L;
             b.meetingTypeId = t.id;
@@ -255,10 +257,9 @@ class EmailLocaleTest {
         String html = toInvitee.getFirst().getHtml();
 
         // German body strings added by task 9d — both must be present (body-specific, not just subject)
-        assertTrue(html.contains("Hallo"),
-                "German confirmation body must contain greeting 'Hallo'; got: " + html);
-        assertTrue(html.contains("Minuten"),
-                "German confirmation body must contain 'Minuten' (duration); got: " + html);
+        assertTrue(html.contains("Hallo"), "German confirmation body must contain greeting 'Hallo'; got: " + html);
+        assertTrue(
+                html.contains("Minuten"), "German confirmation body must contain 'Minuten' (duration); got: " + html);
     }
 
     // ---- 5. English default locale email body contains English body strings ----
@@ -289,7 +290,7 @@ class EmailLocaleTest {
             t.locationDetail = "+44 999";
             t.persist();
 
-            Instant start = Instant.parse("2026-06-08T14:00:00Z");
+            var start = Instant.parse("2026-06-08T14:00:00Z");
             Booking b = new Booking();
             b.ownerId = 1L;
             b.meetingTypeId = t.id;
@@ -313,10 +314,9 @@ class EmailLocaleTest {
         String html = toInvitee.getFirst().getHtml();
 
         // English body strings from task 9d — both must be present (body-specific)
-        assertTrue(html.contains("Hi "),
-                "English confirmation body must contain greeting 'Hi '; got: " + html);
-        assertTrue(html.contains("minutes"),
-                "English confirmation body must contain 'minutes' (duration); got: " + html);
+        assertTrue(html.contains("Hi "), "English confirmation body must contain greeting 'Hi '; got: " + html);
+        assertTrue(
+                html.contains("minutes"), "English confirmation body must contain 'minutes' (duration); got: " + html);
     }
 
     // ---- 6. German email footer uses localized role word, not raw "invitee"/"owner" ----
@@ -347,7 +347,7 @@ class EmailLocaleTest {
             t.locationDetail = "+49 30 0000";
             t.persist();
 
-            Instant start = Instant.parse("2026-06-08T09:00:00Z");
+            var start = Instant.parse("2026-06-08T09:00:00Z");
             Booking b = new Booking();
             b.ownerId = 1L;
             b.meetingTypeId = t.id;
@@ -370,18 +370,24 @@ class EmailLocaleTest {
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee must receive confirmation email");
         String inviteeHtml = toInvitee.getFirst().getHtml();
-        assertTrue(inviteeHtml.contains("Empfänger"),
+        assertTrue(
+                inviteeHtml.contains("Empfänger"),
                 "German invitee footer must contain 'Empfänger'; got: " + inviteeHtml);
-        assertFalse(inviteeHtml.contains(">invitee<") || inviteeHtml.contains(" invitee ") || inviteeHtml.contains(" invitee."),
+        assertFalse(
+                inviteeHtml.contains(">invitee<")
+                        || inviteeHtml.contains(" invitee ")
+                        || inviteeHtml.contains(" invitee."),
                 "German invitee footer must NOT contain raw 'invitee'; got: " + inviteeHtml);
 
         // Owner email: footer must say "Veranstalter" (not raw "owner")
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
         assertEquals(1, toOwner.size(), "owner must receive confirmation email");
         String ownerHtml = toOwner.getFirst().getHtml();
-        assertTrue(ownerHtml.contains("Veranstalter"),
+        assertTrue(
+                ownerHtml.contains("Veranstalter"),
                 "German owner footer must contain 'Veranstalter'; got: " + ownerHtml);
-        assertFalse(ownerHtml.contains(">owner<") || ownerHtml.contains(" owner ") || ownerHtml.contains(" owner."),
+        assertFalse(
+                ownerHtml.contains(">owner<") || ownerHtml.contains(" owner ") || ownerHtml.contains(" owner."),
                 "German owner footer must NOT contain raw 'owner'; got: " + ownerHtml);
     }
 
@@ -413,7 +419,7 @@ class EmailLocaleTest {
             t.locationDetail = "+49 30 1111";
             t.persist();
 
-            Instant start = Instant.parse("2026-06-08T09:00:00Z");
+            var start = Instant.parse("2026-06-08T09:00:00Z");
             Booking b = new Booking();
             b.ownerId = 1L;
             b.meetingTypeId = t.id;
@@ -436,14 +442,16 @@ class EmailLocaleTest {
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee must receive confirmation email");
         String inviteeHtml = toInvitee.getFirst().getHtml();
-        assertTrue(inviteeHtml.contains("lang=\"de\""),
+        assertTrue(
+                inviteeHtml.contains("lang=\"de\""),
                 "German invitee email must have <html lang=\"de\">; got: " + inviteeHtml);
 
         // English owner email must have lang="en"
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
         assertEquals(1, toOwner.size(), "owner must receive confirmation email");
         String ownerHtml = toOwner.getFirst().getHtml();
-        assertTrue(ownerHtml.contains("lang=\"en\""),
+        assertTrue(
+                ownerHtml.contains("lang=\"en\""),
                 "English owner email must have <html lang=\"en\">; got: " + ownerHtml);
     }
 }

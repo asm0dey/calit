@@ -2,10 +2,9 @@ package site.asm0dey.calit.google;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import site.asm0dey.calit.crypto.EncryptedStringConverter;
-
 import java.time.Duration;
 import java.time.Instant;
+import site.asm0dey.calit.crypto.EncryptedStringConverter;
 
 @Entity
 @Table(name = "google_credential")

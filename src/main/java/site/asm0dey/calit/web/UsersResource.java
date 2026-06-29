@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import java.util.List;
 import org.jboss.resteasy.reactive.RestForm;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -18,16 +19,14 @@ import site.asm0dey.calit.user.CurrentOwner;
 import site.asm0dey.calit.user.PasswordHasher;
 import site.asm0dey.calit.user.Usernames;
 
-import java.util.List;
-
 @Path("/me/users")
 @RolesAllowed("admin")
 public class UsersResource {
 
     @CheckedTemplate
     public static class Templates {
-        public static native TemplateInstance users(List<AppUser> users, String error, boolean isAdmin,
-                                                    Long pendingCount, String title);
+        public static native TemplateInstance users(
+                List<AppUser> users, String error, boolean isAdmin, Long pendingCount, String title);
     }
 
     @Inject
@@ -58,7 +57,11 @@ public class UsersResource {
 
     /** All users, oldest first. Page is admin-only, so isAdmin is always true here. */
     private TemplateInstance render(String error) {
-        return Templates.users(AppUser.list("order by createdAt asc"), error, true, pendingCount(),
+        return Templates.users(
+                AppUser.list("order by createdAt asc"),
+                error,
+                true,
+                pendingCount(),
                 adminMsgs.forLocale(activeLocale.current()).adm_users_title());
     }
 
@@ -80,10 +83,10 @@ public class UsersResource {
             return render(e.getMessage());
         }
         AppUser u = AppUser.create(normalized, passwordHasher.hash(tempPassword), false);
-        u.mustChangePassword = true;   // must reset the temp password on first login
-        u.settingsComplete = false;    // and complete the settings wizard
+        u.mustChangePassword = true; // must reset the temp password on first login
+        u.settingsComplete = false; // and complete the settings wizard
         u.persist();
-        audit.event(identity.getPrincipal().getName(), "create-user", USER_TARGET +normalized, null);
+        audit.event(identity.getPrincipal().getName(), "create-user", USER_TARGET + normalized, null);
         return render(null);
     }
 
@@ -116,7 +119,7 @@ public class UsersResource {
     @Transactional
     public TemplateInstance grantAdmin(@PathParam("id") Long id) {
         requireUser(id).setAdmin(true);
-        audit.event(identity.getPrincipal().getName(), "grant-admin", USER_TARGET +id, null);
+        audit.event(identity.getPrincipal().getName(), "grant-admin", USER_TARGET + id, null);
         return render(null);
     }
 
@@ -131,7 +134,7 @@ public class UsersResource {
             return render("Cannot revoke admin from the last enabled admin.");
         }
         target.setAdmin(false);
-        audit.event(identity.getPrincipal().getName(), "revoke-admin", USER_TARGET +id, null);
+        audit.event(identity.getPrincipal().getName(), "revoke-admin", USER_TARGET + id, null);
         return render(null);
     }
 
@@ -149,7 +152,7 @@ public class UsersResource {
             return render("Cannot lock the last enabled admin.");
         }
         target.enabled = false;
-        audit.event(identity.getPrincipal().getName(), "lock", USER_TARGET +id, null);
+        audit.event(identity.getPrincipal().getName(), "lock", USER_TARGET + id, null);
         return render(null);
     }
 
@@ -159,7 +162,7 @@ public class UsersResource {
     @Transactional
     public TemplateInstance unlock(@PathParam("id") Long id) {
         requireUser(id).enabled = true;
-        audit.event(identity.getPrincipal().getName(), "unlock", USER_TARGET +id, null);
+        audit.event(identity.getPrincipal().getName(), "unlock", USER_TARGET + id, null);
         return render(null);
     }
 }

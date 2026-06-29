@@ -3,11 +3,17 @@
   "private": true,
   "scripts": {
     "css:build": "tailwindcss -i src/main/css/input.css -o src/main/resources/META-INF/resources/calit.css --minify",
-    "css:watch": "tailwindcss -i src/main/css/input.css -o src/main/resources/META-INF/resources/calit.css --watch"
+    "css:watch": "tailwindcss -i src/main/css/input.css -o src/main/resources/META-INF/resources/calit.css --watch",
+    "format": "bun run format:java && bun run format:fe",
+    "format:java": "./mvnw -q spotless:apply",
+    "format:fe": "prettier --write \"src/**/*.{js,ts,css}\"",
+    "prepare": "lefthook install"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.1.0",
     "tailwindcss": "^4.1.0",
-    "daisyui": "^5.0.0"
+    "daisyui": "^5.0.0",
+    "lefthook": "^2.1.9",
+    "prettier": "^3.9.1"
   }
 }

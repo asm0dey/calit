@@ -1,7 +1,6 @@
 package site.asm0dey.calit.i18n;
 
 import io.quarkus.arc.Arc;
-
 import java.util.List;
 import java.util.Locale;
 
@@ -57,8 +56,8 @@ public final class AppLocales {
      */
     public static String labelFor(String langCode) {
         if (langCode == null || langCode.isBlank()) return langCode;
-        Locale locale = Locale.forLanguageTag(langCode.trim());
-        String display = locale.getDisplayLanguage(locale);
+        var locale = Locale.forLanguageTag(langCode.trim());
+        var display = locale.getDisplayLanguage(locale);
         if (display.isBlank()) return langCode;
         // Capitalize first letter (some JDK locales already do; this is a no-op for those).
         return Character.toUpperCase(display.charAt(0)) + display.substring(1);
@@ -71,7 +70,7 @@ public final class AppLocales {
     /** Whether {@code tag} matches (by language) any locale in the given list. */
     public static boolean isSupported(String tag, List<Locale> supported) {
         if (tag == null || tag.isBlank()) return false;
-        Locale want = Locale.forLanguageTag(tag.trim());
+        var want = Locale.forLanguageTag(tag.trim());
         return supported.stream().anyMatch(l -> l.getLanguage().equals(want.getLanguage()));
     }
 
@@ -81,7 +80,7 @@ public final class AppLocales {
      */
     public static Locale pick(String tag, List<Locale> supported) {
         if (tag == null || tag.isBlank()) return DEFAULT;
-        Locale want = Locale.forLanguageTag(tag.trim());
+        var want = Locale.forLanguageTag(tag.trim());
         return supported.stream()
                 .filter(l -> l.getLanguage().equals(want.getLanguage()))
                 .findFirst()
@@ -96,7 +95,7 @@ public final class AppLocales {
         if (header == null || header.isBlank()) return DEFAULT;
         try {
             List<Locale.LanguageRange> ranges = Locale.LanguageRange.parse(header);
-            Locale best = Locale.lookup(ranges, supported);
+            var best = Locale.lookup(ranges, supported);
             return best != null ? best : DEFAULT;
         } catch (IllegalArgumentException _) {
             return DEFAULT;

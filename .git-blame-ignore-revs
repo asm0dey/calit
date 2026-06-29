@@ -1,0 +1,6 @@
+# Commits to skip in `git blame` (bulk formatting/refactor, no logic change).
+# Enable locally:  git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub honors this file automatically.
+#
+# After committing the Spotless+CleanThat bulk reformat, append its full SHA below:
+c678697f4808f892648ca3b0c7a2198176c0ce46

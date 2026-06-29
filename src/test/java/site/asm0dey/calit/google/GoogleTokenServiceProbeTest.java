@@ -1,14 +1,13 @@
 package site.asm0dey.calit.google;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
 import java.time.Instant;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class GoogleTokenServiceProbeTest {
@@ -20,7 +19,11 @@ class GoogleTokenServiceProbeTest {
     static class StubTokenService extends GoogleTokenService {
         GoogleTokenService.TokenResponse next;
         RuntimeException toThrow;
-        StubTokenService(GoogleOAuthConfig c) { super(c); }
+
+        StubTokenService(GoogleOAuthConfig c) {
+            super(c);
+        }
+
         @Override
         protected TokenResponse requestToken(String grantType, String codeOrRefresh, Instant now) {
             if (toThrow != null) throw toThrow;
@@ -45,27 +48,26 @@ class GoogleTokenServiceProbeTest {
     @Test
     @TestTransaction
     void successClearsFlagAndNotifiedAtEvenWhenTokenNotExpired() {
-        Long id = seedFlagged("probe-ok", true, Instant.parse("2026-06-15T09:00:00Z"));
-        Instant now = Instant.parse("2026-06-15T10:00:00Z");
-        StubTokenService svc = new StubTokenService(config);
-        svc.next = new GoogleTokenService.TokenResponse(
-                "fresh", null, now.plusSeconds(3600), null, null);
+        var id = seedFlagged("probe-ok", true, Instant.parse("2026-06-15T09:00:00Z"));
+        var now = Instant.parse("2026-06-15T10:00:00Z");
+        var svc = new StubTokenService(config);
+        svc.next = new GoogleTokenService.TokenResponse("fresh", null, now.plusSeconds(3600), null, null);
 
         GoogleTokenService.ProbeResult r = svc.probe(id, now);
 
         assertEquals(GoogleTokenService.ProbeResult.OK, r);
         GoogleCredential c = GoogleCredential.findById(id);
-        assertEquals("fresh", c.accessToken);          // forced refresh ran despite non-expiry
+        assertEquals("fresh", c.accessToken); // forced refresh ran despite non-expiry
         assertFalse(c.needsReconnect);
-        assertNull(c.reconnectNotifiedAt);             // recovery resets the notify gate
+        assertNull(c.reconnectNotifiedAt); // recovery resets the notify gate
     }
 
     @Test
     @TestTransaction
     void invalidGrantFlagsNeedsReconnectAndPreservesNotifiedAt() {
-        Long id = seedFlagged("probe-dead", false, null);
-        Instant now = Instant.parse("2026-06-15T10:00:00Z");
-        StubTokenService svc = new StubTokenService(config);
+        var id = seedFlagged("probe-dead", false, null);
+        var now = Instant.parse("2026-06-15T10:00:00Z");
+        var svc = new StubTokenService(config);
         svc.toThrow = new GoogleInvalidGrantException("invalid_grant", null);
 
         GoogleTokenService.ProbeResult r = svc.probe(id, now);
@@ -73,29 +75,28 @@ class GoogleTokenServiceProbeTest {
         assertEquals(GoogleTokenService.ProbeResult.INVALID_GRANT, r);
         GoogleCredential c = GoogleCredential.findById(id);
         assertTrue(c.needsReconnect);
-        assertNull(c.reconnectNotifiedAt);             // still unset -> notifier will email
+        assertNull(c.reconnectNotifiedAt); // still unset -> notifier will email
     }
 
     @Test
     @TestTransaction
     void transientErrorChangesNothing() {
-        Long id = seedFlagged("probe-blip", false, null);
-        Instant now = Instant.parse("2026-06-15T10:00:00Z");
-        StubTokenService svc = new StubTokenService(config);
-        svc.toThrow = new IllegalStateException("Google token request I/O error",
-                new IOException("timeout"));
+        var id = seedFlagged("probe-blip", false, null);
+        var now = Instant.parse("2026-06-15T10:00:00Z");
+        var svc = new StubTokenService(config);
+        svc.toThrow = new IllegalStateException("Google token request I/O error", new IOException("timeout"));
 
         GoogleTokenService.ProbeResult r = svc.probe(id, now);
 
         assertEquals(GoogleTokenService.ProbeResult.TRANSIENT, r);
         GoogleCredential c = GoogleCredential.findById(id);
-        assertFalse(c.needsReconnect);                 // a blip must NOT flag (no false alarm)
+        assertFalse(c.needsReconnect); // a blip must NOT flag (no false alarm)
     }
 
     @Test
     @TestTransaction
     void missingCredentialReturnsNull() {
-        StubTokenService svc = new StubTokenService(config);
+        var svc = new StubTokenService(config);
         assertNull(svc.probe(999_999L, Instant.parse("2026-06-15T10:00:00Z")));
     }
 }

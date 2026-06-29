@@ -7,6 +7,8 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.net.URI;
+import java.time.Instant;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailService;
@@ -14,9 +16,6 @@ import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AppLocales;
 import site.asm0dey.calit.i18n.AppMessageResolver;
 import site.asm0dey.calit.i18n.AppMessages;
-
-import java.net.URI;
-import java.time.Instant;
 
 /**
  * Forgot-password flow (unauthenticated). Request a reset by username → a single-use link is
@@ -47,6 +46,7 @@ public class PasswordResetResource {
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance forgot(String title, boolean sent);
+
         public static native TemplateInstance reset(String title, String token, boolean error);
     }
 
@@ -67,10 +67,12 @@ public class PasswordResetResource {
         if (user != null) {
             OwnerSettings os = OwnerSettings.forOwner(user.id);
             if (os != null && os.ownerEmail != null && !os.ownerEmail.isBlank()) {
-                Instant now = Instant.now();
+                var now = Instant.now();
                 String token = resetService.issue(user.id, now);
-                emailService.sendPasswordReset(os.ownerEmail,
-                        baseUrl + "/reset-password?token=" + token, now.plus(PasswordResetService.TTL),
+                emailService.sendPasswordReset(
+                        os.ownerEmail,
+                        baseUrl + "/reset-password?token=" + token,
+                        now.plus(PasswordResetService.TTL),
                         AppLocales.pick(os.locale));
             }
         }
@@ -104,7 +106,9 @@ public class PasswordResetResource {
         }
         user.passwordHash = passwordHasher.hash(password);
         user.mustChangePassword = false; // managed entity in this tx — flushed on commit
-        return Response.status(Response.Status.FOUND).location(URI.create("/login")).build();
+        return Response.status(Response.Status.FOUND)
+                .location(URI.create("/login"))
+                .build();
     }
 
     private static Response html(Response.Status status, TemplateInstance body) {

@@ -19,12 +19,10 @@ public final class IcsBuilder {
     private static final DateTimeFormatter ICS_UTC =
             DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC);
 
-    private IcsBuilder() {
-    }
+    private IcsBuilder() {}
 
     /** A named calendar participant: display name (CN) + email (mailto). */
-    public record Party(String name, String email) {
-    }
+    public record Party(String name, String email) {}
 
     /**
      * Renders a single booking as an RFC 5545 VCALENDAR/VEVENT string. All event properties are
@@ -33,8 +31,8 @@ public final class IcsBuilder {
      * @param e the event descriptor; method defaults to "REQUEST", sequence to 0, attendeeRsvp to true
      */
     public static String build(IcsEvent e) {
-        boolean cancel = e.method() == IcsMethod.CANCEL;
-        StringBuilder sb = new StringBuilder();
+        var cancel = e.method() == IcsMethod.CANCEL;
+        var sb = new StringBuilder();
         sb.append("BEGIN:VCALENDAR\r\n");
         sb.append("VERSION:2.0\r\n");
         sb.append("PRODID:-//calit//EN\r\n");
@@ -50,12 +48,18 @@ public final class IcsBuilder {
         if (e.location() != null && !e.location().isBlank()) {
             sb.append("LOCATION:").append(escape(e.location())).append("\r\n");
         }
-        sb.append("ORGANIZER;CN=").append(cn(e.organizer().name()))
-                .append(":mailto:").append(escape(e.organizer().email())).append("\r\n");
+        sb.append("ORGANIZER;CN=")
+                .append(cn(e.organizer().name()))
+                .append(":mailto:")
+                .append(escape(e.organizer().email()))
+                .append("\r\n");
         sb.append("ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=")
                 .append(e.attendeeRsvp() ? "TRUE" : "FALSE")
-                .append(";CN=").append(cn(e.attendee().name()))
-                .append(":mailto:").append(escape(e.attendee().email())).append("\r\n");
+                .append(";CN=")
+                .append(cn(e.attendee().name()))
+                .append(":mailto:")
+                .append(escape(e.attendee().email()))
+                .append("\r\n");
         sb.append("END:VEVENT\r\n");
         sb.append("END:VCALENDAR\r\n");
         return sb.toString();
@@ -75,7 +79,7 @@ public final class IcsBuilder {
      * without escaping; we only need to strip CR/LF and replace any inner double-quote.
      */
     private static String cn(String v) {
-        String safe = (v == null ? "" : v).replace("\r", "").replace("\n", " ").replace("\"", "'");
+        var safe = (v == null ? "" : v).replace("\r", "").replace("\n", " ").replace("\"", "'");
         return "\"" + safe + "\"";
     }
 }

@@ -33,7 +33,8 @@ public class DatabaseResetCallback implements QuarkusTestBeforeEachCallback {
 
     @Override
     public void beforeEach(QuarkusTestMethodContext context) {
-        if (Arc.container() == null || !Arc.container().instance(EntityManager.class).isAvailable()) {
+        if (Arc.container() == null
+                || !Arc.container().instance(EntityManager.class).isAvailable()) {
             return; // not a Quarkus/ORM test context — nothing to reset
         }
         QuarkusTransaction.requiringNew().run(() -> {

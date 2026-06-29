@@ -1,19 +1,18 @@
 package site.asm0dey.calit.scheduler;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 class ReminderCreationTest {
@@ -44,8 +43,7 @@ class ReminderCreationTest {
 
         scheduler.scheduleReminder(id);
 
-        long count = QuarkusTransaction.requiringNew()
-                .call(() -> Reminder.count("bookingId", id));
+        long count = QuarkusTransaction.requiringNew().call(() -> Reminder.count("bookingId", id));
         assertEquals(0, count);
     }
 
@@ -56,8 +54,8 @@ class ReminderCreationTest {
         scheduler.scheduleReminder(id);
         scheduler.scheduleReminder(id); // re-confirm: must NOT create a second unsent row
 
-        long count = QuarkusTransaction.requiringNew()
-                .call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
+        long count =
+                QuarkusTransaction.requiringNew().call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
         assertEquals(1, count);
     }
 
@@ -68,8 +66,8 @@ class ReminderCreationTest {
 
         scheduler.onCancelledOrDeclined(id);
 
-        long count = QuarkusTransaction.requiringNew()
-                .call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
+        long count =
+                QuarkusTransaction.requiringNew().call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
         assertEquals(0, count);
     }
 
@@ -97,7 +95,7 @@ class ReminderCreationTest {
     }
 
     private Long seedBooking(Instant startUtc, BookingStatus status) {
-        Long[] out = new Long[2];
+        var out = new Long[2];
         Long id = QuarkusTransaction.requiringNew().call(() -> {
             MeetingType t = new MeetingType();
             t.ownerId = 1L;

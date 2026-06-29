@@ -1,9 +1,19 @@
 package site.asm0dey.calit.booking;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.domain.AvailabilityRule;
@@ -12,17 +22,6 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.google.CreatedEvent;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 @QuarkusTest
 class RescheduleCancelTest {
@@ -34,7 +33,8 @@ class RescheduleCancelTest {
     CalendarPort calendarPort;
 
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
-    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    private static final LocalDate DAY =
+            Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
     private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant(); // 09:00 local
     private static final Instant SLOT_10 = DAY.atTime(10, 0).atZone(ZONE).toInstant(); // 10:00 local
 
@@ -48,7 +48,8 @@ class RescheduleCancelTest {
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-r", "https://meet.google.com/r-r-r", "h"));
 
-        Booking b = bookingService.book(1L, "resched", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        Booking b = bookingService.book(
+                1L, "resched", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
 
         // Reschedule is keyed by the invitee's manage-token, not the numeric id.
         bookingService.reschedule(b.manageToken, SLOT_10);
@@ -78,7 +79,8 @@ class RescheduleCancelTest {
         // Book PENDING, then approve so it has a CONFIRMED Google event to delete on reschedule.
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-ra", "https://meet.google.com/ra-1-2", "h"));
-        Booking b = bookingService.book(1L, "resched-approval", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        Booking b = bookingService.book(
+                1L, "resched-approval", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
         bookingService.approve(b.id);
 
         bookingService.reschedule(b.manageToken, SLOT_10);
@@ -102,7 +104,8 @@ class RescheduleCancelTest {
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-c", "https://meet.google.com/c-c-c", "h"));
 
-        Booking b = bookingService.book(1L, "cancel", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        Booking b = bookingService.book(
+                1L, "cancel", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
         assertTrue(bookingService.availableSlots(t, DAY, DAY).stream()
                 .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
 

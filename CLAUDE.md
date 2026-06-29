@@ -36,6 +36,20 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 - Mailer mocked in `%dev`/`%test`; Google + Turnstile disabled by default. Full booking flow runs zero external accounts.
 - RestAssured can't execute JS — tests assert on stable marker comments (e.g. `CALIT_TZ_REFORMAT`) instead of running scripts.
 
+## Formatting
+
+- **Java**: **Spotless + palantir-java-format** (PALANTIR) + curated **CleanThat** mutators (diamond operator, `var`, method refs, redundant-code cleanup). Config in `pom.xml` (`spotless-maven-plugin`).
+- **JS/CSS**: **Prettier** (`.prettierignore` skips the generated `calit.css`). Qute `.html` templates are deliberately **not** formatted — Prettier mangles `{#if}`/`{msg:}` tags.
+
+```bash
+bun run format       # format everything (format:java = mvn spotless:apply, format:fe = prettier)
+mvn spotless:check   # verify Java (bound to `verify` phase → CI gate)
+```
+
+- **Pre-commit auto-format** (`lefthook.yml`, re-staged via `stage_fixed`): staged `*.java` → `./mvnw spotless:apply -DspotlessFiles=…` (Maven directly); staged `*.{js,ts,css}` → `bunx prettier --write`. Hooks are wired automatically by `bun install` (package.json `prepare` → `lefthook install`); run `bun install` once after cloning.
+- Pin palantir **≥ 2.71.0** (we use 2.94.0): older versions hit `NoSuchMethodError: …DeferredDiagnosticHandler.getDiagnostics()` and crash under **JDK 25/26** (in-process javac internals; the build JDK is Liberica 26). 2.71.0+ also parses Java 25 unnamed variables (`_`) fine.
+- `verify` (hence CI) fails on unformatted code. `mvn test` is unaffected (test phase < verify).
+
 ## Architecture
 
 Packages under `src/main/java/site/asm0dey/calit/`:

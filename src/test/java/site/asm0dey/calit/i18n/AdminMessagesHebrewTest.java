@@ -1,12 +1,11 @@
 package site.asm0dey.calit.i18n;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-
 import java.util.Locale;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class AdminMessagesHebrewTest {

@@ -1,19 +1,18 @@
 package site.asm0dey.calit.scheduler;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 @QuarkusTest
 class ReminderTickTest {
@@ -25,18 +24,20 @@ class ReminderTickTest {
     void dispatchMarksOnlyDueUnsentReminders() {
         // reminder.booking_id REFERENCES booking(id): seed a real booking to attach reminders to
         // (Plan 6 deviation -- the plan used bookingId=1L which has no booking row -> FK violation).
-        Long bookingId = seedBooking();
-        Long dueId    = persistReminder(bookingId, Instant.now().minus(1, ChronoUnit.MINUTES), null);  // due, unsent
-        Long futureId = persistReminder(bookingId, Instant.now().plus(1, ChronoUnit.HOURS), null);     // not due yet
-        Long sentId   = persistReminder(bookingId, Instant.now().minus(1, ChronoUnit.HOURS),
-                                        Instant.now().minus(30, ChronoUnit.MINUTES));                   // already sent
+        var bookingId = seedBooking();
+        var dueId = persistReminder(bookingId, Instant.now().minus(1, ChronoUnit.MINUTES), null); // due, unsent
+        var futureId = persistReminder(bookingId, Instant.now().plus(1, ChronoUnit.HOURS), null); // not due yet
+        var sentId = persistReminder(
+                bookingId,
+                Instant.now().minus(1, ChronoUnit.HOURS),
+                Instant.now().minus(30, ChronoUnit.MINUTES)); // already sent
 
         scheduler.dispatchDueReminders();
 
         // Only the due+unsent reminder is now marked sent.
-        assertNotNull(reloadSentAt(dueId),    "due reminder must be marked sent");
-        assertNull(reloadSentAt(futureId),    "not-yet-due reminder must stay unsent");
-        assertNotNull(reloadSentAt(sentId),   "already-sent reminder is untouched (still sent)");
+        assertNotNull(reloadSentAt(dueId), "due reminder must be marked sent");
+        assertNull(reloadSentAt(futureId), "not-yet-due reminder must stay unsent");
+        assertNotNull(reloadSentAt(sentId), "already-sent reminder is untouched (still sent)");
     }
 
     private Long seedBooking() {
@@ -52,7 +53,7 @@ class ReminderTickTest {
             b.meetingTypeId = t.id;
             b.inviteeName = "Sam";
             b.inviteeEmail = "sam@example.com";
-            Instant start = Instant.now().plus(200, ChronoUnit.HOURS);
+            var start = Instant.now().plus(200, ChronoUnit.HOURS);
             b.startUtc = start;
             b.endUtc = start.plusSeconds(1800);
             b.status = BookingStatus.CONFIRMED;
@@ -76,7 +77,6 @@ class ReminderTickTest {
     }
 
     private Instant reloadSentAt(Long id) {
-        return QuarkusTransaction.requiringNew()
-                .call(() -> ((Reminder) Reminder.findById(id)).sentAt);
+        return QuarkusTransaction.requiringNew().call(() -> ((Reminder) Reminder.findById(id)).sentAt);
     }
 }

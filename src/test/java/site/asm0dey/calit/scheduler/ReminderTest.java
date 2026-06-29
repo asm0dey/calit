@@ -1,18 +1,17 @@
 package site.asm0dey.calit.scheduler;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 @QuarkusTest
 class ReminderTest {
@@ -21,8 +20,8 @@ class ReminderTest {
     @TestTransaction
     void persistsAndReadsBackAllFields() {
         // reminder.booking_id REFERENCES booking(id), so seed a real booking first (Plan 6 deviation).
-        Long bookingId = seedBookingAt(uniqueFutureStart());
-        Instant sendAt = Instant.parse("2026-06-07T07:00:00Z");
+        var bookingId = seedBookingAt(uniqueFutureStart());
+        var sendAt = Instant.parse("2026-06-07T07:00:00Z");
         Reminder r = new Reminder();
         r.bookingId = bookingId;
         r.sendAt = sendAt;
@@ -43,12 +42,12 @@ class ReminderTest {
         // reminder.booking_id REFERENCES booking(id), so seed real bookings (Plan 6 deviation).
         // Distinct unique far-future slots so the booking_no_overlap_held exclusion guard doesn't
         // trip -- including against bookings other test classes leave committed.
-        Long a = seedBookingAt(uniqueFutureStart());
-        Long b = seedBookingAt(uniqueFutureStart());
-        Instant base = Instant.parse("2026-06-07T07:00:00Z");
-        persist(a, base, null);                 // unsent for a -> deleted
+        var a = seedBookingAt(uniqueFutureStart());
+        var b = seedBookingAt(uniqueFutureStart());
+        var base = Instant.parse("2026-06-07T07:00:00Z");
+        persist(a, base, null); // unsent for a -> deleted
         persist(a, base, base.minusSeconds(1)); // already sent for a -> kept
-        persist(b, base, null);                 // unsent for a different booking -> kept
+        persist(b, base, null); // unsent for a different booking -> kept
 
         Reminder.deleteUnsentFor(a);
 
@@ -59,8 +58,7 @@ class ReminderTest {
 
     // A unique far-future start instant (seconds-aligned), so seeded HELD bookings never collide
     // on booking_no_overlap_held with each other or with rows other test classes leave committed.
-    private static final java.util.concurrent.atomic.AtomicLong SLOT =
-            new java.util.concurrent.atomic.AtomicLong(0);
+    private static final java.util.concurrent.atomic.AtomicLong SLOT = new java.util.concurrent.atomic.AtomicLong(0);
 
     private Instant uniqueFutureStart() {
         // Years into the future, stepped by an hour per call -> guaranteed non-overlapping.

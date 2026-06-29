@@ -1,22 +1,21 @@
 package site.asm0dey.calit.scheduler;
 
-import io.quarkus.narayana.jta.QuarkusTransaction;
-import io.quarkus.test.InjectMock;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import site.asm0dey.calit.email.EmailService;
-import site.asm0dey.calit.google.GoogleCredential;
-import site.asm0dey.calit.google.GoogleTokenService;
-
-import java.time.Instant;
-
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import java.time.Instant;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import site.asm0dey.calit.email.EmailService;
+import site.asm0dey.calit.google.GoogleCredential;
+import site.asm0dey.calit.google.GoogleTokenService;
 
 @QuarkusTest
 class GoogleConnectionTickTest {
@@ -34,13 +33,22 @@ class GoogleConnectionTickTest {
         return QuarkusTransaction.requiringNew().call(() -> {
             // OwnerSettings row supplies the recipient email for owner 1.
             site.asm0dey.calit.domain.OwnerSettings s = site.asm0dey.calit.domain.OwnerSettings.forOwner(1L);
-            if (s == null) { s = new site.asm0dey.calit.domain.OwnerSettings(); s.ownerId = 1L; }
-            s.ownerName = "Owner"; s.ownerEmail = "owner@example.com"; s.timezone = "UTC";
+            if (s == null) {
+                s = new site.asm0dey.calit.domain.OwnerSettings();
+                s.ownerId = 1L;
+            }
+            s.ownerName = "Owner";
+            s.ownerEmail = "owner@example.com";
+            s.timezone = "UTC";
             s.persist();
             GoogleCredential c = new GoogleCredential();
-            c.ownerId = 1L; c.refreshToken = "rt"; c.googleSub = sub;
-            c.needsReconnect = needsReconnect; c.reconnectNotifiedAt = notifiedAt;
-            c.lastProbedAt = lastProbed; c.accountEmail = "acct@gmail.com";
+            c.ownerId = 1L;
+            c.refreshToken = "rt";
+            c.googleSub = sub;
+            c.needsReconnect = needsReconnect;
+            c.reconnectNotifiedAt = notifiedAt;
+            c.lastProbedAt = lastProbed;
+            c.accountEmail = "acct@gmail.com";
             c.persist();
             return c.id;
         });
@@ -48,9 +56,8 @@ class GoogleConnectionTickTest {
 
     @Test
     void probeClaimsNeverProbedCredentialAndStampsLastProbedAt() {
-        Long id = seedCred("tick-probe", false, null, null);
-        Mockito.when(tokenService.probe(anyLong(), any()))
-                .thenReturn(GoogleTokenService.ProbeResult.OK);
+        var id = seedCred("tick-probe", false, null, null);
+        Mockito.when(tokenService.probe(anyLong(), any())).thenReturn(GoogleTokenService.ProbeResult.OK);
 
         scheduler.probeDueCredentials();
 
@@ -61,12 +68,11 @@ class GoogleConnectionTickTest {
 
     @Test
     void notifyEmailsOwnerOnceAndStampsNotifiedAt() {
-        Long id = seedCred("tick-notify", true, null, Instant.now());
+        var id = seedCred("tick-notify", true, null, Instant.now());
 
         scheduler.notifyPendingDisconnects();
 
-        verify(emailService, times(1))
-                .sendGoogleDisconnected(Mockito.eq("owner@example.com"), any(), any());
+        verify(emailService, times(1)).sendGoogleDisconnected(Mockito.eq("owner@example.com"), any(), any());
         GoogleCredential c = QuarkusTransaction.requiringNew().call(() -> GoogleCredential.findById(id));
         assertNotNull(c.reconnectNotifiedAt, "notify must stamp reconnect_notified_at");
 

@@ -7,8 +7,6 @@ import com.google.api.services.calendar.model.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import site.asm0dey.calit.domain.OwnerSettings;
-
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
@@ -16,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import site.asm0dey.calit.domain.OwnerSettings;
 
 /**
  * Real CalendarPort backed by the Google Calendar API. @ApplicationScoped so downstream
@@ -66,7 +65,8 @@ public class GoogleCalendarPort implements CalendarPort {
                             .map(c -> new FreeBusyRequestItem().setId(c.googleCalendarId))
                             .toList());
             try {
-                FreeBusyResponse response = client(cred).freebusy().query(request).execute();
+                FreeBusyResponse response =
+                        client(cred).freebusy().query(request).execute();
                 Map<String, FreeBusyCalendar> calendars = response.getCalendars();
                 if (calendars != null) {
                     for (FreeBusyCalendar cal : calendars.values()) {
@@ -87,8 +87,7 @@ public class GoogleCalendarPort implements CalendarPort {
                 // email is sent, so a blip won't false-alarm. Either way we refuse a misleading list.
                 org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class)
                         .warnf(ex, "freeBusy failed for credential %d; failing closed", cred.id);
-                throw new CalendarUnavailableException(
-                        "Could not read Google free/busy for credential " + cred.id, ex);
+                throw new CalendarUnavailableException("Could not read Google free/busy for credential " + cred.id, ex);
             }
         }
         return BusyIntervals.merge(raw);
@@ -96,18 +95,52 @@ public class GoogleCalendarPort implements CalendarPort {
 
     @Override
     @Transactional
-    public CreatedEvent createEvent(Long ownerId, String summary, String description,
-                                    Instant start, Instant end,
-                                    List<String> attendeeEmails,
-                                    boolean createMeetLink, String locationText) {
+    public CreatedEvent createEvent(
+            Long ownerId,
+            String summary,
+            String description,
+            Instant start,
+            Instant end,
+            List<String> attendeeEmails,
+            boolean createMeetLink,
+            String locationText) {
         var ctx = writeContext(ownerId);
         GoogleCalendar target = ctx.target();
         GoogleCredential cred = ctx.cred();
+        Event event = buildEvent(
+                summary,
+                description,
+                eventTime(ownerId, start),
+                eventTime(ownerId, end),
+                attendeeEmails,
+                createMeetLink,
+                locationText);
+
+        try {
+            Event created = insert(cred, target, event, createMeetLink);
+            String meetLink = createMeetLink ? extractMeetLink(created) : null;
+            return new CreatedEvent(created.getId(), meetLink, created.getHtmlLink());
+        } catch (GoogleJsonResponseException e) {
+            return handleCreateFailure(e, cred, target, event, createMeetLink);
+        } catch (IOException e) {
+            throw new UncheckedIOException("createEvent failed", e);
+        }
+    }
+
+    /** Assemble the Google {@link Event}: summary/description/time, optional attendees, and either a Meet conference or a location. */
+    private Event buildEvent(
+            String summary,
+            String description,
+            EventDateTime startTime,
+            EventDateTime endTime,
+            List<String> attendeeEmails,
+            boolean createMeetLink,
+            String locationText) {
         Event event = new Event()
                 .setSummary(summary)
                 .setDescription(description)
-                .setStart(eventTime(ownerId, start))
-                .setEnd(eventTime(ownerId, end));
+                .setStart(startTime)
+                .setEnd(endTime);
 
         if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
             event.setAttendees(attendeeEmails.stream()
@@ -117,58 +150,77 @@ public class GoogleCalendarPort implements CalendarPort {
 
         if (createMeetLink) {
             // GOOGLE_MEET type: request a fresh Google Meet conference for this event only.
-            event.setConferenceData(new ConferenceData().setCreateRequest(
-                    new CreateConferenceRequest()
+            event.setConferenceData(new ConferenceData()
+                    .setCreateRequest(new CreateConferenceRequest()
                             .setRequestId(UUID.randomUUID().toString())
-                            .setConferenceSolutionKey(
-                                    new ConferenceSolutionKey().setType("hangoutsMeet"))));
+                            .setConferenceSolutionKey(new ConferenceSolutionKey().setType("hangoutsMeet"))));
         } else if (locationText != null) {
             // PHONE/IN_PERSON/CUSTOM type: no conference; carry the per-type location text instead.
             event.setLocation(locationText);
         }
+        return event;
+    }
 
-        try {
-            Event created = insert(cred, target, event, createMeetLink);
-            String meetLink = createMeetLink ? extractMeetLink(created) : null;
-            return new CreatedEvent(created.getId(), meetLink, created.getHtmlLink());
-        } catch (GoogleJsonResponseException e) {
-            if (createMeetLink && isInvalidConferenceType(e)) {
-                // This calendar can't mint Meet links (Workspace with Meet API disabled, or a
-                // calendar this account doesn't own). Don't fail the booking: drop the conference,
-                // retry the insert, and remember the capability so the UI stops offering GOOGLE_MEET
-                // for this write target (config-time gate). The booking gets a plain event, no link.
-                org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class).warnf(
+    /** Map a failed insert to a recovery (Meet-incapable calendar) or the right exception (deleted target / generic). */
+    private CreatedEvent handleCreateFailure(
+            GoogleJsonResponseException e,
+            GoogleCredential cred,
+            GoogleCalendar target,
+            Event event,
+            boolean createMeetLink) {
+        if (createMeetLink && isInvalidConferenceType(e)) {
+            return retryWithoutConference(cred, target, event);
+        }
+        if (e.getStatusCode() == 404) {
+            // The write-target calendar was deleted on Google since the owner selected it.
+            clearDeletedWriteTarget(target, cred);
+            throw new IllegalStateException(
+                    "Write-target calendar no longer exists on Google; re-select a write target.", e);
+        }
+        throw new UncheckedIOException("createEvent failed", e);
+    }
+
+    /**
+     * This calendar can't mint Meet links (Workspace with Meet API disabled, or a calendar this account
+     * doesn't own). Don't fail the booking: drop the conference, retry the insert, and remember the
+     * capability so the UI stops offering GOOGLE_MEET for this write target. The booking gets a plain
+     * event, no link.
+     */
+    private CreatedEvent retryWithoutConference(GoogleCredential cred, GoogleCalendar target, Event event) {
+        org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class)
+                .warnf(
                         "Write-target calendar %s rejected a Meet conference; creating event without one",
                         target.googleCalendarId);
-                target.supportsMeet = false; // managed entity; flushes with the booking transaction
-                event.setConferenceData(null);
-                try {
-                    Event created = insert(cred, target, event, false);
-                    return new CreatedEvent(created.getId(), null, created.getHtmlLink());
-                } catch (IOException ex) {
-                    throw new UncheckedIOException("createEvent failed", ex);
-                }
-            }
-            if (e.getStatusCode() == 404) {
-                // The write-target calendar was deleted on Google since the owner selected it.
-                // Clear the selection + flag the account so the UI prompts a re-select/reconnect.
-                // This @Transactional method rethrows below, which would roll back plain persists,
-                // so commit the two flags in a separate transaction (same pattern as
-                // GoogleTokenService.validAccessToken's fail-soft flag commit).
-                Long targetId = target.id, credId = cred.id;
-                io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
-                    GoogleCalendar t = GoogleCalendar.findById(targetId);
-                    if (t != null) { t.writeTarget = false; t.persist(); }
-                    GoogleCredential c2 = GoogleCredential.findById(credId);
-                    if (c2 != null) { c2.needsReconnect = true; c2.persist(); }
-                });
-                throw new IllegalStateException(
-                        "Write-target calendar no longer exists on Google; re-select a write target.", e);
-            }
-            throw new UncheckedIOException("createEvent failed", e);
-        } catch (IOException e) {
-            throw new UncheckedIOException("createEvent failed", e);
+        target.supportsMeet = false; // managed entity; flushes with the booking transaction
+        event.setConferenceData(null);
+        try {
+            Event created = insert(cred, target, event, false);
+            return new CreatedEvent(created.getId(), null, created.getHtmlLink());
+        } catch (IOException ex) {
+            throw new UncheckedIOException("createEvent failed", ex);
         }
+    }
+
+    /**
+     * Clear the write-target selection + flag the account so the UI prompts a re-select/reconnect.
+     * createEvent is {@code @Transactional} and rethrows, which would roll back plain persists, so commit
+     * the two flags in a separate transaction (same pattern as GoogleTokenService.validAccessToken's
+     * fail-soft flag commit).
+     */
+    private void clearDeletedWriteTarget(GoogleCalendar target, GoogleCredential cred) {
+        Long targetId = target.id, credId = cred.id;
+        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
+            GoogleCalendar t = GoogleCalendar.findById(targetId);
+            if (t != null) {
+                t.writeTarget = false;
+                t.persist();
+            }
+            GoogleCredential c2 = GoogleCredential.findById(credId);
+            if (c2 != null) {
+                c2.needsReconnect = true;
+                c2.persist();
+            }
+        });
     }
 
     @Override
@@ -177,12 +229,12 @@ public class GoogleCalendarPort implements CalendarPort {
         var ctx = writeContext(ownerId);
         GoogleCalendar target = ctx.target();
         GoogleCredential cred = ctx.cred();
-        Event patch = new Event()
-                .setStart(eventTime(ownerId, start))
-                .setEnd(eventTime(ownerId, end));
+        Event patch = new Event().setStart(eventTime(ownerId, start)).setEnd(eventTime(ownerId, end));
         try {
             // sendUpdates=all so Google emails the attendees the rescheduled time.
-            client(cred).events().patch(target.googleCalendarId, eventId, patch)
+            client(cred)
+                    .events()
+                    .patch(target.googleCalendarId, eventId, patch)
                     .setSendUpdates("all")
                     .execute();
         } catch (IOException e) {
@@ -198,7 +250,9 @@ public class GoogleCalendarPort implements CalendarPort {
         GoogleCredential cred = ctx.cred();
         try {
             // sendUpdates=all so Google emails the attendees the cancellation.
-            client(cred).events().delete(target.googleCalendarId, eventId)
+            client(cred)
+                    .events()
+                    .delete(target.googleCalendarId, eventId)
                     .setSendUpdates("all")
                     .execute();
         } catch (IOException e) {
@@ -247,7 +301,8 @@ public class GoogleCalendarPort implements CalendarPort {
      */
     private Event insert(GoogleCredential cred, GoogleCalendar target, Event event, boolean withMeet)
             throws IOException {
-        return client(cred).events()
+        return client(cred)
+                .events()
                 .insert(target.googleCalendarId, event)
                 .setConferenceDataVersion(withMeet ? 1 : 0)
                 .setSendUpdates("all")

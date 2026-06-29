@@ -13,11 +13,19 @@ public final class Slugs {
         if (input == null) {
             return "";
         }
-        String stripped = Normalizer.normalize(input, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}+", "");
-        return stripped.toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9]+", "-")
-                .replaceAll("(^-+)|(-+$)", "");
+        var stripped = Normalizer.normalize(input, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        var collapsed = stripped.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-");
+        // Trim leading/trailing hyphens by hand: a regex trim on this user-provided value is either
+        // ReDoS-prone or trips Sonar's regex rules, while a manual scan is unambiguously linear.
+        var from = 0;
+        var to = collapsed.length();
+        while (from < to && collapsed.charAt(from) == '-') {
+            from++;
+        }
+        while (to > from && collapsed.charAt(to - 1) == '-') {
+            to--;
+        }
+        return collapsed.substring(from, to);
     }
 
     /**
@@ -26,9 +34,9 @@ public final class Slugs {
      * re-saving a type with its own current slug is allowed.
      */
     public static String uniqueMeetingTypeSlug(Long ownerId, String base, Long excludeId) {
-        String root = (base == null || base.isBlank()) ? "meeting" : base;
-        String candidate = root;
-        int n = 1;
+        var root = (base == null || base.isBlank()) ? "meeting" : base;
+        var candidate = root;
+        var n = 1;
         while (slugTaken(ownerId, candidate, excludeId)) {
             n++;
             candidate = root + "-" + n;

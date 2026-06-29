@@ -41,19 +41,21 @@ public class AppUserIdentityProvider implements IdentityProvider<UsernamePasswor
     }
 
     @Override
-    public Uni<SecurityIdentity> authenticate(UsernamePasswordAuthenticationRequest request,
-                                              AuthenticationRequestContext context) {
+    public Uni<SecurityIdentity> authenticate(
+            UsernamePasswordAuthenticationRequest request, AuthenticationRequestContext context) {
         return context.runBlocking(() -> authenticateBlocking(request));
     }
 
     @ActivateRequestContext
     SecurityIdentity authenticateBlocking(UsernamePasswordAuthenticationRequest request) {
         String username = request.getUsername();
-        String secret = new String(request.getPassword().getPassword());
+        var secret = new String(request.getPassword().getPassword());
 
         AppUser user = AppUser.findByUsername(username);
         // 1) Normal form login: verify the argon2id hash (skipped for passwordless Google users).
-        if (user != null && user.enabled && user.passwordHash != null
+        if (user != null
+                && user.enabled
+                && user.passwordHash != null
                 && passwordHasher.verify(secret, user.passwordHash)) {
             audit.event(user.username, "login-success", "-", null);
             return AppUserSecurityIdentities.of(user);
@@ -61,8 +63,7 @@ public class AppUserIdentityProvider implements IdentityProvider<UsernamePasswor
         // 2) Google sign-in bridge: the "password" may be a single-use login ticket. It is consumed
         //    here (single-use) and must belong to the username it was submitted under.
         AppUser ticketUser = loginTickets.consume(secret, clock.instant());
-        if (ticketUser != null && ticketUser.enabled
-                && ticketUser.username.equals(Usernames.normalize(username))) {
+        if (ticketUser != null && ticketUser.enabled && ticketUser.username.equals(Usernames.normalize(username))) {
             audit.event(ticketUser.username, "login-success", "-", null);
             return AppUserSecurityIdentities.of(ticketUser);
         }

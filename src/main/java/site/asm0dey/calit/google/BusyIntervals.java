@@ -10,8 +10,7 @@ import java.util.List;
  */
 public final class BusyIntervals {
 
-    private BusyIntervals() {
-    }
+    private BusyIntervals() {}
 
     /**
      * Sort the given intervals by start, then collapse any that overlap or merely touch
@@ -29,7 +28,7 @@ public final class BusyIntervals {
         Instant curStart = sorted.getFirst().start();
         Instant curEnd = sorted.getFirst().end();
 
-        for (int i = 1; i < sorted.size(); i++) {
+        for (var i = 1; i < sorted.size(); i++) {
             BusyInterval next = sorted.get(i);
             if (!next.start().isAfter(curEnd)) {
                 // Overlapping or touching: extend the current block.

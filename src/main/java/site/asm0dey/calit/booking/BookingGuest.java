@@ -2,7 +2,6 @@ package site.asm0dey.calit.booking;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-
 import java.time.Instant;
 import java.util.List;
 
@@ -50,7 +49,8 @@ public class BookingGuest extends PanacheEntityBase {
 
     /** The guest row for this booking+email (any status), or null. Email match is case-insensitive. */
     public static BookingGuest findInBooking(Long bookingId, String email) {
-        return find("bookingId = ?1 and lower(email) = lower(?2)", bookingId, email).firstResult();
+        return find("bookingId = ?1 and lower(email) = lower(?2)", bookingId, email)
+                .firstResult();
     }
 
     /** Loads a guest by its unguessable decline token, or null. */

@@ -28,7 +28,8 @@ public class CalendarUnavailableMapper implements ExceptionMapper<CalendarUnavai
         var m = messages.forLocale(activeLocale.current());
         return Response.status(Response.Status.SERVICE_UNAVAILABLE)
                 .type(MediaType.TEXT_HTML)
-                .entity(PublicResource.Templates.unavailable(m.pub_unavailable_title()).render())
+                .entity(PublicResource.Templates.unavailable(m.pub_unavailable_title())
+                        .render())
                 .build();
     }
 }

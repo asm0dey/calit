@@ -1,12 +1,11 @@
 package site.asm0dey.calit.email;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 import java.util.Arrays;
-
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 class IcsBuilderEscapeTest {
 
@@ -40,7 +39,8 @@ class IcsBuilderEscapeTest {
         assertTrue(noInjectedLine[1], "ORGANIZER must not inject a new property line");
 
         // And no raw CR/LF survives anywhere inside a value to fold/inject a line.
-        assertFalse(Arrays.asList(ics.split("\r\n")).stream().anyMatch(l -> l.contains("\n") || l.contains("\r")),
+        assertFalse(
+                Arrays.asList(ics.split("\r\n")).stream().anyMatch(l -> l.contains("\n") || l.contains("\r")),
                 "no raw CR/LF may survive inside any property value");
     }
 }

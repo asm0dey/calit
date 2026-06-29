@@ -1,8 +1,8 @@
 package site.asm0dey.calit.crypto;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
 
 class TokenCipherTest {
 
@@ -12,7 +12,7 @@ class TokenCipherTest {
 
     @Test
     void roundTripsAValue() {
-        String plaintext = "1//refresh-token-value";
+        var plaintext = "1//refresh-token-value";
         String encrypted = cipher.encrypt(plaintext);
         assertNotEquals(plaintext, encrypted);
         assertTrue(cipher.looksEncrypted(encrypted));
@@ -48,10 +48,10 @@ class TokenCipherTest {
     void decryptTamperedCiphertextThrows() {
         String ct = cipher.encrypt("secret");
         // Flip a character in the base64 body (after the marker) to corrupt the GCM tag/ciphertext.
-        String marker = "enc:v1:";
-        String body = ct.substring(marker.length());
-        char flip = body.charAt(body.length() - 2) == 'A' ? 'B' : 'A';
-        String tampered = marker + body.substring(0, body.length() - 2) + flip + body.charAt(body.length() - 1);
+        var marker = "enc:v1:";
+        var body = ct.substring(marker.length());
+        var flip = body.charAt(body.length() - 2) == 'A' ? 'B' : 'A';
+        var tampered = marker + body.substring(0, body.length() - 2) + flip + body.charAt(body.length() - 1);
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> cipher.decrypt(tampered));
     }
 }

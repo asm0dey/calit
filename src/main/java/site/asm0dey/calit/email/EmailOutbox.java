@@ -2,7 +2,6 @@ package site.asm0dey.calit.email;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-
 import java.time.Duration;
 import java.time.Instant;
 
@@ -17,6 +16,7 @@ public class EmailOutbox extends PanacheEntityBase {
 
     /** ponytail: hardcoded caps -- they don't vary per deployment. Make config only if ops asks. */
     static final int MAX_ATTEMPTS = 10;
+
     static final Duration BASE_BACKOFF = Duration.ofMinutes(1);
     static final Duration CAP_BACKOFF = Duration.ofHours(1);
 
@@ -62,9 +62,9 @@ public class EmailOutbox extends PanacheEntityBase {
      * {@code notAfter} null = no usefulness deadline; non-null = stop retrying once that instant passes
      * (so a time-limited mail like a reset link isn't delivered dead).
      */
-    public static Long enqueue(String recipient, String subject, String htmlBody, byte[] icsBytes,
-                               Instant notAfter, String error) {
-        EmailOutbox r = new EmailOutbox();
+    public static Long enqueue(
+            String recipient, String subject, String htmlBody, byte[] icsBytes, Instant notAfter, String error) {
+        var r = new EmailOutbox();
         r.recipient = recipient;
         r.subject = subject;
         r.htmlBody = htmlBody;
@@ -98,7 +98,7 @@ public class EmailOutbox extends PanacheEntityBase {
             nextAttemptAt = null; // dead: excluded by the partial index / claim predicate
             return;
         }
-        long secs = Math.min(CAP_BACKOFF.getSeconds(), BASE_BACKOFF.getSeconds() << attempts);
+        var secs = Math.min(CAP_BACKOFF.getSeconds(), BASE_BACKOFF.getSeconds() << attempts);
         nextAttemptAt = Instant.now().plusSeconds(secs);
     }
 }

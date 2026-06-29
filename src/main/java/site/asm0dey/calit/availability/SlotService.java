@@ -1,8 +1,6 @@
 package site.asm0dey.calit.availability;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import site.asm0dey.calit.domain.*;
-
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -12,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import site.asm0dey.calit.domain.*;
 
 @ApplicationScoped
 public class SlotService {
@@ -28,15 +27,14 @@ public class SlotService {
     public List<TimeSlot> generateRawSlots(MeetingType type, LocalDate from, LocalDate to) {
         OwnerSettings settings = OwnerSettings.forOwner(type.ownerId);
         if (settings == null) {
-            throw new IllegalStateException(
-                    "Owner settings not configured for owner " + type.ownerId
+            throw new IllegalStateException("Owner settings not configured for owner " + type.ownerId
                     + "; set them via /me/settings before generating slots.");
         }
         ZoneId zone = ZoneId.of(settings.timezone);
         Availability availability = loadAvailability(type, from, to);
         List<TimeSlot> slots = new ArrayList<>();
 
-        for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
+        for (var date = from; !date.isAfter(to); date = date.plusDays(1)) {
             for (Window window : availability.windowsFor(date)) {
                 int step = type.effectiveSlotIntervalMinutes();
                 int duration = type.durationMinutes;
@@ -44,12 +42,11 @@ public class SlotService {
                 // which (e.g. a window ending 23:30 with a 30-min duration) would loop forever.
                 int startMin = window.start().toSecondOfDay() / 60;
                 int endMin = window.end().toSecondOfDay() / 60;
-                for (int s = startMin; s + duration <= endMin; s += step) {
-                    LocalTime start = LocalTime.ofSecondOfDay(s * 60L);
-                    LocalTime end = LocalTime.ofSecondOfDay((s + duration) * 60L);
+                for (var s = startMin; s + duration <= endMin; s += step) {
+                    var start = LocalTime.ofSecondOfDay(s * 60L);
+                    var end = LocalTime.ofSecondOfDay((s + duration) * 60L);
                     slots.add(new TimeSlot(
-                            date.atTime(start).atZone(zone),
-                            date.atTime(end).atZone(zone)));
+                            date.atTime(start).atZone(zone), date.atTime(end).atZone(zone)));
                 }
             }
         }
@@ -86,14 +83,12 @@ public class SlotService {
                         .map(w -> new Window(w.startTime, w.endTime))
                         .toList();
             }
-            DayOfWeek dow = date.getDayOfWeek();
+            var dow = date.getDayOfWeek();
             List<AvailabilityRule> rules = typedRules.get(dow);
             if (rules == null || rules.isEmpty()) {
                 rules = globalRules.getOrDefault(dow, List.of());
             }
-            return rules.stream()
-                    .map(r -> new Window(r.startTime, r.endTime))
-                    .toList();
+            return rules.stream().map(r -> new Window(r.startTime, r.endTime)).toList();
         }
     }
 
@@ -109,21 +104,22 @@ public class SlotService {
         Map<DayOfWeek, List<AvailabilityRule>> typedRules = rules.stream()
                 .filter(r -> type.id.equals(r.meetingTypeId))
                 .collect(Collectors.groupingBy(r -> r.dayOfWeek));
-        Map<DayOfWeek, List<AvailabilityRule>> globalRules = rules.stream()
-                .filter(r -> r.meetingTypeId == null)
-                .collect(Collectors.groupingBy(r -> r.dayOfWeek));
+        Map<DayOfWeek, List<AvailabilityRule>> globalRules =
+                rules.stream().filter(r -> r.meetingTypeId == null).collect(Collectors.groupingBy(r -> r.dayOfWeek));
 
         // 2) Overrides in range: per-type and this owner's global, keyed by date (first row wins on
         //    a duplicate date+scope, which the unique index should already prevent).
         List<DateOverride> overrides = DateOverride.list(
                 "ownerId = ?1 and (meetingTypeId = ?2 or meetingTypeId is null) "
-                + "and overrideDate >= ?3 and overrideDate <= ?4",
-                type.ownerId, type.id, from, to);
+                        + "and overrideDate >= ?3 and overrideDate <= ?4",
+                type.ownerId,
+                type.id,
+                from,
+                to);
         Map<LocalDate, DateOverride> typedOverrides = new HashMap<>();
         Map<LocalDate, DateOverride> globalOverrides = new HashMap<>();
         for (DateOverride o : overrides) {
-            Map<LocalDate, DateOverride> target =
-                    type.id.equals(o.meetingTypeId) ? typedOverrides : globalOverrides;
+            Map<LocalDate, DateOverride> target = type.id.equals(o.meetingTypeId) ? typedOverrides : globalOverrides;
             target.putIfAbsent(o.overrideDate, o);
         }
 
@@ -134,9 +130,10 @@ public class SlotService {
         selected.addAll(globalOverrides.values());
         if (!selected.isEmpty()) {
             List<Long> ids = selected.stream().map(o -> o.id).toList();
-            Map<Long, List<DateOverrideWindow>> windowsByOverride = DateOverrideWindow
-                    .<DateOverrideWindow>list("dateOverrideId in ?1 order by startTime asc", ids).stream()
-                    .collect(Collectors.groupingBy(w -> w.dateOverrideId));
+            Map<Long, List<DateOverrideWindow>> windowsByOverride =
+                    DateOverrideWindow.<DateOverrideWindow>list("dateOverrideId in ?1 order by startTime asc", ids)
+                            .stream()
+                            .collect(Collectors.groupingBy(w -> w.dateOverrideId));
             for (DateOverride o : selected) {
                 o.windows = windowsByOverride.getOrDefault(o.id, List.of());
             }

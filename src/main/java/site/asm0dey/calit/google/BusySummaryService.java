@@ -2,7 +2,6 @@ package site.asm0dey.calit.google;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;

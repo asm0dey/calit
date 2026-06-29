@@ -9,6 +9,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
+import java.util.List;
 import org.jboss.resteasy.reactive.RestForm;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.i18n.ActiveLocale;
@@ -16,8 +17,6 @@ import site.asm0dey.calit.i18n.AdminMessageResolver;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
 import site.asm0dey.calit.user.PasswordHasher;
-
-import java.util.List;
 
 /** First-login wizard, distinct from the first-run /setup bootstrap. */
 @Path("/me/setup")
@@ -60,19 +59,24 @@ public class MeSetupResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
     @Transactional
-    public Response submit(@RestForm String newPassword,
-                           @RestForm String ownerName,
-                           @RestForm String ownerEmail,
-                           @RestForm String timezone) {
+    public Response submit(
+            @RestForm String newPassword,
+            @RestForm String ownerName,
+            @RestForm String ownerEmail,
+            @RestForm String timezone) {
         Long ownerId = currentOwner.require().id; // 401 if no owner resolved
-        AppUser me = AppUser.findById(ownerId);   // managed entity for dirty-checking in this tx
+        AppUser me = AppUser.findById(ownerId); // managed entity for dirty-checking in this tx
 
         // Step 1: only when a forced reset is pending.
         if (me.mustChangePassword) {
             if (newPassword == null || newPassword.isBlank()) {
-                return Response.ok(Templates.meSetup(true,
-                        OwnerSettings.forOwner(ownerId), zoneIds(),
-                        adminMsgs.forLocale(activeLocale.current()).mesetup_choose_new_password(), adminMsgs.forLocale(activeLocale.current()).mesetup_title())).build();
+                return Response.ok(Templates.meSetup(
+                                true,
+                                OwnerSettings.forOwner(ownerId),
+                                zoneIds(),
+                                adminMsgs.forLocale(activeLocale.current()).mesetup_choose_new_password(),
+                                adminMsgs.forLocale(activeLocale.current()).mesetup_title()))
+                        .build();
             }
             me.passwordHash = passwordHasher.hash(newPassword);
             me.mustChangePassword = false;

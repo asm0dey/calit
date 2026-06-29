@@ -9,6 +9,8 @@ import jakarta.ws.rs.ext.Provider;
 public class AbuseMapper implements ExceptionMapper<AbuseException> {
     @Override
     public Response toResponse(AbuseException ex) {
-        return Response.status(Response.Status.BAD_REQUEST).entity(ex.getMessage()).build();
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(ex.getMessage())
+                .build();
     }
 }

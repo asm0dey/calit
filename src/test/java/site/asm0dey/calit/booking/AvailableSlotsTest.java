@@ -1,9 +1,16 @@
 package site.asm0dey.calit.booking;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.time.*;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.domain.AvailabilityRule;
@@ -12,14 +19,6 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.BusyInterval;
 import site.asm0dey.calit.google.CalendarPort;
-
-import java.time.*;
-import java.util.List;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 @QuarkusTest
 class AvailableSlotsTest {
@@ -32,7 +31,8 @@ class AvailableSlotsTest {
 
     // Owner tz Europe/Amsterdam. Derive a future weekday from now() so slots never fall in the past.
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
-    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    private static final LocalDate DAY =
+            Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
 
     @Test
     @TestTransaction
@@ -94,10 +94,13 @@ class AvailableSlotsTest {
         MeetingType t = meetingType("avail-booked", 60, 0, 0);
         globalRule(DAY.getDayOfWeek(), "09:00", "11:00");
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.freeBusy(anyLong(), eq(anyMonday()), eq(anyMondayEnd()))).thenReturn(List.of());
+        when(calendarPort.freeBusy(anyLong(), eq(anyMonday()), eq(anyMondayEnd())))
+                .thenReturn(List.of());
         // Confirmed booking 09:00-10:00 local blocks the first slot.
-        persistBooking(DAY.atTime(9, 0).atZone(ZONE).toInstant(),
-                       DAY.atTime(10, 0).atZone(ZONE).toInstant(), BookingStatus.CONFIRMED);
+        persistBooking(
+                DAY.atTime(9, 0).atZone(ZONE).toInstant(),
+                DAY.atTime(10, 0).atZone(ZONE).toInstant(),
+                BookingStatus.CONFIRMED);
 
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
@@ -113,10 +116,13 @@ class AvailableSlotsTest {
         MeetingType t = meetingType("avail-pending", 60, 0, 0);
         globalRule(DAY.getDayOfWeek(), "09:00", "11:00");
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.freeBusy(anyLong(), eq(anyMonday()), eq(anyMondayEnd()))).thenReturn(List.of());
+        when(calendarPort.freeBusy(anyLong(), eq(anyMonday()), eq(anyMondayEnd())))
+                .thenReturn(List.of());
         // PENDING booking 09:00-10:00 local blocks the first slot.
-        persistBooking(DAY.atTime(9, 0).atZone(ZONE).toInstant(),
-                       DAY.atTime(10, 0).atZone(ZONE).toInstant(), BookingStatus.PENDING);
+        persistBooking(
+                DAY.atTime(9, 0).atZone(ZONE).toInstant(),
+                DAY.atTime(10, 0).atZone(ZONE).toInstant(),
+                BookingStatus.PENDING);
 
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
@@ -132,8 +138,10 @@ class AvailableSlotsTest {
         MeetingType t = meetingType("avail-degraded", 60, 0, 0);
         globalRule(DAY.getDayOfWeek(), "09:00", "11:00");
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        persistBooking(DAY.atTime(9, 0).atZone(ZONE).toInstant(),
-                       DAY.atTime(10, 0).atZone(ZONE).toInstant(), BookingStatus.CONFIRMED);
+        persistBooking(
+                DAY.atTime(9, 0).atZone(ZONE).toInstant(),
+                DAY.atTime(10, 0).atZone(ZONE).toInstant(),
+                BookingStatus.CONFIRMED);
 
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
@@ -149,8 +157,8 @@ class AvailableSlotsTest {
         // Feature 11: a huge min-notice (relative to now) drops every slot near today.
         // Use a date derived from "now" in the owner tz so the assertion holds on any run date.
         seedSettings();
-        ZoneId zone = ZoneId.of("Europe/Amsterdam");
-        LocalDate someday = Instant.now().atZone(zone).toLocalDate().plusDays(3);
+        var zone = ZoneId.of("Europe/Amsterdam");
+        var someday = Instant.now().atZone(zone).toLocalDate().plusDays(3);
         MeetingType t = meetingType("avail-minnotice", 60, 0, 0);
         t.minNoticeMinutes = 60 * 24 * 365 * 50; // ~50 years -> well past any near-term slot
         t.persist();
@@ -169,8 +177,8 @@ class AvailableSlotsTest {
     void horizonDropsFarFutureSlots() {
         // Feature 11: a 1-day horizon drops a slot ~30 days out from "now".
         seedSettings();
-        ZoneId zone = ZoneId.of("Europe/Amsterdam");
-        LocalDate farDay = Instant.now().atZone(zone).toLocalDate().plusDays(30);
+        var zone = ZoneId.of("Europe/Amsterdam");
+        var farDay = Instant.now().atZone(zone).toLocalDate().plusDays(30);
         MeetingType t = meetingType("avail-horizon", 60, 0, 0);
         t.horizonDays = 1; // only ~tomorrow is bookable; a 30-day-out slot is past the horizon
         t.persist();
@@ -190,9 +198,12 @@ class AvailableSlotsTest {
         MeetingType t = meetingType("avail-exclude", 60, 0, 0);
         globalRule(DAY.getDayOfWeek(), "09:00", "11:00");
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.freeBusy(anyLong(), eq(anyMonday()), eq(anyMondayEnd()))).thenReturn(List.of());
-        Booking b = persistBooking(DAY.atTime(9, 0).atZone(ZONE).toInstant(),
-                                   DAY.atTime(10, 0).atZone(ZONE).toInstant(), BookingStatus.CONFIRMED);
+        when(calendarPort.freeBusy(anyLong(), eq(anyMonday()), eq(anyMondayEnd())))
+                .thenReturn(List.of());
+        Booking b = persistBooking(
+                DAY.atTime(9, 0).atZone(ZONE).toInstant(),
+                DAY.atTime(10, 0).atZone(ZONE).toInstant(),
+                BookingStatus.CONFIRMED);
 
         // Excluding b: both slots available again.
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY, b.id);
@@ -206,8 +217,13 @@ class AvailableSlotsTest {
     // --- helpers ---
 
     // The from/to window availableSlots computes for the single DAY (start-of-day in ZONE to next).
-    private static Instant anyMonday() { return DAY.atStartOfDay(ZONE).toInstant(); }
-    private static Instant anyMondayEnd() { return DAY.plusDays(1).atStartOfDay(ZONE).toInstant(); }
+    private static Instant anyMonday() {
+        return DAY.atStartOfDay(ZONE).toInstant();
+    }
+
+    private static Instant anyMondayEnd() {
+        return DAY.plusDays(1).atStartOfDay(ZONE).toInstant();
+    }
 
     private void seedSettings() {
         // Idempotent upsert: a non-@TestTransaction REST test (MeetingTypeResourceTest PUT /api/settings)

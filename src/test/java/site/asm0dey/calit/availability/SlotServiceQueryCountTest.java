@@ -1,20 +1,19 @@
 package site.asm0dey.calit.availability;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManagerFactory;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.*;
-
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalTime;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Guards the N+1 fix in {@link SlotService#generateRawSlots}: the number of SQL statements it
@@ -62,9 +61,10 @@ class SlotServiceQueryCountTest {
         slotService.generateRawSlots(t, FROM, FROM.plusDays(60));
         long count60 = statistics.getPrepareStatementCount();
 
-        assertTrue(count30 <= 6,
-                "slot generation must be a small constant number of queries, was " + count30);
-        assertEquals(count30, count60,
+        assertTrue(count30 <= 6, "slot generation must be a small constant number of queries, was " + count30);
+        assertEquals(
+                count30,
+                count60,
                 "query count must be constant in the horizon (30d=" + count30 + ", 60d=" + count60 + ")");
     }
 

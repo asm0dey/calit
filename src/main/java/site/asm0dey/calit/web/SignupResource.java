@@ -67,7 +67,7 @@ public class SignupResource {
         }
         AppUser u = AppUser.create(normalized, passwordHasher.hash(password), false);
         u.mustChangePassword = false; // self-chosen password → no forced reset
-        u.settingsComplete = false;   // still needs the first-login settings wizard
+        u.settingsComplete = false; // still needs the first-login settings wizard
         u.persist();
         // Registered — send them to log in; the wizard kicks in at /me after login.
         return Response.seeOther(UriBuilder.fromUri("/login").build()).build();
