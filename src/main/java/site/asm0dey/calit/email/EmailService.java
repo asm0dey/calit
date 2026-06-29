@@ -78,7 +78,7 @@ public class EmailService {
      * ORGANIZER differs from the message sender ("Unable to load event"), so the .ics ORGANIZER must
      * use this address; the owner's real name is kept as the ORGANIZER CN. (Gmail ignores SENT-BY.)
      */
-    @ConfigProperty(name = "quarkus.mailer.from")
+    @ConfigProperty(name = "quarkus.mailer.from", defaultValue = "calit@example.com")
     String mailFrom;
 
     @Inject
