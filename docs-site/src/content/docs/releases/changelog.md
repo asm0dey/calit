@@ -9,6 +9,10 @@ asset downloads, are on
 
 ## Unreleased
 
+## 1.12.0
+
+Invitee guests, plus internal code-formatting tooling.
+
 - **Invitee guests.** Invitees can now add guests to a booking — a chips field on
   the booking form (and on the reschedule page) takes up to 10 guest emails. Guests
   receive their own calendar invite and stay in sync: they get an `.ics` invitation
@@ -16,6 +20,10 @@ asset downloads, are on
   when it is cancelled. Guests cannot reschedule or cancel the meeting; a guest who
   can't attend uses a **decline** link in their invitation, which removes them and
   notifies the invitee. No configuration or migration steps beyond the usual upgrade.
+- **Code formatting (contributor-facing).** The codebase is now auto-formatted with
+  Spotless + palantir-java-format (Java) and Prettier (JS/CSS), enforced by a lefthook
+  pre-commit hook and the CI `verify` gate. No runtime or configuration impact —
+  pull `:1.12.0` (or `:1.12.0-native`) as usual.
 
 ## 1.11.1
 
