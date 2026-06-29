@@ -9,6 +9,17 @@ asset downloads, are on
 
 ## Unreleased
 
+## 1.12.1
+
+A fix for booking invites in Gmail.
+
+- **Gmail "Unable to load event" fixed.** Booking `.ics` invitations now set the
+  calendar `ORGANIZER` to the address mail is actually sent from (`MAIL_FROM`),
+  keeping the owner's name as the organizer display name. Gmail refuses to render an
+  invitation whose organizer differs from the sender, so invitees and guests
+  previously saw "Unable to load event" instead of the event card. No configuration
+  or migration steps — pull `:1.12.1` (or `:1.12.1-native`) as usual.
+
 ## 1.12.0
 
 Invitee guests, plus internal code-formatting tooling.
