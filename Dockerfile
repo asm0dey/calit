@@ -5,7 +5,7 @@ FROM oven/bun:1@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile
+    bun install --frozen-lockfile --ignore-scripts
 # Templates are needed so Tailwind's @source can scan them for class names.
 COPY src/main/css/ src/main/css/
 COPY src/main/resources/templates/ src/main/resources/templates/
