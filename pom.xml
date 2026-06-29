@@ -169,12 +169,14 @@
             <toggleOffOn />
             <!-- CleanThat refactors first, palantir formats the result. -->
             <cleanthat>
+              <!-- Pinned: CleanThat 2.23-2.25 crashed in UseDiamondOperator on nested records
+                   (solven-eu/cleanthat#954); fixed in 2.26, which spotless 3.7.0 does not yet bundle. -->
+              <version>2.26</version>
               <sourceJdk>25</sourceJdk>
-              <!-- UseDiamondOperator is omitted on purpose: CleanThat >= 2.23 crashes on nested
-                   records (e.g. SlotService.Window) with "Issue with a cleanthat mutator". palantir
-                   and developers apply the diamond operator anyway, so the loss is cosmetic. -->
               <mutators>
                 <mutator>SafeAndConsensual</mutator>
+                <mutator>UseDiamondOperator</mutator>
+                <mutator>UseDiamondOperatorJdk8</mutator>
                 <mutator>LambdaIsMethodReference</mutator>
                 <mutator>LambdaReturnsSingleStatement</mutator>
                 <mutator>UnnecessaryLambdaEnclosingParameters</mutator>
