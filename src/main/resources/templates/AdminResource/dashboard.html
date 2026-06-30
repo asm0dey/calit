@@ -27,6 +27,7 @@
         <p><strong>{b.inviteeName}</strong> ({b.inviteeEmail})</p>
         <p class="text-sm text-base-content/70"><time data-utc="{b.startUtc}">{b.startUtc} UTC</time></p>
         {#if b.meetLink}<p><a class="link link-primary" href="{b.meetLink}">{b.meetLink}</a></p>{/if}
+        <p><a class="link link-primary" href="/me/bookings/{b.id}/manage">{adm:adm_dashboard_btn_manage}</a></p>
       </div></div>
     {/for}
     </div>
