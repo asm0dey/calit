@@ -143,6 +143,22 @@ class OwnerManageBookingTest {
     }
 
     @Test
+    void cancelMarksTheBookingCancelled() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var id = seedConfirmedBooking();
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .when()
+                .post("/me/bookings/" + id + "/cancel")
+                .then()
+                .statusCode(200);
+
+        Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findById(id));
+        org.junit.jupiter.api.Assertions.assertEquals(site.asm0dey.calit.booking.BookingStatus.CANCELLED, after.status);
+    }
+
+    @Test
     void rescheduleAnotherOwnersBookingIs404AndDoesNotMutate() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var id = seedConfirmedBooking();

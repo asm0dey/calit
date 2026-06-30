@@ -982,6 +982,16 @@ public class AdminResource {
     }
 
     @POST
+    @Path("/bookings/{id}/cancel")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance ownerCancel(@PathParam("id") Long id) {
+        Booking b = requireOwnedBooking(id);
+        bookingService.cancel(b.manageToken); // keyed by the booking's own token; fires BookingCancelled
+        return dashboard(); // re-render /me; the cancelled booking drops off the upcoming list
+    }
+
+    @POST
     @Path("/bookings/{id}/approve")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
