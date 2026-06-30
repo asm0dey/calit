@@ -336,6 +336,24 @@ class EmailServiceTest {
     }
 
     @Test
+    void fromNameStripsInjectedCrLfFromOwnerName() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> b.status = BookingStatus.CONFIRMED, true, LocationType.PHONE, "+1");
+        // Overwrite ownerName with a header-injection payload
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            s.ownerName = "Evil\r\nBcc: evil@example.com";
+            s.persist();
+        });
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        String from = owner.getFrom();
+        assertFalse(from.contains("\r") || from.contains("\n"), "From header must not contain CR or LF; got: " + from);
+    }
+
+    @Test
     void passwordResetMailHasNoPerMessageFrom() {
         mailbox.clear();
         emailService.sendPasswordReset(

@@ -718,7 +718,7 @@ public class EmailService {
     /** Per-message From display name for booking mail: "{owner} via calit", or null if no owner name. */
     private String fromName(Loaded l) {
         // ponytail: "via calit" is the product name; make it config (app.brand-name) only on a real rebrand.
-        return l.owner.ownerName == null ? null : l.owner.ownerName + " via calit";
+        return l.owner.ownerName == null ? null : l.owner.ownerName.replaceAll("[\\r\\n]", " ") + " via calit";
     }
 
     private String manageUrl(Booking b) {

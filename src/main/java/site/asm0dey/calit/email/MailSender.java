@@ -49,9 +49,11 @@ public class MailSender {
 
     /**
      * Try direct; on any failure, durably queue to the outbox for retry. Never throws.
-     * {@code notAfter} non-null bounds retry. ponytail: the outbox does not persist {@code fromName};
-     * a retried mail sends with the config-default From (cosmetic only). Add an email_outbox column
-     * only if branded From on the rare retry path is ever required.
+     * {@code notAfter} non-null bounds retry: a queued mail is dropped undelivered once that instant
+     * passes (e.g. a reset link whose token has expired — delivering it would only hand over a dead
+     * link). ponytail: the outbox does not persist {@code fromName}; a retried mail sends with the
+     * config-default From (cosmetic only). Add an email_outbox column only if branded From on the
+     * rare retry path is ever required.
      */
     public void send(String fromName, String to, String subject, String html, byte[] ics, Instant notAfter) {
         try {

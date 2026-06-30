@@ -3,6 +3,8 @@ package site.asm0dey.calit.web;
 import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
@@ -12,11 +14,14 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.BookingService;
+import site.asm0dey.calit.booking.GuestStatus;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
@@ -156,6 +161,66 @@ class OwnerManageBookingTest {
 
         Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findById(id));
         org.junit.jupiter.api.Assertions.assertEquals(site.asm0dey.calit.booking.BookingStatus.CANCELLED, after.status);
+    }
+
+    /** Seeds a confirmed booking that has one active guest; returns [bookingId, guestId]. */
+    @Transactional
+    long[] seedConfirmedBookingWithGuest(long bookingId) {
+        BookingGuest g = new BookingGuest();
+        g.ownerId = 1L;
+        g.bookingId = bookingId;
+        g.email = "guest@example.com";
+        g.status = GuestStatus.INVITED;
+        g.declineToken = "dt-" + System.nanoTime();
+        g.createdAt = Instant.now();
+        g.persist();
+        return new long[] {bookingId, g.id};
+    }
+
+    @Test
+    void reschedulePreservesExistingGuests() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var bookingId = seedConfirmedBooking();
+        seedConfirmedBookingWithGuest(bookingId);
+
+        Booking before = Booking.findById(bookingId);
+        MeetingType type = MeetingType.findById(before.meetingTypeId);
+        var target = bookingService.availableSlots(type, now(), now().plusDays(14)).stream()
+                .map(s -> s.start().toInstant())
+                .filter(i -> !i.equals(before.startUtc))
+                .findFirst()
+                .orElseThrow();
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("startUtc", target.toString())
+                .when()
+                .post("/me/bookings/" + bookingId + "/reschedule")
+                .then()
+                .statusCode(200);
+
+        List<BookingGuest> afterGuests =
+                QuarkusTransaction.requiringNew().call(() -> BookingGuest.activeForBooking(bookingId));
+        assertEquals(1, afterGuests.size(), "guest must be preserved across owner reschedule");
+        assertEquals("guest@example.com", afterGuests.getFirst().email);
+    }
+
+    @Test
+    void managePageShowsGuestAsReadOnlyTextNotInput() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var bookingId = seedConfirmedBooking();
+        seedConfirmedBookingWithGuest(bookingId);
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/bookings/" + bookingId + "/manage")
+                .then()
+                .statusCode(200)
+                // guest email is visible as text
+                .body(containsString("guest@example.com"))
+                // no guest add/remove widget controls (from _guestschips)
+                .body(not(containsString("guest-entry")))
+                .body(not(containsString("guests-data")));
     }
 
     @Test

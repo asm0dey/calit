@@ -41,7 +41,7 @@
               {/for}
             </div>
           </div>
-          {#include PublicResource/_guestschips initial=guestsCsv /}
+          {#if guestsCsv}<p class="text-sm text-base-content/70">{guestsCsv}</p>{/if}
           <button type="submit" class="btn btn-primary">{msg:pub_manage_btn_reschedule}</button>
         </form>
       {/if}
