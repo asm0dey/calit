@@ -726,6 +726,8 @@ public class EmailService {
     }
 
     /** Base path of the owner's per-booking actions on /me (manage/approve/decline). */
+    // S1075: an internal JAX-RS route prefix, not a deployment-configurable URI -- calit hardcodes all routes.
+    @SuppressWarnings("java:S1075")
     private static final String ME_BOOKINGS_PATH = "/me/bookings/";
 
     private String ownerManageUrl(Booking b) {
