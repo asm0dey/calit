@@ -725,17 +725,20 @@ public class EmailService {
         return baseUrl + "/booking/" + b.manageToken + "/manage";
     }
 
+    /** Base path of the owner's per-booking actions on /me (manage/approve/decline). */
+    private static final String ME_BOOKINGS_PATH = "/me/bookings/";
+
     private String ownerManageUrl(Booking b) {
-        return baseUrl + "/me/bookings/" + b.id + "/manage";
+        return baseUrl + ME_BOOKINGS_PATH + b.id + "/manage";
     }
 
     /** Owner authenticated approve link with the token nonce; null when no approval token exists. */
     private String approveUrl(Booking b) {
-        return b.approvalToken == null ? null : baseUrl + "/me/bookings/" + b.id + "/approve?t=" + b.approvalToken;
+        return b.approvalToken == null ? null : baseUrl + ME_BOOKINGS_PATH + b.id + "/approve?t=" + b.approvalToken;
     }
 
     private String declineUrl(Booking b) {
-        return b.approvalToken == null ? null : baseUrl + "/me/bookings/" + b.id + "/decline?t=" + b.approvalToken;
+        return b.approvalToken == null ? null : baseUrl + ME_BOOKINGS_PATH + b.id + "/decline?t=" + b.approvalToken;
     }
 
     private String cancelUrl(Booking b) {
