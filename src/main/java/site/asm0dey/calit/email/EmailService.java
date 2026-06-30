@@ -138,7 +138,8 @@ public class EmailService {
                 .data("lang", locale.getLanguage())
                 .data("resetUrl", resetUrl)
                 .render();
-        mailSender.send(toEmail, messages.forLocale(locale).email_password_reset_subject(), body, null, expiresAt);
+        mailSender.send(
+                null, toEmail, messages.forLocale(locale).email_password_reset_subject(), body, null, expiresAt);
     }
 
     /**
@@ -156,7 +157,7 @@ public class EmailService {
                 .data("accountEmail", accountEmail == null ? "your account" : accountEmail)
                 .data("reconnectUrl", reconnectUrl)
                 .render();
-        mailSender.send(toEmail, messages.forLocale(locale).email_google_disconnected_subject(), body, null);
+        mailSender.send(null, toEmail, messages.forLocale(locale).email_google_disconnected_subject(), body, null);
     }
 
     /** Which invitee-delivery rule a kind follows. */
@@ -170,7 +171,7 @@ public class EmailService {
     /** Where a rendered mail goes: either a direct SMTP send or an outbox enqueue. */
     @FunctionalInterface
     private interface MailSink {
-        void deliver(String to, String subject, String html, byte[] ics);
+        void deliver(String fromName, String to, String subject, String html, byte[] ics);
     }
 
     /**
@@ -178,7 +179,7 @@ public class EmailService {
      * commits atomically with the caller's transaction. OutboxScheduler delivers it with retry/backoff.
      * Static so it can be used as a method reference with no captured state.
      */
-    private static void enqueueToOutbox(String to, String subject, String html, byte[] ics) {
+    private static void enqueueToOutbox(String fromName, String to, String subject, String html, byte[] ics) {
         EmailOutbox.enqueue(to, subject, html, ics, null, "scheduled dispatch (transactional outbox)");
     }
 
@@ -540,7 +541,7 @@ public class EmailService {
                     .data(IS_MEET_LINK, isMeet(l))
                     .data(DECLINE_GUEST_URL, declineGuestUrl(g))
                     .render();
-            mailSender.send(g.email, subject, body, ics);
+            mailSender.send(fromName(l), g.email, subject, body, ics);
         }
     }
 
@@ -551,7 +552,12 @@ public class EmailService {
         if (guests.isEmpty()) return;
         Locale locale = AppLocales.pick(l.booking.locale);
         for (BookingGuest g : guests) {
-            mailSender.send(g.email, subject, guestCancelBody(l, g, locale), guestIcs(l, g, null, IcsMethod.CANCEL));
+            mailSender.send(
+                    fromName(l),
+                    g.email,
+                    subject,
+                    guestCancelBody(l, g, locale),
+                    guestIcs(l, g, null, IcsMethod.CANCEL));
         }
     }
 
@@ -562,6 +568,7 @@ public class EmailService {
         if (guest == null) return;
         Locale locale = AppLocales.pick(l.booking.locale);
         mailSender.send(
+                fromName(l),
                 guest.email,
                 messages.forLocale(locale).email_cancelled_subject(l.meetingType.name),
                 guestCancelBody(l, guest, locale),
@@ -577,6 +584,7 @@ public class EmailService {
         String start = format(l.booking.startUtc, l.zone, locale);
         // 1) cancel .ics to the departing guest
         mailSender.send(
+                fromName(l),
                 guest.email,
                 messages.forLocale(locale).email_cancelled_subject(l.meetingType.name),
                 guestCancelBody(l, guest, locale),
@@ -594,6 +602,7 @@ public class EmailService {
                 .data(MANAGE_URL, manageUrl(l.booking))
                 .render();
         mailSender.send(
+                fromName(l),
                 l.booking.inviteeEmail,
                 messages.forLocale(locale).email_guest_declined_subject(l.meetingType.name),
                 inviteeBody,
@@ -672,6 +681,7 @@ public class EmailService {
             MailSink sink) {
         var sendInvitee = rule == InviteeRule.ALWAYS || !calendarPort.isConnected(l.owner.ownerId);
         boolean sendOwner = l.owner.ownerNotificationsEnabled;
+        var from = fromName(l);
 
         byte[] ics = IcsBuilder.build(IcsEvent.builder()
                         .uid(l.booking.manageToken)
@@ -685,10 +695,10 @@ public class EmailService {
                 .getBytes(StandardCharsets.UTF_8);
 
         if (sendInvitee) {
-            sink.deliver(l.booking.inviteeEmail, inviteeSubject, bodyForRole.apply(INVITEE_ROLE), ics);
+            sink.deliver(from, l.booking.inviteeEmail, inviteeSubject, bodyForRole.apply(INVITEE_ROLE), ics);
         }
         if (sendOwner) {
-            sink.deliver(l.owner.ownerEmail, ownerSubject, bodyForRole.apply(OWNER_ROLE), ics);
+            sink.deliver(from, l.owner.ownerEmail, ownerSubject, bodyForRole.apply(OWNER_ROLE), ics);
         }
     }
 
@@ -696,6 +706,12 @@ public class EmailService {
     private String localizedRole(String role, Locale locale) {
         AppMessages m = messages.forLocale(locale);
         return INVITEE_ROLE.equals(role) ? m.email_role_invitee() : m.email_role_owner();
+    }
+
+    /** Per-message From display name for booking mail: "{owner} via calit", or null if no owner name. */
+    private String fromName(Loaded l) {
+        // ponytail: "via calit" is the product name; make it config (app.brand-name) only on a real rebrand.
+        return l.owner.ownerName == null ? null : l.owner.ownerName + " via calit";
     }
 
     private String manageUrl(Booking b) {

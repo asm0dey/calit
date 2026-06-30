@@ -7,6 +7,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Instant;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
  * The single seam every mail goes through. {@link #send} tries a direct, synchronous SMTP send and,
@@ -25,9 +26,16 @@ public class MailSender {
     @Inject
     Mailer mailer;
 
-    /** Direct send; throws on SMTP failure. */
-    public void sendNow(String to, String subject, String html, byte[] ics) {
+    /** Bare sending address; the per-message display name (when present) is prefixed onto this. */
+    @ConfigProperty(name = "app.mail-from")
+    String mailFrom;
+
+    /** Direct send; throws on SMTP failure. {@code fromName} null → From left to config default. */
+    public void sendNow(String fromName, String to, String subject, String html, byte[] ics) {
         Mail mail = Mail.withHtml(to, subject, html);
+        if (fromName != null) {
+            mail.setFrom(fromName + " <" + mailFrom + ">");
+        }
         if (ics != null) {
             mail.addAttachment(ICS_FILENAME, ics, ICS_CONTENT_TYPE);
         }
@@ -35,18 +43,19 @@ public class MailSender {
     }
 
     /** Try direct; on any failure, durably queue to the outbox for retry (no usefulness deadline). */
-    public void send(String to, String subject, String html, byte[] ics) {
-        send(to, subject, html, ics, null);
+    public void send(String fromName, String to, String subject, String html, byte[] ics) {
+        send(fromName, to, subject, html, ics, null);
     }
 
     /**
      * Try direct; on any failure, durably queue to the outbox for retry. Never throws.
-     * {@code notAfter} non-null bounds retry: a queued mail is dropped undelivered once that instant
-     * passes (e.g. a reset link whose token has expired -- delivering it would only hand over a dead link).
+     * {@code notAfter} non-null bounds retry. ponytail: the outbox does not persist {@code fromName};
+     * a retried mail sends with the config-default From (cosmetic only). Add an email_outbox column
+     * only if branded From on the rare retry path is ever required.
      */
-    public void send(String to, String subject, String html, byte[] ics, Instant notAfter) {
+    public void send(String fromName, String to, String subject, String html, byte[] ics, Instant notAfter) {
         try {
-            sendNow(to, subject, html, ics);
+            sendNow(fromName, to, subject, html, ics);
         } catch (Exception e) {
             QuarkusTransaction.requiringNew()
                     .run(() -> EmailOutbox.enqueue(to, subject, html, ics, notAfter, e.getMessage()));

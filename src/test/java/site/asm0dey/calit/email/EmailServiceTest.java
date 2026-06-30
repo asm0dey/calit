@@ -307,6 +307,29 @@ class EmailServiceTest {
                 .contains("reminder"));
     }
 
+    // ---- From header carries owner display name for booking mail ----
+
+    @Test
+    void bookingMailFromCarriesOwnerDisplayName() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> b.status = BookingStatus.CONFIRMED, true, LocationType.PHONE, "+1");
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        assertEquals("Owner via calit <calit@example.com>", owner.getFrom());
+    }
+
+    @Test
+    void passwordResetMailHasNoPerMessageFrom() {
+        mailbox.clear();
+        emailService.sendPasswordReset(
+                "u@example.com", "https://x/reset", Instant.now().plusSeconds(3600), java.util.Locale.ENGLISH);
+        assertNull(
+                mailbox.getMailsSentTo("u@example.com").getFirst().getFrom(),
+                "no per-message From -> falls back to config default");
+    }
+
     // --- attachment assertion: every app-sent mail carries an .ics ---
 
     private static void assertHasIcsAttachment(Mail m) {

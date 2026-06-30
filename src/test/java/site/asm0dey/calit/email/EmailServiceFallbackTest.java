@@ -50,7 +50,7 @@ class EmailServiceFallbackTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         doThrow(new RuntimeException("smtp down"))
                 .when(mailSender)
-                .sendNow(anyString(), anyString(), anyString(), any());
+                .sendNow(any(), anyString(), anyString(), anyString(), any());
         var bookingId = seedDeclined();
 
         // Must not throw.
