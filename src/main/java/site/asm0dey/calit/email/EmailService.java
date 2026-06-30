@@ -50,6 +50,9 @@ public class EmailService {
     public static final String LOCATION = "location";
     public static final String IS_MEET_LINK = "isMeetLink";
     public static final String MANAGE_URL = "manageUrl";
+    /** Owner-only login-gated manage (reschedule/cancel) link on /me; rendered only for the owner copy. */
+    public static final String OWNER_MANAGE_URL = "ownerManageUrl";
+
     public static final String ANSWERS = "answers";
 
     /** Role-aware greeting name: invitee name for the invitee copy, owner name for the owner copy. */
@@ -293,6 +296,7 @@ public class EmailService {
                             .data(LOCATION, location)
                             .data(IS_MEET_LINK, isMeet(l))
                             .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(OWNER_MANAGE_URL, ownerManageUrl(l.booking))
                             .data(CANCEL_URL, cancelUrl(l.booking))
                             .data(ANSWERS, l.answers)
                             .render();
@@ -332,6 +336,7 @@ public class EmailService {
                             .data(LOCATION, location)
                             .data(IS_MEET_LINK, isMeet(l))
                             .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(OWNER_MANAGE_URL, ownerManageUrl(l.booking))
                             .data(CANCEL_URL, cancelUrl(l.booking))
                             .data(ANSWERS, l.answers)
                             .render();
@@ -426,6 +431,7 @@ public class EmailService {
                             .data(LOCATION, location)
                             .data(IS_MEET_LINK, isMeet(l))
                             .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(OWNER_MANAGE_URL, ownerManageUrl(l.booking))
                             .data(CANCEL_URL, cancelUrl(l.booking))
                             .data(ANSWERS, l.answers)
                             .render();
@@ -501,6 +507,7 @@ public class EmailService {
                             .data(LOCATION, location)
                             .data(IS_MEET_LINK, isMeet(l))
                             .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(OWNER_MANAGE_URL, ownerManageUrl(l.booking))
                             .data(CANCEL_URL, cancelUrl(l.booking))
                             .data(ANSWERS, l.answers)
                             .render();
@@ -716,6 +723,10 @@ public class EmailService {
 
     private String manageUrl(Booking b) {
         return baseUrl + "/booking/" + b.manageToken + "/manage";
+    }
+
+    private String ownerManageUrl(Booking b) {
+        return baseUrl + "/me/bookings/" + b.id + "/manage";
     }
 
     /** Owner authenticated approve link with the token nonce; null when no approval token exists. */

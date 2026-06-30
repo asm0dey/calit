@@ -321,6 +321,21 @@ class EmailServiceTest {
     }
 
     @Test
+    void confirmedOwnerMailContainsManageLink() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> b.status = BookingStatus.CONFIRMED, true, LocationType.PHONE, "+1");
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        assertTrue(
+                owner.getHtml().contains("/me/bookings/" + bookingId + "/manage"),
+                "owner copy links to the /me manage page");
+        Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
+        assertFalse(invitee.getHtml().contains("/me/bookings/"), "invitee copy must NOT contain the owner /me link");
+    }
+
+    @Test
     void passwordResetMailHasNoPerMessageFrom() {
         mailbox.clear();
         emailService.sendPasswordReset(

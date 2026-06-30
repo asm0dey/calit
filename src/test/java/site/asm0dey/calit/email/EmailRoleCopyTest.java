@@ -38,6 +38,7 @@ class EmailRoleCopyTest {
                 .data("location", null)
                 .data("isMeetLink", false)
                 .data("manageUrl", "https://calit.example/booking/tok/manage")
+                .data("ownerManageUrl", "https://calit.example/me/bookings/42/manage")
                 .data("cancelUrl", "https://calit.example/booking/tok/cancel")
                 .data(
                         "approveUrl",
@@ -68,9 +69,10 @@ class EmailRoleCopyTest {
     }
 
     @Test
-    void confirmationOwnerCopyNamesInviteeNoManageLink() {
+    void confirmationOwnerCopyNamesInviteeAndHasOwnerManageLink() {
         String body = base(confirmation, "owner").render();
         assertTrue(body.contains("Sam Invitee booked"), "owner body names the invitee");
-        assertFalse(body.contains("/manage"), "owner copy has no invitee manage link");
+        assertTrue(body.contains("/me/bookings/42/manage"), "owner copy links to owner manage page");
+        assertFalse(body.contains("/booking/tok/manage"), "owner copy must NOT contain the invitee manage link");
     }
 }

@@ -14,5 +14,5 @@
   {#include email/_location /}
 </ul>
 {#include email/_answers /}
-{#if recipientRole != 'owner'}{#include email/_inviteelinks /}{/if}
+{#if recipientRole == 'owner'}{#include email/_ownerlinks /}{#else}{#include email/_inviteelinks /}{/if}
 {/include}
