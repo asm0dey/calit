@@ -2,15 +2,18 @@ package site.asm0dey.calit.booking;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
+import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +23,7 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.google.CreatedEvent;
 
 @QuarkusTest
 class BookingServiceGuestTest {
@@ -29,6 +33,12 @@ class BookingServiceGuestTest {
 
     @InjectMock
     CalendarPort calendarPort;
+
+    // Owner tz Europe/Amsterdam. Derive a future weekday from now() so the slot is never in the past.
+    private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
+    private static final LocalDate DAY =
+            Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant(); // 09:00 local
 
     @BeforeEach
     void init() {
@@ -154,6 +164,40 @@ class BookingServiceGuestTest {
     }
 
     @Test
+    @TestTransaction
+    void guestsAreAddedAsGoogleAttendees() {
+        seedSettings();
+        meetingTypeWithMondayWindow("guest-attendees", LocationType.GOOGLE_MEET, false);
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+                .thenReturn(new CreatedEvent("evt-g", null, "https://calendar.google.com/evt-g"));
+
+        bookingService.book(
+                1L,
+                "guest-attendees",
+                SLOT_09,
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok-g",
+                "",
+                "en",
+                List.of("g1@example.com", "g2@example.com"));
+
+        verify(calendarPort, times(1))
+                .createEvent(
+                        anyLong(),
+                        anyString(),
+                        anyString(),
+                        eq(SLOT_09),
+                        any(),
+                        eq(List.of("sam@example.com", "owner@example.com", "g1@example.com", "g2@example.com")),
+                        anyBoolean(),
+                        any());
+    }
+
+    @Test
     void declineGuestMarksDeclinedAndIsIdempotent() throws Exception {
         Booking b = bookingService.book(
                 1L,
@@ -177,5 +221,43 @@ class BookingServiceGuestTest {
         // Second call is a no-op, not an error.
         bookingService.declineGuest(ana.declineToken);
         assertEquals(GuestStatus.DECLINED, BookingGuest.<BookingGuest>findById(ana.id).status);
+    }
+
+    // --- helpers ---
+
+    private void seedSettings() {
+        // Idempotent upsert: a non-@TestTransaction REST test (MeetingTypeResourceTest PUT /api/settings)
+        // may have committed the singleton row before this suite runs, so reuse it if present rather
+        // than re-inserting the same primary key (which would violate owner_settings_pkey).
+        OwnerSettings s = OwnerSettings.forOwner(1L);
+        if (s == null) {
+            s = new OwnerSettings();
+            s.ownerId = 1L;
+        }
+        s.ownerName = "Owner";
+        s.ownerEmail = "owner@example.com";
+        s.timezone = "Europe/Amsterdam";
+        s.persist();
+    }
+
+    private MeetingType meetingTypeWithMondayWindow(String slug, LocationType location, boolean requiresApproval) {
+        MeetingType t = new MeetingType();
+        t.ownerId = 1L;
+        t.name = slug;
+        t.slug = slug;
+        t.durationMinutes = 60;
+        t.minNoticeMinutes = 0;
+        t.horizonDays = 50_000; // keep the DAY slot inside the horizon regardless of run date
+        t.locationType = location;
+        t.requiresApproval = requiresApproval;
+        t.persist();
+        AvailabilityRule r = new AvailabilityRule();
+        r.ownerId = 1L;
+        r.dayOfWeek = DAY.getDayOfWeek();
+        r.startTime = LocalTime.of(9, 0);
+        r.endTime = LocalTime.of(11, 0);
+        r.meetingTypeId = null;
+        r.persist();
+        return t;
     }
 }

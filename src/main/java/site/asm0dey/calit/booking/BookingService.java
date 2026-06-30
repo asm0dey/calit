@@ -284,11 +284,27 @@ public class BookingService {
                 "Booked via calit.",
                 booking.startUtc,
                 booking.endUtc,
-                List.of(booking.inviteeEmail, owner.ownerEmail),
+                attendeeEmails(booking, owner),
                 type.locationType == LocationType.GOOGLE_MEET,
                 type.locationDetail);
         booking.googleEventId = created.googleEventId();
         booking.meetLink = created.meetLink();
+    }
+
+    /**
+     * The full Google attendee set for this booking: invitee + owner + currently-active (INVITED) guests.
+     * ponytail: guests here also gain Google's native Accept/Decline RSVP, which calit can't observe — the
+     * calit decline link stays authoritative; a Google-side RSVP won't update BookingGuest.status. No Google
+     * API suppresses native RSVP, so this is accepted.
+     */
+    private static List<String> attendeeEmails(Booking booking, OwnerSettings owner) {
+        List<String> emails = new ArrayList<>();
+        emails.add(booking.inviteeEmail);
+        emails.add(owner.ownerEmail);
+        for (BookingGuest g : BookingGuest.<BookingGuest>activeForBooking(booking.id)) {
+            emails.add(g.email);
+        }
+        return emails;
     }
 
     /**
