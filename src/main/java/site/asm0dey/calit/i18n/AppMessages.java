@@ -493,18 +493,6 @@ public interface AppMessages {
     @Message("Reschedule or cancel")
     String email_body_owner_manage_link_text();
 
-    @Message("This message was sent to the {role}.")
-    String email_body_recipient_note(String role);
-
-    @Message("invitee")
-    String email_role_invitee();
-
-    @Message("organizer")
-    String email_role_owner();
-
-    @Message("guest")
-    String email_role_guest();
-
     @Message("You're invited to a meeting")
     String email_guest_invite_title();
 

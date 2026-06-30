@@ -174,6 +174,7 @@ class EmailServiceTest {
         assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
         Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
         assertTrue(m.getSubject().toLowerCase().contains("declin"));
+        assertTrue(m.getAttachments().isEmpty(), "no .ics when Google connected (no calendar event was ever created)");
     }
 
     // ---- ownerNotificationsEnabled = false: owner gets nothing; invitee per rules ----

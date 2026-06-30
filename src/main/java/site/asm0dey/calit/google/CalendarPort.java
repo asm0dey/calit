@@ -38,7 +38,7 @@ public interface CalendarPort {
             boolean createMeetLink,
             String locationText);
 
-    /** Move an existing event to a new time window and replace its attendee list (reschedule / guest sync); {@code sendUpdates=all}. A null attendee list leaves attendees unchanged. */
+    /** Move an existing event to a new time window and replace its attendee list (reschedule / guest sync); {@code sendUpdates=all}. A null or empty attendee list leaves attendees unchanged. */
     void updateEvent(Long ownerId, String eventId, Instant start, Instant end, List<String> attendeeEmails);
 
     /** Remove an existing event (cancel); {@code sendUpdates=all}. */

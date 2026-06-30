@@ -27,7 +27,6 @@ import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.i18n.AppLocales;
 import site.asm0dey.calit.i18n.AppMessageResolver;
-import site.asm0dey.calit.i18n.AppMessages;
 
 @ApplicationScoped
 // S6813: CDI field injection is the established pattern across this codebase's beans.
@@ -35,7 +34,6 @@ import site.asm0dey.calit.i18n.AppMessages;
 public class EmailService {
 
     public static final String RECIPIENT_ROLE = "recipientRole";
-    public static final String RECIPIENT_ROLE_DISPLAY = "recipientRoleDisplay";
     /** Recipient-role values passed to the per-role body builder. */
     private static final String INVITEE_ROLE = "invitee";
 
@@ -238,7 +236,6 @@ public class EmailService {
                             .instance()
                             .setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
-                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
@@ -276,7 +273,6 @@ public class EmailService {
                             .instance()
                             .setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
-                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
@@ -315,7 +311,6 @@ public class EmailService {
                             .instance()
                             .setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
-                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
@@ -365,7 +360,6 @@ public class EmailService {
                     return declined.instance()
                             .setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
-                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
@@ -407,7 +401,6 @@ public class EmailService {
                             .instance()
                             .setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
-                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
@@ -446,7 +439,6 @@ public class EmailService {
                             .instance()
                             .setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
-                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
@@ -482,7 +474,6 @@ public class EmailService {
                     return reminder.instance()
                             .setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
-                            .data(RECIPIENT_ROLE_DISPLAY, localizedRole(role, locale))
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
@@ -523,7 +514,6 @@ public class EmailService {
                     .instance()
                     .setLocale(locale)
                     .data(RECIPIENT_ROLE, GUEST_ROLE)
-                    .data(RECIPIENT_ROLE_DISPLAY, messages.forLocale(locale).email_role_guest())
                     .data("lang", locale.getLanguage())
                     .data(GREETING_NAME, g.email)
                     .data(INVITEE_NAME, l.booking.inviteeName)
@@ -588,7 +578,6 @@ public class EmailService {
                 .setLocale(locale)
                 .data("lang", locale.getLanguage())
                 .data(GREETING_NAME, l.booking.inviteeName)
-                .data(RECIPIENT_ROLE_DISPLAY, messages.forLocale(locale).email_role_invitee())
                 .data(GUEST_EMAIL_DATA, guest.email)
                 .data(MEETING_TYPE_NAME, l.meetingType.name)
                 .data(START_TIME, start)
@@ -608,7 +597,6 @@ public class EmailService {
                 .instance()
                 .setLocale(locale)
                 .data(RECIPIENT_ROLE, GUEST_ROLE)
-                .data(RECIPIENT_ROLE_DISPLAY, messages.forLocale(locale).email_role_guest())
                 .data("lang", locale.getLanguage())
                 .data(GREETING_NAME, g.email)
                 .data(MEETING_TYPE_NAME, l.meetingType.name)
@@ -694,12 +682,6 @@ public class EmailService {
         if (l.owner.ownerNotificationsEnabled) {
             sink.deliver(from, l.owner.ownerEmail, ownerSubject, bodyForRole.apply(OWNER_ROLE), ics);
         }
-    }
-
-    /** Returns the localized display word for the recipient role in the email footer. */
-    private String localizedRole(String role, Locale locale) {
-        AppMessages m = messages.forLocale(locale);
-        return INVITEE_ROLE.equals(role) ? m.email_role_invitee() : m.email_role_owner();
     }
 
     /** Per-message From display name for booking mail: "{owner} via calit", or null if no owner name. */

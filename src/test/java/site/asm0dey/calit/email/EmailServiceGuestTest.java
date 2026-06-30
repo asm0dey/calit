@@ -168,11 +168,9 @@ class EmailServiceGuestTest {
         emailService.handleCancelled(new BookingCancelled(bookingId));
 
         assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "active guest gets a cancellation");
-        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL)
-                .getFirst()
-                .getSubject()
-                .toLowerCase()
-                .contains("cancel"));
+        Mail guestMail = mailbox.getMailsSentTo(GUEST_EMAIL).getFirst();
+        assertTrue(guestMail.getSubject().toLowerCase().contains("cancel"));
+        assertTrue(guestMail.getAttachments().isEmpty(), "no .ics when Google connected (Google cancels natively)");
     }
 
     @Test
