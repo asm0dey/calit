@@ -10,6 +10,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -964,6 +965,20 @@ public class AdminResource {
                 Layout.TZ_SCRIPT,
                 Layout.CALENDAR_SCRIPT,
                 m().adm_dashboard_h2());
+    }
+
+    @POST
+    @Path("/bookings/{id}/reschedule")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance ownerReschedule(@PathParam("id") Long id, @RestForm String startUtc) {
+        Booking b = requireOwnedBooking(id);
+        // Preserve the booking's current guests (reschedule reconciles against the passed list;
+        // an empty list would remove them). Keyed by the booking's own manageToken.
+        List<String> guests =
+                BookingGuest.activeForBooking(b.id).stream().map(g -> g.email).toList();
+        bookingService.reschedule(b.manageToken, Instant.parse(startUtc), guests);
+        return dashboard(); // re-render /me; rescheduled booking reflects its new time (or moves to pending queue)
     }
 
     @POST
