@@ -307,6 +307,62 @@ class EmailServiceTest {
                 .contains("reminder"));
     }
 
+    // ---- From header carries owner display name for booking mail ----
+
+    @Test
+    void bookingMailFromCarriesOwnerDisplayName() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> b.status = BookingStatus.CONFIRMED, true, LocationType.PHONE, "+1");
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        assertEquals("Owner via calit <calit@example.com>", owner.getFrom());
+    }
+
+    @Test
+    void confirmedOwnerMailContainsManageLink() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> b.status = BookingStatus.CONFIRMED, true, LocationType.PHONE, "+1");
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        assertTrue(
+                owner.getHtml().contains("/me/bookings/" + bookingId + "/manage"),
+                "owner copy links to the /me manage page");
+        Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
+        assertFalse(invitee.getHtml().contains("/me/bookings/"), "invitee copy must NOT contain the owner /me link");
+    }
+
+    @Test
+    void fromNameStripsInjectedCrLfFromOwnerName() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> b.status = BookingStatus.CONFIRMED, true, LocationType.PHONE, "+1");
+        // Overwrite ownerName with a header-injection payload
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            s.ownerName = "Evil\r\nBcc: evil@example.com";
+            s.persist();
+        });
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        String from = owner.getFrom();
+        assertFalse(from.contains("\r") || from.contains("\n"), "From header must not contain CR or LF; got: " + from);
+    }
+
+    @Test
+    void passwordResetMailHasNoPerMessageFrom() {
+        mailbox.clear();
+        emailService.sendPasswordReset(
+                "u@example.com", "https://x/reset", Instant.now().plusSeconds(3600), java.util.Locale.ENGLISH);
+        assertNull(
+                mailbox.getMailsSentTo("u@example.com").getFirst().getFrom(),
+                "no per-message From -> falls back to config default");
+    }
+
     // --- attachment assertion: every app-sent mail carries an .ics ---
 
     private static void assertHasIcsAttachment(Mail m) {

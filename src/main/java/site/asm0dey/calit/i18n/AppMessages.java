@@ -490,6 +490,9 @@ public interface AppMessages {
     @Message("Manage your booking")
     String email_body_manage_link_text();
 
+    @Message("Reschedule or cancel")
+    String email_body_owner_manage_link_text();
+
     @Message("This message was sent to the {role}.")
     String email_body_recipient_note(String role);
 

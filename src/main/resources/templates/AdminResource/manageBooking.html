@@ -1,0 +1,59 @@
+{@site.asm0dey.calit.booking.Booking booking}
+{@java.lang.String currentLabel}
+{@java.lang.String currentUtcIso}
+{@java.util.List<site.asm0dey.calit.web.PublicResource$DaySlots> days}
+{@java.lang.String guestsCsv}
+{@java.lang.Long pendingCount}
+{@java.lang.Boolean isAdmin}
+{@java.lang.String tzBar}
+{@java.lang.String tzScript}
+{@java.lang.String calScript}
+{@java.lang.String title}
+{#include adminBase title=title pendingCount=pendingCount active="dashboard" isAdmin=isAdmin}
+  <div class="card bg-base-100 border border-base-300 shadow-sm max-w-2xl">
+    <div class="card-body">
+      <h1 class="text-2xl font-bold">{msg:pub_manage_h1}</h1>
+      {tzBar.raw}
+      <div class="rounded-box bg-base-200 border border-base-300 p-4 my-4 space-y-1">
+        <p><strong>{msg:pub_manage_currently_label}</strong> <time data-utc="{currentUtcIso}">{currentLabel}</time></p>
+        <p><strong>{msg:pub_manage_for_label}</strong> {booking.inviteeName} ({booking.inviteeEmail})</p>
+      </div>
+
+      <h2 class="text-lg font-semibold mt-2 mb-3">{msg:pub_manage_h2_reschedule}</h2>
+      {#if days.isEmpty()}
+        <p>{msg:pub_manage_no_alternatives}</p>
+      {#else}
+        <form method="post" action="/me/bookings/{booking.id}/reschedule" class="space-y-4">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <div class="booking-grid">
+            <div id="calendar" class="calendar"></div>
+            <div class="time-column">
+              {#for day in days}
+                <section class="day-slots" data-date="{day.isoDate}">
+                  <h3>{day.label}</h3>
+                  {#for slot in day.slots}
+                    <label class="slot">
+                      <input type="radio" name="startUtc" value="{slot.startUtc}" required>
+                      <time data-utc="{slot.startUtc}" data-time-only="1">{slot.label}</time>
+                    </label>
+                  {/for}
+                </section>
+              {/for}
+            </div>
+          </div>
+          {#if guestsCsv}<p class="text-sm text-base-content/70">{guestsCsv}</p>{/if}
+          <button type="submit" class="btn btn-primary">{msg:pub_manage_btn_reschedule}</button>
+        </form>
+      {/if}
+
+      <div class="divider"></div>
+      <h2 class="text-lg font-semibold mb-3">{msg:pub_manage_h2_cancel}</h2>
+      <form method="post" action="/me/bookings/{booking.id}/cancel">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <button type="submit" class="btn btn-error btn-outline">{msg:pub_manage_btn_cancel}</button>
+      </form>
+      {tzScript.raw}
+      {calScript.raw}
+    </div>
+  </div>
+{/include}

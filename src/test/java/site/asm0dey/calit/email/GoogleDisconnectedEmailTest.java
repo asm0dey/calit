@@ -26,8 +26,9 @@ class GoogleDisconnectedEmailTest {
         ArgumentCaptor<String> to = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> subject = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
-        // 4-arg send(to, subject, html, ics) is the no-deadline overload.
-        Mockito.verify(mailSender).send(to.capture(), subject.capture(), body.capture(), Mockito.isNull());
+        // 5-arg send(fromName, to, subject, html, ics) is the no-deadline overload; fromName is null for system mails.
+        Mockito.verify(mailSender)
+                .send(Mockito.isNull(), to.capture(), subject.capture(), body.capture(), Mockito.isNull());
 
         org.junit.jupiter.api.Assertions.assertEquals("owner@example.com", to.getValue());
         assertTrue(subject.getValue().toLowerCase().contains("reconnect"));
@@ -41,7 +42,8 @@ class GoogleDisconnectedEmailTest {
                 "owner@example.com", "work@gmail.com", java.util.Locale.forLanguageTag("de"));
 
         ArgumentCaptor<String> subject = ArgumentCaptor.forClass(String.class);
-        Mockito.verify(mailSender).send(Mockito.any(), subject.capture(), Mockito.any(), Mockito.isNull());
+        Mockito.verify(mailSender)
+                .send(Mockito.isNull(), Mockito.any(), subject.capture(), Mockito.any(), Mockito.isNull());
 
         String deSubject = subject.getValue();
         org.junit.jupiter.api.Assertions.assertFalse(

@@ -108,6 +108,9 @@ public interface AdminMessages {
     @Message("No upcoming bookings.")
     String adm_dashboard_no_upcoming();
 
+    @Message("Manage")
+    String adm_dashboard_btn_manage();
+
     // ---- Meeting types list ----
 
     @Message("Meeting types")

@@ -10,12 +10,19 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestForm;
+import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.domain.*;
 import site.asm0dey.calit.domain.BookingField.FieldType;
@@ -93,6 +100,19 @@ public class AdminResource {
         public static native TemplateInstance pending(
                 List<Booking> pending, String tzScript, boolean isAdmin, String title);
 
+        public static native TemplateInstance manageBooking(
+                Booking booking,
+                String currentLabel,
+                String currentUtcIso,
+                List<PublicResource.DaySlots> days,
+                String guestsCsv,
+                Long pendingCount,
+                boolean isAdmin,
+                String tzBar,
+                String tzScript,
+                String calScript,
+                String title);
+
         public static native TemplateInstance approvalResult(
                 Long pendingCount, boolean isAdmin, String title, String h1, String desc);
     }
@@ -127,6 +147,31 @@ public class AdminResource {
 
     @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440")
     int reminderLeadMinutes;
+
+    // Mirrors PublicResource.daySlots formatting; the client TZ script relabels to the viewer's zone,
+    // so this server label is only a fallback. ponytail: extract a shared helper if a 3rd consumer appears.
+    private static final DateTimeFormatter MANAGE_DATE_FMT = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy");
+    private static final DateTimeFormatter MANAGE_TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+
+    /** Available slots for a meeting type as an ordered per-day list (reuses the public view records). */
+    private List<PublicResource.DaySlots> daySlots(MeetingType type) {
+        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
+        var from = LocalDate.now(zone);
+        LocalDate to = from.plusDays(type.horizonDays);
+        Map<String, PublicResource.DaySlots> byIso = new LinkedHashMap<>();
+        for (TimeSlot slot : bookingService.availableSlots(type, from, to)) {
+            String isoDate = slot.start().toLocalDate().toString();
+            var day = byIso.computeIfAbsent(
+                    isoDate,
+                    k -> new PublicResource.DaySlots(
+                            k, slot.start().format(MANAGE_DATE_FMT), new java.util.ArrayList<>()));
+            day.slots()
+                    .add(new PublicResource.SlotView(
+                            slot.start().format(MANAGE_TIME_FMT),
+                            slot.start().toInstant().toString()));
+        }
+        return new java.util.ArrayList<>(byIso.values());
+    }
 
     /** Pending-approval count for the shared admin nav badge. */
     private long pendingCount() {
@@ -320,7 +365,7 @@ public class AdminResource {
             return overrides;
         }
         List<Long> ids = overrides.stream().map(o -> o.id).toList();
-        java.util.Map<Long, List<DateOverrideWindow>> byOverride =
+        Map<Long, List<DateOverrideWindow>> byOverride =
                 DateOverrideWindow.<DateOverrideWindow>list("dateOverrideId in ?1 order by startTime asc", ids).stream()
                         .collect(java.util.stream.Collectors.groupingBy(w -> w.dateOverrideId));
         for (DateOverride o : overrides) {
@@ -894,6 +939,56 @@ public class AdminResource {
             throw new NotFoundException("No booking " + id);
         }
         return b;
+    }
+
+    @GET
+    @Path("/bookings/{id}/manage")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance manageBooking(@PathParam("id") Long id) {
+        Booking b = requireOwnedBooking(id);
+        MeetingType type = MeetingType.findById(b.meetingTypeId);
+        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
+        String current =
+                b.startUtc.atZone(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
+        String guestsCsv = BookingGuest.activeForBooking(b.id).stream()
+                .map(g -> g.email)
+                .collect(java.util.stream.Collectors.joining(","));
+        return Templates.manageBooking(
+                b,
+                current,
+                b.startUtc.toString(),
+                daySlots(type),
+                guestsCsv,
+                pendingCount(),
+                isAdmin(),
+                Layout.TZ_BAR,
+                Layout.TZ_SCRIPT,
+                Layout.CALENDAR_SCRIPT,
+                m().adm_dashboard_h2());
+    }
+
+    @POST
+    @Path("/bookings/{id}/reschedule")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance ownerReschedule(@PathParam("id") Long id, @RestForm String startUtc) {
+        Booking b = requireOwnedBooking(id);
+        // Preserve the booking's current guests -- reschedule reconciles against the passed list,
+        // and an empty list would remove them. Keyed by the booking's own manageToken.
+        List<String> guests =
+                BookingGuest.activeForBooking(b.id).stream().map(g -> g.email).toList();
+        bookingService.reschedule(b.manageToken, Instant.parse(startUtc), guests);
+        return dashboard(); // re-render /me; rescheduled booking reflects its new time (or moves to pending queue)
+    }
+
+    @POST
+    @Path("/bookings/{id}/cancel")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance ownerCancel(@PathParam("id") Long id) {
+        Booking b = requireOwnedBooking(id);
+        bookingService.cancel(b.manageToken); // keyed by the booking's own token; fires BookingCancelled
+        return dashboard(); // re-render /me; the cancelled booking drops off the upcoming list
     }
 
     @POST

@@ -34,7 +34,7 @@ class OutboxSchedulerTest {
 
     @Test
     void dueRowIsSentAndMarked() {
-        doNothing().when(mailSender).sendNow(anyString(), anyString(), anyString(), any());
+        doNothing().when(mailSender).sendNow(any(), anyString(), anyString(), anyString(), any());
         Long id = QuarkusTransaction.requiringNew()
                 .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, "prev"));
 
@@ -48,7 +48,7 @@ class OutboxSchedulerTest {
     void failedRetryAppliesBackoffAndStaysUnsent() {
         doThrow(new RuntimeException("still down"))
                 .when(mailSender)
-                .sendNow(anyString(), anyString(), anyString(), any());
+                .sendNow(any(), anyString(), anyString(), anyString(), any());
         Long id = QuarkusTransaction.requiringNew()
                 .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
 
@@ -65,7 +65,7 @@ class OutboxSchedulerTest {
 
     @Test
     void deadRowIsNotClaimed() {
-        doNothing().when(mailSender).sendNow(anyString(), anyString(), anyString(), any());
+        doNothing().when(mailSender).sendNow(any(), anyString(), anyString(), anyString(), any());
         Long id = QuarkusTransaction.requiringNew().call(() -> {
             Long x = EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null);
             EmailOutbox r = EmailOutbox.findById(x);
@@ -81,7 +81,7 @@ class OutboxSchedulerTest {
 
     @Test
     void deadlinedRowPastDeadlineIsMarkedDeadAndNotSent() {
-        doNothing().when(mailSender).sendNow(anyString(), anyString(), anyString(), any());
+        doNothing().when(mailSender).sendNow(any(), anyString(), anyString(), anyString(), any());
         // Due now (next_attempt_at <= now) but its usefulness deadline already passed.
         Long id = QuarkusTransaction.requiringNew()
                 .call(() -> EmailOutbox.enqueue(
@@ -95,6 +95,6 @@ class OutboxSchedulerTest {
             assertNull(r.nextAttemptAt, "past-deadline mail is marked dead");
         });
         // The send was never attempted for the expired row.
-        verify(mailSender, never()).sendNow(anyString(), anyString(), anyString(), any());
+        verify(mailSender, never()).sendNow(any(), anyString(), anyString(), anyString(), any());
     }
 }

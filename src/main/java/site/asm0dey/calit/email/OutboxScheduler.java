@@ -60,7 +60,7 @@ public class OutboxScheduler {
                     r.markExpired(); // e.g. reset-token already expired -- don't deliver a dead link
                 } else {
                     try {
-                        mailSender.sendNow(r.recipient, r.subject, r.htmlBody, r.icsBytes);
+                        mailSender.sendNow(null, r.recipient, r.subject, r.htmlBody, r.icsBytes);
                         r.sentAt = Instant.now(); // marked within the lock-holding tx
                     } catch (Exception e) {
                         r.deadOrBackoff(e.getMessage()); // bump attempts / reschedule / mark dead
