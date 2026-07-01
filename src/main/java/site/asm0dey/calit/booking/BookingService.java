@@ -565,6 +565,12 @@ public class BookingService {
 
     @Transactional
     public void cancel(String manageToken) {
+        cancel(manageToken, false);
+    }
+
+    /** {@code byOwner} true when the host cancelled (from /me or an owner email link) -> initiator-aware wording. */
+    @Transactional
+    public void cancel(String manageToken, boolean byOwner) {
         Booking booking = Booking.findByManageToken(manageToken);
         if (booking == null) {
             throw new NotFoundException("No booking for token " + manageToken);
@@ -573,7 +579,7 @@ public class BookingService {
         if (calendarPort.isConnected(booking.ownerId) && booking.googleEventId != null) {
             calendarPort.deleteEvent(booking.ownerId, booking.googleEventId);
         }
-        bookingCancelledEvent.fire(new BookingCancelled(booking.id));
+        bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner));
     }
 
     @Transactional

@@ -1,10 +1,19 @@
 {@java.lang.String recipientRole}
+{@java.lang.Boolean byOwner}
 {#include email/layout}
 {#title}{msg:email_cancellation_title}{/title}
-{#if recipientRole == 'owner'}
-<p><strong>{msg:email_cancellation_body_owner(inviteeName)}</strong></p>
-{#else}
+{#if byOwner}
+  {#if recipientRole == 'owner'}
 <p><strong>{msg:email_cancellation_body}</strong></p>
+  {#else}
+<p><strong>{msg:email_cancellation_body_by_owner(ownerName)}</strong></p>
+  {/if}
+{#else}
+  {#if recipientRole == 'owner'}
+<p><strong>{msg:email_cancellation_body_owner(inviteeName)}</strong></p>
+  {#else}
+<p><strong>{msg:email_cancellation_body}</strong></p>
+  {/if}
 {/if}
 <ul>
   <li><strong>{msg:email_body_meeting_label}</strong> {meetingTypeName}</li>

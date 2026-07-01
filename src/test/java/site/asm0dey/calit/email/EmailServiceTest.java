@@ -335,13 +335,30 @@ class EmailServiceTest {
                 LocationType.GOOGLE_MEET,
                 null);
 
-        emailService.handleCancelled(new BookingCancelled(bookingId));
+        emailService.handleCancelled(new BookingCancelled(bookingId, false));
 
         assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size());
         assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
         Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
         assertTrue(m.getSubject().toLowerCase().contains("cancel"));
         assertFalse(m.getHtml().contains("will-not-appear"), "cancellation body must not include a meet link");
+    }
+
+    @Test
+    void hostCancelNamesHostToGuestAndDoesNotBlameGuestToOwner() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> b.status = BookingStatus.CANCELLED, true, LocationType.PHONE, "+1");
+
+        emailService.handleCancelled(new BookingCancelled(bookingId, true));
+
+        Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
+        assertTrue(
+                invitee.getHtml().contains("Owner cancelled your booking"),
+                "host-initiated: invitee copy names the host");
+        Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        assertFalse(
+                owner.getHtml().contains("Sam Invitee") && owner.getHtml().contains("was cancelled"),
+                "host-initiated: owner copy must not attribute to the guest");
     }
 
     // ---- Reminder follows the fallback rule ----

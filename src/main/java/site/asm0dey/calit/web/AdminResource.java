@@ -987,7 +987,7 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance ownerCancel(@PathParam("id") Long id) {
         Booking b = requireOwnedBooking(id);
-        bookingService.cancel(b.manageToken); // keyed by the booking's own token; fires BookingCancelled
+        bookingService.cancel(b.manageToken, true); // host-initiated; keyed by the booking's own token
         return dashboard(); // re-render /me; the cancelled booking drops off the upcoming list
     }
 

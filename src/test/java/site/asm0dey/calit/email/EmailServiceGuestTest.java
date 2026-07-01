@@ -165,7 +165,7 @@ class EmailServiceGuestTest {
     void cancelledSendsGuestCancel() {
         long bookingId = seedWithGuest(GuestStatus.INVITED);
 
-        emailService.handleCancelled(new BookingCancelled(bookingId));
+        emailService.handleCancelled(new BookingCancelled(bookingId, false));
 
         assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "active guest gets a cancellation");
         Mail guestMail = mailbox.getMailsSentTo(GUEST_EMAIL).getFirst();
