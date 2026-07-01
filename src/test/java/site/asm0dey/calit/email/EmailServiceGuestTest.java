@@ -150,7 +150,7 @@ class EmailServiceGuestTest {
     void rescheduledSendsGuestDeclineLinkNoIcsWhenGoogleConnected() {
         long bookingId = seedWithGuest(GuestStatus.INVITED);
 
-        emailService.handleRescheduled(new BookingRescheduled(bookingId, Instant.parse("2026-06-07T09:00:00Z")));
+        emailService.handleRescheduled(new BookingRescheduled(bookingId, Instant.parse("2026-06-07T09:00:00Z"), false));
 
         List<Mail> toGuest = mailbox.getMailsSentTo(GUEST_EMAIL);
         assertEquals(1, toGuest.size(), "guest gets an updated invite on reschedule");

@@ -437,7 +437,12 @@ public class BookingService {
 
     @Transactional
     public Booking reschedule(String manageToken, Instant newStartUtc) {
-        return reschedule(manageToken, newStartUtc, null);
+        return reschedule(manageToken, newStartUtc, null, false);
+    }
+
+    @Transactional
+    public Booking reschedule(String manageToken, Instant newStartUtc, List<String> guestEmails) {
+        return reschedule(manageToken, newStartUtc, guestEmails, false);
     }
 
     /**
@@ -445,9 +450,11 @@ public class BookingService {
      * set is reconciled to it (added guests -> INVITED + GuestRemoved/invite emails downstream; dropped
      * guests -> REMOVED + cancel email; kept guests get the reschedule .ics via BookingRescheduled).
      * A null {@code guestEmails} leaves guests untouched (the JSON API + the 2-arg overload).
+     * {@code byOwner} true when the host drove the reschedule (from /me or an owner email link),
+     * which flips the notification wording so nobody is told the guest moved it.
      */
     @Transactional
-    public Booking reschedule(String manageToken, Instant newStartUtc, List<String> guestEmails) {
+    public Booking reschedule(String manageToken, Instant newStartUtc, List<String> guestEmails, boolean byOwner) {
         Booking booking = Booking.findByManageToken(manageToken);
         if (booking == null || booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
             throw new NotFoundException("No active booking for token " + manageToken);
@@ -505,7 +512,7 @@ public class BookingService {
                 calendarPort.updateEvent(
                         type.ownerId, booking.googleEventId, newStartUtc, newEnd, attendeeEmails(booking, owner));
             }
-            bookingRescheduledEvent.fire(new BookingRescheduled(booking.id, oldStart));
+            bookingRescheduledEvent.fire(new BookingRescheduled(booking.id, oldStart, byOwner));
         }
         return booking;
     }

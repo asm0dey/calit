@@ -977,7 +977,7 @@ public class AdminResource {
         // and an empty list would remove them. Keyed by the booking's own manageToken.
         List<String> guests =
                 BookingGuest.activeForBooking(b.id).stream().map(g -> g.email).toList();
-        bookingService.reschedule(b.manageToken, Instant.parse(startUtc), guests);
+        bookingService.reschedule(b.manageToken, Instant.parse(startUtc), guests, true); // host-initiated
         return dashboard(); // re-render /me; rescheduled booking reflects its new time (or moves to pending queue)
     }
 

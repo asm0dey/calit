@@ -261,7 +261,7 @@ class EmailServiceTest {
                 null);
         var oldStart = Instant.parse("2026-06-08T09:00:00Z");
 
-        emailService.handleRescheduled(new BookingRescheduled(bookingId, oldStart));
+        emailService.handleRescheduled(new BookingRescheduled(bookingId, oldStart, false));
 
         assertEquals(
                 1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(), "connected -> invitee still gets calit link email");
@@ -280,6 +280,45 @@ class EmailServiceTest {
         assertTrue(
                 mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getAttachments().isEmpty(),
                 "no .ics when Google notifies");
+    }
+
+    // ---- Reschedule attribution: who moved it drives the wording, not who receives ----
+
+    @Test
+    void hostRescheduleNamesHostToGuestAndDoesNotBlameGuestToOwner() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var newStart = Instant.parse("2026-06-10T09:00:00Z");
+        long bookingId = seedAt(newStart, b -> b.status = BookingStatus.CONFIRMED, true, LocationType.PHONE, "+1");
+        var oldStart = Instant.parse("2026-06-08T09:00:00Z");
+
+        emailService.handleRescheduled(new BookingRescheduled(bookingId, oldStart, true));
+
+        Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
+        assertTrue(
+                invitee.getHtml().contains("Owner rescheduled your booking"),
+                "host-initiated: invitee copy names the host");
+        Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        assertFalse(
+                owner.getHtml().contains("Sam Invitee rescheduled"),
+                "host-initiated: owner copy must not blame the guest");
+    }
+
+    @Test
+    void guestRescheduleNamesGuestToOwnerAndStaysPassiveToGuest() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var newStart = Instant.parse("2026-06-10T09:00:00Z");
+        long bookingId = seedAt(newStart, b -> b.status = BookingStatus.CONFIRMED, true, LocationType.PHONE, "+1");
+        var oldStart = Instant.parse("2026-06-08T09:00:00Z");
+
+        emailService.handleRescheduled(new BookingRescheduled(bookingId, oldStart, false));
+
+        Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        assertTrue(
+                owner.getHtml().contains("Sam Invitee rescheduled their booking"),
+                "guest-initiated: owner copy names the guest");
+        Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
+        assertFalse(
+                invitee.getHtml().contains("rescheduled your booking"), "guest-initiated: invitee copy stays passive");
     }
 
     // ---- Cancellation: fallback rule, no location/meet link in body ----

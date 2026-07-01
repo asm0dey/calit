@@ -42,6 +42,7 @@ public class EmailService {
     public static final String DECLINE_GUEST_URL = "declineGuestUrl";
     public static final String GUEST_EMAIL_DATA = "guestEmail";
     public static final String INVITEE_NAME = "inviteeName";
+    public static final String OWNER_NAME = "ownerName";
     public static final String MEETING_TYPE_NAME = "meetingTypeName";
     public static final String START_TIME = "startTime";
     public static final String DURATION_MINUTES = "durationMinutes";
@@ -401,8 +402,10 @@ public class EmailService {
                             .instance()
                             .setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
+                            .data("byOwner", e.byOwner())
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(OWNER_NAME, l.owner.ownerName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
                             .data(MEETING_TYPE_NAME, l.meetingType.name)
                             .data(START_TIME, newStart)
