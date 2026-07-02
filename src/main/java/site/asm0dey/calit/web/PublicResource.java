@@ -60,6 +60,7 @@ public class PublicResource {
                 String title,
                 Booking booking,
                 MeetingType type,
+                String meetingName,
                 boolean pending,
                 String location,
                 String whenLabel,
@@ -76,7 +77,11 @@ public class PublicResource {
                 String tzBar,
                 String tzScript,
                 String calScript,
-                String initialGuests);
+                String initialGuests,
+                String titleValue,
+                String descriptionValue,
+                String titlePlaceholder,
+                String descPlaceholder);
 
         public static native TemplateInstance guestDeclineConfirm(
                 String title,
@@ -89,7 +94,7 @@ public class PublicResource {
         public static native TemplateInstance guestDeclined(String title);
 
         public static native TemplateInstance cancelConfirm(
-                String title, Booking booking, MeetingType type, String tzScript);
+                String title, Booking booking, MeetingType type, String meetingName, String tzScript);
 
         public static native TemplateInstance cancelled(String title);
 
@@ -311,19 +316,34 @@ public class PublicResource {
         String title = pending ? m.pub_conf_title_pending() : m.pub_conf_title_confirmed();
         String location =
                 (type.locationType == MeetingType.LocationType.GOOGLE_MEET) ? booking.meetLink : type.locationDetail;
+        String meetingName = booking.effectiveTitle(type);
         return Templates.confirmation(
-                title, booking, type, pending, location, when, startUtcIso, Layout.TZ_BAR, Layout.TZ_SCRIPT);
+                title,
+                booking,
+                type,
+                meetingName,
+                pending,
+                location,
+                when,
+                startUtcIso,
+                Layout.TZ_BAR,
+                Layout.TZ_SCRIPT);
     }
 
     @GET
     @Path("/booking/{manageToken}/manage")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance manage(@PathParam("manageToken") String manageToken) {
-        var m = messages.forLocale(activeLocale.current());
         Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
         if (booking == null) {
             throw new NotFoundException("No booking for token " + manageToken); // unknown token → 404
         }
+        return renderManage(booking);
+    }
+
+    /** Render the invitee's Manage hub (shared by GET manage and POST edit-details). */
+    private TemplateInstance renderManage(Booking booking) {
+        var m = messages.forLocale(activeLocale.current());
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         OwnerSettings settings = OwnerSettings.forOwner(type.ownerId);
         if (settings == null) {
@@ -351,7 +371,31 @@ public class PublicResource {
                 Layout.TZ_BAR,
                 Layout.TZ_SCRIPT,
                 Layout.CALENDAR_SCRIPT,
-                guestsCsv);
+                guestsCsv,
+                booking.title == null ? "" : booking.title, // raw override
+                booking.description == null ? "" : booking.description,
+                type.name,
+                type.description == null ? "" : type.description);
+    }
+
+    @POST
+    @Path("/booking/{manageToken}/edit-details")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    // Transactional so the reload below shares updateDetails' persistence context instead of hitting this
+    // request's long-lived non-transactional EntityManager, which would still hold the pre-update entity
+    // in its L1 cache and serve stale data back to renderManage (same reasoning as AdminResource's
+    // ownerEditDetails).
+    @jakarta.transaction.Transactional
+    public TemplateInstance editDetails(
+            @PathParam("manageToken") String manageToken,
+            @RestForm String title,
+            @RestForm String description,
+            MultivaluedMap<String, String> form) {
+        // Authenticated solely by the unguessable manage token. Re-renders the Manage hub with fresh values.
+        bookingService.updateDetails(manageToken, title, description, parseGuests(form), false);
+        Booking booking = Booking.findByManageToken(manageToken);
+        return renderManage(booking);
     }
 
     @POST
@@ -380,7 +424,8 @@ public class PublicResource {
             return Templates.cancelled(m.pub_cancelled_title());
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        return Templates.cancelConfirm(m.pub_cancel_confirm_title(), booking, type, Layout.TZ_SCRIPT);
+        return Templates.cancelConfirm(
+                m.pub_cancel_confirm_title(), booking, type, booking.effectiveTitle(type), Layout.TZ_SCRIPT);
     }
 
     @POST

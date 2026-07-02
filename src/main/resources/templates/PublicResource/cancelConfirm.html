@@ -1,6 +1,7 @@
 {@java.lang.String title}
 {@site.asm0dey.calit.booking.Booking booking}
 {@site.asm0dey.calit.domain.MeetingType type}
+{@java.lang.String meetingName}
 {@java.lang.String tzScript}
 {#include base title=title}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-xl mx-auto">
@@ -8,7 +9,7 @@
       <h1 class="text-2xl font-bold">{msg:pub_cancel_confirm_h1}</h1>
       <p class="text-base-content/70">{msg:pub_cancel_confirm_desc}</p>
       <ul class="list-disc ms-5">
-        <li><strong>{msg:pub_booking_meeting_label}</strong> {type.name}</li>
+        <li><strong>{msg:pub_booking_meeting_label}</strong> {meetingName}</li>
         <li><strong>{msg:pub_booking_when_label}</strong> <time data-utc="{booking.startUtc}">{booking.startUtc} UTC</time></li>
       </ul>
       <div class="flex gap-2">

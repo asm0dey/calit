@@ -162,7 +162,6 @@ class GuestBookingFlowTest {
     }
 
     @Test
-    @org.junit.jupiter.api.Disabled("edit-details endpoint lands in Task 7")
     void editDetailsEditsGuestList() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
