@@ -9,6 +9,22 @@ asset downloads, are on
 
 ## Unreleased
 
+- **Edit a booking's name, description, and guests after booking.** From the
+  **Manage** page — both the host (**/me** → a booking's Manage link) and the
+  invitee (their manage link) — you can now rename a meeting, set or clear its
+  description, and add or remove guests, all without rescheduling. The change is
+  emailed to the other party and pushed to the Google Calendar event and the
+  `.ics` invite (guests get an updated invite too). An untouched save changes
+  nothing and notifies no one.
+- **Reschedule is now time-only.** Guest editing moved into the new **Edit name &
+  description** section, so the reschedule step only moves the meeting; picking the
+  same time again is a no-op. The owner can now manage a booking's guest list too
+  (previously guests were owner-read-only).
+- **The Google Calendar event description now reflects the meeting's description**
+  (previously a fixed "Booked via calit." placeholder). The meeting's displayed
+  name across emails, the `.ics`, and the calendar event follows any per-booking
+  rename.
+
 ## 1.14.1
 
 Reschedule and cancellation emails now name the right person.
