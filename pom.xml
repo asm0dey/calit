@@ -30,6 +30,8 @@
          NOT read sonar-project.properties; all analysis parameters live here. -->
     <sonar.organization>asm0dey</sonar.organization>
     <sonar.projectKey>asm0dey_calit</sonar.projectKey>
+    <!-- Coverage from quarkus-jacoco (default report dir target/jacoco-report). -->
+    <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/jacoco-report/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <!-- Duplication in the email layer is inherent to the type-safe @CheckedTemplate design, not
          copy/paste to refactor away (flat params were chosen over a view record on purpose — see
          docs/superpowers/specs/2026-07-02-typed-email-templates-design.md): each template redeclares
@@ -91,6 +93,9 @@
     </dependency>
 
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-junit5</artifactId><scope>test</scope></dependency>
+    <!-- Code coverage: Quarkus-native JaCoCo (test-time instrumentation; writes target/jacoco-report/jacoco.xml
+         consumed by SonarQube). Uses Quarkus's own agent wiring, so the reuseForks argLine is untouched. -->
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-jacoco</artifactId><scope>test</scope></dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-test-security</artifactId>
@@ -168,6 +173,9 @@
           <forkedProcessExitTimeoutInSeconds>120</forkedProcessExitTimeoutInSeconds>
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+            <!-- reuseForks=true runs many @QuarkusTest classes (and @TestProfile restarts) in one JVM;
+                 accumulate their coverage into one data file instead of overwriting per class. -->
+            <quarkus.jacoco.reuse-data-file>true</quarkus.jacoco.reuse-data-file>
           </systemPropertyVariables>
         </configuration>
       </plugin>
