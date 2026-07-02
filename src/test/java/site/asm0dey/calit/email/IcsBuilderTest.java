@@ -130,4 +130,34 @@ class IcsBuilderTest {
         assertTrue(ics.contains("RSVP=FALSE"), "guest invite suppresses the calendar RSVP buttons");
         assertFalse(ics.contains("RSVP=TRUE"));
     }
+
+    @Test
+    void emitsDescriptionLineWhenPresent() {
+        String ics = IcsBuilder.build(IcsEvent.builder()
+                .uid("tok-d")
+                .summary("Roadmap sync")
+                .description("Q3 planning agenda")
+                .location(null)
+                .organizer(new IcsBuilder.Party("Owner Name", "owner@example.com"))
+                .attendee(new IcsBuilder.Party("Invitee", "invitee@example.com"))
+                .start(Instant.parse("2026-06-08T09:00:00Z"))
+                .end(Instant.parse("2026-06-08T09:30:00Z"))
+                .build());
+        assertTrue(ics.contains("DESCRIPTION:Q3 planning agenda"));
+    }
+
+    @Test
+    void omitsDescriptionLineWhenNullOrBlank() {
+        String ics = IcsBuilder.build(IcsEvent.builder()
+                .uid("tok-d2")
+                .summary("Roadmap sync")
+                .description("   ")
+                .location(null)
+                .organizer(new IcsBuilder.Party("Owner Name", "owner@example.com"))
+                .attendee(new IcsBuilder.Party("Invitee", "invitee@example.com"))
+                .start(Instant.parse("2026-06-08T09:00:00Z"))
+                .end(Instant.parse("2026-06-08T09:30:00Z"))
+                .build());
+        assertFalse(ics.contains("DESCRIPTION:"));
+    }
 }

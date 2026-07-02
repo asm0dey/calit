@@ -45,6 +45,9 @@ public final class IcsBuilder {
         sb.append("DTSTART:").append(ICS_UTC.format(e.start())).append("\r\n");
         sb.append("DTEND:").append(ICS_UTC.format(e.end())).append("\r\n");
         sb.append("SUMMARY:").append(escape(e.summary())).append("\r\n");
+        if (e.description() != null && !e.description().isBlank()) {
+            sb.append("DESCRIPTION:").append(escape(e.description())).append("\r\n");
+        }
         if (e.location() != null && !e.location().isBlank()) {
             sb.append("LOCATION:").append(escape(e.location())).append("\r\n");
         }

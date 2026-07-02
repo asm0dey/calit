@@ -10,6 +10,7 @@ import java.time.Instant;
 public record IcsEvent(
         String uid,
         String summary,
+        String description,
         String location,
         IcsBuilder.Party organizer,
         IcsBuilder.Party attendee,
@@ -26,6 +27,7 @@ public record IcsEvent(
     public static final class Builder {
         private String uid;
         private String summary;
+        private String description;
         private String location;
         private IcsBuilder.Party organizer;
         private IcsBuilder.Party attendee;
@@ -42,6 +44,11 @@ public record IcsEvent(
 
         public Builder summary(String summary) {
             this.summary = summary;
+            return this;
+        }
+
+        public Builder description(String description) {
+            this.description = description;
             return this;
         }
 
@@ -87,7 +94,17 @@ public record IcsEvent(
 
         public IcsEvent build() {
             return new IcsEvent(
-                    uid, summary, location, organizer, attendee, start, end, method, sequence, attendeeRsvp);
+                    uid,
+                    summary,
+                    description,
+                    location,
+                    organizer,
+                    attendee,
+                    start,
+                    end,
+                    method,
+                    sequence,
+                    attendeeRsvp);
         }
     }
 }
