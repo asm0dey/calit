@@ -535,6 +535,23 @@ public class BookingService {
             guestRemovedEvent.fire(new GuestRemoved(booking.id, guestId));
         }
 
+        applyRescheduleOutcome(booking, type, oldStart, priorEventId, reApproval, byOwner);
+        return booking;
+    }
+
+    /**
+     * Post-commit calendar sync + domain event for a reschedule. Re-approval types drop any prior Google
+     * event and re-enter the approval queue (BookingRequested); auto types patch the existing event's time
+     * (when connected) and fire BookingRescheduled. Split out of {@link #reschedule} to keep that method's
+     * cognitive complexity in check.
+     */
+    private void applyRescheduleOutcome(
+            Booking booking,
+            MeetingType type,
+            Instant oldStart,
+            String priorEventId,
+            boolean reApproval,
+            boolean byOwner) {
         if (reApproval) {
             if (calendarPort.isConnected(type.ownerId) && priorEventId != null) {
                 calendarPort.deleteEvent(type.ownerId, priorEventId);
@@ -544,11 +561,14 @@ public class BookingService {
             if (calendarPort.isConnected(type.ownerId) && booking.googleEventId != null) {
                 OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
                 calendarPort.updateEvent(
-                        type.ownerId, booking.googleEventId, newStartUtc, newEnd, attendeeEmails(booking, owner));
+                        type.ownerId,
+                        booking.googleEventId,
+                        booking.startUtc,
+                        booking.endUtc,
+                        attendeeEmails(booking, owner));
             }
             bookingRescheduledEvent.fire(new BookingRescheduled(booking.id, oldStart, byOwner));
         }
-        return booking;
     }
 
     /**

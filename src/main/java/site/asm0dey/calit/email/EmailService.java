@@ -55,6 +55,9 @@ public class EmailService {
 
     public static final String ANSWERS = "answers";
 
+    /** Whether the host (vs. the invitee) drove the change — flips reschedule/cancel/update wording. */
+    public static final String BY_OWNER = "byOwner";
+
     /** Role-aware greeting name: invitee name for the invitee copy, owner name for the owner copy. */
     public static final String GREETING_NAME = "greetingName";
     /** Owner-only authenticated approve/decline links (requested email); null for the invitee copy. */
@@ -410,7 +413,7 @@ public class EmailService {
                             .instance()
                             .setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
-                            .data("byOwner", e.byOwner())
+                            .data(BY_OWNER, e.byOwner())
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(OWNER_NAME, l.owner.ownerName)
@@ -450,7 +453,7 @@ public class EmailService {
                     return updated.instance()
                             .setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
-                            .data("byOwner", e.byOwner())
+                            .data(BY_OWNER, e.byOwner())
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(OWNER_NAME, l.owner.ownerName)
@@ -491,7 +494,7 @@ public class EmailService {
                             .instance()
                             .setLocale(locale)
                             .data(RECIPIENT_ROLE, role)
-                            .data("byOwner", e.byOwner())
+                            .data(BY_OWNER, e.byOwner())
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(OWNER_NAME, l.owner.ownerName)
