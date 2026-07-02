@@ -97,6 +97,30 @@ class RescheduleCancelTest {
 
     @Test
     @TestTransaction
+    void rescheduleToSameTimeIsNoOp() {
+        seedSettings();
+        meetingTypeWithMondayWindow("resched-noop", false);
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+                .thenReturn(new CreatedEvent("evt-nn", "https://meet.google.com/n-n-n", "h"));
+
+        Booking b = bookingService.book(
+                1L, "resched-noop", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        int beforeSeq = b.icsSequence;
+        clearInvocations(calendarPort);
+
+        // Reschedule to the SAME start with guests untouched (null) -> no-op.
+        bookingService.reschedule(b.manageToken, SLOT_09, null, false);
+
+        Booking loaded = Booking.findById(b.id);
+        assertEquals(SLOT_09, loaded.startUtc);
+        assertEquals(beforeSeq, loaded.icsSequence, "no-op must not bump the sequence");
+        verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any());
+    }
+
+    @Test
+    @TestTransaction
     void cancelFlipsStatusCallsDeleteAndFreesSlot() {
         seedSettings();
         MeetingType t = meetingTypeWithMondayWindow("cancel", false);

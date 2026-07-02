@@ -973,11 +973,8 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance ownerReschedule(@PathParam("id") Long id, @RestForm String startUtc) {
         Booking b = requireOwnedBooking(id);
-        // Preserve the booking's current guests -- reschedule reconciles against the passed list,
-        // and an empty list would remove them. Keyed by the booking's own manageToken.
-        List<String> guests =
-                BookingGuest.activeForBooking(b.id).stream().map(g -> g.email).toList();
-        bookingService.reschedule(b.manageToken, Instant.parse(startUtc), guests, true); // host-initiated
+        // Time only -- guests untouched (null). Host edits guests via /me/bookings/{id}/edit-details.
+        bookingService.reschedule(b.manageToken, Instant.parse(startUtc), null, true); // host-initiated
         return dashboard(); // re-render /me; rescheduled booking reflects its new time (or moves to pending queue)
     }
 

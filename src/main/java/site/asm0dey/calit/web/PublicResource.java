@@ -358,14 +358,10 @@ public class PublicResource {
     @Path("/booking/{manageToken}/reschedule")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance rescheduleBooking(
-            @PathParam("manageToken") String manageToken,
-            @RestForm String startUtc,
-            MultivaluedMap<String, String> form) {
-        // startUtc is the absolute UTC instant the invitee chose; the viewer's display zone
-        // never altered it (the picker only relabels). reschedule(...) is keyed by the token.
-        // For approval types Plan 3 returns the booking to PENDING; auto types stay CONFIRMED.
-        Booking booking = bookingService.reschedule(manageToken, Instant.parse(startUtc), parseGuests(form));
+    public TemplateInstance rescheduleBooking(@PathParam("manageToken") String manageToken, @RestForm String startUtc) {
+        // Time only -- guests are managed separately via /booking/{token}/edit-details. Passing the 2-arg
+        // overload leaves the guest set untouched (guestEmails=null).
+        Booking booking = bookingService.reschedule(manageToken, Instant.parse(startUtc));
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         return confirmationPage(booking, type);
     }

@@ -39,7 +39,9 @@ public class BookingService {
     private final TurnstileVerifier turnstileVerifier;
     private final long perEmailDailyCap;
 
-    /** Max guests an invitee may attach to one booking. ponytail: a constant, not a config knob. */
+    /**
+     * Max guests an invitee may attach to one booking. ponytail: a constant, not a config knob.
+     */
     public static final int MAX_GUESTS_PER_BOOKING = 10;
 
     @Inject
@@ -252,7 +254,9 @@ public class BookingService {
         }
     }
 
-    /** Cleaned, de-duped (case-insensitive), capped, invitee-excluded guest list. Preserves order. */
+    /**
+     * Cleaned, de-duped (case-insensitive), capped, invitee-excluded guest list. Preserves order.
+     */
     private static List<String> normalizeGuestEmails(List<String> guestEmails, String inviteeEmail) {
         if (guestEmails == null || guestEmails.isEmpty()) {
             return List.of();
@@ -294,7 +298,9 @@ public class BookingService {
         booking.meetLink = created.meetLink();
     }
 
-    /** Google event SUMMARY for a booking: "{effective title} with {invitee}". */
+    /**
+     * Google event SUMMARY for a booking: "{effective title} with {invitee}".
+     */
     private static String googleSummary(MeetingType type, Booking booking) {
         return booking.effectiveTitle(type) + " with " + booking.inviteeName;
     }
@@ -403,7 +409,9 @@ public class BookingService {
         }
     }
 
-    /** True if {@code ex} (or a cause) is the no-overlap exclusion-constraint violation. */
+    /**
+     * True if {@code ex} (or a cause) is the no-overlap exclusion-constraint violation.
+     */
     private boolean isNoOverlapViolation(Throwable ex) {
         for (var t = ex; t != null; t = t.getCause()) {
             if (t instanceof ConstraintViolationException cve
@@ -414,7 +422,9 @@ public class BookingService {
         return false;
     }
 
-    /** Throws BookingConflictException unless an available slot starts exactly at {@code startUtc}. */
+    /**
+     * Throws BookingConflictException unless an available slot starts exactly at {@code startUtc}.
+     */
     private void assertSlotAvailable(MeetingType type, Instant startUtc, Long excludeBookingId) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         var day = startUtc.atZone(zone).toLocalDate();
@@ -476,6 +486,13 @@ public class BookingService {
         if (booking == null || booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
             throw new NotFoundException("No active booking for token " + manageToken);
         }
+
+        // No-op: same time and guests untouched (web callers pass null) -> nothing to do. Avoids a spurious
+        // SEQUENCE bump + reschedule email when the invitee re-picks the current slot.
+        if (newStartUtc.equals(booking.startUtc) && guestEmails == null) {
+            return booking;
+        }
+
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         Instant newEnd = newStartUtc.plusSeconds(60L * type.durationMinutes);
 
@@ -592,12 +609,16 @@ public class BookingService {
         return booking;
     }
 
-    /** Trim; null for null/blank so a cleared override falls back to the meeting type's value. */
+    /**
+     * Trim; null for null/blank so a cleared override falls back to the meeting type's value.
+     */
     private static String blankToNull(String s) {
         return (s == null || s.isBlank()) ? null : s.trim();
     }
 
-    /** Enforce the same input-bounds discipline as validateInputBounds (SEC-INPUT): title ≤ 200, desc ≤ 2000. */
+    /**
+     * Enforce the same input-bounds discipline as validateInputBounds (SEC-INPUT): title ≤ 200, desc ≤ 2000.
+     */
     private static void validateDetailBounds(String title, String description) {
         if (title != null && title.length() > 200) {
             throw new BookingValidationException("Meeting name is too long.");
@@ -607,7 +628,9 @@ public class BookingService {
         }
     }
 
-    /** True iff the booking's current active guest set equals {@code wanted} (case-insensitive). */
+    /**
+     * True iff the booking's current active guest set equals {@code wanted} (case-insensitive).
+     */
     private static boolean sameGuestSet(Booking booking, List<String> wanted) {
         java.util.Set<String> current = new java.util.HashSet<>();
         for (BookingGuest g : BookingGuest.<BookingGuest>activeForBooking(booking.id)) {
@@ -671,7 +694,9 @@ public class BookingService {
         cancel(manageToken, false);
     }
 
-    /** {@code byOwner} true when the host cancelled (from /me or an owner email link) -> initiator-aware wording. */
+    /**
+     * {@code byOwner} true when the host cancelled (from /me or an owner email link) -> initiator-aware wording.
+     */
     @Transactional
     public void cancel(String manageToken, boolean byOwner) {
         Booking booking = Booking.findByManageToken(manageToken);

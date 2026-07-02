@@ -191,6 +191,11 @@
     font-size: 0.95rem;
     margin: 0 0 0.75rem;
   }
+  .time-column {
+    /* ponytail: ~calendar height; scroll the day's slots past it instead of running long. */
+    max-height: 22rem;
+    overflow-y: auto;
+  }
   .day-slots {
     margin: 0;
   }
