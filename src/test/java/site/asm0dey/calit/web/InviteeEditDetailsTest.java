@@ -1,6 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static io.restassured.config.EncoderConfig.encoderConfig;
 import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.RestAssured;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import java.time.DayOfWeek;
@@ -126,5 +128,48 @@ class InviteeEditDetailsTest {
                 .then()
                 .statusCode(200)
                 .body(containsString("Roadmap sync")); // effectiveTitle, not the type name
+    }
+
+    // The app validates title/description by CHARACTER count (<= 2000), but Quarkus limits each form
+    // attribute by BYTE size (quarkus.http.limits.max-form-attribute-size). With the 2048-byte default,
+    // a multibyte description within the 2000-char cap exceeds 2048 bytes and was rejected with an opaque
+    // HTTP 413 before ever reaching the 422 validator. The limit is raised so app validation is authoritative.
+
+    @Test
+    void multibyteDescriptionWithinCharLimitIsAcceptedNot413() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var token = seed();
+        // 2000 Hebrew chars = 4000 UTF-8 bytes: within the 2000-char app cap, but ~2x the old 2048-byte limit.
+        var desc = "א".repeat(2000);
+
+        // Force UTF-8 form encoding so the multibyte bytes on the wire match a real browser POST from our
+        // UTF-8 pages (RestAssured's default content charset would mangle Hebrew to '?').
+        given().config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("title", "Kickoff")
+                .formParam("description", desc)
+                .when()
+                .post("/booking/" + token + "/edit-details")
+                .then()
+                .statusCode(200); // reaches the app + passes validation, not a raw 413
+
+        Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findByManageToken(token));
+        assertEquals(desc, after.description);
+    }
+
+    @Test
+    void overlongMultibyteDescriptionGives422Not413() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var token = seed();
+        // 2001 Hebrew chars = 4002 bytes: over BOTH the old byte limit and the char cap. Must surface the
+        // app's clean 422 ("Description is too long."), not the transport-layer 413.
+        var desc = "א".repeat(2001);
+
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("description", desc)
+                .when()
+                .post("/booking/" + token + "/edit-details")
+                .then()
+                .statusCode(422);
     }
 }
