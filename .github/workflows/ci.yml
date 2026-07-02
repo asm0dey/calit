@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so SonarQube can attribute new-code lines via git blame
 
       - name: Set up Liberica JDK 26
         uses: actions/setup-java@v5
@@ -44,6 +46,17 @@ jobs:
 
       - name: Build and run tests
         run: ./mvnw --batch-mode --no-transfer-progress verify
+
+      # CI-based SonarQube Cloud analysis (Automatic Analysis is disabled for this project so the
+      # sonar-maven-plugin's parameters in pom.xml — exclusions/ignores — are authoritative).
+      # Skipped on fork PRs, which cannot access the SONAR_TOKEN secret. Reuses the target/ built
+      # by the verify step above.
+      - name: SonarQube Cloud analysis
+        if: ${{ !github.event.pull_request.head.repo.fork }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./mvnw --batch-mode --no-transfer-progress org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
 
   scan:
     name: Vulnerability scan (Trivy fs)
