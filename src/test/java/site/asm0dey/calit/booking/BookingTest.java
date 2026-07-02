@@ -1,6 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.test.TestTransaction;
@@ -114,5 +115,38 @@ class BookingTest {
         b.createdAt = Instant.now();
         b.manageToken = token;
         b.persist();
+    }
+
+    @Test
+    void effectiveTitleFallsBackToTypeNameWhenNoOverride() {
+        MeetingType t = new MeetingType();
+        t.name = "Discovery Call";
+        t.description = "A 30-min intro";
+        Booking b = new Booking();
+        assertEquals("Discovery Call", b.effectiveTitle(t));
+        assertEquals("A 30-min intro", b.effectiveDescription(t));
+    }
+
+    @Test
+    void effectiveTitleAndDescriptionUseOverridesWhenSet() {
+        MeetingType t = new MeetingType();
+        t.name = "Discovery Call";
+        t.description = "A 30-min intro";
+        Booking b = new Booking();
+        b.title = "Roadmap sync";
+        b.description = "Q3 planning";
+        assertEquals("Roadmap sync", b.effectiveTitle(t));
+        assertEquals("Q3 planning", b.effectiveDescription(t));
+    }
+
+    @Test
+    void blankOverrideFallsBackAndNullTypeDescriptionStaysNull() {
+        MeetingType t = new MeetingType();
+        t.name = "Discovery Call";
+        t.description = null;
+        Booking b = new Booking();
+        b.title = "   ";
+        assertEquals("Discovery Call", b.effectiveTitle(t));
+        assertNull(b.effectiveDescription(t));
     }
 }

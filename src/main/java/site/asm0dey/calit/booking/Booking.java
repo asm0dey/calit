@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import site.asm0dey.calit.domain.MeetingType;
 
 @Entity
 @Table(name = "booking")
@@ -78,6 +79,21 @@ public class Booking extends PanacheEntityBase {
     public Map<String, String> answers = new java.util.HashMap<>();
 
     /**
+     * Per-booking override of the meeting's displayed name. NULL (or blank) means "no override" —
+     * {@link #effectiveTitle} falls back to the meeting type's name. Editable post-booking by both the
+     * host and the invitee; changes propagate to email, the Google event summary, and the .ics SUMMARY.
+     */
+    @Column(columnDefinition = "text")
+    public String title;
+
+    /**
+     * Per-booking override of the meeting description. NULL (or blank) falls back to the meeting type's
+     * description (which may itself be null). Propagates to the .ics DESCRIPTION and Google event description.
+     */
+    @Column(columnDefinition = "text")
+    public String description;
+
+    /**
      * iTIP SEQUENCE for this booking's guest .ics invites. Starts at 0; reschedule() increments it so
      * a guest's calendar client supersedes the prior event (and so a CANCEL with an equal-or-higher
      * SEQUENCE removes it). Only guest .ics uses it today; the invitee/owner .ics still emits SEQUENCE:0.
@@ -104,6 +120,19 @@ public class Booking extends PanacheEntityBase {
     /** Loads a booking by its invitee manage-token (reschedule/cancel key), or null. */
     public static Booking findByManageToken(String manageToken) {
         return find("manageToken", manageToken).firstResult();
+    }
+
+    /** Displayed meeting name: this booking's override when set + non-blank, else the type's name. */
+    public String effectiveTitle(MeetingType type) {
+        return (title != null && !title.isBlank()) ? title : type.name;
+    }
+
+    /** Meeting description: override when set + non-blank, else the type's description (may be null). */
+    public String effectiveDescription(MeetingType type) {
+        if (description != null && !description.isBlank()) {
+            return description;
+        }
+        return (type.description != null && !type.description.isBlank()) ? type.description : null;
     }
 
     /** Feature 16: how many bookings this invitee email created in [dayStart, dayEnd). */
