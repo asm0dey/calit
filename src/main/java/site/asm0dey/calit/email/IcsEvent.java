@@ -4,7 +4,7 @@ import java.time.Instant;
 
 /**
  * Immutable description of one calendar event to render as an .ics. Built via the fluent
- * {@link #builder()} so call sites read by name instead of passing 10 positional args.
+ * {@link #builder()} so call sites read by name instead of passing 11 positional args.
  * Defaults match an invitee/owner invitation: METHOD:REQUEST, SEQUENCE 0, RSVP requested.
  */
 public record IcsEvent(
