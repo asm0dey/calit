@@ -1,8 +1,10 @@
 package site.asm0dey.calit.email;
 
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
+import io.quarkus.qute.TemplateInstance;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.TransactionPhase;
@@ -112,10 +114,6 @@ public class EmailService {
     Template updated;
 
     @Inject
-    @Location("email/reminder.html")
-    Template reminder;
-
-    @Inject
     @Location("email/password-reset.html")
     Template passwordReset;
 
@@ -168,6 +166,29 @@ public class EmailService {
                 .data("reconnectUrl", reconnectUrl)
                 .render();
         mailSender.send(null, toEmail, messages.forLocale(locale).email_google_disconnected_subject(), body, null);
+    }
+
+    // basePath = "email": @Location on individual @CheckedTemplate native methods is NOT honored by
+    // Qute's build-time processor (only @CheckedTemplate.basePath()/defaultName() drive path
+    // resolution) -- confirmed by inspecting QuteProcessor#collectCheckedTemplates, which never reads
+    // a @Location annotation off the method target. Without basePath the method would resolve to
+    // EmailService/reminder instead of email/reminder.html.
+    @CheckedTemplate(basePath = "email")
+    static class Templates {
+        static native TemplateInstance reminder(
+                String recipientRole,
+                String lang,
+                String greetingName,
+                String inviteeName,
+                String meetingTypeName,
+                String startTime,
+                int durationMinutes,
+                String location,
+                boolean isMeetLink,
+                String manageUrl,
+                String ownerManageUrl,
+                String cancelUrl,
+                List<AnswerLine> answers);
     }
 
     /** Where a rendered mail goes: either a direct SMTP send or an outbox enqueue. */
@@ -528,21 +549,21 @@ public class EmailService {
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
-                    return reminder.instance()
+                    return Templates.reminder(
+                                    role,
+                                    locale.getLanguage(),
+                                    INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName,
+                                    l.booking.inviteeName,
+                                    label(l),
+                                    start,
+                                    l.meetingType.durationMinutes,
+                                    location,
+                                    isMeet(l),
+                                    manageUrl(l.booking),
+                                    ownerManageUrl(l.booking),
+                                    cancelUrl(l.booking),
+                                    l.answers)
                             .setLocale(locale)
-                            .data(RECIPIENT_ROLE, role)
-                            .data("lang", locale.getLanguage())
-                            .data(INVITEE_NAME, l.booking.inviteeName)
-                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, label(l))
-                            .data(START_TIME, start)
-                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                            .data(LOCATION, location)
-                            .data(IS_MEET_LINK, isMeet(l))
-                            .data(MANAGE_URL, manageUrl(l.booking))
-                            .data(OWNER_MANAGE_URL, ownerManageUrl(l.booking))
-                            .data(CANCEL_URL, cancelUrl(l.booking))
-                            .data(ANSWERS, l.answers)
                             .render();
                 },
                 sink);
