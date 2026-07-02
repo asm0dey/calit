@@ -2,8 +2,6 @@ package site.asm0dey.calit.email;
 
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.CheckedTemplate;
-import io.quarkus.qute.Location;
-import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -35,39 +33,11 @@ import site.asm0dey.calit.i18n.AppMessageResolver;
 @SuppressWarnings("java:S6813")
 public class EmailService {
 
-    public static final String RECIPIENT_ROLE = "recipientRole";
     /** Recipient-role values passed to the per-role body builder. */
     private static final String INVITEE_ROLE = "invitee";
 
     private static final String OWNER_ROLE = "owner";
     private static final String GUEST_ROLE = "guest";
-    public static final String DECLINE_GUEST_URL = "declineGuestUrl";
-    public static final String GUEST_EMAIL_DATA = "guestEmail";
-    public static final String INVITEE_NAME = "inviteeName";
-    public static final String OWNER_NAME = "ownerName";
-    public static final String MEETING_TYPE_NAME = "meetingTypeName";
-    public static final String DESCRIPTION = "description";
-    public static final String START_TIME = "startTime";
-    public static final String DURATION_MINUTES = "durationMinutes";
-    public static final String LOCATION = "location";
-    public static final String IS_MEET_LINK = "isMeetLink";
-    public static final String MANAGE_URL = "manageUrl";
-    /** Owner-only login-gated manage (reschedule/cancel) link on /me; rendered only for the owner copy. */
-    public static final String OWNER_MANAGE_URL = "ownerManageUrl";
-
-    public static final String ANSWERS = "answers";
-
-    /** Whether the host (vs. the invitee) drove the change — flips reschedule/cancel/update wording. */
-    public static final String BY_OWNER = "byOwner";
-
-    /** Role-aware greeting name: invitee name for the invitee copy, owner name for the owner copy. */
-    public static final String GREETING_NAME = "greetingName";
-    /** Owner-only authenticated approve/decline links (requested email); null for the invitee copy. */
-    public static final String APPROVE_URL = "approveUrl";
-
-    public static final String DECLINE_URL = "declineUrl";
-    /** Invitee cancel-confirmation link. */
-    public static final String CANCEL_URL = "cancelUrl";
 
     @Inject
     MailSender mailSender;
@@ -89,14 +59,6 @@ public class EmailService {
     @ConfigProperty(name = "app.mail-from")
     String mailFrom;
 
-    @Inject
-    @Location("email/password-reset.html")
-    Template passwordReset;
-
-    @Inject
-    @Location("email/google-disconnected.html")
-    Template googleDisconnected;
-
     /**
      * Sends a password-reset link. Caller has already resolved the destination address.
      * {@code expiresAt} is the reset token's expiry: if the mail can't be sent now and has to fall
@@ -104,11 +66,8 @@ public class EmailService {
      * {@code locale} drives any {msg:} keys rendered in the template body.
      */
     public void sendPasswordReset(String toEmail, String resetUrl, Instant expiresAt, Locale locale) {
-        String body = passwordReset
-                .instance()
+        String body = Templates.passwordReset(locale.getLanguage(), resetUrl)
                 .setLocale(locale)
-                .data("lang", locale.getLanguage())
-                .data("resetUrl", resetUrl)
                 .render();
         mailSender.send(
                 null, toEmail, messages.forLocale(locale).email_password_reset_subject(), body, null, expiresAt);
@@ -122,12 +81,9 @@ public class EmailService {
      */
     public void sendGoogleDisconnected(String toEmail, String accountEmail, Locale locale) {
         var reconnectUrl = baseUrl + "/me/google";
-        String body = googleDisconnected
-                .instance()
+        String body = Templates.googleDisconnected(
+                        locale.getLanguage(), accountEmail == null ? "your account" : accountEmail, reconnectUrl)
                 .setLocale(locale)
-                .data("lang", locale.getLanguage())
-                .data("accountEmail", accountEmail == null ? "your account" : accountEmail)
-                .data("reconnectUrl", reconnectUrl)
                 .render();
         mailSender.send(null, toEmail, messages.forLocale(locale).email_google_disconnected_subject(), body, null);
     }
@@ -262,6 +218,10 @@ public class EmailService {
                 String meetingTypeName,
                 String startTime,
                 String manageUrl);
+
+        static native TemplateInstance passwordReset(String lang, String resetUrl);
+
+        static native TemplateInstance googleDisconnected(String lang, String accountEmail, String reconnectUrl);
     }
 
     /** Where a rendered mail goes: either a direct SMTP send or an outbox enqueue. */
