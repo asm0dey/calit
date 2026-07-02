@@ -9,6 +9,10 @@
 {@java.lang.String tzScript}
 {@java.lang.String calScript}
 {@java.lang.String title}
+{@java.lang.String titleValue}
+{@java.lang.String descriptionValue}
+{@java.lang.String titlePlaceholder}
+{@java.lang.String descPlaceholder}
 {#include adminBase title=title pendingCount=pendingCount active="dashboard" isAdmin=isAdmin}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-2xl">
     <div class="card-body">
@@ -45,6 +49,24 @@
           <button type="submit" class="btn btn-primary">{msg:pub_manage_btn_reschedule}</button>
         </form>
       {/if}
+
+      <div class="divider"></div>
+      <h2 class="text-lg font-semibold mb-3">{msg:pub_edit_details_h2}</h2>
+      <form method="post" action="/me/bookings/{booking.id}/edit-details" class="space-y-4">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <div>
+          <label class="label" for="edit-title">{msg:pub_edit_details_name_label}</label>
+          <input id="edit-title" class="input w-full" type="text" name="title"
+                 maxlength="200" value="{titleValue}" placeholder="{titlePlaceholder}">
+        </div>
+        <div>
+          <label class="label" for="edit-desc">{msg:pub_edit_details_desc_label}</label>
+          <textarea id="edit-desc" class="textarea w-full" name="description"
+                    maxlength="2000" placeholder="{descPlaceholder}">{descriptionValue}</textarea>
+        </div>
+        {#include PublicResource/_guestschips initial=guestsCsv /}
+        <button type="submit" class="btn btn-primary">{msg:pub_edit_details_btn}</button>
+      </form>
 
       <div class="divider"></div>
       <h2 class="text-lg font-semibold mb-3">{msg:pub_manage_h2_cancel}</h2>

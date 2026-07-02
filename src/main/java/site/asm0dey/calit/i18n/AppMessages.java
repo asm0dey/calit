@@ -397,6 +397,18 @@ public interface AppMessages {
     @Message("Reschedule to selected time")
     String pub_manage_btn_reschedule();
 
+    @Message("Edit name & description")
+    String pub_edit_details_h2();
+
+    @Message("Meeting name")
+    String pub_edit_details_name_label();
+
+    @Message("Description")
+    String pub_edit_details_desc_label();
+
+    @Message("Save changes")
+    String pub_edit_details_btn();
+
     @Message("Cancel")
     String pub_manage_h2_cancel();
 

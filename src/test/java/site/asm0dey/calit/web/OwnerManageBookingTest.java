@@ -3,7 +3,6 @@ package site.asm0dey.calit.web;
 import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
@@ -206,7 +205,7 @@ class OwnerManageBookingTest {
     }
 
     @Test
-    void managePageShowsGuestAsReadOnlyTextNotInput() {
+    void managePageShowsGuestEmail() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var bookingId = seedConfirmedBooking();
         seedConfirmedBookingWithGuest(bookingId);
@@ -216,11 +215,7 @@ class OwnerManageBookingTest {
                 .get("/me/bookings/" + bookingId + "/manage")
                 .then()
                 .statusCode(200)
-                // guest email is visible as text
-                .body(containsString("guest@example.com"))
-                // no guest add/remove widget controls (from _guestschips)
-                .body(not(containsString("guest-entry")))
-                .body(not(containsString("guests-data")));
+                .body(containsString("guest@example.com"));
     }
 
     @Test
