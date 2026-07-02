@@ -102,6 +102,8 @@ public class EmailService {
      */
     @CheckedTemplate(basePath = "email")
     static class Templates {
+        private Templates() {}
+
         static native TemplateInstance reminder(
                 String recipientRole,
                 String lang,
