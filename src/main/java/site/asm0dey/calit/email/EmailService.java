@@ -97,18 +97,6 @@ public class EmailService {
     @Location("email/google-disconnected.html")
     Template googleDisconnected;
 
-    @Inject
-    @Location("email/guest-invite.html")
-    Template guestInvite;
-
-    @Inject
-    @Location("email/guest-cancel.html")
-    Template guestCancel;
-
-    @Inject
-    @Location("email/guest-declined.html")
-    Template guestDeclinedNotice;
-
     /**
      * Sends a password-reset link. Caller has already resolved the destination address.
      * {@code expiresAt} is the reset token's expiry: if the mail can't be sent now and has to fall
@@ -252,6 +240,28 @@ public class EmailService {
                 String meetingTypeName,
                 String startTime,
                 int durationMinutes);
+
+        static native TemplateInstance guestInvite(
+                String lang,
+                String greetingName,
+                String inviteeName,
+                String meetingTypeName,
+                String startTime,
+                int durationMinutes,
+                String location,
+                boolean isMeetLink,
+                String declineGuestUrl);
+
+        static native TemplateInstance guestCancel(
+                String lang, String greetingName, String meetingTypeName, String startTime);
+
+        static native TemplateInstance guestDeclinedNotice(
+                String lang,
+                String greetingName,
+                String guestEmail,
+                String meetingTypeName,
+                String startTime,
+                String manageUrl);
     }
 
     /** Where a rendered mail goes: either a direct SMTP send or an outbox enqueue. */
@@ -646,19 +656,17 @@ public class EmailService {
         String start = format(l.booking.startUtc, l.zone, locale);
         for (BookingGuest g : guests) {
             byte[] ics = calendarPort.isConnected(l.owner.ownerId) ? null : guestIcs(l, g, location, IcsMethod.REQUEST);
-            String body = guestInvite
-                    .instance()
+            String body = Templates.guestInvite(
+                            locale.getLanguage(),
+                            g.email,
+                            l.booking.inviteeName,
+                            label(l),
+                            start,
+                            l.meetingType.durationMinutes,
+                            location,
+                            isMeet(l),
+                            declineGuestUrl(g))
                     .setLocale(locale)
-                    .data(RECIPIENT_ROLE, GUEST_ROLE)
-                    .data("lang", locale.getLanguage())
-                    .data(GREETING_NAME, g.email)
-                    .data(INVITEE_NAME, l.booking.inviteeName)
-                    .data(MEETING_TYPE_NAME, label(l))
-                    .data(START_TIME, start)
-                    .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                    .data(LOCATION, location)
-                    .data(IS_MEET_LINK, isMeet(l))
-                    .data(DECLINE_GUEST_URL, declineGuestUrl(g))
                     .render();
             mailSender.send(fromName(l), g.email, subject, body, ics);
         }
@@ -709,15 +717,9 @@ public class EmailService {
                 guestCancelBody(l, guest, locale),
                 calendarPort.isConnected(l.owner.ownerId) ? null : guestIcs(l, guest, null, IcsMethod.CANCEL));
         // 2) notify the invitee so they can reschedule
-        String inviteeBody = guestDeclinedNotice
-                .instance()
+        String inviteeBody = Templates.guestDeclinedNotice(
+                        locale.getLanguage(), l.booking.inviteeName, guest.email, label(l), start, manageUrl(l.booking))
                 .setLocale(locale)
-                .data("lang", locale.getLanguage())
-                .data(GREETING_NAME, l.booking.inviteeName)
-                .data(GUEST_EMAIL_DATA, guest.email)
-                .data(MEETING_TYPE_NAME, label(l))
-                .data(START_TIME, start)
-                .data(MANAGE_URL, manageUrl(l.booking))
                 .render();
         mailSender.send(
                 fromName(l),
@@ -729,15 +731,9 @@ public class EmailService {
 
     /** Renders the guest cancel body in the given locale. */
     private String guestCancelBody(Loaded l, BookingGuest g, Locale locale) {
-        return guestCancel
-                .instance()
+        return Templates.guestCancel(
+                        locale.getLanguage(), g.email, label(l), format(l.booking.startUtc, l.zone, locale))
                 .setLocale(locale)
-                .data(RECIPIENT_ROLE, GUEST_ROLE)
-                .data("lang", locale.getLanguage())
-                .data(GREETING_NAME, g.email)
-                .data(MEETING_TYPE_NAME, label(l))
-                .data(START_TIME, format(l.booking.startUtc, l.zone, locale))
-                .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                 .render();
     }
 
