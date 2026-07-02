@@ -90,18 +90,6 @@ public class EmailService {
     String mailFrom;
 
     @Inject
-    @Location("email/requested.html")
-    Template requested;
-
-    @Inject
-    @Location("email/confirmation.html")
-    Template confirmation;
-
-    @Inject
-    @Location("email/declined.html")
-    Template declined;
-
-    @Inject
     @Location("email/reschedule.html")
     Template reschedule;
 
@@ -189,6 +177,46 @@ public class EmailService {
                 String ownerManageUrl,
                 String cancelUrl,
                 List<AnswerLine> answers);
+
+        static native TemplateInstance requested(
+                String recipientRole,
+                String lang,
+                String greetingName,
+                String inviteeName,
+                String meetingTypeName,
+                String startTime,
+                int durationMinutes,
+                String location,
+                boolean isMeetLink,
+                String manageUrl,
+                String cancelUrl,
+                String approveUrl,
+                String declineUrl,
+                List<AnswerLine> answers);
+
+        static native TemplateInstance confirmation(
+                String recipientRole,
+                String lang,
+                String greetingName,
+                String inviteeName,
+                String meetingTypeName,
+                String startTime,
+                int durationMinutes,
+                String location,
+                boolean isMeetLink,
+                String manageUrl,
+                String ownerManageUrl,
+                String cancelUrl,
+                List<AnswerLine> answers);
+
+        static native TemplateInstance declined(
+                String recipientRole,
+                String lang,
+                String greetingName,
+                String inviteeName,
+                String meetingTypeName,
+                String startTime,
+                int durationMinutes);
     }
 
     /** Where a rendered mail goes: either a direct SMTP send or an outbox enqueue. */
@@ -266,23 +294,22 @@ public class EmailService {
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
-                    return requested
-                            .instance()
+                    return Templates.requested(
+                                    role,
+                                    locale.getLanguage(),
+                                    INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName,
+                                    l.booking.inviteeName,
+                                    label(l),
+                                    start,
+                                    l.meetingType.durationMinutes,
+                                    location,
+                                    isMeet(l),
+                                    manageUrl(l.booking),
+                                    cancelUrl(l.booking),
+                                    approveUrl(l.booking),
+                                    declineUrl(l.booking),
+                                    l.answers)
                             .setLocale(locale)
-                            .data(RECIPIENT_ROLE, role)
-                            .data("lang", locale.getLanguage())
-                            .data(INVITEE_NAME, l.booking.inviteeName)
-                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, label(l))
-                            .data(START_TIME, start)
-                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                            .data(LOCATION, location)
-                            .data(IS_MEET_LINK, isMeet(l))
-                            .data(MANAGE_URL, manageUrl(l.booking))
-                            .data(CANCEL_URL, cancelUrl(l.booking))
-                            .data(APPROVE_URL, approveUrl(l.booking))
-                            .data(DECLINE_URL, declineUrl(l.booking))
-                            .data(ANSWERS, l.answers)
                             .render();
                 });
     }
@@ -303,22 +330,21 @@ public class EmailService {
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
-                    return confirmation
-                            .instance()
+                    return Templates.confirmation(
+                                    role,
+                                    locale.getLanguage(),
+                                    INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName,
+                                    l.booking.inviteeName,
+                                    label(l),
+                                    start,
+                                    l.meetingType.durationMinutes,
+                                    location,
+                                    isMeet(l),
+                                    manageUrl(l.booking),
+                                    ownerManageUrl(l.booking),
+                                    cancelUrl(l.booking),
+                                    l.answers)
                             .setLocale(locale)
-                            .data(RECIPIENT_ROLE, role)
-                            .data("lang", locale.getLanguage())
-                            .data(INVITEE_NAME, l.booking.inviteeName)
-                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, label(l))
-                            .data(START_TIME, start)
-                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                            .data(LOCATION, location)
-                            .data(IS_MEET_LINK, isMeet(l))
-                            .data(MANAGE_URL, manageUrl(l.booking))
-                            .data(OWNER_MANAGE_URL, ownerManageUrl(l.booking))
-                            .data(CANCEL_URL, cancelUrl(l.booking))
-                            .data(ANSWERS, l.answers)
                             .render();
                 });
         sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_confirmed_subject(label(l)));
@@ -341,22 +367,21 @@ public class EmailService {
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
-                    return confirmation
-                            .instance()
+                    return Templates.confirmation(
+                                    role,
+                                    locale.getLanguage(),
+                                    INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName,
+                                    l.booking.inviteeName,
+                                    label(l),
+                                    start,
+                                    l.meetingType.durationMinutes,
+                                    location,
+                                    isMeet(l),
+                                    manageUrl(l.booking),
+                                    ownerManageUrl(l.booking),
+                                    cancelUrl(l.booking),
+                                    l.answers)
                             .setLocale(locale)
-                            .data(RECIPIENT_ROLE, role)
-                            .data("lang", locale.getLanguage())
-                            .data(INVITEE_NAME, l.booking.inviteeName)
-                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, label(l))
-                            .data(START_TIME, start)
-                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                            .data(LOCATION, location)
-                            .data(IS_MEET_LINK, isMeet(l))
-                            .data(MANAGE_URL, manageUrl(l.booking))
-                            .data(OWNER_MANAGE_URL, ownerManageUrl(l.booking))
-                            .data(CANCEL_URL, cancelUrl(l.booking))
-                            .data(ANSWERS, l.answers)
                             .render();
                 });
         sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_confirmed_subject(label(l)));
@@ -390,15 +415,15 @@ public class EmailService {
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
-                    return declined.instance()
+                    return Templates.declined(
+                                    role,
+                                    locale.getLanguage(),
+                                    INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName,
+                                    l.booking.inviteeName,
+                                    label(l),
+                                    start,
+                                    l.meetingType.durationMinutes)
                             .setLocale(locale)
-                            .data(RECIPIENT_ROLE, role)
-                            .data("lang", locale.getLanguage())
-                            .data(INVITEE_NAME, l.booking.inviteeName)
-                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, label(l))
-                            .data(START_TIME, start)
-                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .render();
                 },
                 sink);
