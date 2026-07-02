@@ -442,6 +442,9 @@ public interface AppMessages {
     @Message("Booking rescheduled: {meetingTypeName}")
     String email_rescheduled_subject(String meetingTypeName);
 
+    @Message("Booking updated: {meetingTypeName}")
+    String email_updated_subject(String meetingTypeName);
+
     @Message("Booking cancelled: {meetingTypeName}")
     String email_cancelled_subject(String meetingTypeName);
 
@@ -586,6 +589,21 @@ public interface AppMessages {
     /** Invitee copy when the host drove the reschedule; {name} is the owner's display name. */
     @Message("{name} rescheduled your booking.")
     String email_reschedule_body_by_owner(String name);
+
+    @Message("Booking updated")
+    String email_updated_title();
+
+    @Message("The meeting details were updated.")
+    String email_updated_body_self();
+
+    @Message("{name} updated the meeting details.")
+    String email_updated_body_by_owner(String name);
+
+    @Message("{name} updated the meeting details.")
+    String email_updated_body_by_invitee(String name);
+
+    @Message("Description:")
+    String email_updated_description_label();
 
     @Message("{name}'s booking was cancelled.")
     String email_cancellation_body_owner(String name);

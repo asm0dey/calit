@@ -44,6 +44,7 @@ public class EmailService {
     public static final String INVITEE_NAME = "inviteeName";
     public static final String OWNER_NAME = "ownerName";
     public static final String MEETING_TYPE_NAME = "meetingTypeName";
+    public static final String DESCRIPTION = "description";
     public static final String START_TIME = "startTime";
     public static final String DURATION_MINUTES = "durationMinutes";
     public static final String LOCATION = "location";
@@ -102,6 +103,10 @@ public class EmailService {
     @Inject
     @Location("email/cancellation.html")
     Template cancellation;
+
+    @Inject
+    @Location("email/updated.html")
+    Template updated;
 
     @Inject
     @Location("email/reminder.html")
@@ -199,6 +204,10 @@ public class EmailService {
         handleRescheduled(e);
     }
 
+    void onDetailsChanged(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingDetailsChanged e) {
+        handleDetailsChanged(e);
+    }
+
     void onCancelled(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingCancelled e) {
         handleCancelled(e);
     }
@@ -228,8 +237,8 @@ public class EmailService {
         sendForKindLocaleAware(
                 l,
                 location,
-                messages.forLocale(inviteeLocale).email_requested_subject(l.meetingType.name),
-                messages.forLocale(ownerLocale).email_requested_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_requested_subject(label(l)),
+                messages.forLocale(ownerLocale).email_requested_subject(label(l)),
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -240,7 +249,7 @@ public class EmailService {
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(MEETING_TYPE_NAME, label(l))
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .data(LOCATION, location)
@@ -265,8 +274,8 @@ public class EmailService {
         sendForKindLocaleAware(
                 l,
                 location,
-                messages.forLocale(inviteeLocale).email_confirmed_subject(l.meetingType.name),
-                messages.forLocale(ownerLocale).email_confirmed_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_confirmed_subject(label(l)),
+                messages.forLocale(ownerLocale).email_confirmed_subject(label(l)),
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -277,7 +286,7 @@ public class EmailService {
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(MEETING_TYPE_NAME, label(l))
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .data(LOCATION, location)
@@ -288,7 +297,7 @@ public class EmailService {
                             .data(ANSWERS, l.answers)
                             .render();
                 });
-        sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_confirmed_subject(l.meetingType.name));
+        sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_confirmed_subject(label(l)));
     }
 
     void handleApproved(BookingApproved e) {
@@ -303,8 +312,8 @@ public class EmailService {
         sendForKindLocaleAware(
                 l,
                 location,
-                messages.forLocale(inviteeLocale).email_approved_subject(l.meetingType.name),
-                messages.forLocale(ownerLocale).email_approved_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_approved_subject(label(l)),
+                messages.forLocale(ownerLocale).email_approved_subject(label(l)),
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -315,7 +324,7 @@ public class EmailService {
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(MEETING_TYPE_NAME, label(l))
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .data(LOCATION, location)
@@ -326,7 +335,7 @@ public class EmailService {
                             .data(ANSWERS, l.answers)
                             .render();
                 });
-        sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_confirmed_subject(l.meetingType.name));
+        sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_confirmed_subject(label(l)));
     }
 
     void handleDeclined(BookingDeclined e) {
@@ -338,8 +347,7 @@ public class EmailService {
         // them. A never-confirmed PENDING booking (icsSequence==0) never sent guest invites -> no cancel.
         if (l.booking.icsSequence > 0) {
             sendGuestCancels(
-                    l,
-                    messages.forLocale(AppLocales.pick(l.booking.locale)).email_cancelled_subject(l.meetingType.name));
+                    l, messages.forLocale(AppLocales.pick(l.booking.locale)).email_cancelled_subject(label(l)));
         }
     }
 
@@ -353,8 +361,8 @@ public class EmailService {
         sendForKindLocaleAware(
                 l,
                 resolveLocation(l),
-                messages.forLocale(inviteeLocale).email_declined_subject(l.meetingType.name),
-                messages.forLocale(ownerLocale).email_declined_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_declined_subject(label(l)),
+                messages.forLocale(ownerLocale).email_declined_subject(label(l)),
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -364,7 +372,7 @@ public class EmailService {
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(MEETING_TYPE_NAME, label(l))
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .render();
@@ -392,8 +400,8 @@ public class EmailService {
         sendForKindLocaleAware(
                 l,
                 location,
-                messages.forLocale(inviteeLocale).email_rescheduled_subject(l.meetingType.name),
-                messages.forLocale(ownerLocale).email_rescheduled_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_rescheduled_subject(label(l)),
+                messages.forLocale(ownerLocale).email_rescheduled_subject(label(l)),
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var newStart = INVITEE_ROLE.equals(role) ? inviteeNewStart : ownerNewStart;
@@ -407,7 +415,7 @@ public class EmailService {
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(OWNER_NAME, l.owner.ownerName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(MEETING_TYPE_NAME, label(l))
                             .data(START_TIME, newStart)
                             .data("oldStartTime", oldStart)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
@@ -419,7 +427,48 @@ public class EmailService {
                             .data(ANSWERS, l.answers)
                             .render();
                 });
-        sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_rescheduled_subject(l.meetingType.name));
+        sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_rescheduled_subject(label(l)));
+    }
+
+    void handleDetailsChanged(BookingDetailsChanged e) {
+        Loaded l = load(e.bookingId());
+        if (l == null) return;
+        var location = resolveLocation(l);
+        Locale inviteeLocale = AppLocales.pick(l.booking.locale);
+        Locale ownerLocale = AppLocales.pick(l.owner.locale);
+        String inviteeStart = format(l.booking.startUtc, l.zone, inviteeLocale);
+        String ownerStart = format(l.booking.startUtc, l.zone, ownerLocale);
+        String desc = l.booking.effectiveDescription(l.meetingType);
+        sendForKindLocaleAware(
+                l,
+                location,
+                messages.forLocale(inviteeLocale).email_updated_subject(label(l)),
+                messages.forLocale(ownerLocale).email_updated_subject(label(l)),
+                role -> {
+                    var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
+                    var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
+                    return updated.instance()
+                            .setLocale(locale)
+                            .data(RECIPIENT_ROLE, role)
+                            .data("byOwner", e.byOwner())
+                            .data("lang", locale.getLanguage())
+                            .data(INVITEE_NAME, l.booking.inviteeName)
+                            .data(OWNER_NAME, l.owner.ownerName)
+                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
+                            .data(MEETING_TYPE_NAME, label(l))
+                            .data(DESCRIPTION, desc)
+                            .data(START_TIME, start)
+                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
+                            .data(LOCATION, location)
+                            .data(IS_MEET_LINK, isMeet(l))
+                            .data(MANAGE_URL, manageUrl(l.booking))
+                            .data(OWNER_MANAGE_URL, ownerManageUrl(l.booking))
+                            .data(CANCEL_URL, cancelUrl(l.booking))
+                            .data(ANSWERS, l.answers)
+                            .render();
+                });
+        // Re-send the (bumped-sequence) REQUEST .ics to every active guest so their calendar updates too.
+        sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_updated_subject(label(l)));
     }
 
     void handleCancelled(BookingCancelled e) {
@@ -433,8 +482,8 @@ public class EmailService {
         sendForKindLocaleAware(
                 l,
                 resolveLocation(l),
-                messages.forLocale(inviteeLocale).email_cancelled_subject(l.meetingType.name),
-                messages.forLocale(ownerLocale).email_cancelled_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_cancelled_subject(label(l)),
+                messages.forLocale(ownerLocale).email_cancelled_subject(label(l)),
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -447,12 +496,12 @@ public class EmailService {
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(OWNER_NAME, l.owner.ownerName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(MEETING_TYPE_NAME, label(l))
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .render();
                 });
-        sendGuestCancels(l, messages.forLocale(inviteeLocale).email_cancelled_subject(l.meetingType.name));
+        sendGuestCancels(l, messages.forLocale(inviteeLocale).email_cancelled_subject(label(l)));
     }
 
     void handleReminder(ReminderDue e) {
@@ -471,8 +520,8 @@ public class EmailService {
         sendForKindLocaleAware(
                 l,
                 location,
-                messages.forLocale(inviteeLocale).email_reminder_subject(l.meetingType.name),
-                messages.forLocale(ownerLocale).email_reminder_subject(l.meetingType.name),
+                messages.forLocale(inviteeLocale).email_reminder_subject(label(l)),
+                messages.forLocale(ownerLocale).email_reminder_subject(label(l)),
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
@@ -482,7 +531,7 @@ public class EmailService {
                             .data("lang", locale.getLanguage())
                             .data(INVITEE_NAME, l.booking.inviteeName)
                             .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, l.meetingType.name)
+                            .data(MEETING_TYPE_NAME, label(l))
                             .data(START_TIME, start)
                             .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .data(LOCATION, location)
@@ -522,7 +571,7 @@ public class EmailService {
                     .data("lang", locale.getLanguage())
                     .data(GREETING_NAME, g.email)
                     .data(INVITEE_NAME, l.booking.inviteeName)
-                    .data(MEETING_TYPE_NAME, l.meetingType.name)
+                    .data(MEETING_TYPE_NAME, label(l))
                     .data(START_TIME, start)
                     .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                     .data(LOCATION, location)
@@ -558,7 +607,7 @@ public class EmailService {
         mailSender.send(
                 fromName(l),
                 guest.email,
-                messages.forLocale(locale).email_cancelled_subject(l.meetingType.name),
+                messages.forLocale(locale).email_cancelled_subject(label(l)),
                 guestCancelBody(l, guest, locale),
                 calendarPort.isConnected(l.owner.ownerId) ? null : guestIcs(l, guest, null, IcsMethod.CANCEL));
     }
@@ -574,7 +623,7 @@ public class EmailService {
         mailSender.send(
                 fromName(l),
                 guest.email,
-                messages.forLocale(locale).email_cancelled_subject(l.meetingType.name),
+                messages.forLocale(locale).email_cancelled_subject(label(l)),
                 guestCancelBody(l, guest, locale),
                 calendarPort.isConnected(l.owner.ownerId) ? null : guestIcs(l, guest, null, IcsMethod.CANCEL));
         // 2) notify the invitee so they can reschedule
@@ -584,14 +633,14 @@ public class EmailService {
                 .data("lang", locale.getLanguage())
                 .data(GREETING_NAME, l.booking.inviteeName)
                 .data(GUEST_EMAIL_DATA, guest.email)
-                .data(MEETING_TYPE_NAME, l.meetingType.name)
+                .data(MEETING_TYPE_NAME, label(l))
                 .data(START_TIME, start)
                 .data(MANAGE_URL, manageUrl(l.booking))
                 .render();
         mailSender.send(
                 fromName(l),
                 l.booking.inviteeEmail,
-                messages.forLocale(locale).email_guest_declined_subject(l.meetingType.name),
+                messages.forLocale(locale).email_guest_declined_subject(label(l)),
                 inviteeBody,
                 null);
     }
@@ -604,7 +653,7 @@ public class EmailService {
                 .data(RECIPIENT_ROLE, GUEST_ROLE)
                 .data("lang", locale.getLanguage())
                 .data(GREETING_NAME, g.email)
-                .data(MEETING_TYPE_NAME, l.meetingType.name)
+                .data(MEETING_TYPE_NAME, label(l))
                 .data(START_TIME, format(l.booking.startUtc, l.zone, locale))
                 .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                 .render();
@@ -618,7 +667,8 @@ public class EmailService {
     private byte[] guestIcs(Loaded l, BookingGuest g, String location, IcsMethod method) {
         return IcsBuilder.build(IcsEvent.builder()
                         .uid(l.booking.manageToken)
-                        .summary(l.meetingType.name)
+                        .summary(label(l))
+                        .description(l.booking.effectiveDescription(l.meetingType))
                         .location(location)
                         .organizer(new IcsBuilder.Party(l.owner.ownerName, mailFrom))
                         .attendee(new IcsBuilder.Party(g.email, g.email))
@@ -673,7 +723,8 @@ public class EmailService {
                 ? null
                 : IcsBuilder.build(IcsEvent.builder()
                                 .uid(l.booking.manageToken)
-                                .summary(l.meetingType.name)
+                                .summary(label(l))
+                                .description(l.booking.effectiveDescription(l.meetingType))
                                 .location(icsLocation)
                                 .organizer(new IcsBuilder.Party(l.owner.ownerName, mailFrom))
                                 .attendee(new IcsBuilder.Party(l.booking.inviteeName, l.booking.inviteeEmail))
@@ -719,6 +770,11 @@ public class EmailService {
 
     private String cancelUrl(Booking b) {
         return baseUrl + "/booking/" + b.manageToken + "/cancel";
+    }
+
+    /** The meeting label shown in every mail: the booking's title override, else the type name. */
+    private static String label(Loaded l) {
+        return l.booking.effectiveTitle(l.meetingType);
     }
 
     /** Meet link for GOOGLE_MEET types, else the type's locationDetail (phone/address/custom). */
