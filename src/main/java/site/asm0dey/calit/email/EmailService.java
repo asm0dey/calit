@@ -90,18 +90,6 @@ public class EmailService {
     String mailFrom;
 
     @Inject
-    @Location("email/reschedule.html")
-    Template reschedule;
-
-    @Inject
-    @Location("email/cancellation.html")
-    Template cancellation;
-
-    @Inject
-    @Location("email/updated.html")
-    Template updated;
-
-    @Inject
     @Location("email/password-reset.html")
     Template passwordReset;
 
@@ -214,6 +202,53 @@ public class EmailService {
                 String lang,
                 String greetingName,
                 String inviteeName,
+                String meetingTypeName,
+                String startTime,
+                int durationMinutes);
+
+        static native TemplateInstance reschedule(
+                String recipientRole,
+                boolean byOwner,
+                String lang,
+                String inviteeName,
+                String ownerName,
+                String greetingName,
+                String meetingTypeName,
+                String startTime,
+                String oldStartTime,
+                int durationMinutes,
+                String location,
+                boolean isMeetLink,
+                String manageUrl,
+                String ownerManageUrl,
+                String cancelUrl,
+                List<AnswerLine> answers);
+
+        static native TemplateInstance updated(
+                String recipientRole,
+                boolean byOwner,
+                String description,
+                String lang,
+                String inviteeName,
+                String ownerName,
+                String greetingName,
+                String meetingTypeName,
+                String startTime,
+                int durationMinutes,
+                String location,
+                boolean isMeetLink,
+                String manageUrl,
+                String ownerManageUrl,
+                String cancelUrl,
+                List<AnswerLine> answers);
+
+        static native TemplateInstance cancellation(
+                String recipientRole,
+                boolean byOwner,
+                String lang,
+                String inviteeName,
+                String ownerName,
+                String greetingName,
                 String meetingTypeName,
                 String startTime,
                 int durationMinutes);
@@ -455,25 +490,24 @@ public class EmailService {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var newStart = INVITEE_ROLE.equals(role) ? inviteeNewStart : ownerNewStart;
                     var oldStart = INVITEE_ROLE.equals(role) ? inviteeOldStart : ownerOldStart;
-                    return reschedule
-                            .instance()
+                    return Templates.reschedule(
+                                    role,
+                                    e.byOwner(),
+                                    locale.getLanguage(),
+                                    l.booking.inviteeName,
+                                    l.owner.ownerName,
+                                    INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName,
+                                    label(l),
+                                    newStart,
+                                    oldStart,
+                                    l.meetingType.durationMinutes,
+                                    location,
+                                    isMeet(l),
+                                    manageUrl(l.booking),
+                                    ownerManageUrl(l.booking),
+                                    cancelUrl(l.booking),
+                                    l.answers)
                             .setLocale(locale)
-                            .data(RECIPIENT_ROLE, role)
-                            .data(BY_OWNER, e.byOwner())
-                            .data("lang", locale.getLanguage())
-                            .data(INVITEE_NAME, l.booking.inviteeName)
-                            .data(OWNER_NAME, l.owner.ownerName)
-                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, label(l))
-                            .data(START_TIME, newStart)
-                            .data("oldStartTime", oldStart)
-                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                            .data(LOCATION, location)
-                            .data(IS_MEET_LINK, isMeet(l))
-                            .data(MANAGE_URL, manageUrl(l.booking))
-                            .data(OWNER_MANAGE_URL, ownerManageUrl(l.booking))
-                            .data(CANCEL_URL, cancelUrl(l.booking))
-                            .data(ANSWERS, l.answers)
                             .render();
                 });
         sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_rescheduled_subject(label(l)));
@@ -496,24 +530,24 @@ public class EmailService {
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
-                    return updated.instance()
+                    return Templates.updated(
+                                    role,
+                                    e.byOwner(),
+                                    desc,
+                                    locale.getLanguage(),
+                                    l.booking.inviteeName,
+                                    l.owner.ownerName,
+                                    INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName,
+                                    label(l),
+                                    start,
+                                    l.meetingType.durationMinutes,
+                                    location,
+                                    isMeet(l),
+                                    manageUrl(l.booking),
+                                    ownerManageUrl(l.booking),
+                                    cancelUrl(l.booking),
+                                    l.answers)
                             .setLocale(locale)
-                            .data(RECIPIENT_ROLE, role)
-                            .data(BY_OWNER, e.byOwner())
-                            .data("lang", locale.getLanguage())
-                            .data(INVITEE_NAME, l.booking.inviteeName)
-                            .data(OWNER_NAME, l.owner.ownerName)
-                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, label(l))
-                            .data(DESCRIPTION, desc)
-                            .data(START_TIME, start)
-                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
-                            .data(LOCATION, location)
-                            .data(IS_MEET_LINK, isMeet(l))
-                            .data(MANAGE_URL, manageUrl(l.booking))
-                            .data(OWNER_MANAGE_URL, ownerManageUrl(l.booking))
-                            .data(CANCEL_URL, cancelUrl(l.booking))
-                            .data(ANSWERS, l.answers)
                             .render();
                 });
         // Re-send the (bumped-sequence) REQUEST .ics to every active guest so their calendar updates too.
@@ -536,18 +570,17 @@ public class EmailService {
                 role -> {
                     var locale = INVITEE_ROLE.equals(role) ? inviteeLocale : ownerLocale;
                     var start = INVITEE_ROLE.equals(role) ? inviteeStart : ownerStart;
-                    return cancellation
-                            .instance()
+                    return Templates.cancellation(
+                                    role,
+                                    e.byOwner(),
+                                    locale.getLanguage(),
+                                    l.booking.inviteeName,
+                                    l.owner.ownerName,
+                                    INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName,
+                                    label(l),
+                                    start,
+                                    l.meetingType.durationMinutes)
                             .setLocale(locale)
-                            .data(RECIPIENT_ROLE, role)
-                            .data(BY_OWNER, e.byOwner())
-                            .data("lang", locale.getLanguage())
-                            .data(INVITEE_NAME, l.booking.inviteeName)
-                            .data(OWNER_NAME, l.owner.ownerName)
-                            .data(GREETING_NAME, INVITEE_ROLE.equals(role) ? l.booking.inviteeName : l.owner.ownerName)
-                            .data(MEETING_TYPE_NAME, label(l))
-                            .data(START_TIME, start)
-                            .data(DURATION_MINUTES, l.meetingType.durationMinutes)
                             .render();
                 });
         sendGuestCancels(l, messages.forLocale(inviteeLocale).email_cancelled_subject(label(l)));
