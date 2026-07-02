@@ -41,6 +41,14 @@ public interface CalendarPort {
     /** Move an existing event to a new time window and replace its attendee list (reschedule / guest sync); {@code sendUpdates=all}. A null or empty attendee list leaves attendees unchanged. */
     void updateEvent(Long ownerId, String eventId, Instant start, Instant end, List<String> attendeeEmails);
 
+    /**
+     * Patch an existing event's summary + description (and re-sync attendees), leaving its time untouched;
+     * {@code sendUpdates=all} so Google re-notifies everyone. Used when the host/invitee edits the meeting's
+     * name, description, or guest list. A null or empty attendee list leaves attendees unchanged.
+     */
+    void updateEventDetails(
+            Long ownerId, String eventId, String summary, String description, List<String> attendeeEmails);
+
     /** Remove an existing event (cancel); {@code sendUpdates=all}. */
     void deleteEvent(Long ownerId, String eventId);
 }

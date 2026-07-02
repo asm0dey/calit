@@ -249,6 +249,30 @@ public class GoogleCalendarPort implements CalendarPort {
 
     @Override
     @Transactional
+    public void updateEventDetails(
+            Long ownerId, String eventId, String summary, String description, List<String> attendeeEmails) {
+        var ctx = writeContext(ownerId);
+        GoogleCalendar target = ctx.target();
+        GoogleCredential cred = ctx.cred();
+        Event patch = new Event().setSummary(summary).setDescription(description);
+        if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
+            patch.setAttendees(attendeeEmails.stream()
+                    .map(email -> new EventAttendee().setEmail(email))
+                    .toList());
+        }
+        try {
+            client(cred)
+                    .events()
+                    .patch(target.googleCalendarId, eventId, patch)
+                    .setSendUpdates("all")
+                    .execute();
+        } catch (IOException e) {
+            throw new UncheckedIOException("updateEventDetails failed", e);
+        }
+    }
+
+    @Override
+    @Transactional
     public void deleteEvent(Long ownerId, String eventId) {
         var ctx = writeContext(ownerId);
         GoogleCalendar target = ctx.target();
