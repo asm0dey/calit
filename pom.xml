@@ -24,6 +24,35 @@
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.version>3.37.0</quarkus.platform.version>
     <surefire-plugin.version>3.5.6</surefire-plugin.version>
+    <sonar-maven-plugin.version>5.1.0.4751</sonar-maven-plugin.version>
+
+    <!-- SonarQube Cloud analysis (CI-based, via sonar-maven-plugin). The Maven scanner does
+         NOT read sonar-project.properties; all analysis parameters live here. -->
+    <sonar.organization>asm0dey</sonar.organization>
+    <sonar.projectKey>asm0dey_calit</sonar.projectKey>
+    <!-- Duplication in the email layer is inherent to the type-safe @CheckedTemplate design, not
+         copy/paste to refactor away (flat params were chosen over a view record on purpose — see
+         docs/superpowers/specs/2026-07-02-typed-email-templates-design.md): each template redeclares
+         the {@...} vars it uses (Qute has no cross-template decl sharing) and EmailService's
+         per-event render methods/call-sites mirror those same param sets 1:1. Exclude both from
+         duplication detection only; every other rule still applies. -->
+    <sonar.cpd.exclusions>**/templates/email/*.html,**/email/EmailService.java</sonar.cpd.exclusions>
+    <sonar.issue.ignore.multicriteria>e1,e2,e3,e4</sonar.issue.ignore.multicriteria>
+    <!-- e1: Flyway migrations are PostgreSQL, but Sonar analyses .sql with its Oracle PL/SQL engine
+         and flags VARCHAR (suggesting the Oracle-only VARCHAR2). VARCHAR is correct in Postgres. -->
+    <sonar.issue.ignore.multicriteria.e1.ruleKey>plsql:VarcharUsageCheck</sonar.issue.ignore.multicriteria.e1.ruleKey>
+    <sonar.issue.ignore.multicriteria.e1.resourceKey>**/db/migration/*.sql</sonar.issue.ignore.multicriteria.e1.resourceKey>
+    <!-- e2: S135 (at most one break/continue per loop) — early-continue guards are clearer; skip it. -->
+    <sonar.issue.ignore.multicriteria.e2.ruleKey>java:S135</sonar.issue.ignore.multicriteria.e2.ruleKey>
+    <sonar.issue.ignore.multicriteria.e2.resourceKey>**/*.java</sonar.issue.ignore.multicriteria.e2.resourceKey>
+    <!-- e3: _location.html is a Qute fragment always {#include}'d inside a parent <ul>; Sonar's HTML
+         checker analyses the fragment in isolation and can't follow the include (false positive). -->
+    <sonar.issue.ignore.multicriteria.e3.ruleKey>Web:ItemTagNotWithinContainerTagCheck</sonar.issue.ignore.multicriteria.e3.ruleKey>
+    <sonar.issue.ignore.multicriteria.e3.resourceKey>**/templates/email/_location.html</sonar.issue.ignore.multicriteria.e3.resourceKey>
+    <!-- e4: S107 (too many parameters) — the EmailService @CheckedTemplate methods mirror their
+         template's variables 1:1 by design; a high param count IS the intended, build-validated contract. -->
+    <sonar.issue.ignore.multicriteria.e4.ruleKey>java:S107</sonar.issue.ignore.multicriteria.e4.ruleKey>
+    <sonar.issue.ignore.multicriteria.e4.resourceKey>**/email/EmailService.java</sonar.issue.ignore.multicriteria.e4.resourceKey>
   </properties>
 
   <dependencyManagement>
@@ -97,6 +126,17 @@
   </dependencies>
 
   <build>
+    <pluginManagement>
+      <plugins>
+        <!-- Version pin for the CI-invoked goal
+             org.sonarsource.scanner.maven:sonar-maven-plugin:sonar (see .github/workflows/ci.yml). -->
+        <plugin>
+          <groupId>org.sonarsource.scanner.maven</groupId>
+          <artifactId>sonar-maven-plugin</artifactId>
+          <version>${sonar-maven-plugin.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
     <plugins>
       <plugin>
         <groupId>${quarkus.platform.group-id}</groupId>
