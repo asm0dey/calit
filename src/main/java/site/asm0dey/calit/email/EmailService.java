@@ -93,6 +93,13 @@ public class EmailService {
     // resolution) -- confirmed by inspecting QuteProcessor#collectCheckedTemplates, which never reads
     // a @Location annotation off the method target. Without basePath the method would resolve to
     // EmailService/reminder instead of email/reminder.html.
+    /**
+     * Typed bindings for the email templates. Non-obvious shared params: {@code greetingName} is
+     * role-aware (invitee name on the invitee copy, owner name on the owner copy); {@code byOwner}
+     * says the host — not the invitee — drove the change, which flips the reschedule/cancel/update
+     * wording; {@code approveUrl}/{@code declineUrl}/{@code ownerManageUrl} are owner-only and passed
+     * null for the invitee copy (the template renders them only for the owner).
+     */
     @CheckedTemplate(basePath = "email")
     static class Templates {
         static native TemplateInstance reminder(
