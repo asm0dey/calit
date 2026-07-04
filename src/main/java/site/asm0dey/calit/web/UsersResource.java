@@ -222,4 +222,28 @@ public class UsersResource {
         });
         return render(null);
     }
+
+    @POST
+    @Path("{id}/resend-invite")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance resendInvite(@PathParam("id") Long id) {
+        var m = adminMsgs.forLocale(activeLocale.current());
+        AppUser u = requireUser(id);
+        OwnerSettings s = OwnerSettings.forOwner(u.id);
+        var pending = u.passwordHash == null && u.googleSub == null;
+        if (!pending || s == null || s.ownerEmail == null || s.ownerEmail.isBlank()) {
+            return render(m.users_error_not_pending());
+        }
+        var now = Instant.now();
+        String token = resetService.issue(u.id, now, Duration.ofHours(48));
+        audit.event(identity.getPrincipal().getName(), "resend-invite", USER_TARGET + u.username, null);
+        emailService.sendInvite(
+                s.ownerEmail,
+                baseUrl + "/reset-password?token=" + token,
+                inviterEmail(),
+                baseUrl,
+                now.plus(Duration.ofHours(48)),
+                activeLocale.current());
+        return render(null);
+    }
 }

@@ -164,6 +164,45 @@ class UsersResourceTest {
     }
 
     @Test
+    @TestSecurity(
+            user = "admin",
+            roles = {"user", "admin"})
+    void resendInviteMintsAnotherTokenForPendingUser() {
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("username", "dave")
+                .formParam("email", "dave@example.com")
+                .when()
+                .post("/me/users")
+                .then()
+                .statusCode(200);
+        Long id = AppUser.findByUsername("dave").id;
+        assertEquals(1, PasswordResetToken.count("userId", id));
+
+        given().contentType("application/x-www-form-urlencoded")
+                .when()
+                .post("/me/users/" + id + "/resend-invite")
+                .then()
+                .statusCode(200);
+        assertEquals(2, PasswordResetToken.count("userId", id), "resend mints a second token");
+    }
+
+    @Test
+    @TestSecurity(
+            user = "admin",
+            roles = {"user", "admin"})
+    void resendInviteRejectedForActiveUser() {
+        // Admin (id 1) already has a password → not pending.
+        Long adminId = AppUser.findByUsername("admin").id;
+        long before = PasswordResetToken.count("userId", adminId);
+        given().contentType("application/x-www-form-urlencoded")
+                .when()
+                .post("/me/users/" + adminId + "/resend-invite")
+                .then()
+                .statusCode(200);
+        assertEquals(before, PasswordResetToken.count("userId", adminId), "no token minted for an active user");
+    }
+
+    @Test
     void lockedUserCannotLogIn() {
         // Real auth chain (NOT @TestSecurity): exercise AppUserIdentityProvider + EnabledUserAugmentor.
         QuarkusTransaction.requiringNew().run(() -> {
