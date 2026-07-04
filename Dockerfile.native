@@ -38,7 +38,7 @@ RUN printf 'git.build.version=%s\ngit.commit.id.abbrev=%s\n' "$APP_VERSION" "$GI
 # Each "-H:Preserve=..." is a separate comma item (Quarkus splits additional-build-args on commas).
 RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw -B -DskipTests package -Dquarkus.native.enabled=true \
-    "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken"
+    "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken,--initialize-at-run-time=org.altcha.altcha.v1.Altcha"
 
 # --- Runtime stage: Alpaquita musl base (~3.9MB) — no JDK, just the native binary ---
 FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:809895bbee2fc6b583b10ea5f38ed13758fdee7badc54fc51caaec0726988747 AS runtime
