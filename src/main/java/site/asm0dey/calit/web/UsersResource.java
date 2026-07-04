@@ -26,6 +26,8 @@ import site.asm0dey.calit.user.Usernames;
 
 @Path("/me/users")
 @RolesAllowed("admin")
+// S6813: CDI field injection is the established pattern across this codebase's beans.
+@SuppressWarnings("java:S6813")
 public class UsersResource {
 
     @CheckedTemplate
@@ -94,7 +96,7 @@ public class UsersResource {
             return render(e.getMessage());
         }
         var candidate = email == null ? "" : email.trim();
-        if (candidate.isEmpty() || !candidate.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
+        if (!looksLikeEmail(candidate)) {
             return render(m.users_error_email_invalid());
         }
         var inviteEmail = candidate;
@@ -137,6 +139,29 @@ public class UsersResource {
             }
         }
         return adminName;
+    }
+
+    /**
+     * Cheap, ReDoS-free structural email check (not full RFC 5322): exactly one '@' with a non-empty
+     * local part, a dot in the domain with characters on both sides, and no whitespace. Linear scan —
+     * no backtracking regex. A malformed address that slips through simply bounces when the invite is
+     * sent.
+     */
+    private static boolean looksLikeEmail(String s) {
+        var at = s.indexOf('@');
+        if (at <= 0 || at != s.lastIndexOf('@') || at == s.length() - 1) {
+            return false;
+        }
+        var dot = s.indexOf('.', at + 1);
+        if (dot < 0 || dot == at + 1 || dot == s.length() - 1) {
+            return false;
+        }
+        for (var i = 0; i < s.length(); i++) {
+            if (Character.isWhitespace(s.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private AppUser requireUser(Long id) {
