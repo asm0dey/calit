@@ -87,7 +87,13 @@ class BookPageAltchaEnabledTest {
                 .then()
                 .statusCode(200)
                 .body(containsString("<altcha-widget"))
-                .body(containsString("challengeurl=\"/altcha/challenge\""))
+                // v3 widget attribute is `challenge` (a URL fetches the challenge); the pre-v3
+                // `challengeurl` name is silently ignored by altcha 3.x, so it must NOT appear.
+                .body(containsString("challenge=\"/altcha/challenge\""))
+                .body(not(containsString("challengeurl")))
+                // native form control (daisyUI-styleable, light DOM) + floating display.
+                .body(containsString("type=\"native\""))
+                .body(containsString("display=\"floating\""))
                 .body(containsString("/_static/altcha/dist/main/altcha.min.js"))
                 // No Cloudflare widget when altcha is active.
                 .body(not(containsString("class=\"cf-turnstile\"")));

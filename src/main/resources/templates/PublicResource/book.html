@@ -108,7 +108,7 @@
               {#if captchaProvider == 'turnstile'}
               <div class="cf-turnstile" data-sitekey="{turnstileSiteKey}"></div>
               {#else if captchaProvider == 'altcha'}
-              <altcha-widget challengeurl="/altcha/challenge" name="altcha"></altcha-widget>
+              <altcha-widget challenge="/altcha/challenge" name="altcha" type="native" display="floating"></altcha-widget>
               {/if}
 
               {#if type.requiresApproval}
