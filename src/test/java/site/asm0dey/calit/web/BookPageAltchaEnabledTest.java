@@ -94,7 +94,7 @@ class BookPageAltchaEnabledTest {
                 // native form control (daisyUI-styleable, light DOM) + floating display.
                 .body(containsString("type=\"native\""))
                 .body(containsString("display=\"floating\""))
-                .body(containsString("/_static/altcha/dist/main/altcha.min.js"))
+                .body(containsString("/_static/altcha/dist/main/altcha.i18n.min.js"))
                 // No Cloudflare widget when altcha is active.
                 .body(not(containsString("class=\"cf-turnstile\"")));
     }
