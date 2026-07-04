@@ -1,9 +1,9 @@
 package site.asm0dey.calit.web;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import org.jboss.resteasy.reactive.RestForm;
@@ -74,16 +74,21 @@ public class ConsentResource {
     @Path("/{token}")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance respond(@PathParam("token") String token, @RestForm String action) {
         var m = messages.forLocale(activeLocale.current());
-        MeetingTypeHost host = requireHost(token);
+        requireHost(token); // 404 unknown/already-used/malformed before acting
+        // Mutation commits in its own tx before the result render (issue #75). The host row is
+        // (re)loaded INSIDE the tx: acceptConsent mutates the passed entity, so it must be managed
+        // in the same persistence context to flush.
         if ("accept".equals(action)) {
-            meetingHosts.acceptConsent(host);
+            QuarkusTransaction.requiringNew().run(() -> meetingHosts.acceptConsent(requireHost(token)));
             return Templates.done(
                     m.pub_consent_result_title(), m.pub_consent_accepted_h1(), m.pub_consent_accepted_desc());
         }
-        MeetingTypeHost.delete("meetingTypeId = ?1 and ownerId = ?2", host.meetingTypeId, host.ownerId);
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingTypeHost host = requireHost(token);
+            MeetingTypeHost.delete("meetingTypeId = ?1 and ownerId = ?2", host.meetingTypeId, host.ownerId);
+        });
         return Templates.done(m.pub_consent_result_title(), m.pub_consent_declined_h1(), m.pub_consent_declined_desc());
     }
 }

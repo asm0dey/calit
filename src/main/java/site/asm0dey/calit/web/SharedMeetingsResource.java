@@ -1,11 +1,11 @@
 package site.asm0dey.calit.web;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
@@ -154,10 +154,10 @@ public class SharedMeetingsResource {
     @Path("/shared/requests/{typeId}/accept")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance acceptRequest(@PathParam("typeId") Long typeId) {
-        MeetingTypeHost h = requirePendingOwnRow(typeId);
-        meetingHosts.acceptConsent(h);
+        // Commit before the render (#75). The row is loaded INSIDE the tx: acceptConsent mutates
+        // the passed entity, so it must be managed in the same persistence context to flush.
+        QuarkusTransaction.requiringNew().run(() -> meetingHosts.acceptConsent(requirePendingOwnRow(typeId)));
         return requestsInstance();
     }
 
@@ -165,10 +165,11 @@ public class SharedMeetingsResource {
     @Path("/shared/requests/{typeId}/decline")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance declineRequest(@PathParam("typeId") Long typeId) {
-        requirePendingOwnRow(typeId);
-        MeetingTypeHost.delete("meetingTypeId = ?1 and ownerId = ?2", typeId, currentOwner.id());
+        QuarkusTransaction.requiringNew().run(() -> {
+            requirePendingOwnRow(typeId);
+            MeetingTypeHost.delete("meetingTypeId = ?1 and ownerId = ?2", typeId, currentOwner.id());
+        });
         return requestsInstance();
     }
 
@@ -213,12 +214,13 @@ public class SharedMeetingsResource {
     @Path("/shared/{typeId}/availability/bulk")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance saveAvailability(@PathParam("typeId") Long typeId, MultivaluedMap<String, String> form) {
-        requireAcceptedHost(typeId); // 404 a non-host
-        // Replace-all for THIS host's own schedule on this type only.
-        AvailabilityRule.delete("ownerId = ?1 and meetingTypeId = ?2", currentOwner.id(), typeId);
-        AdminResource.persistFrames(currentOwner.id(), typeId, form);
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireAcceptedHost(typeId); // 404 a non-host
+            // Replace-all for THIS host's own schedule on this type only.
+            AvailabilityRule.delete("ownerId = ?1 and meetingTypeId = ?2", currentOwner.id(), typeId);
+            AdminResource.persistFrames(currentOwner.id(), typeId, form);
+        });
         return availabilityInstance(typeId, null);
     }
 
@@ -226,7 +228,6 @@ public class SharedMeetingsResource {
     @Path("/shared/{typeId}/date-overrides")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance addOverride(
             @PathParam("typeId") Long typeId, @RestForm String date, MultivaluedMap<String, String> form) {
         requireAcceptedHost(typeId);
@@ -235,28 +236,31 @@ public class SharedMeetingsResource {
             // Malformed/crafted date: skip the whole override rather than 500ing the save.
             return availabilityInstance(typeId, null);
         }
-        DateOverride o = new DateOverride();
-        o.ownerId = currentOwner.id();
-        o.meetingTypeId = typeId;
-        o.overrideDate = overrideDate;
-        o.persist(); // need the generated id before persisting child windows
-        List<String> starts = form.getOrDefault("windowStart", List.of());
-        List<String> ends = form.getOrDefault("windowEnd", List.of());
-        for (var i = 0; i < starts.size() && i < ends.size(); i++) {
-            if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
-                continue;
+        // Persist the override + its windows in one tx that commits before the render (#75).
+        QuarkusTransaction.requiringNew().run(() -> {
+            DateOverride o = new DateOverride();
+            o.ownerId = currentOwner.id();
+            o.meetingTypeId = typeId;
+            o.overrideDate = overrideDate;
+            o.persist(); // need the generated id before persisting child windows
+            List<String> starts = form.getOrDefault("windowStart", List.of());
+            List<String> ends = form.getOrDefault("windowEnd", List.of());
+            for (var i = 0; i < starts.size() && i < ends.size(); i++) {
+                if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
+                    continue;
+                }
+                var start = parseTimeOrNull(starts.get(i));
+                var end = parseTimeOrNull(ends.get(i));
+                if (start == null || end == null) {
+                    continue; // unparseable window — skip it, keep the rest of the save
+                }
+                DateOverrideWindow w = new DateOverrideWindow();
+                w.dateOverrideId = o.id;
+                w.startTime = start;
+                w.endTime = end;
+                w.persist();
             }
-            var start = parseTimeOrNull(starts.get(i));
-            var end = parseTimeOrNull(ends.get(i));
-            if (start == null || end == null) {
-                continue; // unparseable window — skip it, keep the rest of the save
-            }
-            DateOverrideWindow w = new DateOverrideWindow();
-            w.dateOverrideId = o.id;
-            w.startTime = start;
-            w.endTime = end;
-            w.persist();
-        }
+        });
         return availabilityInstance(typeId, null);
     }
 
@@ -286,14 +290,15 @@ public class SharedMeetingsResource {
     @Path("/shared/{typeId}/date-overrides/{oid}/delete")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance deleteOverride(@PathParam("typeId") Long typeId, @PathParam("oid") Long oid) {
-        requireAcceptedHost(typeId);
-        DateOverride o = DateOverride.findById(oid);
-        if (o != null && typeId.equals(o.meetingTypeId) && currentOwner.id().equals(o.ownerId)) {
-            DateOverrideWindow.delete("dateOverrideId = ?1", oid);
-            DateOverride.deleteById(oid);
-        }
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireAcceptedHost(typeId);
+            DateOverride o = DateOverride.findById(oid);
+            if (o != null && typeId.equals(o.meetingTypeId) && currentOwner.id().equals(o.ownerId)) {
+                DateOverrideWindow.delete("dateOverrideId = ?1", oid);
+                DateOverride.deleteById(oid);
+            }
+        });
         return availabilityInstance(typeId, null);
     }
 
@@ -301,14 +306,17 @@ public class SharedMeetingsResource {
     @Path("/shared/{typeId}/buffers")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance saveBuffers(
             @PathParam("typeId") Long typeId,
             @RestForm String bufferBeforeMinutes,
             @RestForm String bufferAfterMinutes) {
-        MeetingTypeHost h = requireAcceptedHost(typeId);
-        h.bufferBeforeMinutes = parseNonNegativeIntOrNull(bufferBeforeMinutes);
-        h.bufferAfterMinutes = parseNonNegativeIntOrNull(bufferAfterMinutes);
+        // The host row is loaded + dirty-mutated INSIDE the tx so its buffer changes flush on commit,
+        // which happens before the render (#75).
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingTypeHost h = requireAcceptedHost(typeId);
+            h.bufferBeforeMinutes = parseNonNegativeIntOrNull(bufferBeforeMinutes);
+            h.bufferAfterMinutes = parseNonNegativeIntOrNull(bufferAfterMinutes);
+        });
         return availabilityInstance(typeId, null);
     }
 
@@ -335,7 +343,6 @@ public class SharedMeetingsResource {
     @Path("/shared/{typeId}/revoke")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance revoke(@PathParam("typeId") Long typeId, @QueryParam("choice") String choice) {
         MeetingTypeHost h = requireAcceptedHost(typeId);
         if (MeetingTypeHost.CREATOR.equals(h.role)) {
@@ -346,19 +353,24 @@ public class SharedMeetingsResource {
         if (type == null) {
             throw new NotFoundException("No meeting type " + typeId);
         }
-        if ("cancel".equals(choice)) {
-            bookingService.cancelFutureGroupBookingsForHost(type, currentOwner.id());
-            meetingHosts.removeHost(type, currentOwner.id());
-        } else if ("keep".equals(choice)) {
-            meetingHosts.removeHost(type, currentOwner.id());
-        } else {
+        // No explicit choice yet + future bookings exist: render the keep-vs-cancel interstitial
+        // (read-only — no tx, no connection held across render).
+        var cancel = "cancel".equals(choice);
+        if (!cancel && !"keep".equals(choice)) {
             long futureCount = meetingHosts.countFutureBookings(type, currentOwner.id());
             if (futureCount > 0) {
                 return Templates.revokeConfirm(
                         type, futureCount, pendingCount(), isAdmin(), m().adm_shared_revokeConfirm_title());
             }
-            meetingHosts.removeHost(type, currentOwner.id());
         }
+        // Removal (and optional cancellation) commit in one tx before the render (#75).
+        Long ownerId = currentOwner.id();
+        QuarkusTransaction.requiringNew().run(() -> {
+            if (cancel) {
+                bookingService.cancelFutureGroupBookingsForHost(type, ownerId);
+            }
+            meetingHosts.removeHost(type, ownerId);
+        });
         return requestsInstance();
     }
 }

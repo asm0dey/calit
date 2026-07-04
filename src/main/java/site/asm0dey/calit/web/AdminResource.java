@@ -1,11 +1,11 @@
 package site.asm0dey.calit.web;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
@@ -340,7 +340,6 @@ public class AdminResource {
     @Path("/meeting-types")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance createMeetingType(
             @RestForm String name,
             @RestForm String slug,
@@ -355,35 +354,41 @@ public class AdminResource {
             @RestForm String slotIntervalMinutes,
             @RestForm String requiresApproval,
             MultivaluedMap<String, String> form) {
-        MeetingType t = new MeetingType();
-        t.ownerId = currentOwner.id();
-        t.name = name;
-        String slugBase = (slug == null || slug.isBlank()) ? Slugs.slugify(name) : Slugs.slugify(slug);
-        t.slug = Slugs.uniqueMeetingTypeSlug(currentOwner.id(), slugBase, null);
-        // Task 17 slug guards -- validated on the transient (unpersisted) t, so a rejection never
-        // leaves a half-created row behind. assertSlugFreeAcrossHosts is always a no-op here (a
-        // brand-new type has no host rows yet); kept for parity with editMeetingType below.
+        // Whole unit-of-work in its own tx that commits BEFORE renderMeetingTypes() below, so no
+        // pooled DB connection is held across the Qute render (issue #75). A slug guard rejection
+        // (IllegalStateException) rolls back the empty tx — no half-created row — and renders the
+        // error page outside any transaction.
         try {
-            assertNoOwnerSlugCollision(t.slug);
-            meetingHosts.assertSlugFreeAcrossHosts(t, t.slug);
+            QuarkusTransaction.requiringNew().run(() -> {
+                MeetingType t = new MeetingType();
+                t.ownerId = currentOwner.id();
+                t.name = name;
+                String slugBase = (slug == null || slug.isBlank()) ? Slugs.slugify(name) : Slugs.slugify(slug);
+                t.slug = Slugs.uniqueMeetingTypeSlug(currentOwner.id(), slugBase, null);
+                // Task 17 slug guards -- validated on the transient (unpersisted) t.
+                // assertSlugFreeAcrossHosts is always a no-op here (a brand-new type has no host
+                // rows yet); kept for parity with editMeetingType below.
+                assertNoOwnerSlugCollision(t.slug);
+                meetingHosts.assertSlugFreeAcrossHosts(t, t.slug);
+                applyEditableFields(
+                        t,
+                        durationMinutes,
+                        bufferBeforeMinutes,
+                        bufferAfterMinutes,
+                        secret,
+                        minNoticeMinutes,
+                        horizonDays,
+                        locationType,
+                        locationDetail,
+                        slotIntervalMinutes,
+                        requiresApproval);
+                t.persist(); // need the generated id before scoping child rules/overrides to it
+                createInitialWorkingHours(t.id, t.ownerId, form);
+                createInitialDateOverride(t.id, t.ownerId, form);
+            });
         } catch (IllegalStateException e) {
             return renderMeetingTypes(localizedMessage(e));
         }
-        applyEditableFields(
-                t,
-                durationMinutes,
-                bufferBeforeMinutes,
-                bufferAfterMinutes,
-                secret,
-                minNoticeMinutes,
-                horizonDays,
-                locationType,
-                locationDetail,
-                slotIntervalMinutes,
-                requiresApproval);
-        t.persist(); // need the generated id before scoping child rules/overrides to it
-        createInitialWorkingHours(t.id, t.ownerId, form);
-        createInitialDateOverride(t.id, t.ownerId, form);
         return renderMeetingTypes();
     }
 
@@ -498,10 +503,14 @@ public class AdminResource {
     @Path("/meeting-types/{id}/toggle")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance toggleActive(@PathParam("id") Long id) {
-        MeetingType t = requireType(id);
-        t.active = !t.active;
+        // Commit the flip in its own tx (entity loaded + dirty-checked inside), so the pooled DB
+        // connection is released BEFORE renderMeetingTypes() below runs — no connection held across
+        // the Qute render (issue #75).
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = requireType(id);
+            t.active = !t.active;
+        });
         return renderMeetingTypes();
     }
 
@@ -509,10 +518,11 @@ public class AdminResource {
     @Path("/meeting-types/{id}/delete")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance deleteMeetingType(@PathParam("id") Long id) {
-        requireType(id);
-        MeetingType.deleteById(id);
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireType(id);
+            MeetingType.deleteById(id);
+        });
         return renderMeetingTypes();
     }
 
@@ -640,8 +650,9 @@ public class AdminResource {
     @GET
     @Path("/meeting-types/{id}")
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance meetingTypeDetail(@PathParam("id") Long id) {
+        // Read-only render: no @Transactional — a tx here would only pin a DB connection across the
+        // detail-page render for zero benefit (issue #75). Reads run on the request-scoped session.
         requireType(id);
         return detailInstance(id);
     }
@@ -650,7 +661,6 @@ public class AdminResource {
     @Path("/meeting-types/{id}/edit")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance editMeetingType(
             @PathParam("id") Long id,
             @RestForm String name,
@@ -665,33 +675,35 @@ public class AdminResource {
             @RestForm String locationDetail,
             @RestForm String slotIntervalMinutes,
             @RestForm String requiresApproval) {
-        MeetingType t = requireType(id);
-        String slugBase = (slug == null || slug.isBlank()) ? Slugs.slugify(name) : Slugs.slugify(slug);
-        String newSlug = Slugs.uniqueMeetingTypeSlug(currentOwner.id(), slugBase, id);
-        // Task 17 slug guards -- validated against the candidate newSlug BEFORE any field on the
-        // managed entity `t` is mutated, so a rejection leaves it untouched (a caught exception
-        // does not roll back the transaction; only the field assignments below would flush).
+        // Load + mutate + flush in one tx that commits before the detail render (issue #75). Slug
+        // guards run BEFORE any field is mutated, so a rejection rolls back an untouched entity and
+        // renders the error page outside the tx.
         try {
-            assertNoOwnerSlugCollision(newSlug);
-            meetingHosts.assertSlugFreeAcrossHosts(t, newSlug);
+            QuarkusTransaction.requiringNew().run(() -> {
+                MeetingType t = requireType(id);
+                String slugBase = (slug == null || slug.isBlank()) ? Slugs.slugify(name) : Slugs.slugify(slug);
+                String newSlug = Slugs.uniqueMeetingTypeSlug(currentOwner.id(), slugBase, id);
+                assertNoOwnerSlugCollision(newSlug);
+                meetingHosts.assertSlugFreeAcrossHosts(t, newSlug);
+                t.name = name;
+                t.slug = newSlug;
+                applyEditableFields(
+                        t,
+                        durationMinutes,
+                        bufferBeforeMinutes,
+                        bufferAfterMinutes,
+                        secret,
+                        minNoticeMinutes,
+                        horizonDays,
+                        locationType,
+                        locationDetail,
+                        slotIntervalMinutes,
+                        requiresApproval);
+            }); // managed entity flushes on commit
         } catch (IllegalStateException e) {
             return detailInstance(id, localizedMessage(e));
         }
-        t.name = name;
-        t.slug = newSlug;
-        applyEditableFields(
-                t,
-                durationMinutes,
-                bufferBeforeMinutes,
-                bufferAfterMinutes,
-                secret,
-                minNoticeMinutes,
-                horizonDays,
-                locationType,
-                locationDetail,
-                slotIntervalMinutes,
-                requiresApproval);
-        return detailInstance(id); // managed entity flushes on commit
+        return detailInstance(id);
     }
 
     /**
@@ -711,12 +723,13 @@ public class AdminResource {
     @Path("/meeting-types/{id}/hosts")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance addCohost(@PathParam("id") Long id, @RestForm String cohost) {
-        MeetingType t = requireType(id);
         try {
-            AppUser candidate = resolveEligibleCohost(t.id, t.ownerId, cohost);
-            meetingHosts.addCohost(t, candidate); // cap / slug-collision -> IllegalStateException
+            QuarkusTransaction.requiringNew().run(() -> {
+                MeetingType t = requireType(id);
+                AppUser candidate = resolveEligibleCohost(t.id, t.ownerId, cohost);
+                meetingHosts.addCohost(t, candidate); // cap / slug-collision -> IllegalStateException
+            });
         } catch (IllegalStateException e) {
             return detailInstance(id, localizedMessage(e));
         }
@@ -743,7 +756,6 @@ public class AdminResource {
     @Path("/meeting-types/{id}/hosts/{cohostOwnerId}/remove")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance removeCohost(
             @PathParam("id") Long id,
             @PathParam("cohostOwnerId") Long cohostOwnerId,
@@ -753,18 +765,22 @@ public class AdminResource {
             if (cohostOwnerId.equals(t.ownerId)) {
                 throw new IllegalStateException(m().adm_hosts_error_creator_immutable());
             }
-            if ("cancel".equals(choice)) {
-                bookingService.cancelFutureGroupBookingsForHost(t, cohostOwnerId);
-                meetingHosts.removeHost(t, cohostOwnerId);
-            } else if ("keep".equals(choice)) {
-                meetingHosts.removeHost(t, cohostOwnerId);
-            } else {
+            // No explicit choice yet: if the co-host still has future bookings, render the
+            // keep-vs-cancel interstitial (read-only — no tx, no connection held across render).
+            var cancel = "cancel".equals(choice);
+            if (!cancel && !"keep".equals(choice)) {
                 long futureCount = meetingHosts.countFutureBookings(t, cohostOwnerId);
                 if (futureCount > 0) {
                     return removeHostConfirmInstance(t, cohostOwnerId, futureCount);
                 }
-                meetingHosts.removeHost(t, cohostOwnerId);
             }
+            // Removal (and optional cancellation) commit in one tx before the detail render (#75).
+            QuarkusTransaction.requiringNew().run(() -> {
+                if (cancel) {
+                    bookingService.cancelFutureGroupBookingsForHost(t, cohostOwnerId);
+                }
+                meetingHosts.removeHost(t, cohostOwnerId);
+            });
         } catch (IllegalStateException e) {
             return detailInstance(id, e.getMessage());
         }
@@ -788,7 +804,6 @@ public class AdminResource {
     @Path("/meeting-types/{id}/booking-fields")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance addTypeField(
             @PathParam("id") Long id,
             @RestForm String label,
@@ -796,16 +811,18 @@ public class AdminResource {
             @RestForm String type,
             @RestForm String required,
             @RestForm @DefaultValue("0") int position) {
-        requireType(id);
-        BookingField f = new BookingField();
-        f.ownerId = currentOwner.id();
-        f.meetingTypeId = id;
-        f.label = label;
-        f.fieldKey = fieldKey;
-        f.type = FieldType.valueOf(type);
-        f.required = "on".equals(required);
-        f.position = position;
-        f.persist();
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireType(id);
+            BookingField f = new BookingField();
+            f.ownerId = currentOwner.id();
+            f.meetingTypeId = id;
+            f.label = label;
+            f.fieldKey = fieldKey;
+            f.type = FieldType.valueOf(type);
+            f.required = "on".equals(required);
+            f.position = position;
+            f.persist();
+        });
         return detailInstance(id);
     }
 
@@ -813,13 +830,14 @@ public class AdminResource {
     @Path("/meeting-types/{id}/booking-fields/{fid}/delete")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance deleteTypeField(@PathParam("id") Long id, @PathParam("fid") Long fid) {
-        requireType(id);
-        BookingField f = BookingField.findById(fid);
-        if (f != null && id.equals(f.meetingTypeId)) {
-            BookingField.deleteById(fid);
-        }
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireType(id);
+            BookingField f = BookingField.findById(fid);
+            if (f != null && id.equals(f.meetingTypeId)) {
+                BookingField.deleteById(fid);
+            }
+        });
         return detailInstance(id);
     }
 
@@ -827,20 +845,21 @@ public class AdminResource {
     @Path("/meeting-types/{id}/availability")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance addTypeRule(
             @PathParam("id") Long id,
             @RestForm String dayOfWeek,
             @RestForm String startTime,
             @RestForm String endTime) {
-        requireType(id);
-        AvailabilityRule r = new AvailabilityRule();
-        r.ownerId = currentOwner.id();
-        r.meetingTypeId = id;
-        r.dayOfWeek = DayOfWeek.valueOf(dayOfWeek);
-        r.startTime = LocalTime.parse(startTime);
-        r.endTime = LocalTime.parse(endTime);
-        r.persist();
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireType(id);
+            AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = currentOwner.id();
+            r.meetingTypeId = id;
+            r.dayOfWeek = DayOfWeek.valueOf(dayOfWeek);
+            r.startTime = LocalTime.parse(startTime);
+            r.endTime = LocalTime.parse(endTime);
+            r.persist();
+        });
         return detailInstance(id);
     }
 
@@ -848,12 +867,13 @@ public class AdminResource {
     @Path("/meeting-types/{id}/availability/bulk")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance saveTypeWeeklyRules(@PathParam("id") Long id, MultivaluedMap<String, String> form) {
-        requireType(id); // 404 a cross-owner type
-        // Replace-all for this type's schedule only; global rules (meetingTypeId null) are untouched.
-        AvailabilityRule.delete("ownerId = ?1 and meetingTypeId = ?2", currentOwner.id(), id);
-        persistFrames(currentOwner.id(), id, form);
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireType(id); // 404 a cross-owner type
+            // Replace-all for this type's schedule only; global rules (meetingTypeId null) are untouched.
+            AvailabilityRule.delete("ownerId = ?1 and meetingTypeId = ?2", currentOwner.id(), id);
+            persistFrames(currentOwner.id(), id, form);
+        });
         return detailInstance(id);
     }
 
@@ -861,13 +881,14 @@ public class AdminResource {
     @Path("/meeting-types/{id}/availability/{rid}/delete")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance deleteTypeRule(@PathParam("id") Long id, @PathParam("rid") Long rid) {
-        requireType(id);
-        AvailabilityRule r = AvailabilityRule.findById(rid);
-        if (r != null && id.equals(r.meetingTypeId)) {
-            AvailabilityRule.deleteById(rid);
-        }
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireType(id);
+            AvailabilityRule r = AvailabilityRule.findById(rid);
+            if (r != null && id.equals(r.meetingTypeId)) {
+                AvailabilityRule.deleteById(rid);
+            }
+        });
         return detailInstance(id);
     }
 
@@ -875,16 +896,17 @@ public class AdminResource {
     @Path("/meeting-types/{id}/date-overrides")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance addTypeOverride(
             @PathParam("id") Long id, @RestForm String date, MultivaluedMap<String, String> form) {
-        requireType(id);
-        DateOverride o = new DateOverride();
-        o.ownerId = currentOwner.id();
-        o.meetingTypeId = id;
-        o.overrideDate = LocalDate.parse(date);
-        o.persist(); // need the generated id before persisting child windows
-        persistWindows(o.id, form);
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireType(id);
+            DateOverride o = new DateOverride();
+            o.ownerId = currentOwner.id();
+            o.meetingTypeId = id;
+            o.overrideDate = LocalDate.parse(date);
+            o.persist(); // need the generated id before persisting child windows
+            persistWindows(o.id, form);
+        });
         return detailInstance(id);
     }
 
@@ -892,14 +914,15 @@ public class AdminResource {
     @Path("/meeting-types/{id}/date-overrides/{oid}/delete")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance deleteTypeOverride(@PathParam("id") Long id, @PathParam("oid") Long oid) {
-        requireType(id);
-        DateOverride o = DateOverride.findById(oid);
-        if (o != null && id.equals(o.meetingTypeId)) {
-            DateOverrideWindow.delete("dateOverrideId = ?1", oid);
-            DateOverride.deleteById(oid);
-        }
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireType(id);
+            DateOverride o = DateOverride.findById(oid);
+            if (o != null && id.equals(o.meetingTypeId)) {
+                DateOverrideWindow.delete("dateOverrideId = ?1", oid);
+                DateOverride.deleteById(oid);
+            }
+        });
         return detailInstance(id);
     }
 
@@ -936,24 +959,25 @@ public class AdminResource {
     @Path("/availability")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance createRule(
             @RestForm String dayOfWeek,
             @RestForm String startTime,
             @RestForm String endTime,
             @RestForm String meetingTypeId) {
-        // Blank meetingTypeId = this owner's GLOBAL default rule. A non-blank id must be owned.
-        var typeId = (meetingTypeId == null || meetingTypeId.isBlank()) ? null : Long.valueOf(meetingTypeId);
-        if (typeId != null) {
-            requireType(typeId); // 404 a cross-owner type
-        }
-        AvailabilityRule r = new AvailabilityRule();
-        r.ownerId = currentOwner.id();
-        r.meetingTypeId = typeId; // null = global default
-        r.dayOfWeek = DayOfWeek.valueOf(dayOfWeek);
-        r.startTime = LocalTime.parse(startTime);
-        r.endTime = LocalTime.parse(endTime);
-        r.persist();
+        QuarkusTransaction.requiringNew().run(() -> {
+            // Blank meetingTypeId = this owner's GLOBAL default rule. A non-blank id must be owned.
+            var typeId = (meetingTypeId == null || meetingTypeId.isBlank()) ? null : Long.valueOf(meetingTypeId);
+            if (typeId != null) {
+                requireType(typeId); // 404 a cross-owner type
+            }
+            AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = currentOwner.id();
+            r.meetingTypeId = typeId; // null = global default
+            r.dayOfWeek = DayOfWeek.valueOf(dayOfWeek);
+            r.startTime = LocalTime.parse(startTime);
+            r.endTime = LocalTime.parse(endTime);
+            r.persist();
+        });
         return Templates.availability(
                 ownerRules(),
                 weekRows(globalRules()),
@@ -968,11 +992,12 @@ public class AdminResource {
     @Path("/availability/bulk")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance saveWeeklyRules(MultivaluedMap<String, String> form) {
-        // Replace-all for this owner's GLOBAL schedule: wipe the scope, re-insert posted frames.
-        AvailabilityRule.delete("ownerId = ?1 and meetingTypeId is null", currentOwner.id());
-        persistFrames(currentOwner.id(), null, form);
+        QuarkusTransaction.requiringNew().run(() -> {
+            // Replace-all for this owner's GLOBAL schedule: wipe the scope, re-insert posted frames.
+            AvailabilityRule.delete("ownerId = ?1 and meetingTypeId is null", currentOwner.id());
+            persistFrames(currentOwner.id(), null, form);
+        });
         return Templates.availability(
                 ownerRules(),
                 weekRows(globalRules()),
@@ -1024,12 +1049,13 @@ public class AdminResource {
     @Path("/availability/{id}/delete")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance deleteRule(@PathParam("id") Long id) {
-        AvailabilityRule r = AvailabilityRule.findById(id);
-        if (r != null && currentOwner.id().equals(r.ownerId)) {
-            AvailabilityRule.deleteById(id);
-        }
+        QuarkusTransaction.requiringNew().run(() -> {
+            AvailabilityRule r = AvailabilityRule.findById(id);
+            if (r != null && currentOwner.id().equals(r.ownerId)) {
+                AvailabilityRule.deleteById(id);
+            }
+        });
         return Templates.availability(
                 ownerRules(),
                 weekRows(globalRules()),
@@ -1062,25 +1088,29 @@ public class AdminResource {
     @Path("/settings")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance updateSettings(
             @RestForm String ownerName,
             @RestForm String ownerEmail,
             @RestForm String timezone,
             @RestForm String locale,
             @RestForm String ownerNotificationsEnabled) {
-        OwnerSettings s = OwnerSettings.forOwner(currentOwner.id());
-        if (s == null) {
-            s = new OwnerSettings();
-            s.ownerId = currentOwner.id();
-        }
-        s.ownerName = ownerName;
-        s.ownerEmail = ownerEmail;
-        s.timezone = timezone;
-        s.locale = site.asm0dey.calit.i18n.AppLocales.isSupported(locale) ? locale : "en";
-        // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
-        s.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
-        s.persist();
+        // Persist in its own tx that commits before the settings render (#75); return the (now
+        // detached) row so the render below reads its committed field values with no connection held.
+        OwnerSettings s = QuarkusTransaction.requiringNew().call(() -> {
+            OwnerSettings row = OwnerSettings.forOwner(currentOwner.id());
+            if (row == null) {
+                row = new OwnerSettings();
+                row.ownerId = currentOwner.id();
+            }
+            row.ownerName = ownerName;
+            row.ownerEmail = ownerEmail;
+            row.timezone = timezone;
+            row.locale = site.asm0dey.calit.i18n.AppLocales.isSupported(locale) ? locale : "en";
+            // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
+            row.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
+            row.persist();
+            return row;
+        });
         // The locale filter already ran (before this handler) with the OLD value; refresh the
         // request-scoped locale so THIS response (title, {adm:} keys, language dropdown) is in the new language.
         activeLocale.set(site.asm0dey.calit.i18n.AppLocales.pick(s.locale));
@@ -1104,22 +1134,23 @@ public class AdminResource {
     @Path("/booking-fields")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance createBookingField(
             @RestForm String label,
             @RestForm String fieldKey,
             @RestForm String type,
             @RestForm String required,
             @RestForm int position) {
-        BookingField f = new BookingField();
-        f.ownerId = currentOwner.id();
-        f.label = label;
-        f.fieldKey = fieldKey;
-        f.type = FieldType.valueOf(type);
-        f.required = "on".equals(required); // unchecked checkbox sends no value
-        f.position = position;
-        f.meetingTypeId = null; // standalone page manages this owner's global defaults
-        f.persist();
+        QuarkusTransaction.requiringNew().run(() -> {
+            BookingField f = new BookingField();
+            f.ownerId = currentOwner.id();
+            f.label = label;
+            f.fieldKey = fieldKey;
+            f.type = FieldType.valueOf(type);
+            f.required = "on".equals(required); // unchecked checkbox sends no value
+            f.position = position;
+            f.meetingTypeId = null; // standalone page manages this owner's global defaults
+            f.persist();
+        });
         return Templates.bookingFields(
                 BookingField.globalForOwner(currentOwner.id()),
                 FieldType.values(),
@@ -1132,12 +1163,13 @@ public class AdminResource {
     @Path("/booking-fields/{id}/delete")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance deleteBookingField(@PathParam("id") Long id) {
-        BookingField f = BookingField.findById(id);
-        if (f != null && currentOwner.id().equals(f.ownerId)) {
-            BookingField.deleteById(id);
-        }
+        QuarkusTransaction.requiringNew().run(() -> {
+            BookingField f = BookingField.findById(id);
+            if (f != null && currentOwner.id().equals(f.ownerId)) {
+                BookingField.deleteById(id);
+            }
+        });
         return Templates.bookingFields(
                 BookingField.globalForOwner(currentOwner.id()),
                 FieldType.values(),
@@ -1172,20 +1204,21 @@ public class AdminResource {
     @Path("/date-overrides")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance createOverride(
             @RestForm String date, @RestForm String meetingTypeId, MultivaluedMap<String, String> form) {
-        // Blank meetingTypeId = this owner's GLOBAL override. A non-blank id must be owned.
-        var typeId = (meetingTypeId == null || meetingTypeId.isBlank()) ? null : Long.valueOf(meetingTypeId);
-        if (typeId != null) {
-            requireType(typeId); // 404 a cross-owner type
-        }
-        DateOverride o = new DateOverride();
-        o.ownerId = currentOwner.id();
-        o.overrideDate = LocalDate.parse(date);
-        o.meetingTypeId = typeId; // null = global override
-        o.persist(); // need the generated id before persisting child windows
-        persistWindows(o.id, form);
+        QuarkusTransaction.requiringNew().run(() -> {
+            // Blank meetingTypeId = this owner's GLOBAL override. A non-blank id must be owned.
+            var typeId = (meetingTypeId == null || meetingTypeId.isBlank()) ? null : Long.valueOf(meetingTypeId);
+            if (typeId != null) {
+                requireType(typeId); // 404 a cross-owner type
+            }
+            DateOverride o = new DateOverride();
+            o.ownerId = currentOwner.id();
+            o.overrideDate = LocalDate.parse(date);
+            o.meetingTypeId = typeId; // null = global override
+            o.persist(); // need the generated id before persisting child windows
+            persistWindows(o.id, form);
+        });
         return Templates.dateOverrides(
                 overridesWithWindows(),
                 MeetingType.listForOwner(currentOwner.id()),
@@ -1198,13 +1231,14 @@ public class AdminResource {
     @Path("/date-overrides/{id}/delete")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance deleteOverride(@PathParam("id") Long id) {
-        DateOverride o = DateOverride.findById(id);
-        if (o != null && currentOwner.id().equals(o.ownerId)) {
-            DateOverrideWindow.delete("dateOverrideId = ?1", id);
-            DateOverride.deleteById(id);
-        }
+        QuarkusTransaction.requiringNew().run(() -> {
+            DateOverride o = DateOverride.findById(id);
+            if (o != null && currentOwner.id().equals(o.ownerId)) {
+                DateOverrideWindow.delete("dateOverrideId = ?1", id);
+                DateOverride.deleteById(id);
+            }
+        });
         return Templates.dateOverrides(
                 overridesWithWindows(),
                 MeetingType.listForOwner(currentOwner.id()),
@@ -1295,18 +1329,21 @@ public class AdminResource {
     @Path("/bookings/{id}/edit-details")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    // Transactional so the reload below shares updateDetails' persistence context instead of
-    // hitting this request's long-lived non-transactional EntityManager, which would still hold
-    // the pre-update entity in its L1 cache and serve stale data back to renderManage.
-    @Transactional
     public TemplateInstance ownerEditDetails(
             @PathParam("id") Long id,
             @RestForm String title,
             @RestForm String description,
             MultivaluedMap<String, String> form) {
         Booking b = requireOwnedBooking(id); // owner-scoped
-        bookingService.updateDetails(b.manageToken, title, description, parseGuests(form), true); // host-initiated
-        return renderManage(requireOwnedBooking(id)); // reload committed state → back to the hub
+        // Update + re-read the committed state inside ONE tx, then render OUTSIDE it (#75): the
+        // reload happens in the same persistence context as updateDetails (so it never serves the
+        // pre-update L1-cached entity), and the tx commits — releasing the DB connection — before
+        // renderManage runs its slot computation. The returned Booking is detached but fully loaded.
+        Booking reloaded = QuarkusTransaction.requiringNew().call(() -> {
+            bookingService.updateDetails(b.manageToken, title, description, parseGuests(form), true); // host-initiated
+            return requireOwnedBooking(id);
+        });
+        return renderManage(reloaded); // back to the hub
     }
 
     // ponytail: an 8-line CSV splitter duplicated from PublicResource; not worth a shared util.

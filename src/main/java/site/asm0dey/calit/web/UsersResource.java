@@ -1,11 +1,11 @@
 package site.asm0dey.calit.web;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import java.util.List;
@@ -74,7 +74,6 @@ public class UsersResource {
     @POST
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance create(@RestForm String username, @RestForm String tempPassword) {
         String normalized;
         try {
@@ -82,11 +81,15 @@ public class UsersResource {
         } catch (IllegalArgumentException e) {
             return render(e.getMessage());
         }
-        AppUser u = AppUser.create(normalized, passwordHasher.hash(tempPassword), false);
-        u.mustChangePassword = true; // must reset the temp password on first login
-        u.settingsComplete = false; // and complete the settings wizard
-        u.persist();
-        audit.event(identity.getPrincipal().getName(), "create-user", USER_TARGET + normalized, null);
+        // Create in its own tx that commits before the user-list render (issue #75): no DB
+        // connection is held across the Qute render below.
+        QuarkusTransaction.requiringNew().run(() -> {
+            AppUser u = AppUser.create(normalized, passwordHasher.hash(tempPassword), false);
+            u.mustChangePassword = true; // must reset the temp password on first login
+            u.settingsComplete = false; // and complete the settings wizard
+            u.persist();
+            audit.event(identity.getPrincipal().getName(), "create-user", USER_TARGET + normalized, null);
+        });
         return render(null);
     }
 
@@ -116,32 +119,33 @@ public class UsersResource {
     @POST
     @Path("/{id}/grant-admin")
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance grantAdmin(@PathParam("id") Long id) {
-        requireUser(id).setAdmin(true);
-        audit.event(identity.getPrincipal().getName(), "grant-admin", USER_TARGET + id, null);
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireUser(id).setAdmin(true); // managed entity loaded inside the tx → flushes on commit
+            audit.event(identity.getPrincipal().getName(), "grant-admin", USER_TARGET + id, null);
+        });
         return render(null);
     }
 
     @POST
     @Path("/{id}/revoke-admin")
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance revokeAdmin(@PathParam("id") Long id) {
         AppUser target = requireUser(id);
         // Block removing the last enabled admin — there is no in-app recovery path (SEC-AUTHZ-01).
         if (target.isAdmin && enabledAdminCount() <= 1) {
             return render("Cannot revoke admin from the last enabled admin.");
         }
-        target.setAdmin(false);
-        audit.event(identity.getPrincipal().getName(), "revoke-admin", USER_TARGET + id, null);
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireUser(id).setAdmin(false); // re-load inside the tx so the change flushes on commit
+            audit.event(identity.getPrincipal().getName(), "revoke-admin", USER_TARGET + id, null);
+        });
         return render(null);
     }
 
     @POST
     @Path("/{id}/lock")
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance lock(@PathParam("id") Long id) {
         if (isSelf(id)) {
             return render("You cannot lock your own account.");
@@ -151,18 +155,21 @@ public class UsersResource {
         if (target.isAdmin && target.enabled && enabledAdminCount() <= 1) {
             return render("Cannot lock the last enabled admin.");
         }
-        target.enabled = false;
-        audit.event(identity.getPrincipal().getName(), "lock", USER_TARGET + id, null);
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireUser(id).enabled = false; // re-load inside the tx so the change flushes on commit
+            audit.event(identity.getPrincipal().getName(), "lock", USER_TARGET + id, null);
+        });
         return render(null);
     }
 
     @POST
     @Path("/{id}/unlock")
     @Produces(MediaType.TEXT_HTML)
-    @Transactional
     public TemplateInstance unlock(@PathParam("id") Long id) {
-        requireUser(id).enabled = true;
-        audit.event(identity.getPrincipal().getName(), "unlock", USER_TARGET + id, null);
+        QuarkusTransaction.requiringNew().run(() -> {
+            requireUser(id).enabled = true; // managed entity loaded inside the tx → flushes on commit
+            audit.event(identity.getPrincipal().getName(), "unlock", USER_TARGET + id, null);
+        });
         return render(null);
     }
 }
