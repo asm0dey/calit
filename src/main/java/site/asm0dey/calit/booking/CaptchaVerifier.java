@@ -94,6 +94,10 @@ public class CaptchaVerifier {
             }
         } catch (AbuseException ae) {
             throw ae;
+        } catch (InterruptedException e) {
+            // Preserve the interrupt status for the caller; the booking still fails closed.
+            Thread.currentThread().interrupt();
+            throw new AbuseException("Turnstile verification interrupted");
         } catch (Exception e) {
             throw new AbuseException("Turnstile verification error: " + e.getMessage());
         }

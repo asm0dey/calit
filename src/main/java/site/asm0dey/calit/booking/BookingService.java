@@ -246,6 +246,8 @@ public class BookingService {
                 guestEmails);
     }
 
+    // S107: one param per booking input; the 10-arg overload above preserves the pre-CAPTCHA arity.
+    @SuppressWarnings("java:S107")
     @Transactional
     public Booking book(
             Long ownerId,

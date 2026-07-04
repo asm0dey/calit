@@ -22,6 +22,14 @@ public class AltchaResource {
     @ConfigProperty(name = "calit.captcha.altcha.max-number", defaultValue = "100000")
     long maxNumber;
 
+    /**
+     * Mints a signed proof-of-work challenge valid for 5 minutes.
+     *
+     * <p>ALTCHA verification is stateless (HMAC, hash and expiry only, with no consumed-solution
+     * store), so a solved payload stays valid for replay until it expires. The always-on honeypot
+     * and per-email daily cap are the abuse backstops; persist consumed challenge signatures here
+     * if replay abuse is ever observed.
+     */
     @GET
     @Path("/challenge")
     @Produces(MediaType.APPLICATION_JSON)
@@ -30,10 +38,6 @@ public class AltchaResource {
                 .algorithm(Altcha.Algorithm.SHA256)
                 .maxNumber(maxNumber)
                 .hmacKey(hmacKey.orElse(""))
-                // Challenge is valid for 5 minutes. NOTE: ALTCHA verification is stateless (HMAC +
-                // hash + expiry only, no consumed-solution store), so a solved payload is REUSABLE
-                // until it expires. The always-on honeypot + per-email daily cap are the backstops;
-                // add a consumed-(challenge,signature) store here if replay abuse is ever observed.
                 .expiresInSeconds(300);
         return Altcha.createChallenge(opts);
     }
