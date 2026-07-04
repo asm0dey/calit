@@ -61,14 +61,6 @@
     <sonar.issue.ignore.multicriteria.e5.resourceKey>**/*.java</sonar.issue.ignore.multicriteria.e5.resourceKey>
   </properties>
 
-  <repositories>
-    <repository>
-      <id>mvnpm.org</id>
-      <name>mvnpm</name>
-      <url>https://repo.mvnpm.org/maven2</url>
-    </repository>
-  </repositories>
-
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -146,28 +138,25 @@
         <artifactId>altcha</artifactId>
         <version>2.0.2</version>
     </dependency>
-    <!-- ALTCHA widget JS (npm package, mirrored by mvnpm). Served at /_static/altcha/... -->
+    <!-- ALTCHA widget JS (npm package, via WebJar on Maven Central — no external repo needed).
+         Served version-less at /webjars/altcha/... by quarkus-web-dependency-locator. -->
     <dependency>
-        <groupId>org.mvnpm</groupId>
+        <groupId>org.webjars.npm</groupId>
         <artifactId>altcha</artifactId>
         <version>3.1.0</version>
         <scope>runtime</scope>
     </dependency>
-    <!-- org.mvnpm:altcha declares its hash-wasm dependency as a version RANGE ([4.12.0,5)). Maven's
-         range resolution binds the jar lookup to whichever configured repo's metadata first satisfies
-         the range (mvnpm.org here) and, unlike a fixed-version dependency, does NOT fall through to
-         other repos if that one 404s. mvnpm.org's own dynamic build backend was 404-ing the real jar
-         for 4.12.0 even though its metadata advertises it (and the artifact is already mirrored, with
-         a fixed content hash, on Maven Central). Pinning an explicit direct/fixed-version dependency
-         here makes Maven mediate to nearest-wins and resolve normally (tries every configured repo,
-         falls through to Central). Remove once mvnpm.org's origin is consistent again. -->
+    <!-- altcha's hash-wasm dependency is declared as a version RANGE; pin a concrete version so the
+         Docker build's `dependency:go-offline` resolves it deterministically from Central instead of
+         re-resolving the range. (An earlier mvnpm mirror of this artifact had a flaky origin; the
+         WebJar on Central does not, but the pin keeps go-offline stable regardless.) -->
     <dependency>
-        <groupId>org.mvnpm</groupId>
+        <groupId>org.webjars.npm</groupId>
         <artifactId>hash-wasm</artifactId>
         <version>4.12.0</version>
         <scope>runtime</scope>
     </dependency>
-    <!-- Version-less static paths for the mvnpm/webjar assets above. -->
+    <!-- Version-less static paths for the WebJar assets above. -->
     <dependency>
         <groupId>io.quarkus</groupId>
         <artifactId>quarkus-web-dependency-locator</artifactId>

@@ -15,7 +15,7 @@ class AltchaStaticAssetTest {
     @Test
     void altchaWidgetScriptIsServedVersionless() {
         given().when()
-                .get("/_static/altcha/dist/main/altcha.i18n.min.js")
+                .get("/webjars/altcha/dist/main/altcha.i18n.min.js")
                 .then()
                 .statusCode(200)
                 .body(containsString("altcha"));

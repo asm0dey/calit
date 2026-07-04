@@ -18,7 +18,7 @@
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     {#else if captchaProvider == 'altcha'}
     {! i18n build (bundles all languages); the widget auto-localizes from <html lang> (en/de/he). !}
-    <script async defer type="module" src="/_static/altcha/dist/main/altcha.i18n.min.js"></script>
+    <script async defer type="module" src="/webjars/altcha/dist/main/altcha.i18n.min.js"></script>
     {/if}
   {/head}
 
