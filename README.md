@@ -259,15 +259,20 @@ links are created and the app emails the invitee directly (instead of Google sen
 | `GOOGLE_OAUTH_STATE_SECRET` | A strong random string shared by all replicas (signs the stateless OAuth CSRF token). Generate e.g. `openssl rand -hex 32`. |
 | `GOOGLE_PROBE_INTERVAL` | **Optional.** How often connected Google accounts are checked for disconnection, and how often the "reconnect your Google" alert email is (re-)evaluated. Duration string. Default `1h`. If an account's grant has died, calit fails the booking page closed (no slots) and emails the owner once per outage. |
 
-### Cloudflare Turnstile (optional, public-form bot protection)
+### CAPTCHA / bot protection (optional)
 
-One switch turns on **both** the booking-form widget and server-side verification.
+`CAPTCHA_PROVIDER` picks the booking-form CAPTCHA: `none` (default), `turnstile` (Cloudflare,
+external), or `altcha` (self-hosted proof-of-work, no third party). When unset, it falls back to
+`turnstile` if `TURNSTILE_ENABLED=true` (back-compat with older configs), else `none`.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `TURNSTILE_ENABLED` | `false` | Enable the widget + server verification together. |
-| `TURNSTILE_SITE_KEY` | — | Public site key (rendered into the booking page). |
-| `TURNSTILE_SECRET_KEY` | — | Secret key (server-side verification only; never rendered). |
+| `CAPTCHA_PROVIDER` | `none` | `none` \| `turnstile` \| `altcha`. Unset falls back to `turnstile` when `TURNSTILE_ENABLED=true`, else `none`. |
+| `TURNSTILE_ENABLED` | `false` | Legacy switch: enable the Turnstile widget + server verification together. Still implies the `turnstile` provider when `CAPTCHA_PROVIDER` is unset. |
+| `TURNSTILE_SITE_KEY` | — | Public site key (rendered into the booking page). Used when the effective provider is `turnstile`. |
+| `TURNSTILE_SECRET_KEY` | — | Secret key (server-side verification only; never rendered). Used when the effective provider is `turnstile`. |
+| `ALTCHA_HMAC_KEY` | — | Required when `CAPTCHA_PROVIDER=altcha` (startup fails if blank). Long random secret signing the proof-of-work challenge; never rendered. |
+| `ALTCHA_MAX_NUMBER` | `100000` | ALTCHA proof-of-work difficulty — the max number the client brute-forces to solve a challenge. Used when the effective provider is `altcha`. |
 
 > The honeypot field and the per-email daily cap are always on and need no configuration.
 
