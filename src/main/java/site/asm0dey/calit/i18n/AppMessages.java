@@ -722,6 +722,27 @@ public interface AppMessages {
             "This link expires in 30 minutes and can be used once. If you didn't request this, ignore this email — your password stays unchanged.")
     String email_password_reset_expiry();
 
+    // ---- Email body — invite ----
+
+    @Message("You're invited to calit")
+    String email_invite_subject();
+
+    @Message("You've been invited to calit")
+    String email_invite_title();
+
+    @Message("Hello,")
+    String email_invite_greeting();
+
+    @Message("{inviter} invited you to join calit at {host}. Set your password to activate your account.")
+    String email_invite_body(String inviter, String host);
+
+    @Message("Activate your account")
+    String email_invite_btn();
+
+    @Message(
+            "This link expires in 48 hours and can be used once. If you didn't expect this invitation, you can safely ignore this email.")
+    String email_invite_expiry();
+
     // ---- Email body — Google disconnected ----
 
     @Message("Reconnect your Google Calendar")

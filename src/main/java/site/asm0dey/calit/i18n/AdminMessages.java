@@ -835,6 +835,21 @@ public interface AdminMessages {
     @Message("Unlock")
     String users_btn_unlock();
 
+    @Message("Email")
+    String users_label_email();
+
+    @Message("Enter a valid email address.")
+    String users_error_email_invalid();
+
+    @Message("That user has already activated their account.")
+    String users_error_not_pending();
+
+    @Message("Awaiting activation")
+    String users_status_pending();
+
+    @Message("Resend invite")
+    String users_btn_resend_invite();
+
     // ---- Me setup wizard ----
 
     @Message("Finish setting up")
