@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import io.quarkus.hibernate.orm.panache.Panache;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
@@ -126,17 +127,25 @@ public class SharedMeetingsResource {
     }
 
     private TemplateInstance requestsInstance() {
+        // One HQL ad-hoc entity join (over the raw-Long FKs — there are no mapped associations)
+        // replaces the old 1 + 2N per-row findById + forOwner lookups (PR #82 review). LEFT JOIN so
+        // a type whose creator has no OwnerSettings row still shows, with a "?" creator name.
+        List<Object[]> tuples = Panache.getEntityManager()
+                .createQuery(
+                        "select mt, os.ownerName from MeetingTypeHost mth "
+                                + "join MeetingType mt on mt.id = mth.meetingTypeId "
+                                + "left join OwnerSettings os on os.ownerId = mt.ownerId "
+                                + "where mth.ownerId = ?1 and mth.role = ?2 and mth.status = ?3 "
+                                + "order by mt.name",
+                        Object[].class)
+                .setParameter(1, currentOwner.id())
+                .setParameter(2, MeetingTypeHost.COHOST)
+                .setParameter(3, MeetingTypeHost.PENDING)
+                .getResultList();
         List<PendingRequestRow> rows = new ArrayList<>();
-        for (MeetingTypeHost h : MeetingTypeHost.cohostedTypesFor(currentOwner.id())) {
-            if (!MeetingTypeHost.PENDING.equals(h.status)) {
-                continue;
-            }
-            MeetingType t = MeetingType.findById(h.meetingTypeId);
-            if (t == null) {
-                continue;
-            }
-            OwnerSettings creator = OwnerSettings.forOwner(t.ownerId);
-            rows.add(new PendingRequestRow(t, creator != null ? creator.ownerName : "?"));
+        for (Object[] tuple : tuples) {
+            var creatorName = tuple[1] != null ? (String) tuple[1] : "?";
+            rows.add(new PendingRequestRow((MeetingType) tuple[0], creatorName));
         }
         return Templates.consentRequests(rows, pendingCount(), isAdmin(), m().adm_shared_requests_title());
     }
