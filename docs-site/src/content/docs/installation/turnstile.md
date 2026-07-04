@@ -23,7 +23,7 @@ TURNSTILE_SITE_KEY=your-site-key
 TURNSTILE_SECRET_KEY=your-secret-key
 ```
 
-Setting `TURNSTILE_ENABLED=true` activates both the client-side widget on the booking form and server-side verification of the challenge token — one switch controls both.
+Setting `TURNSTILE_ENABLED=true` activates both the client-side widget on the booking form and server-side verification of the challenge token — one switch controls both. You can also select Turnstile explicitly with `CAPTCHA_PROVIDER=turnstile`; only one CAPTCHA provider is active per instance (the alternative is self-hosted [ALTCHA](/calit/installation/altcha/)).
 
 ### 3. What it protects
 

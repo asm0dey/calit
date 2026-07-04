@@ -7,6 +7,18 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+- **Self-hosted ALTCHA CAPTCHA.** The booking form's bot protection is now
+  pluggable via `CAPTCHA_PROVIDER` (`none` | `turnstile` | `altcha`). The new
+  **ALTCHA** option is a privacy-first, self-hosted proof-of-work challenge —
+  no external service, no third-party account, and it works air-gapped (the
+  widget script is served by calit, not a CDN). Configure it with
+  `CAPTCHA_PROVIDER=altcha` + `ALTCHA_HMAC_KEY` (and optional
+  `ALTCHA_MAX_NUMBER`); the widget localises to en/de/he automatically. See
+  [ALTCHA setup](/calit/installation/altcha/). Existing Turnstile deployments
+  are unaffected — `TURNSTILE_ENABLED=true` still selects Turnstile.
+
 ## 1.16.0
 
 Multi-host meeting types — a meeting type can now require more than one host.

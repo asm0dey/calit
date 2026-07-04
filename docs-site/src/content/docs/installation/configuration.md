@@ -136,12 +136,29 @@ These let a hosted instance pass Google OAuth verification. calit serves a priva
 
 See [Google OAuth setup → OAuth verification](/calit/installation/google-oauth/#oauth-verification) for when these are needed.
 
-## Cloudflare Turnstile (optional)
+## CAPTCHA / bot protection (optional)
 
-Turnstile adds a bot-protection widget to the public booking form. See [Turnstile setup](/calit/installation/turnstile/) for full instructions.
+calit can add a bot challenge to the public booking form. Pick **one** provider with `CAPTCHA_PROVIDER`.
 
 | Variable | Description | Default |
 |---|---|---|
-| `TURNSTILE_ENABLED` | Enable Turnstile on the public booking form | `false` |
+| `CAPTCHA_PROVIDER` | Which CAPTCHA to use: `none`, `turnstile`, or `altcha`. When unset, falls back to `turnstile` if `TURNSTILE_ENABLED=true`, otherwise `none`. | `none` |
+
+### Cloudflare Turnstile
+
+Hosted by Cloudflare (needs a Cloudflare account). See [Turnstile setup](/calit/installation/turnstile/).
+
+| Variable | Description | Default |
+|---|---|---|
+| `TURNSTILE_ENABLED` | Enable Turnstile (also selects it when `CAPTCHA_PROVIDER` is unset) | `false` |
 | `TURNSTILE_SITE_KEY` | Turnstile site key from the Cloudflare dashboard | *(blank)* |
 | `TURNSTILE_SECRET_KEY` | Turnstile secret key | *(blank)* |
+
+### ALTCHA
+
+Self-hosted proof-of-work — no external service or account. See [ALTCHA setup](/calit/installation/altcha/).
+
+| Variable | Description | Default |
+|---|---|---|
+| `ALTCHA_HMAC_KEY` | Secret that signs ALTCHA challenges. **Required** when `CAPTCHA_PROVIDER=altcha` (startup fails without it). Generate: `openssl rand -hex 32`. | *(blank)* |
+| `ALTCHA_MAX_NUMBER` | Proof-of-work difficulty — max number the browser brute-forces | `100000` |
