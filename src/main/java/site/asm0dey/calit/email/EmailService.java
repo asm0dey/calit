@@ -74,6 +74,20 @@ public class EmailService {
     }
 
     /**
+     * Sends an account-invite email carrying a set-password activation link (same single-use token
+     * machinery as a password reset). {@code inviter} is the admin's display email, {@code host} the
+     * app base URL, {@code expiresAt} the token expiry (retries stop there so no dead link is sent).
+     * {@code locale} drives the {msg:} keys in the body.
+     */
+    public void sendInvite(
+            String toEmail, String activationUrl, String inviter, String host, Instant expiresAt, Locale locale) {
+        String body = Templates.invite(locale.getLanguage(), activationUrl, inviter, host)
+                .setLocale(locale)
+                .render();
+        mailSender.send(null, toEmail, messages.forLocale(locale).email_invite_subject(), body, null, expiresAt);
+    }
+
+    /**
      * Critical operational alert: the owner's Google account is disconnected and their booking page
      * is paused. Sent regardless of {@code ownerNotificationsEnabled} (that flag governs only routine
      * booking notifications). Links to the Google settings page so the owner can reconnect.
@@ -229,6 +243,8 @@ public class EmailService {
                 String manageUrl);
 
         static native TemplateInstance passwordReset(String lang, String resetUrl);
+
+        static native TemplateInstance invite(String lang, String activationUrl, String inviter, String host);
 
         static native TemplateInstance googleDisconnected(String lang, String accountEmail, String reconnectUrl);
 

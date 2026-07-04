@@ -1,0 +1,15 @@
+{@java.lang.String lang}
+{@java.lang.String activationUrl}
+{@java.lang.String inviter}
+{@java.lang.String host}
+<!DOCTYPE html>
+<html lang="{lang}" dir="{#if lang == 'he'}rtl{#else}ltr{/if}">
+<head><title>{msg:email_invite_title}</title></head>
+<body>
+<p>{msg:email_invite_greeting}</p>
+<p>{msg:email_invite_body(inviter, host)}</p>
+<p><a href="{activationUrl}">{msg:email_invite_btn}</a></p>
+<p>{msg:email_paste_link_hint}<br>{activationUrl}</p>
+<p>{msg:email_invite_expiry}</p>
+</body>
+</html>
