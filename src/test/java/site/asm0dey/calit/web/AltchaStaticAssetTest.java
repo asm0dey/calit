@@ -10,11 +10,12 @@ import org.junit.jupiter.api.Test;
 class AltchaStaticAssetTest {
 
     // Proves the mvnpm jar is on the classpath AND quarkus-web-dependency-locator
-    // serves it at the version-less /_static/... path.
+    // serves it at the version-less /_static/... path. Guards the i18n build — the exact
+    // bundle book.html loads — so a future mvnpm bump that drops/renames it fails here.
     @Test
     void altchaWidgetScriptIsServedVersionless() {
         given().when()
-                .get("/_static/altcha/dist/main/altcha.min.js")
+                .get("/_static/altcha/dist/main/altcha.i18n.min.js")
                 .then()
                 .statusCode(200)
                 .body(containsString("altcha"));

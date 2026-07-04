@@ -30,7 +30,11 @@ public class AltchaResource {
                 .algorithm(Altcha.Algorithm.SHA256)
                 .maxNumber(maxNumber)
                 .hmacKey(hmacKey.orElse(""))
-                .expiresInSeconds(300); // challenge is single-use within 5 minutes
+                // Challenge is valid for 5 minutes. NOTE: ALTCHA verification is stateless (HMAC +
+                // hash + expiry only, no consumed-solution store), so a solved payload is REUSABLE
+                // until it expires. The always-on honeypot + per-email daily cap are the backstops;
+                // add a consumed-(challenge,signature) store here if replay abuse is ever observed.
+                .expiresInSeconds(300);
         return Altcha.createChallenge(opts);
     }
 }
