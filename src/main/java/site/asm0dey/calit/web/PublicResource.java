@@ -51,7 +51,7 @@ public class PublicResource {
                 String tzBar,
                 String tzScript,
                 String calScript,
-                boolean turnstileEnabled,
+                String captchaProvider,
                 String turnstileSiteKey,
                 boolean googleConnected,
                 String ownerName,
@@ -130,9 +130,9 @@ public class PublicResource {
     @jakarta.inject.Inject
     io.quarkus.security.identity.SecurityIdentity identity;
 
-    // Owner-configurable Turnstile (feature 16). When disabled, the template skips the widget.
-    @ConfigProperty(name = "calit.turnstile.enabled", defaultValue = "false")
-    boolean turnstileEnabled;
+    @jakarta.inject.Inject
+    CaptchaProviderConfig captchaProviderConfig;
+
     // SmallRye converts the empty-string property value to null, so bind it as Optional
     // and unwrap to "" — a non-Optional String injection would fail config validation.
     @ConfigProperty(name = "calit.turnstile.site-key")
@@ -229,7 +229,7 @@ public class PublicResource {
                 Layout.TZ_BAR,
                 Layout.TZ_SCRIPT,
                 Layout.CALENDAR_SCRIPT,
-                turnstileEnabled,
+                captchaProviderConfig.provider(),
                 turnstileSiteKey(),
                 calendarPort.isConnected(type.ownerId),
                 settings.ownerName,
@@ -357,7 +357,7 @@ public class PublicResource {
                     Layout.TZ_BAR,
                     Layout.TZ_SCRIPT,
                     Layout.CALENDAR_SCRIPT,
-                    turnstileEnabled,
+                    captchaProviderConfig.provider(),
                     turnstileSiteKey(),
                     calendarPort.isConnected(type.ownerId),
                     settings.ownerName,

@@ -7,15 +7,17 @@
 {@java.lang.String tzBar}
 {@java.lang.String tzScript}
 {@java.lang.String calScript}
-{@java.lang.Boolean turnstileEnabled}
+{@java.lang.String captchaProvider}
 {@java.lang.String turnstileSiteKey}
 {@java.lang.Boolean googleConnected}
 {@java.lang.String ownerName}
 {@java.lang.String initialGuests}
 {#include base title=title bodyClass="book-page"}
   {#head}
-    {#if turnstileEnabled}
+    {#if captchaProvider == 'turnstile'}
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    {#else if captchaProvider == 'altcha'}
+    <script async defer type="module" src="/_static/altcha/dist/main/altcha.min.js"></script>
     {/if}
   {/head}
 
@@ -103,8 +105,10 @@
               {! Honeypot (always present + hidden). A non-empty `website` → rejected server-side. !}
               <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off">
 
-              {#if turnstileEnabled}
+              {#if captchaProvider == 'turnstile'}
               <div class="cf-turnstile" data-sitekey="{turnstileSiteKey}"></div>
+              {#else if captchaProvider == 'altcha'}
+              <altcha-widget challengeurl="/altcha/challenge" name="altcha"></altcha-widget>
               {/if}
 
               {#if type.requiresApproval}
