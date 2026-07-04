@@ -15,6 +15,7 @@ import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestForm;
 import site.asm0dey.calit.availability.TimeSlot;
@@ -258,9 +259,11 @@ public class AdminResource {
      * by this owner) live on the Shared page instead. Includes secret types (owner view).
      */
     private List<MeetingType> singleHostTypes() {
-        return MeetingType.listForOwner(currentOwner.id()).stream()
-                .filter(t -> !MeetingTypeHost.isMultiHost(t.id))
-                .toList();
+        List<MeetingType> all = MeetingType.listForOwner(currentOwner.id());
+        // One query for the multi-host set instead of isMultiHost() (a COUNT) per type.
+        Set<Long> multi =
+                MeetingTypeHost.multiHostTypeIdsIn(all.stream().map(t -> t.id).toList());
+        return all.stream().filter(t -> !multi.contains(t.id)).toList();
     }
 
     /** True when this owner is a host (CREATOR or COHOST) of any multi-host type — drives the Main-page "Shared" link. */
@@ -317,20 +320,38 @@ public class AdminResource {
         var needsReconnect = ownerNeedsReconnect();
         String ownUsername = currentOwner.require().username;
         List<SharedRow> rows = new java.util.ArrayList<>();
-        for (MeetingType t : MeetingType.listForOwner(currentOwner.id())) {
-            if (MeetingTypeHost.isMultiHost(t.id)) {
+        // Creator side: this owner's own multi-host types. One query for the multi-host set instead
+        // of isMultiHost() (a COUNT) per type.
+        List<MeetingType> ownTypes = MeetingType.listForOwner(currentOwner.id());
+        Set<Long> multi = MeetingTypeHost.multiHostTypeIdsIn(
+                ownTypes.stream().map(t -> t.id).toList());
+        for (MeetingType t : ownTypes) {
+            if (multi.contains(t.id)) {
                 // This owner IS the creator here (listForOwner filters by t.ownerId), so the
                 // canonical link's username is this owner's own username.
                 rows.add(new SharedRow(
                         t, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED, needsReconnect, ownUsername));
             }
         }
-        for (MeetingTypeHost h : MeetingTypeHost.cohostedTypesFor(currentOwner.id())) {
-            MeetingType t = MeetingType.findById(h.meetingTypeId);
-            if (t != null) {
-                AppUser creator = AppUser.findById(t.ownerId);
-                String creatorUsername = creator != null ? creator.username : "";
-                rows.add(new SharedRow(t, MeetingTypeHost.COHOST, h.status, needsReconnect, creatorUsername));
+        // Co-host side: batch the type + creator-username lookups (was findById + AppUser.findById
+        // per co-host row) into one query each, keyed by id.
+        List<MeetingTypeHost> cohostRows = MeetingTypeHost.cohostedTypesFor(currentOwner.id());
+        if (!cohostRows.isEmpty()) {
+            List<Long> typeIds = cohostRows.stream().map(h -> h.meetingTypeId).toList();
+            Map<Long, MeetingType> typeById = MeetingType.<MeetingType>list("id in ?1", typeIds).stream()
+                    .collect(java.util.stream.Collectors.toMap(t -> t.id, t -> t));
+            Set<Long> creatorIds =
+                    typeById.values().stream().map(t -> t.ownerId).collect(java.util.stream.Collectors.toSet());
+            Map<Long, String> usernameById = creatorIds.isEmpty()
+                    ? Map.of()
+                    : AppUser.<AppUser>list("id in ?1", creatorIds).stream()
+                            .collect(java.util.stream.Collectors.toMap(u -> u.id, u -> u.username));
+            for (MeetingTypeHost h : cohostRows) {
+                MeetingType t = typeById.get(h.meetingTypeId);
+                if (t != null) {
+                    String creatorUsername = usernameById.getOrDefault(t.ownerId, "");
+                    rows.add(new SharedRow(t, MeetingTypeHost.COHOST, h.status, needsReconnect, creatorUsername));
+                }
             }
         }
         return Templates.shared(rows, baseUrl, pendingCount(), isAdmin(), m().adm_shared_title());

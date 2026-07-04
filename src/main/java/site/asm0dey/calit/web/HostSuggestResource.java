@@ -9,8 +9,11 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import site.asm0dey.calit.booking.MeetingHosts;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
 
@@ -27,12 +30,10 @@ public class HostSuggestResource {
 
     private static final int MAX_SUGGESTIONS = 20;
 
-    private final MeetingHosts meetingHosts;
     private final CurrentOwner currentOwner;
 
     @Inject
-    public HostSuggestResource(MeetingHosts meetingHosts, CurrentOwner currentOwner) {
-        this.meetingHosts = meetingHosts;
+    public HostSuggestResource(CurrentOwner currentOwner) {
         this.currentOwner = currentOwner;
     }
 
@@ -56,11 +57,18 @@ public class HostSuggestResource {
         List<AppUser> candidates = AppUser.list(
                 "enabled = true and settingsComplete = true and lower(username) like ?1 escape '\\' order by username",
                 escapeLike(q.toLowerCase()) + "%");
+        // Preload the type's existing host ownerIds ONCE (was MeetingTypeHost.find per candidate via
+        // eligibleCohost). Candidates are already enabled + settingsComplete via the query; the
+        // remaining eligibleCohost checks (not the creator, not already a host of any status) run
+        // in-memory here — kept in sync with MeetingHosts#eligibleCohost.
+        Set<Long> existingHostIds =
+                MeetingTypeHost.forType(typeId).stream().map(h -> h.ownerId).collect(Collectors.toSet());
+        Long creatorId = currentOwner.id();
         for (AppUser candidate : candidates) {
             if (results.size() >= MAX_SUGGESTIONS) {
                 break;
             }
-            if (meetingHosts.eligibleCohost(typeId, currentOwner.id(), candidate)) {
+            if (!candidate.id.equals(creatorId) && !existingHostIds.contains(candidate.id)) {
                 results.add(new Suggestion(candidate.username));
             }
         }

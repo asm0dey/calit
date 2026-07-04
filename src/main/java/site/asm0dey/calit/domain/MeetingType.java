@@ -110,17 +110,19 @@ public class MeetingType extends PanacheEntityBase {
         if (own != null) {
             return own;
         }
-        for (MeetingTypeHost h : MeetingTypeHost.<MeetingTypeHost>list(
+        List<MeetingTypeHost> cohostRows = MeetingTypeHost.list(
                 "ownerId = ?1 and role = ?2 and status = ?3",
                 urlOwnerId,
                 MeetingTypeHost.COHOST,
-                MeetingTypeHost.ACCEPTED)) {
-            MeetingType t = findById(h.meetingTypeId);
-            if (t != null && t.slug.equals(slug)) {
-                return t;
-            }
+                MeetingTypeHost.ACCEPTED);
+        if (cohostRows.isEmpty()) {
+            return null;
         }
-        return null;
+        // One query filtered by slug instead of findById-per-cohost-row (each candidate slug is
+        // free in its own namespace, so at most one matches).
+        List<Long> typeIds = cohostRows.stream().map(h -> h.meetingTypeId).toList();
+        return MeetingType.<MeetingType>find("id in ?1 and slug = ?2", typeIds, slug)
+                .firstResult();
     }
 
     /**
@@ -130,14 +132,18 @@ public class MeetingType extends PanacheEntityBase {
      */
     public static List<MeetingType> listPublicIncludingCohosted(Long ownerId) {
         List<MeetingType> result = new ArrayList<>(listPublic(ownerId));
-        for (MeetingTypeHost h : MeetingTypeHost.<MeetingTypeHost>list(
+        List<MeetingTypeHost> cohostRows = MeetingTypeHost.list(
                 "ownerId = ?1 and role = ?2 and status = ?3",
                 ownerId,
                 MeetingTypeHost.COHOST,
-                MeetingTypeHost.ACCEPTED)) {
-            MeetingType t = findById(h.meetingTypeId);
-            if (t != null && t.active && !t.secret) {
-                result.add(t);
+                MeetingTypeHost.ACCEPTED);
+        if (!cohostRows.isEmpty()) {
+            // One query for all co-hosted types instead of findById per co-host row.
+            List<Long> typeIds = cohostRows.stream().map(h -> h.meetingTypeId).toList();
+            for (MeetingType t : MeetingType.<MeetingType>list("id in ?1", typeIds)) {
+                if (t.active && !t.secret) {
+                    result.add(t);
+                }
             }
         }
         return result;

@@ -3,8 +3,11 @@ package site.asm0dey.calit.domain;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "meeting_type_host")
@@ -85,5 +88,18 @@ public class MeetingTypeHost extends PanacheEntityBase {
     /** True once the type has any co-host row (i.e. it is multi-host). */
     public static boolean isMultiHost(Long meetingTypeId) {
         return count("meetingTypeId = ?1 and role = ?2", meetingTypeId, COHOST) > 0;
+    }
+
+    /**
+     * The subset of {@code typeIds} that are multi-host (have at least one COHOST row), in a single
+     * query. Batched replacement for calling {@link #isMultiHost(Long)} once per type in a loop.
+     */
+    public static Set<Long> multiHostTypeIdsIn(Collection<Long> typeIds) {
+        if (typeIds.isEmpty()) {
+            return Set.of();
+        }
+        return MeetingTypeHost.<MeetingTypeHost>list("role = ?1 and meetingTypeId in ?2", COHOST, typeIds).stream()
+                .map(h -> h.meetingTypeId)
+                .collect(Collectors.toSet());
     }
 }

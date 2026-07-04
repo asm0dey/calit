@@ -20,7 +20,6 @@ import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.booking.*;
 import site.asm0dey.calit.domain.BookingField;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarUnavailableException;
 import site.asm0dey.calit.i18n.ActiveLocale;
@@ -184,8 +183,12 @@ public class PublicResource {
         // is ACCEPTED and enabled, not just the viewer's own row. Applies to the owner's own
         // multi-host types too: a creator's not-yet-fully-accepted type is hidden from their own
         // landing as well.
-        List<LandingType> types = MeetingType.listPublicIncludingCohosted(owner.id).stream()
-                .filter(t -> !MeetingTypeHost.isMultiHost(t.id) || meetingHosts.bookable(t))
+        List<MeetingType> candidates = MeetingType.listPublicIncludingCohosted(owner.id);
+        // Batch the multi-host bookability check: one host query + one user query for the whole
+        // set, instead of isMultiHost() + bookable() (forType + findById per host) per type.
+        java.util.Set<Long> bookableIds = meetingHosts.bookableTypeIds(candidates);
+        List<LandingType> types = candidates.stream()
+                .filter(t -> bookableIds.contains(t.id))
                 .map(t -> new LandingType(t, "/" + bookUsernameFor(t, owner) + "/" + t.slug))
                 .toList();
         return Templates.landing(m.pub_user_title(), types, owner.username, settings.ownerName);

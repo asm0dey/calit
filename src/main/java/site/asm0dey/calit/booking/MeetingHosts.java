@@ -6,8 +6,13 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import site.asm0dey.calit.booking.events.HostConsentRequested;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeHost;
@@ -61,6 +66,45 @@ public class MeetingHosts {
             }
         }
         return true;
+    }
+
+    /**
+     * Bulk {@link #bookable(MeetingType)} over a set of types in two queries total (all host rows +
+     * all host users) instead of per-type {@code forType} + per-host {@code findById}. Returns the
+     * ids of the types that ARE bookable: a single-host type (no COHOST row) is always bookable; a
+     * multi-host type only when EVERY host row is ACCEPTED and its user exists and is enabled.
+     */
+    public Set<Long> bookableTypeIds(Collection<MeetingType> types) {
+        if (types.isEmpty()) {
+            return Set.of();
+        }
+        List<Long> typeIds = types.stream().map(t -> t.id).toList();
+        Map<Long, List<MeetingTypeHost>> hostsByType =
+                MeetingTypeHost.<MeetingTypeHost>list("meetingTypeId in ?1", typeIds).stream()
+                        .collect(Collectors.groupingBy(h -> h.meetingTypeId));
+        Set<Long> ownerIds = hostsByType.values().stream()
+                .flatMap(List::stream)
+                .map(h -> h.ownerId)
+                .collect(Collectors.toSet());
+        Map<Long, Boolean> enabledById = ownerIds.isEmpty()
+                ? Map.of()
+                : AppUser.<AppUser>list("id in ?1", ownerIds).stream()
+                        .collect(Collectors.toMap(u -> u.id, u -> u.enabled));
+        Set<Long> bookable = new HashSet<>();
+        for (MeetingType t : types) {
+            List<MeetingTypeHost> hosts = hostsByType.get(t.id);
+            var multiHost = hosts != null && hosts.stream().anyMatch(h -> MeetingTypeHost.COHOST.equals(h.role));
+            if (!multiHost) {
+                bookable.add(t.id); // single-host: mirrors bookable()'s early `return true`
+                continue;
+            }
+            boolean allOk =
+                    hosts.stream().allMatch(h -> h.accepted() && Boolean.TRUE.equals(enabledById.get(h.ownerId)));
+            if (allOk) {
+                bookable.add(t.id);
+            }
+        }
+        return bookable;
     }
 
     /** Creator if connected, else the lowest-id connected host, else null (no Google event). */
