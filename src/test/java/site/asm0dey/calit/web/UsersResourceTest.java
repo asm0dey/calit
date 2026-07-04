@@ -11,8 +11,10 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.PasswordHasher;
+import site.asm0dey.calit.user.PasswordResetToken;
 
 @QuarkusTest
 class UsersResourceTest {
@@ -53,22 +55,42 @@ class UsersResourceTest {
     @TestSecurity(
             user = "admin",
             roles = {"user", "admin"})
-    void createUserPersistsTempUser() {
+    void createUserSendsInviteAndStoresEmail() {
         given().contentType("application/x-www-form-urlencoded")
                 .formParam("username", "bob")
-                .formParam("tempPassword", "Temp-pw-12345")
+                .formParam("email", "bob@example.com")
                 .when()
                 .post("/me/users")
                 .then()
                 .statusCode(200)
                 .body(containsString("bob"));
-        AppUser bob = AppUser.findByUsername("bob");
-        assertNotNull(bob);
-        assertTrue(bob.mustChangePassword);
+
+        AppUser bob = reload(AppUser.findByUsername("bob").id);
+        assertNull(bob.passwordHash, "invited user starts password-less (dormant)");
+        assertFalse(bob.mustChangePassword);
         assertFalse(bob.settingsComplete);
         assertTrue(bob.enabled);
         assertFalse(bob.isAdmin);
-        assertEquals("user", bob.roles);
+
+        OwnerSettings s = OwnerSettings.forOwner(bob.id);
+        assertNotNull(s, "settings row pre-created so the wizard can pre-fill the email");
+        assertEquals("bob@example.com", s.ownerEmail);
+        assertEquals(1, PasswordResetToken.count("userId", bob.id), "exactly one activation token minted");
+    }
+
+    @Test
+    @TestSecurity(
+            user = "admin",
+            roles = {"user", "admin"})
+    void createUserRejectsInvalidEmail() {
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("username", "carol")
+                .formParam("email", "   ")
+                .when()
+                .post("/me/users")
+                .then()
+                .statusCode(200);
+        assertNull(AppUser.findByUsername("carol"), "no user created on invalid email");
     }
 
     @Test
@@ -94,7 +116,7 @@ class UsersResourceTest {
     void grantAndRevokeAdminSyncRoles() {
         given().contentType("application/x-www-form-urlencoded")
                 .formParam("username", "carol")
-                .formParam("tempPassword", "Temp-pw-12345")
+                .formParam("email", "carol@example.com")
                 .when()
                 .post("/me/users")
                 .then()
@@ -119,7 +141,7 @@ class UsersResourceTest {
     void lockAndUnlockTogglesEnabled() {
         given().contentType("application/x-www-form-urlencoded")
                 .formParam("username", "dave")
-                .formParam("tempPassword", "Temp-pw-12345")
+                .formParam("email", "dave@example.com")
                 .when()
                 .post("/me/users")
                 .then()
