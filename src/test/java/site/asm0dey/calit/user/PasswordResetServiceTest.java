@@ -55,4 +55,19 @@ class PasswordResetServiceTest {
         assertNull(reset.consume("not-a-real-token", now));
         assertNull(reset.consume(null, now));
     }
+
+    @Test
+    @TestTransaction
+    void customTtlTokenValidBeyond30MinButExpiresAtTtl() {
+        // Admin user is always id 1 (test infra).
+        var now = Instant.now();
+        String token = reset.issue(1L, now, Duration.ofHours(48));
+
+        // Still valid 40 minutes later (would be dead under the 30-min default).
+        assertNotNull(reset.consume(token, now.plusSeconds(40 * 60)));
+
+        // A fresh token is expired just after its 48h window.
+        String token2 = reset.issue(1L, now, Duration.ofHours(48));
+        assertNull(reset.consume(token2, now.plus(Duration.ofHours(48)).plusSeconds(1)));
+    }
 }

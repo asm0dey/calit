@@ -25,6 +25,12 @@ public class PasswordResetService {
     /** Mint a token for {@code userId}, persist its hash, and return the raw token (emailed once). */
     @Transactional
     public String issue(Long userId, Instant now) {
+        return issue(userId, now, TTL);
+    }
+
+    /** As {@link #issue(Long, Instant)} but with a caller-chosen lifetime (e.g. longer for invites). */
+    @Transactional
+    public String issue(Long userId, Instant now, Duration ttl) {
         var raw = new byte[32];
         RNG.nextBytes(raw);
         var token = B64URL.encodeToString(raw);
@@ -32,7 +38,7 @@ public class PasswordResetService {
         PasswordResetToken t = new PasswordResetToken();
         t.userId = userId;
         t.tokenHash = LoginTicketService.sha256Hex(token);
-        t.expiresAt = now.plus(TTL);
+        t.expiresAt = now.plus(ttl);
         t.persist();
         return token;
     }
