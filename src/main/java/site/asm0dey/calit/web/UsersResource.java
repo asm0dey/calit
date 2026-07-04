@@ -21,7 +21,6 @@ import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AdminMessageResolver;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
-import site.asm0dey.calit.user.PasswordHasher;
 import site.asm0dey.calit.user.PasswordResetService;
 import site.asm0dey.calit.user.Usernames;
 
@@ -34,9 +33,6 @@ public class UsersResource {
         public static native TemplateInstance users(
                 List<AppUser> users, String error, boolean isAdmin, Long pendingCount, String title);
     }
-
-    @Inject
-    PasswordHasher passwordHasher;
 
     @Inject
     CurrentOwner currentOwner;
@@ -97,15 +93,15 @@ public class UsersResource {
         } catch (IllegalArgumentException e) {
             return render(e.getMessage());
         }
-        if (email == null || email.isBlank() || !email.contains("@")) {
+        var candidate = email == null ? "" : email.trim();
+        if (candidate.isEmpty() || !candidate.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
             return render(m.users_error_email_invalid());
         }
-        var inviteEmail = email.trim();
+        var inviteEmail = candidate;
         var now = Instant.now();
         // One tx: create the dormant user + its settings row + mint the activation token together.
         String token = QuarkusTransaction.requiringNew().call(() -> {
             AppUser u = AppUser.create(normalized, null, false); // null hash => cannot log in until activated
-            u.mustChangePassword = false;
             u.settingsComplete = false;
             u.persist();
             // Pre-create the settings row (mirrors GoogleSignInService.provision): ownerName/timezone
@@ -224,7 +220,7 @@ public class UsersResource {
     }
 
     @POST
-    @Path("{id}/resend-invite")
+    @Path("/{id}/resend-invite")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance resendInvite(@PathParam("id") Long id) {
         var m = adminMsgs.forLocale(activeLocale.current());

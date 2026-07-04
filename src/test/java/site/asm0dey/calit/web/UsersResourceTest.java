@@ -91,6 +91,15 @@ class UsersResourceTest {
                 .then()
                 .statusCode(200);
         assertNull(AppUser.findByUsername("carol"), "no user created on invalid email");
+
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("username", "nodot")
+                .formParam("email", "a@")
+                .when()
+                .post("/me/users")
+                .then()
+                .statusCode(200);
+        assertNull(AppUser.findByUsername("nodot"), "no user created on malformed (no-dot) email");
     }
 
     @Test
