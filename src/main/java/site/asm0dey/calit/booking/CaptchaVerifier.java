@@ -1,6 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -10,22 +11,23 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import org.altcha.altcha.v1.Altcha;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
- * Feature 16: server-side Cloudflare Turnstile verification. When the flag is off, {@link #verify}
- * is a no-op success (so local dev/tests never call Cloudflare). When on, it POSTs the token to the
- * siteverify endpoint and throws {@link AbuseException} (HTTP 400) on a non-success response.
+ * Server-side CAPTCHA verification. The active provider ({@code none} | {@code turnstile} |
+ * {@code altcha}) is resolved by {@link CaptchaProviderConfig}. {@code none} is a no-op success
+ * (local dev/tests never call an external service). Failures throw {@link AbuseException} (HTTP 400).
  */
 @ApplicationScoped
-public class TurnstileVerifier {
+public class CaptchaVerifier {
 
-    @ConfigProperty(name = "calit.abuse.turnstile.enabled", defaultValue = "false")
-    boolean enabled;
+    @Inject
+    CaptchaProviderConfig providerConfig;
 
-    // Quarkus 3.35 SmallRye treats an empty-string config value as null for the String converter,
-    // which would fail a plain `String` @ConfigProperty at startup. Optional<String> tolerates the
-    // empty/unset secret (the off-by-default local/test case) and is only present when configured.
+    // --- Turnstile ---
+    // SmallRye treats an empty-string config value as null for the String converter, so bind
+    // the optional secret as Optional<String> (empty/unset in the off-by-default local/test case).
     @ConfigProperty(name = "calit.abuse.turnstile.secret")
     Optional<String> secret;
 
@@ -34,8 +36,11 @@ public class TurnstileVerifier {
             defaultValue = "https://challenges.cloudflare.com/turnstile/v0/siteverify")
     String verifyUrl;
 
-    // SEC-SSRF-01: bound the synchronous booking-path call so a hung Cloudflare upstream can't pin
-    // a request thread indefinitely. Fixed destination (no SSRF) — this is availability hardening.
+    // --- ALTCHA ---
+    @ConfigProperty(name = "calit.captcha.altcha.hmac-key")
+    Optional<String> altchaHmacKey;
+
+    // SEC-SSRF-01: bound the synchronous booking-path call so a hung upstream can't pin a thread.
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -44,11 +49,34 @@ public class TurnstileVerifier {
     /** Matches the success flag in the siteverify JSON, tolerating whitespace: {@code "success" : true}. */
     private static final Pattern SUCCESS = Pattern.compile("\"success\"\\s*:\\s*true");
 
-    /** Throws AbuseException (400) if Turnstile is enabled and the token does not verify. */
-    public void verify(String token) {
-        if (!enabled) {
-            return;
+    /** Enforces the active provider. Throws AbuseException (400) when the presented token is invalid. */
+    public void verify(String turnstileToken, String altchaSolution) {
+        switch (providerConfig.provider()) {
+            case "turnstile" -> verifyTurnstile(turnstileToken);
+            case "altcha" -> verifyAltcha(altchaSolution);
+            default -> {
+                /* none: no-op success */
+            }
         }
+    }
+
+    private void verifyAltcha(String solution) {
+        if (solution == null || solution.isBlank()) {
+            throw new AbuseException("Missing ALTCHA solution");
+        }
+        try {
+            boolean ok = Altcha.verifySolution(solution, altchaHmacKey.orElse(""), true);
+            if (!ok) {
+                throw new AbuseException("ALTCHA verification failed");
+            }
+        } catch (AbuseException ae) {
+            throw ae;
+        } catch (Exception e) {
+            throw new AbuseException("ALTCHA verification error: " + e.getMessage());
+        }
+    }
+
+    private void verifyTurnstile(String token) {
         if (token == null || token.isBlank()) {
             throw new AbuseException("Missing Turnstile token");
         }
@@ -61,9 +89,6 @@ public class TurnstileVerifier {
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .build();
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-            // Cloudflare returns JSON {"success": true|false, ...} (note the space after the colon).
-            // Match with a whitespace-tolerant regex so the real, spaced response is accepted; this
-            // avoids pulling a JSON dependency into this guard.
             if (resp.statusCode() != 200 || !SUCCESS.matcher(resp.body()).find()) {
                 throw new AbuseException("Turnstile verification failed");
             }

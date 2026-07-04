@@ -35,7 +35,7 @@ public class BookingService {
     // fields: they are framework plumbing and would otherwise bloat the constructor to ten args.
     private final SlotService slotService;
     private final CalendarPort calendarPort;
-    private final TurnstileVerifier turnstileVerifier;
+    private final CaptchaVerifier captchaVerifier;
     private final MeetingHosts meetingHosts;
     private final long perEmailDailyCap;
 
@@ -48,12 +48,12 @@ public class BookingService {
     public BookingService(
             SlotService slotService,
             CalendarPort calendarPort,
-            TurnstileVerifier turnstileVerifier,
+            CaptchaVerifier captchaVerifier,
             MeetingHosts meetingHosts,
             @ConfigProperty(name = "calit.abuse.per-email-daily-cap", defaultValue = "10") long perEmailDailyCap) {
         this.slotService = slotService;
         this.calendarPort = calendarPort;
-        this.turnstileVerifier = turnstileVerifier;
+        this.captchaVerifier = captchaVerifier;
         this.meetingHosts = meetingHosts;
         this.perEmailDailyCap = perEmailDailyCap;
     }
@@ -219,6 +219,7 @@ public class BookingService {
         return busy;
     }
 
+    /** Backward-compatible overload: no ALTCHA solution (turnstile/none paths, and all existing tests). */
     @Transactional
     public Booking book(
             Long ownerId,
@@ -231,6 +232,33 @@ public class BookingService {
             String honeypot,
             String locale,
             List<String> guestEmails) {
+        return book(
+                ownerId,
+                meetingTypeSlug,
+                startUtc,
+                inviteeName,
+                inviteeEmail,
+                answers,
+                turnstileToken,
+                null,
+                honeypot,
+                locale,
+                guestEmails);
+    }
+
+    @Transactional
+    public Booking book(
+            Long ownerId,
+            String meetingTypeSlug,
+            Instant startUtc,
+            String inviteeName,
+            String inviteeEmail,
+            Map<String, String> answers,
+            String turnstileToken,
+            String altchaSolution,
+            String honeypot,
+            String locale,
+            List<String> guestEmails) {
         validateInviteeEmail(inviteeEmail);
         validateInputBounds(inviteeName, answers);
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
@@ -240,7 +268,7 @@ public class BookingService {
 
         // Feature 16: all three abuse guards run first, inside book(). The Plan 5 web layer
         // just forwards the cf-turnstile-response (turnstileToken) and website (honeypot) form values.
-        turnstileVerifier.verify(turnstileToken); // -> AbuseException (400) when enabled & invalid
+        captchaVerifier.verify(turnstileToken, altchaSolution); // -> AbuseException (400) on invalid CAPTCHA
         if (honeypot != null && !honeypot.isBlank()) { // a bot filled the hidden field
             throw new AbuseException("Honeypot field was filled."); // -> AbuseException (400)
         }

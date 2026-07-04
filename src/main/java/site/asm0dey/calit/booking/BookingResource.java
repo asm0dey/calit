@@ -33,6 +33,7 @@ public class BookingResource {
             String inviteeEmail,
             Map<String, String> answers,
             String turnstileToken,
+            String altchaSolution,
             String honeypot) {}
 
     public record RescheduleRequest(String newStartUtc) {}
@@ -66,6 +67,7 @@ public class BookingResource {
                 req.inviteeEmail(),
                 req.answers(),
                 req.turnstileToken(),
+                req.altchaSolution(),
                 req.honeypot(),
                 locale,
                 java.util.List.of());

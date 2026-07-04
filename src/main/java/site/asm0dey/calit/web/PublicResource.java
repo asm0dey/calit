@@ -303,6 +303,7 @@ public class PublicResource {
             @RestForm String inviteeEmail,
             @RestForm String website, // honeypot
             @RestForm("cf-turnstile-response") String turnstileToken,
+            @RestForm("altcha") String altchaSolution,
             MultivaluedMap<String, String> form) {
         var m = messages.forLocale(activeLocale.current());
         BookingTarget target = resolveBookingTarget(user, slug, m);
@@ -338,6 +339,7 @@ public class PublicResource {
                     inviteeEmail,
                     answers,
                     turnstileToken,
+                    altchaSolution,
                     website,
                     locale,
                     parseGuests(form));
