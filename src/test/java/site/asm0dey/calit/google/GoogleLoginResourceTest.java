@@ -5,20 +5,19 @@ import static org.hamcrest.Matchers.containsString;
 
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.time.Instant;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.web.SignupEnabledProfile;
 
 /**
  * End-to-end sign-in: stub the Google network seam, then drive callback -> bridge -> j_security_check
  * and assert a session cookie is minted. Signup enabled so an unknown identity provisions a user.
  */
 @QuarkusTest
-@TestProfile(GoogleLoginResourceTest.SignupOnProfile.class)
+@TestProfile(SignupEnabledProfile.class)
 class GoogleLoginResourceTest {
 
     @Inject
@@ -89,12 +88,5 @@ class GoogleLoginResourceTest {
         if (i < 0) throw new AssertionError("missing field " + name + " in: " + html);
         var start = i + marker.length();
         return html.substring(start, html.indexOf('"', start));
-    }
-
-    public static class SignupOnProfile implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("calit.signup.enabled", "true");
-        }
     }
 }

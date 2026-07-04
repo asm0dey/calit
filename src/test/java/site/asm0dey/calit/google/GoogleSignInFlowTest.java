@@ -6,16 +6,15 @@ import static org.hamcrest.Matchers.containsString;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.filter.cookie.CookieFilter;
 import jakarta.inject.Inject;
 import java.time.Instant;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.web.SignupEnabledProfile;
 
 /**
  * End-to-end Google sign-in proving the two end-user journeys:
@@ -26,7 +25,7 @@ import site.asm0dey.calit.user.AppUser;
  * QuarkusTransaction.requiringNew so the separate HTTP-request transaction can see it.
  */
 @QuarkusTest
-@TestProfile(GoogleSignInFlowTest.SignupOnProfile.class)
+@TestProfile(SignupEnabledProfile.class)
 class GoogleSignInFlowTest {
 
     @Inject
@@ -143,12 +142,5 @@ class GoogleSignInFlowTest {
         if (i < 0) throw new AssertionError("missing '" + start + "' in: " + s);
         var from = i + start.length();
         return s.substring(from, s.indexOf(end, from));
-    }
-
-    public static class SignupOnProfile implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("calit.signup.enabled", "true");
-        }
     }
 }

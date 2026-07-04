@@ -4,16 +4,15 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.web.SignupEnabledProfile;
 
 @QuarkusTest
-@TestProfile(GoogleSignInProvisionTest.SignupEnabledProfile.class)
+@TestProfile(SignupEnabledProfile.class)
 class GoogleSignInProvisionTest {
 
     @Inject
@@ -31,12 +30,5 @@ class GoogleSignInProvisionTest {
         OwnerSettings s = OwnerSettings.forOwner(got.id);
         assertNotNull(s, "settings row is pre-created so the wizard can pre-fill");
         assertEquals("jane.doe@x.com", s.ownerEmail, "email pre-filled from Google");
-    }
-
-    public static class SignupEnabledProfile implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("calit.signup.enabled", "true");
-        }
     }
 }

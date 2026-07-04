@@ -5,12 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -18,15 +16,8 @@ import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 
 @QuarkusTest
-@TestProfile(ReminderGraceWindowTest.Grace120Profile.class)
+@TestProfile(Grace120Profile.class)
 class ReminderGraceWindowTest {
-
-    public static class Grace120Profile implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("calit.scheduler.grace-seconds", "120");
-        }
-    }
 
     @Inject
     ReminderScheduler scheduler;

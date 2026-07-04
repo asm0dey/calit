@@ -4,12 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,15 +17,8 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
 
 @QuarkusTest
-@TestProfile(PendingExpiryGraceWindowTest.Grace120Profile.class)
+@TestProfile(Grace120Profile.class)
 class PendingExpiryGraceWindowTest {
-
-    public static class Grace120Profile implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("calit.scheduler.grace-seconds", "120");
-        }
-    }
 
     @Inject
     PendingExpiryScheduler scheduler;
