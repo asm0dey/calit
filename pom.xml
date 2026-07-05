@@ -90,6 +90,10 @@
          for our custom AppUserIdentityProvider. security-jpa was dropped (its generated
          Elytron provider raced ours and intermittently rejected valid logins). -->
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-security</artifactId></dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-oidc</artifactId>
+    </dependency>
     <!-- CSRF defense-in-depth for state-changing form POSTs (SEC-SECRET-04). Disabled in %test. -->
     <dependency>
         <groupId>io.quarkus</groupId>
