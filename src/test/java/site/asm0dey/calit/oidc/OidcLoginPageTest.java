@@ -16,9 +16,16 @@ class OidcLoginPageTest {
         given().when().get("/login").then().statusCode(200).body(not(containsString("/api/oidc/login")));
     }
 
-    // With OIDC off, the code mechanism is inactive: a direct hit is unauthorized (no redirect to a provider).
+    // With OIDC off, the code mechanism is inactive, so the global form-auth mechanism owns the challenge:
+    // an unauthenticated hit is redirected to the login form rather than serving the SSO resource.
     @Test
-    void ssoLoginPath_isUnauthorized_whenDisabled() {
-        given().redirects().follow(false).when().get("/api/oidc/login").then().statusCode(401);
+    void ssoLoginPath_redirectsToLogin_whenDisabled() {
+        given().redirects()
+                .follow(false)
+                .when()
+                .get("/api/oidc/login")
+                .then()
+                .statusCode(302)
+                .header("Location", containsString("/login"));
     }
 }
