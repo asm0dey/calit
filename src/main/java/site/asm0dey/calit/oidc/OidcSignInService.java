@@ -3,6 +3,7 @@ package site.asm0dey.calit.oidc;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.domain.OwnerSettings;
@@ -30,9 +31,12 @@ public class OidcSignInService {
     @ConfigProperty(name = "calit.signup.enabled", defaultValue = "false")
     boolean signupEnabled;
 
-    /** OIDC group whose members get admin, or blank to disable OIDC-driven admin entirely. */
-    @ConfigProperty(name = "calit.oidc.admin-group", defaultValue = "")
-    String adminGroup;
+    /** OIDC group whose members get admin, or absent/blank to disable OIDC-driven admin entirely.
+     * Optional<String>, not a required String: an unset OIDC_ADMIN_GROUP resolves to an empty
+     * property value, and SmallRye Config treats an empty value as "undefined" for non-Optional
+     * injection points, which crashes the app at boot (SRCFG00040). */
+    @ConfigProperty(name = "calit.oidc.admin-group")
+    Optional<String> adminGroup;
 
     @Transactional
     public AppUser resolveOrProvision(OidcIdentity identity) {
@@ -64,7 +68,8 @@ public class OidcSignInService {
     }
 
     private boolean grantsAdmin(Set<String> groups) {
-        return adminGroup != null && !adminGroup.isBlank() && groups != null && groups.contains(adminGroup);
+        return groups != null
+                && adminGroup.filter(g -> !g.isBlank()).map(groups::contains).orElse(false);
     }
 
     private AppUser provision(OidcIdentity identity, boolean grantsAdmin) {
