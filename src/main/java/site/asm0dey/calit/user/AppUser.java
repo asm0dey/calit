@@ -30,6 +30,17 @@ public class AppUser extends PanacheEntityBase {
     @Column(name = "google_sub", unique = true)
     public String googleSub;
 
+    /** Stable OIDC id_token "sub" linking this account to an OIDC (e.g. Authelia) identity, or null. Unique. */
+    @Column(name = "oidc_sub", unique = true)
+    public String oidcSub;
+
+    /**
+     * Admin granted by an OIDC group, recomputed on every OIDC login. Effective admin is
+     * {@code isAdmin || oidcAdmin}; kept separate so a local {@code isAdmin} is never demoted by the IdP.
+     */
+    @Column(name = "oidc_admin", nullable = false)
+    public boolean oidcAdmin = false;
+
     @Column(nullable = false)
     public String roles;
 
@@ -84,6 +95,25 @@ public class AppUser extends PanacheEntityBase {
         return u;
     }
 
+    /**
+     * Factory for an OIDC-only user: no password, not a local admin, not yet onboarded. {@code oidcAdmin}
+     * comes from the IdP groups; roles reflect the effective admin (isAdmin=false || oidcAdmin). The
+     * username must already be uniquified by the caller (see Usernames.uniquify); it is normalized here.
+     */
+    public static AppUser createOidcUser(String username, String oidcSub, boolean oidcAdmin) {
+        var u = new AppUser();
+        u.username = Usernames.normalize(username);
+        u.passwordHash = null;
+        u.oidcSub = oidcSub;
+        u.isAdmin = false;
+        u.oidcAdmin = oidcAdmin;
+        u.roles = rolesFor(oidcAdmin); // effective = isAdmin(false) || oidcAdmin
+        u.mustChangePassword = false;
+        u.settingsComplete = false;
+        u.createdAt = Instant.now();
+        return u;
+    }
+
     public static AppUser findByUsername(String username) {
         return find("username", Usernames.normalize(username)).firstResult();
     }
@@ -95,6 +125,13 @@ public class AppUser extends PanacheEntityBase {
         return find("googleSub", googleSub).firstResult();
     }
 
+    public static AppUser findByOidcSub(String oidcSub) {
+        if (oidcSub == null) {
+            return null;
+        }
+        return find("oidcSub", oidcSub).firstResult();
+    }
+
     public static boolean usernameTaken(String username) {
         return count("username", Usernames.normalize(username)) > 0;
     }
@@ -103,5 +140,15 @@ public class AppUser extends PanacheEntityBase {
     public void setAdmin(boolean admin) {
         this.isAdmin = admin;
         this.roles = rolesFor(admin);
+    }
+
+    /**
+     * Recompute effective roles after an OIDC login: the local {@code isAdmin} is sticky (never
+     * touched here); {@code oidcAdmin} is (re)set from the IdP groups so admin granted via a group
+     * is revoked on the next login once the user leaves that group.
+     */
+    public void applyOidcAdmin(boolean oidcGrantsAdmin) {
+        this.oidcAdmin = oidcGrantsAdmin;
+        this.roles = rolesFor(this.isAdmin || this.oidcAdmin);
     }
 }
