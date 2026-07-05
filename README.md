@@ -276,6 +276,41 @@ external), or `altcha` (self-hosted proof-of-work, no third party). When unset, 
 
 > The honeypot field and the per-email daily cap are always on and need no configuration.
 
+### OIDC / SSO (Authelia)
+
+Leave `OIDC_ENABLED=false` (the default) to run with form login only. Set it to `true` and fill in
+the rest to add a "Sign in with SSO" button, backed by any OpenID Connect provider (Authelia,
+Keycloak, Auth0, Zitadel, Authentik, …).
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `OIDC_ENABLED` | `false` | Enables the SSO login button and the `/api/oidc/login` code-flow endpoint. |
+| `OIDC_ISSUER_URL` | — | Base issuer URL; calit discovers endpoints from `${OIDC_ISSUER_URL}/.well-known/openid-configuration`. |
+| `OIDC_CLIENT_ID` | — | Client ID registered with the provider. |
+| `OIDC_CLIENT_SECRET` | — | Client secret registered with the provider (plaintext here, even if the provider stores it hashed — see Authelia note below). |
+| `OIDC_ADMIN_GROUP` | _(empty)_ | Group name whose members get calit admin on login. Leave blank for no OIDC-driven admin. |
+
+Register `${APP_BASE_URL}/api/oidc/login` (e.g. `https://book.example.com/api/oidc/login`) as the
+client's redirect URI with your provider, and request the `openid email profile groups` scopes.
+calit reads the `sub`, `email`, `email_verified`, and `groups` claims from the ID token.
+
+- **Account linking**: an OIDC login links to the existing calit user whose settings email matches
+  the token's `email`, but only if the provider marked it `email_verified`. Otherwise a new account
+  is provisioned.
+- **Provisioning is gated by `SIGNUP_ENABLED`**: if no matching local user exists, a new account is
+  only auto-created when `SIGNUP_ENABLED=true`; otherwise the SSO login is rejected.
+- **Admin is grant-only**: membership in `OIDC_ADMIN_GROUP` grants calit admin on every login where
+  it's present, and is re-evaluated (and revoked) on each subsequent login if the group membership
+  is removed. It **never demotes** a locally-granted admin — an admin made via `/me/users` stays
+  admin regardless of OIDC group membership.
+
+For Authelia specifically, define the client under `identity_providers.oidc.clients` in
+`configuration.yml` with `redirect_uris: [https://book.example.com/api/oidc/login]` and
+`scopes: [openid, email, profile, groups]`. Authelia stores the client secret **hashed**
+(`authelia crypto hash generate pbkdf2 ...`) in its own config, while calit's `OIDC_CLIENT_SECRET`
+must be the **plaintext** secret you hashed — a mismatch fails the token exchange silently and
+sends the user back to `/login`.
+
 ---
 
 ## How to obtain the keys
