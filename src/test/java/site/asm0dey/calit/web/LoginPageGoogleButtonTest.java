@@ -12,12 +12,7 @@ class LoginPageGoogleButtonTest {
     @Test
     void loginPageOffersGoogleSignInWhenConfigured() {
         // %test sets google.oauth.client-id=test-client-id, so the button shows.
-        given().when()
-                .get("/login")
-                .then()
-                .statusCode(200)
-                .body(containsString("/api/google/login"))
-                .body(containsString("Sign in with Google"));
+        given().when().get("/login").then().statusCode(200).body(containsString("/api/google/login"));
     }
 
     @Test

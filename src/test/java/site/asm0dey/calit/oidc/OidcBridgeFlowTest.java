@@ -2,6 +2,7 @@ package site.asm0dey.calit.oidc;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -94,11 +95,11 @@ class OidcBridgeFlowTest {
         var state = between(loginPage, "id=\"state\" name=\"state\" value=\"", "\"");
         var redirectUri = between(loginPage, "id=\"redirect_uri\" name=\"redirect_uri\" value=\"", "\"");
 
-        // 3) submit that form (any credentials; the mock stub authenticates unconditionally) -> mock
-        // redirects (302) to redirect_uri with state+code. Build the query string by hand with
-        // urlEncodingEnabled(false): Wiremock's response-template renders {{request.query.redirect_uri}}
-        // by substring, not by decoding, so if RestAssured percent-encodes it (its normal, correct
-        // behavior for .queryParam()), the Location header comes back double-encoded.
+        // 3) submit that form (any credentials; the mock stub authenticates unconditionally) and the
+        // mock redirects with a 302 to redirect_uri carrying state and code. The query string is built
+        // by hand with URL-encoding disabled: the mock substitutes the redirect_uri query param into
+        // its response by raw substring rather than decoding it, so RestAssured's normal percent-encoding
+        // would come back double-encoded in the Location header.
         String callbackUrl = given().filter(cookies)
                 .urlEncodingEnabled(false)
                 .redirects()
@@ -139,7 +140,7 @@ class OidcBridgeFlowTest {
                 .body(containsString("action=\"/j_security_check\""))
                 .body(containsString("name=\"j_password\"")); // the single-use ticket
 
-        assertTrue(AppUser.findByOidcSub(MOCK_SUB) != null, "expected first-time SSO login to provision a new AppUser");
+        assertNotNull(AppUser.findByOidcSub(MOCK_SUB), "expected first-time SSO login to provision a new AppUser");
     }
 
     private static String between(String s, String start, String end) {

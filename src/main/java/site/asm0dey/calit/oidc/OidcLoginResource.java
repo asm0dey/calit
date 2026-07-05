@@ -32,6 +32,9 @@ public class OidcLoginResource {
     // only if OIDC token chunking is ever enabled (Authelia id_tokens are small).
     private static final String OIDC_SESSION_COOKIE = "q_session";
 
+    // Field injection is required here: the @IdToken qualifier is not @Target-applicable to
+    // constructor parameters, so quarkus-oidc's verified id_token can only be injected as a field.
+    @SuppressWarnings("java:S6813")
     @Inject
     @IdToken
     JsonWebToken idToken;

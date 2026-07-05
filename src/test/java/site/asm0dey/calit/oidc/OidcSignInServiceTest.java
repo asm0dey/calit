@@ -115,8 +115,8 @@ class OidcSignInServiceTest {
             s.timezone = "UTC";
             s.persist();
         }
-        var ex = assertThrows(
-                OidcSignInException.class, () -> service.resolveOrProvision(id("sub-dup", "dup@example.com", true)));
+        var dup = id("sub-dup", "dup@example.com", true);
+        var ex = assertThrows(OidcSignInException.class, () -> service.resolveOrProvision(dup));
         assertEquals(OidcSignInException.Reason.AMBIGUOUS_EMAIL, ex.reason);
     }
 }
