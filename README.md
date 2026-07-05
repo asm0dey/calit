@@ -296,7 +296,9 @@ calit reads the `sub`, `email`, `email_verified`, and `groups` claims from the I
 
 - **Account linking**: an OIDC login links to the existing calit user whose settings email matches
   the token's `email`, but only if the provider marked it `email_verified`. Otherwise a new account
-  is provisioned.
+  is provisioned. If the verified email matches more than one calit account, the SSO login is
+  rejected (the user must sign in with a password instead) rather than calit picking one — resolve
+  it by making the accounts' settings emails unique.
 - **Provisioning is gated by `SIGNUP_ENABLED`**: if no matching local user exists, a new account is
   only auto-created when `SIGNUP_ENABLED=true`; otherwise the SSO login is rejected.
 - **Admin is grant-only**: membership in `OIDC_ADMIN_GROUP` grants calit admin on every login where
