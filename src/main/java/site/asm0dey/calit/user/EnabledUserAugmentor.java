@@ -1,5 +1,6 @@
 package site.asm0dey.calit.user;
 
+import io.quarkus.oidc.IdTokenCredential;
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.SecurityIdentityAugmentor;
@@ -19,6 +20,14 @@ public class EnabledUserAugmentor implements SecurityIdentityAugmentor {
     @Override
     public Uni<SecurityIdentity> augment(SecurityIdentity identity, AuthenticationRequestContext context) {
         if (identity.isAnonymous()) {
+            return Uni.createFrom().item(identity);
+        }
+        // The transient OIDC authorization-code-flow identity (used only to reach /api/oidc/login,
+        // which bridges to a form-auth session that IS enabled-checked at ticket consumption) has an
+        // IdP-subject principal, not a calit username. Running the findByUsername enabled-check on it
+        // would wrongly anonymize a valid — or not-yet-provisioned — SSO user and loop the login.
+        // Leave it untouched.
+        if (identity.getCredential(IdTokenCredential.class) != null) {
             return Uni.createFrom().item(identity);
         }
         // Hibernate ORM is blocking.

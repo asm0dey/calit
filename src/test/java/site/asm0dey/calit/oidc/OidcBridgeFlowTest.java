@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
-import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -14,7 +13,6 @@ import io.quarkus.test.oidc.server.OidcWireMock;
 import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import io.restassured.filter.cookie.CookieFilter;
 import java.util.Map;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.user.AppUser;
 
@@ -24,15 +22,12 @@ import site.asm0dey.calit.user.AppUser;
  * quarkus-oidc's crypto/discovery/token-exchange is upstream-tested by {@link OidcWiremockTestResource}
  * itself; this test only proves OUR wiring (permission scoping, resource, bridge template).
  *
- * @implNote The bridge is only reachable for an OIDC identity that already resolves to an
- *           <em>enabled</em> {@link AppUser}: {@code EnabledUserAugmentor} runs for every identity,
- *           including brand-new OIDC ones, and downgrades anything that isn't yet a known, enabled
- *           app_user row to anonymous -- which then fails the "authenticated" HTTP permission on
- *           /api/oidc/login before {@link OidcLoginResource} ever runs. So a from-scratch,
- *           never-seen-before identity can never complete the bridge as things stand today (it loops
- *           back to the IdP instead); this is a pre-existing gap outside this test's scope. This test
- *           seeds an already-linked user (username + oidc_sub matching the mock's fixed claims) so the
- *           augmentor passes and the returning-user bridge path can be proven end-to-end.
+ * <p>No user is pre-seeded: this proves FIRST-TIME provisioning. {@code EnabledUserAugmentor} passes
+ * the transient OIDC identity through untouched (it carries an {@code IdTokenCredential}, so the
+ * augmentor's findByUsername enabled-check — which would otherwise anonymize an unknown-username
+ * identity — is skipped for it), so an SSO user never seen before still reaches the "authenticated"
+ * HTTP permission on /api/oidc/login and {@link OidcLoginResource} provisions a brand-new
+ * {@link AppUser} for the mock's sub.
  */
 @QuarkusTest
 @QuarkusTestResource(OidcWiremockTestResource.class)
@@ -41,19 +36,8 @@ class OidcBridgeFlowTest {
 
     // OidcWiremockTestResource's code-flow stub always issues an id_token for preferred_username
     // "alice" (hardcoded, see the "username=alice" submitted to the mock's login form below) with a
-    // fixed sub "123456" (its TOKEN_SUBJECT constant). Matching both here links this test's AppUser to
-    // that identity on the FIRST lookup (AppUser.findByOidcSub), and -- just as importantly -- gives
-    // EnabledUserAugmentor a matching, enabled username to find.
-    private static final String MOCK_USERNAME = "alice";
+    // fixed sub "123456" (its TOKEN_SUBJECT constant).
     private static final String MOCK_SUB = "123456";
-
-    @BeforeEach
-    void seedLinkedUser() {
-        QuarkusTransaction.requiringNew().run(() -> {
-            AppUser u = AppUser.createOidcUser(MOCK_USERNAME, MOCK_SUB, false);
-            u.persist();
-        });
-    }
 
     public static class OidcOn implements QuarkusTestProfile {
         @Override
@@ -144,9 +128,9 @@ class OidcBridgeFlowTest {
                 .extract()
                 .header("Location");
 
-        // 5) the clean, authenticated hit that actually reaches OidcLoginResource: the seeded user's
-        // matching oidc_sub resolves immediately (no provisioning needed), and the resource returns
-        // the bridge page.
+        // 5) the clean, authenticated hit that actually reaches OidcLoginResource: no AppUser exists
+        // yet for this sub, so the resource provisions a brand-new one (calit.signup.enabled=true in
+        // OidcOn) and returns the bridge page.
         given().filter(cookies)
                 .when()
                 .get(cleanUrl)
@@ -154,6 +138,8 @@ class OidcBridgeFlowTest {
                 .statusCode(200)
                 .body(containsString("action=\"/j_security_check\""))
                 .body(containsString("name=\"j_password\"")); // the single-use ticket
+
+        assertTrue(AppUser.findByOidcSub(MOCK_SUB) != null, "expected first-time SSO login to provision a new AppUser");
     }
 
     private static String between(String s, String start, String end) {
