@@ -825,6 +825,18 @@ public interface AppMessages {
     @Message("Google sign-in could not be completed. Please try again.")
     String auth_login_notice_google_generic();
 
+    @Message("Sign in with SSO")
+    String auth_login_sso_btn();
+
+    @Message("Single sign-on is not enabled for new accounts.")
+    String auth_login_notice_sso_signup_disabled();
+
+    @Message("This email matches more than one account; please sign in with your password instead.")
+    String auth_login_notice_sso_ambiguous();
+
+    @Message("Single sign-on could not be completed. Please try again.")
+    String auth_login_notice_sso_generic();
+
     // -- Signup page --
     @Message("Sign up — calit")
     String auth_signup_title();

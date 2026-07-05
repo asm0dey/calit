@@ -20,7 +20,8 @@ public class LoginResource {
 
     @CheckedTemplate
     public static class Templates {
-        public static native TemplateInstance login(String title, boolean error, boolean googleEnabled, String notice);
+        public static native TemplateInstance login(
+                String title, boolean error, boolean googleEnabled, boolean oidcEnabled, String notice);
     }
 
     @Inject
@@ -35,6 +36,9 @@ public class LoginResource {
     @org.eclipse.microprofile.config.inject.ConfigProperty(name = "google.oauth.client-id", defaultValue = "")
     String googleClientId;
 
+    @org.eclipse.microprofile.config.inject.ConfigProperty(name = "calit.oidc.enabled", defaultValue = "false")
+    boolean oidcEnabled;
+
     @GET
     @Produces(MediaType.TEXT_HTML)
     public Response login(@QueryParam("error") boolean error, @QueryParam("notice") String notice) {
@@ -45,7 +49,8 @@ public class LoginResource {
         }
         var googleEnabled = googleClientId != null && !googleClientId.isBlank();
         AppMessages m = messages.forLocale(activeLocale.current());
-        return Response.ok(Templates.login(m.auth_login_title(), error, googleEnabled, noticeMessage(m, notice)))
+        return Response.ok(Templates.login(
+                        m.auth_login_title(), error, googleEnabled, oidcEnabled, noticeMessage(m, notice)))
                 .build();
     }
 
@@ -58,6 +63,9 @@ public class LoginResource {
             case "google_signup_disabled" -> m.auth_login_notice_google_signup_disabled();
             case "google_ambiguous" -> m.auth_login_notice_google_ambiguous();
             case "google" -> m.auth_login_notice_google_generic();
+            case "sso_signup_disabled" -> m.auth_login_notice_sso_signup_disabled();
+            case "sso_ambiguous" -> m.auth_login_notice_sso_ambiguous();
+            case "sso" -> m.auth_login_notice_sso_generic();
             default -> null;
         };
     }

@@ -1,6 +1,7 @@
 {@java.lang.String title}
 {@java.lang.Boolean error}
 {@java.lang.Boolean googleEnabled}
+{@java.lang.Boolean oidcEnabled}
 {@java.lang.String notice}
 {#include base title=title}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-sm mx-auto">
@@ -22,9 +23,14 @@
         </fieldset>
       </form>
       <a href="/forgot-password" class="link link-hover text-sm text-base-content/70 mt-2">{msg:auth_login_forgot_password}</a>
-      {#if googleEnabled}
+      {#if googleEnabled || oidcEnabled}
         <div class="divider text-base-content/50">{msg:auth_login_or_divider}</div>
+      {/if}
+      {#if googleEnabled}
         <a href="/api/google/login" class="btn btn-outline btn-block">{msg:auth_login_google_btn}</a>
+      {/if}
+      {#if oidcEnabled}
+        <a href="/api/oidc/login" class="btn btn-outline btn-block mt-2">{msg:auth_login_sso_btn}</a>
       {/if}
     </div>
   </div>
