@@ -22,7 +22,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
-    <quarkus.platform.version>3.37.1</quarkus.platform.version>
+    <quarkus.platform.version>3.38.0</quarkus.platform.version>
     <surefire-plugin.version>3.5.6</surefire-plugin.version>
     <sonar-maven-plugin.version>5.7.0.6970</sonar-maven-plugin.version>
 
@@ -63,6 +63,12 @@
 
   <dependencyManagement>
     <dependencies>
+      <!-- Pin ahead of quarkus-bom: 3.38.0 still ships jackson-core 2.22.0 (GHSA-r7wm-3cxj-wff9). -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-core</artifactId>
+        <version>2.22.1</version>
+      </dependency>
       <dependency>
         <groupId>${quarkus.platform.group-id}</groupId>
         <artifactId>${quarkus.platform.artifact-id}</artifactId>
