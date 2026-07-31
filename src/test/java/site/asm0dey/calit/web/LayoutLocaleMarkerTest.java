@@ -81,6 +81,9 @@ class LayoutLocaleMarkerTest {
                 .statusCode(200)
                 // TZ_SCRIPT stable marker
                 .body(containsString("CALIT_TZ_REFORMAT"))
+                // Invitee tz-picker sources the full IANA list from the browser (incl. Asia/Jerusalem)
+                .body(containsString("CALIT_TZ_FULL_LIST"))
+                .body(containsString("supportedValuesOf"))
                 // CALENDAR_SCRIPT stable marker
                 .body(containsString("CALIT_CALENDAR"))
                 // Both scripts now read the page language from documentElement.lang
