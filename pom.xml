@@ -151,7 +151,7 @@
     <dependency>
         <groupId>org.altcha</groupId>
         <artifactId>altcha</artifactId>
-        <version>2.0.2</version>
+        <version>2.0.3</version>
     </dependency>
     <!-- ALTCHA widget JS (npm package, via WebJar on Maven Central — no external repo needed).
          Served version-less at /webjars/altcha/... by quarkus-web-dependency-locator. -->
