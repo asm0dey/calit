@@ -28,13 +28,18 @@ public final class Layout {
             <script>
             /* CALIT_TZ_REFORMAT — viewer-local time reformatting (Calendly-standard) */
             (function () {
-              var ZONES = [
-                'America/Los_Angeles','America/Denver','America/Chicago','America/New_York',
-                'America/Sao_Paulo','UTC','Europe/London','Europe/Amsterdam','Europe/Berlin',
-                'Europe/Paris','Europe/Madrid','Europe/Athens','Africa/Johannesburg',
-                'Asia/Dubai','Asia/Kolkata','Asia/Singapore','Asia/Tokyo',
-                'Australia/Sydney','Pacific/Auckland'
-              ];
+              /* CALIT_TZ_FULL_LIST — full canonical IANA list from the browser; curated fallback for pre-2022 browsers. */
+              var ZONES;
+              try { ZONES = Intl.supportedValuesOf('timeZone').slice(); }
+              catch (e) {
+                ZONES = [
+                  'America/Los_Angeles','America/Denver','America/Chicago','America/New_York',
+                  'America/Sao_Paulo','UTC','Europe/London','Europe/Amsterdam','Europe/Berlin',
+                  'Europe/Paris','Europe/Madrid','Europe/Athens','Africa/Johannesburg',
+                  'Asia/Dubai','Asia/Kolkata','Asia/Singapore','Asia/Tokyo',
+                  'Australia/Sydney','Pacific/Auckland'
+                ];
+              }
               var detected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
               if (ZONES.indexOf(detected) < 0) { ZONES.unshift(detected); }
 
