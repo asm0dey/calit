@@ -1,8 +1,10 @@
 # Self-hosted calit: the app + its Postgres. Copy .env.example to .env, fill it in, then:
-#   docker compose up --build -d
-# The app builds from the local Dockerfile (Liberica JDK 26), waits for a healthy DB, and Flyway
-# applies the V1..V8 migrations at boot. Scale the app with `docker compose up -d --scale app=3`
+#   docker compose up -d
+# The app pulls the prebuilt multi-arch image from ghcr.io, waits for a healthy DB, and Flyway
+# applies the migrations at boot. Scale the app with `docker compose up -d --scale app=3`
 # behind your own load balancer — it is stateless (all shared state is in Postgres).
+# To build from source instead (fork / unreleased commit), replace the app `image:` line with
+# `build: .` and run `docker compose up --build -d` from a repository checkout.
 
 services:
   db:
@@ -23,7 +25,7 @@ services:
     restart: unless-stopped
 
   app:
-    build: .
+    image: ghcr.io/asm0dey/calit:latest
     depends_on:
       db:
         condition: service_healthy
