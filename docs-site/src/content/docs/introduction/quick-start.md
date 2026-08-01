@@ -15,11 +15,12 @@ This page walks you through the shortest path to a running calit instance.
 
 ### 1. Get the files
 
-Clone the repository, or copy `docker-compose.yml` and `.env.example` from it to an empty directory:
+You don't need to clone or build anything — calit runs from the prebuilt image on GitHub Container
+Registry. In an empty directory, grab the two config files:
 
 ```bash
-git clone https://github.com/asm0dey/calit.git
-cd calit
+curl -O https://raw.githubusercontent.com/asm0dey/calit/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/asm0dey/calit/main/.env.example
 ```
 
 ### 2. Create your `.env`
@@ -51,10 +52,10 @@ Run `openssl rand -hex 32` twice — once for `SESSION_ENCRYPTION_KEY`, once for
 ### 3. Start
 
 ```bash
-docker compose up --build -d
+docker compose up -d
 ```
 
-This builds the image and starts two containers: `app` (Quarkus on port 8080) and `db` (Postgres).
+This pulls the prebuilt image and starts two containers: `app` (Quarkus on port 8080) and `db` (Postgres).
 
 ### 4. Create the first admin user
 
