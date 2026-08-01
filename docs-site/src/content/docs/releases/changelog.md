@@ -9,13 +9,24 @@ asset downloads, are on
 
 ## 1.19.0
 
-Bug fix.
+Full timezone list for invitees, a Compose default fix, and a booking crash fix.
 
+- **Invitee timezone picker now offers the full IANA list** (e.g.
+  `Asia/Jerusalem`), sourced from the browser's
+  `Intl.supportedValuesOf('timeZone')`, with the curated short list kept as a
+  pre-2022 fallback. No server change. ([#102](https://github.com/asm0dey/calit/pull/102))
+- **`docker compose up` now pulls the prebuilt image by default.** The app
+  service used `build: .`, so Compose built from a local checkout even though
+  the docs advertise pulling the published image; it now defaults to
+  `image: ghcr.io/asm0dey/calit:latest`, with the build-from-source path
+  documented in the Compose header comment. ([#104](https://github.com/asm0dey/calit/pull/104))
 - **Fixed a 500 when creating a booking on a fresh install.** The first user
   created via `/setup` had no internal settings row until the first-login
   wizard ran, so a booking made before completing the wizard failed with an
   internal error. New installs seed the row up front, and existing installs are
   backfilled automatically on upgrade — no manual step required. ([#99](https://github.com/asm0dey/calit/issues/99))
+- **Security.** Bumped to Quarkus 3.38.0 (pulls fixed netty and the PostgreSQL
+  JDBC driver) and pinned `jackson-core` 2.22.1, clearing several CVEs. ([#102](https://github.com/asm0dey/calit/pull/102))
 
 ## 1.18.0
 
