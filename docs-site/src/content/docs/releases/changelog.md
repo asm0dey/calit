@@ -7,6 +7,16 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## 1.19.0
+
+Bug fix.
+
+- **Fixed a 500 when creating a booking on a fresh install.** The first user
+  created via `/setup` had no internal settings row until the first-login
+  wizard ran, so a booking made before completing the wizard failed with an
+  internal error. New installs seed the row up front, and existing installs are
+  backfilled automatically on upgrade — no manual step required. ([#99](https://github.com/asm0dey/calit/issues/99))
+
 ## 1.18.0
 
 Optional OpenID Connect single sign-on.
