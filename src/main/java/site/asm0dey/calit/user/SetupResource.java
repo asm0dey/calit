@@ -8,6 +8,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
+import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AppMessageResolver;
 import site.asm0dey.calit.i18n.AppMessages;
@@ -72,6 +73,15 @@ public class SetupResource {
         u.mustChangePassword = false;
         u.settingsComplete = false;
         u.persist();
+        // Seed the settings row (mirrors UsersResource invite + Google/OIDC sign-in): ownerName/
+        // ownerEmail/timezone are NOT NULL, so seed placeholders the first-login wizard overwrites.
+        // Without it the public booking path NPEs on OwnerSettings.forOwner(...).timezone (issue #99).
+        OwnerSettings s = new OwnerSettings();
+        s.ownerId = u.id;
+        s.ownerName = "";
+        s.ownerEmail = "";
+        s.timezone = "UTC";
+        s.persist();
         return Response.status(Response.Status.FOUND)
                 .location(URI.create("/login"))
                 .build();

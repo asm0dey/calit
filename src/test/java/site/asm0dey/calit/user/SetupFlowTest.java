@@ -6,7 +6,9 @@ import static org.hamcrest.Matchers.containsString;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.OwnerSettings;
 
 @QuarkusTest
 class SetupFlowTest {
@@ -106,6 +108,30 @@ class SetupFlowTest {
                 .post("/j_security_check")
                 .then()
                 .statusCode(302);
+    }
+
+    @Test
+    void setupSeedsOwnerSettingsSoBookingWontNpe() {
+        // Regression (#99): the first /setup user must get an owner_settings row up front, otherwise
+        // the public booking path NPEs on OwnerSettings.forOwner(id).timezone before the wizard runs.
+        deleteAllUsers();
+        given().redirects()
+                .follow(false)
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("username", "Boss")
+                .formParam("password", "boss-pw-123")
+                .when()
+                .post("/setup")
+                .then()
+                .statusCode(302);
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            AppUser u = AppUser.findByUsername("boss");
+            Assertions.assertNotNull(u);
+            OwnerSettings s = OwnerSettings.forOwner(u.id);
+            Assertions.assertNotNull(s, "first /setup user must get an OwnerSettings row");
+            Assertions.assertEquals("UTC", s.timezone);
+        });
     }
 
     @Test
