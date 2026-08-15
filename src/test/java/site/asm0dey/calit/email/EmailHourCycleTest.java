@@ -133,4 +133,16 @@ class EmailHourCycleTest {
         String html = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getHtml();
         assertTrue(html.contains("13:00"), "auto must reproduce today's 24h output; got: " + html);
     }
+
+    @Test
+    void explicitH23StaysTwentyFourHourAndNeverFlipsToAmPm() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var id = seed("h23");
+
+        emailService.handleConfirmed(new BookingConfirmed(id));
+
+        String html = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getHtml();
+        assertTrue(html.contains("13:00"), "h23 must render 24-hour; got: " + html);
+        assertFalse(html.contains("1:00 PM"), "h23's entire purpose is never AM/PM; got: " + html);
+    }
 }

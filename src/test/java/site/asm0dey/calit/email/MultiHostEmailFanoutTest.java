@@ -162,6 +162,37 @@ class MultiHostEmailFanoutTest {
     }
 
     @Test
+    void eachHostCopyUsesItsOwnHourCyclePreferenceNotTheLeadHosts() {
+        MeetingType type = twoHostType(false);
+        // Lead host stores h12, co-host stores auto -- each host's copy must reflect THEIR OWN
+        // preference, never the lead's (the exact cross-host bleed the design forbids).
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings lead = OwnerSettings.forOwner(CREATOR_ID);
+            lead.timezone = "UTC";
+            lead.timeFormat = "h12";
+            lead.persist();
+            OwnerSettings cohost = OwnerSettings.forOwner(COHOST_ID);
+            cohost.timezone = "UTC";
+            cohost.timeFormat = "auto";
+            cohost.persist();
+        });
+        long leadId = seedGroup(type, BookingStatus.CONFIRMED, false);
+
+        emailService.handleConfirmed(new BookingConfirmed(leadId));
+
+        // seedGroup starts the booking at 2026-06-08T09:00:00Z; with both hosts on UTC that's
+        // 09:00 local -> 24h renders "09:00", 12h renders "9:00 AM".
+        String leadHtml = mailbox.getMailsSentTo("Creator@x.com").getFirst().getHtml();
+        assertTrue(leadHtml.contains("9:00 AM"), "lead host chose h12; got: " + leadHtml);
+
+        String cohostHtml = mailbox.getMailsSentTo("Cohost@x.com").getFirst().getHtml();
+        assertTrue(cohostHtml.contains("09:00"), "co-host chose auto (24h); got: " + cohostHtml);
+        assertFalse(
+                cohostHtml.contains("9:00 AM"),
+                "lead host's h12 preference must not leak into the co-host's copy; got: " + cohostHtml);
+    }
+
+    @Test
     void hostConsentRequestedEmailsTheCohostWithAConsentLink() {
         MeetingType type = twoHostType(false);
 
