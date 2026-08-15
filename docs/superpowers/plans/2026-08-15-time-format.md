@@ -404,7 +404,7 @@ to:
 
 ```bash
 export JAVA_HOME=/home/finkel/.sdkman/candidates/java/26.0.1-librca
-mvn test -Dtest=AdminTimeRenderingTest+LayoutLocaleMarkerTest+AdminPendingTest+BookPageTest
+mvn test -Dtest=AdminTimeRenderingTest,LayoutLocaleMarkerTest,AdminPendingTest,BookPageTest
 ```
 
 Expected: PASS. `BookPageTest` and `AdminPendingTest` are the regression guard — the invitee picker path and the pending page must both still render.
@@ -563,16 +563,20 @@ In `src/main/java/site/asm0dey/calit/web/AdminResource.java`, add a parameter to
 and inside the transaction, directly after the `row.locale = ...` line (currently 1140):
 
 ```java
-            row.timeFormat = OwnerSettings.HOUR_CYCLES.contains(timeFormat) ? timeFormat : "auto";
+            row.timeFormat =
+                    timeFormat != null && OwnerSettings.HOUR_CYCLES.contains(timeFormat) ? timeFormat : "auto";
 ```
 
-A form posted without the field (an older cached page) sends `null`, which is not in the set, so it lands on `auto`.
+A form posted without the field (an older cached page) sends `null`, which must land on `auto`. The
+explicit `timeFormat != null` guard is required, not decorative: `Set.of(...)` is an immutable set
+and `contains(null)` **throws NullPointerException** rather than returning false, so omitting it
+turns every settings POST from a page without the field into a 500.
 
 - [ ] **Step 6: Run tests to verify they pass**
 
 ```bash
 export JAVA_HOME=/home/finkel/.sdkman/candidates/java/26.0.1-librca
-mvn test -Dtest=OwnerTimeFormatSettingTest+AdminSettingsTest+OwnerLocaleSettingTest
+mvn test -Dtest=OwnerTimeFormatSettingTest,AdminSettingsTest,OwnerLocaleSettingTest
 ```
 
 Expected: PASS. Hibernate runs in validate-only mode, so a mismatch between the entity and V25 fails at boot — a green run also proves the migration and the entity agree.
@@ -703,7 +707,7 @@ browser selects the first one, which is `auto`. That is the wanted default.
 
 ```bash
 export JAVA_HOME=/home/finkel/.sdkman/candidates/java/26.0.1-librca
-mvn test -Dtest=OwnerTimeFormatSettingTest+AdminI18nTest+SettingsLocaleTest+CsrfFormCoverageTest
+mvn test -Dtest=OwnerTimeFormatSettingTest,AdminI18nTest,SettingsLocaleTest,CsrfFormCoverageTest
 ```
 
 Expected: PASS. `CsrfFormCoverageTest` is the guard that the settings form still carries its CSRF token — the select is added inside the existing form, so nothing should move.
@@ -862,7 +866,7 @@ with:
 
 ```bash
 export JAVA_HOME=/home/finkel/.sdkman/candidates/java/26.0.1-librca
-mvn test -Dtest=AdminTimeRenderingTest+LayoutLocaleMarkerTest+BookPageTest
+mvn test -Dtest=AdminTimeRenderingTest,LayoutLocaleMarkerTest,BookPageTest
 ```
 
 Expected: PASS. `BookPageTest` proves the public page is unaffected — `base.html` emits no `data-hc`, so `forcedHC` is `undefined` there and the device still decides.
@@ -872,7 +876,14 @@ Expected: PASS. `BookPageTest` proves the public page is unaffected — `base.ht
 Append to `LayoutLocaleMarkerTest`:
 
 ```java
-    /** The host's clock preference must never reach a public booking page. */
+    /**
+     * The host's clock preference must never reach a public booking page.
+     *
+     * <p>Regression guard, green by construction — NOT a red-first TDD test. Public pages render
+     * from base.html, which has never emitted data-hc, so this passes before and after this task.
+     * It fails the day someone copies the attribute over from adminBase.html and starts leaking
+     * one host's clock convention to every invitee.</p>
+     */
     @Test
     void publicBookingPageCarriesNoHostHourCycle() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
@@ -1213,7 +1224,7 @@ The compiler is the checklist here: the interface change makes every missed lamb
 
 ```bash
 export JAVA_HOME=/home/finkel/.sdkman/candidates/java/26.0.1-librca
-mvn test -Dtest=EmailHourCycleTest+EmailLocaleTest+EmailLocaleHebrewTest+EmailRoleCopyTest+MultiHostEmailFanoutTest+EmailServiceGuestTest
+mvn test -Dtest=EmailHourCycleTest,EmailLocaleTest,EmailLocaleHebrewTest,EmailRoleCopyTest,MultiHostEmailFanoutTest,EmailServiceGuestTest
 ```
 
 Expected: PASS. `MultiHostEmailFanoutTest` covers the per-host branch at line 820 and `EmailServiceGuestTest` the untouched guest paths.
