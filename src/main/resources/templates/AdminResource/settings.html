@@ -18,6 +18,12 @@
     <select id="set-locale" name="locale" class="select w-full">
       {#for o in localeOptions}<option value="{o.code}" {#if o.active}selected{/if}>{o.label}</option>{/for}
     </select>
+    <label class="label" for="set-time-format">{adm:adm_settings_label_time_format}</label>
+    <select id="set-time-format" name="timeFormat" class="select w-full">
+      <option value="auto" {#if settings && settings.timeFormat == 'auto'}selected{/if}>{adm:adm_settings_time_format_auto}</option>
+      <option value="h23" {#if settings && settings.timeFormat == 'h23'}selected{/if}>{adm:adm_settings_time_format_h23}</option>
+      <option value="h12" {#if settings && settings.timeFormat == 'h12'}selected{/if}>{adm:adm_settings_time_format_h12}</option>
+    </select>
     <label class="label cursor-pointer justify-start gap-2 mt-2">
       <input type="checkbox" name="ownerNotificationsEnabled" class="checkbox checkbox-sm"{#if settings && settings.ownerNotificationsEnabled} checked{/if}>
       {adm:adm_settings_label_notifications}</label>

@@ -1,6 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -54,5 +55,20 @@ class OwnerTimeFormatSettingTest {
     void rejectsAnUnknownValueAndFallsBackToAuto() {
         post("h11-and-a-half");
         assertEquals("auto", stored());
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void settingsPageOffersAllThreeOptionsAndMarksTheSavedOne() {
+        post("h12");
+
+        given().when()
+                .get("/me/settings")
+                .then()
+                .statusCode(200)
+                .body(containsString("name=\"timeFormat\""))
+                .body(containsString("value=\"auto\""))
+                .body(containsString("value=\"h23\""))
+                .body(containsString("value=\"h12\" selected"));
     }
 }
