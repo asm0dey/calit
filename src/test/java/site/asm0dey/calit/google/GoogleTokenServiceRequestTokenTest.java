@@ -40,7 +40,6 @@ class GoogleTokenServiceRequestTokenTest {
         var oauth = mock(GoogleOAuthConfig.OAuth.class);
         when(oauth.clientId()).thenReturn("test-client-id");
         when(oauth.clientSecret()).thenReturn("test-client-secret");
-        when(oauth.redirectUri()).thenReturn("https://book.example.com/api/google/callback");
         var config = mock(GoogleOAuthConfig.class);
         when(config.oauth()).thenReturn(oauth);
         return config;
@@ -76,6 +75,19 @@ class GoogleTokenServiceRequestTokenTest {
         assertTrue(thrown.getMessage().contains("refresh_token"), thrown.getMessage());
         assertTrue(thrown.getMessage().contains("error=invalid_client"), thrown.getMessage());
         assertTrue(thrown.getMessage().contains("description=Unauthorized"), thrown.getMessage());
+    }
+
+    @Test
+    void badRequestThatIsNotInvalidGrantIsNotTreatedAsADeadGrant() {
+        var svc = new TransportStubbedService(
+                respondingWith(400, "{\"error\":\"invalid_client\",\"error_description\":\"Bad client secret\"}"));
+
+        var thrown = assertThrows(
+                IllegalStateException.class, () -> svc.requestToken("refresh_token", "some-refresh-token", NOW));
+
+        // The status alone must not condemn the grant: only 400 AND invalid_grant does.
+        assertFalse(thrown instanceof GoogleInvalidGrantException, "400 alone must not mean a dead grant");
+        assertTrue(thrown.getMessage().contains("error=invalid_client"), thrown.getMessage());
     }
 
     @Test
