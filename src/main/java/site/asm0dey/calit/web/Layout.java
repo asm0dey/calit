@@ -53,15 +53,20 @@ public final class Layout {
                 picker.appendChild(o);
               });
 
+              /* Words (weekday, month, connector) follow the PAGE language... */
               var LANG = document.documentElement.lang || undefined;
+              /* CALIT_HOUR_CYCLE — ...but 12h-vs-24h follows the VIEWER's device (issue #116).
+                 documentElement.lang is region-less ('en' = US defaults = AM/PM for everyone).
+                 resolvedOptions() only reports hourCycle when an hour field is requested. */
+              var HC = new Intl.DateTimeFormat(undefined, {hour:'numeric'}).resolvedOptions().hourCycle;
               function render() {
                 var tz = picker.value;
                 if (label) { label.textContent = tz; }
                 document.querySelectorAll('[data-utc]').forEach(function (el) {
                   var d = new Date(el.dataset.utc);
                   var opts = (el.dataset.timeOnly === '1')
-                    ? { timeStyle: 'short', timeZone: tz }
-                    : { dateStyle: 'full', timeStyle: 'short', timeZone: tz };
+                    ? { timeStyle: 'short', timeZone: tz, hourCycle: HC }
+                    : { dateStyle: 'full', timeStyle: 'short', timeZone: tz, hourCycle: HC };
                   el.textContent = d.toLocaleString(LANG, opts);
                 });
               }

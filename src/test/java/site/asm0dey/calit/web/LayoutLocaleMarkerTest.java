@@ -107,4 +107,27 @@ class LayoutLocaleMarkerTest {
                 .body(containsString("Zeiten angezeigt in:"))
                 .body(org.hamcrest.Matchers.not(containsString("Times shown in:")));
     }
+
+    /**
+     * Issue #116: the time path must take its 12h/24h choice from the VIEWER's device, not from
+     * the page's translation locale (bare "en" carries US defaults, hence AM/PM for everyone).
+     * Words still follow documentElement.lang — only hourCycle moves.
+     */
+    @Test
+    void timesResolveHourCycleFromTheViewersDevice() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+
+        given().when()
+                .get("/layouttest/lt-intro")
+                .then()
+                .statusCode(200)
+                .body(containsString("CALIT_HOUR_CYCLE"))
+                // probes the device with an hour field — resolvedOptions() omits hourCycle without one
+                .body(containsString("{hour:'numeric'}"))
+                .body(containsString("resolvedOptions().hourCycle"))
+                // the formatting call must carry the resolved cycle
+                .body(containsString("hourCycle: HC"));
+    }
 }
