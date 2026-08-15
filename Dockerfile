@@ -13,7 +13,7 @@ RUN bun run css:build
 # Output: /app/src/main/resources/META-INF/resources/calit.css
 
 # --- Build stage: BellSoft Liberica JDK 25 + the Maven wrapper (no Maven in the image) ---
-FROM bellsoft/liberica-runtime-container:jdk-26-musl@sha256:11f78f88cbe0556a16a97c0f0711efe388f6bfe763d8dfba15b1d1fd8dc5eb06 AS build
+FROM bellsoft/liberica-runtime-container:jdk-26-musl@sha256:e7f7ec3604b09532a4d1f47beaecca6db7c68b79041473badec350c138a1a13a AS build
 WORKDIR /build
 
 # Warm the dependency cache on the POM first so source-only edits don't re-download everything.
