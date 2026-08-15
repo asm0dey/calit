@@ -1,11 +1,11 @@
 ---
 # calit-0hyn
 title: 'Issue #116: 24h/locale-correct time format on booking page'
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-08-15T20:31:56Z
-updated_at: 2026-08-15T20:52:01Z
+updated_at: 2026-08-15T21:20:07Z
 ---
 
 Brainstorm + design for GitHub issue #116 — invitee sees 12h AM/PM times because TZ_SCRIPT formats with document.documentElement.lang (UI translation locale, region-less) instead of the viewer's browser locale.
@@ -17,8 +17,8 @@ Brainstorm + design for GitHub issue #116 — invitee sees 12h AM/PM times becau
 - [x] Present design, get approval
 - [x] Write design doc to docs/superpowers/specs/
 - [x] Spec self-review
-- [ ] User reviews spec
-- [ ] Hand off to writing-plans
+- [x] User reviews spec (approved 2026-08-15)
+- [x] Hand off to writing-plans — plan at docs/superpowers/plans/2026-08-15-time-format.md (7 tasks)
 
 ## Findings
 

@@ -61,6 +61,14 @@ Revisit only if invitees actually report wrong output.
 **A free-text or full-locale format field on the host settings** — the request is
 specifically about *time*, so a three-value hour-cycle field covers it.
 
+**Server-side `auto` derived from the host's locale.** Java can answer "is this locale
+12h?" without a lookup table (probe recorded under Evidence). Rejected: today's
+`email_datetime_pattern` is 24h in *every* locale including `en`, by the translators'
+choice, while the probe reports `en` as 12h. Wiring it in would silently flip every
+existing English host's emails to AM/PM on upgrade. It would also make `auto`
+self-inconsistent for one host — device-driven on `/me`, locale-driven in email. The
+probe stays unused.
+
 ## Evidence
 
 Both probes below were run during design; they are the basis for the decisions above.
@@ -81,7 +89,9 @@ the probe must pass `{hour:'numeric'}`. `timeStyle` combined with `hourCycle` is
 legal (the illegal combination is `dateStyle`/`timeStyle` with individual component
 options).
 
-**Server (JDK 26):** `auto` needs no lookup table on the Java side either.
+**Server (JDK 26):** Java can classify a locale's hour cycle without a lookup table.
+Recorded because it was the basis for a *rejected* option (see above) — no shipped
+code calls this.
 
 ```java
 String p = DateTimeFormatterBuilder.getLocalizedDateTimePattern(
@@ -207,8 +217,13 @@ on save, falling back to `auto` — the same shape as the existing `locale` guar
 | Surface | `auto` resolves to | mechanism |
 |---|---|---|
 | `/me` pages | the viewer's device | `data-hc` on `<body>`, alongside phase 1's `data-tz` |
-| Host's own emails | the host's UI locale, via the `getLocalizedDateTimePattern` probe | `EmailService.format()` |
+| Host's own emails | the locale's existing translated pattern (24h in all three locales today) | `EmailService.format()` |
 | Invitee pages, invitee emails | never reads the setting | unchanged |
+
+Server-side `auto` deliberately does **not** probe the locale — see Rejected alternatives.
+A server has no device to read, so `auto` there means "leave the translated pattern
+alone". Only an explicit `h12` overrides it; `h23` and `auto` therefore render
+identically today, and diverge only if a future locale's pattern is authored as 12h.
 
 Client side, the forced value simply overrides the probe:
 
@@ -225,9 +240,9 @@ rewriting `HH:mm` inside a translated pattern means string surgery on
 `'בשעה' HH:mm`, which is fragile.
 
 Instead add a sibling key `email_datetime_pattern_h12` per locale so translators own
-both forms, and pick between the two. `h23` takes the existing key, `h12` takes the
-new one, `auto` chooses with the locale probe. Per CLAUDE.md the `de` and `he` values
-ship in the same change as the English `@Message` default.
+both forms, and pick between the two: `h12` takes the new key, `h23` and `auto` take
+the existing one. Per CLAUDE.md the `de` and `he` values ship in the same change as
+the English `@Message` default.
 
 The recipient seam already exists: `sendForKindLocaleAware` passes
 `(role, locale, zone, greetingName, linkBooking)` per recipient
