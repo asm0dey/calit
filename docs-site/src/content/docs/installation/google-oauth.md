@@ -9,11 +9,16 @@ Google Calendar sync is **optional**. Leaving the keys blank runs calit in degra
 
 ## Steps
 
-### 1. Create a Google Cloud project and OAuth client
+### 1. Create a Google Cloud project, enable the Calendar API, create an OAuth client
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and create (or select) a project.
-2. Navigate to **APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID**.
-3. Set the application type to **Web application**.
+2. Go to **APIs & Services → Library**, search for **Google Calendar API**, and click **Enable**.
+3. Navigate to **APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID**.
+4. Set the application type to **Web application**.
+
+:::caution
+Step 2 is easy to miss. Signing in works without it, but every calendar read then fails with HTTP 403 and `/me/google` shows *"couldn't load — try reload"*.
+:::
 
 ### 2. Register the redirect URIs
 
@@ -82,3 +87,59 @@ The most common cause of repeated disconnects is leaving your Google OAuth app i
 
 In the Google Cloud Console, open **APIs & Services → OAuth consent screen** and publish the app to **"In production"**. Production refresh tokens do not expire on a fixed schedule, so the connection stays alive.
 :::
+
+## Troubleshooting
+
+### Read the logs first
+
+calit logs every Google failure. With Docker Compose:
+
+```bash
+docker compose logs -f app | grep -i google
+```
+
+At boot you get one line confirming what the app actually loaded (no secrets — only whether the client secret is set):
+
+```
+Google OAuth configured: clientId=1234-abc.apps.googleusercontent.com clientSecret=set
+  redirectUri=https://book.example.com/api/google/callback
+  loginRedirectUri=https://book.example.com/api/google/login/callback
+  scope=https://www.googleapis.com/auth/calendar openid email
+```
+
+Compare `redirectUri` and `loginRedirectUri` against the **Authorized redirect URIs** in your OAuth client — they must match character for character. A wrong `APP_BASE_URL` (http vs https, trailing slash, wrong host) shows up here.
+
+Connecting an account logs:
+
+```
+Google account connected for owner 1 (credential 3), refreshToken=stored
+```
+
+`refreshToken=MISSING` means Google returned no offline refresh token, so every later refresh will fail — disconnect the account on `/me/google` and connect again.
+
+For extra detail (including transient probe failures), raise the log level:
+
+```dotenv
+QUARKUS_LOG_CATEGORY__SITE_ASM0DEY_CALIT_GOOGLE__LEVEL=DEBUG
+```
+
+### "Couldn't reach Google for one or more accounts"
+
+The account is connected but calit could not list its calendars. The log line naming the failure looks like:
+
+```
+WARN  Google calendar list failed for owner 1, credential 3
+      java.io.UncheckedIOException: calendarList.list failed: HTTP 403 —
+      Google Calendar API has not been used in project 123... before or it is disabled
+```
+
+Common causes, in the order they turn up:
+
+| What the log says | Cause | Fix |
+| --- | --- | --- |
+| `HTTP 403 … has not been used in project … or it is disabled` | The Calendar API was never enabled | Enable **Google Calendar API** (step 1 above), then reload `/me/google` |
+| `HTTP 403 … insufficient authentication scopes` | The account was connected before the calendar scope was granted | Disconnect and reconnect the account |
+| `error=invalid_client` | Wrong `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | Re-copy both from the Credentials page |
+| Google shows `redirect_uri_mismatch` in the browser before returning | Registered URI ≠ the `redirectUri` in the boot log | Register the exact URIs from the boot log |
+| `invalid_grant` | The refresh token is dead (revoked, password change, or a "Testing" app older than 7 days) | Reconnect the account; publish the OAuth app to production |
+| `I/O error` / connect timeout | The container cannot reach `oauth2.googleapis.com` / `www.googleapis.com` | Check egress firewall and DNS from inside the container |
