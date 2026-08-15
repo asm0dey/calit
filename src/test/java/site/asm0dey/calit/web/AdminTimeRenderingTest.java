@@ -87,7 +87,13 @@ class AdminTimeRenderingTest {
                 .statusCode(200)
                 .body(containsString("data-hc=\"h23\""))
                 // the script prefers the server value over the device probe
-                .body(containsString("document.body.dataset.hc"));
+                .body(containsString("document.body.dataset.hc"))
+                // pin the override PRECEDENCE, not just that the identifier appears somewhere:
+                // RestAssured can't execute the script, so a bare "dataset.hc" check would still
+                // pass even if the assignment were silently inverted to "HC = HC || forcedHC;" —
+                // which would make the device always win and silently ignore the host's stored
+                // preference, defeating the whole point of the feature.
+                .body(containsString("if (forcedHC) { HC = forcedHC; }"));
     }
 
     /** ...and "auto" leaves the device in charge, so no cycle is forced. */
