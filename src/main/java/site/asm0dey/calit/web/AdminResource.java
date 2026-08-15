@@ -1125,7 +1125,8 @@ public class AdminResource {
             @RestForm String ownerEmail,
             @RestForm String timezone,
             @RestForm String locale,
-            @RestForm String ownerNotificationsEnabled) {
+            @RestForm String ownerNotificationsEnabled,
+            @RestForm String timeFormat) {
         // Persist in its own tx that commits before the settings render (#75); return the (now
         // detached) row so the render below reads its committed field values with no connection held.
         OwnerSettings s = QuarkusTransaction.requiringNew().call(() -> {
@@ -1138,6 +1139,7 @@ public class AdminResource {
             row.ownerEmail = ownerEmail;
             row.timezone = timezone;
             row.locale = AppLocales.isSupported(locale) ? locale : "en";
+            row.timeFormat = timeFormat != null && OwnerSettings.HOUR_CYCLES.contains(timeFormat) ? timeFormat : "auto";
             // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
             row.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
             row.persist();

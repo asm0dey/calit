@@ -27,6 +27,18 @@ public class OwnerSettings extends PanacheEntityBase {
     @Column(nullable = false)
     public String locale = "en";
 
+    /**
+     * This owner's clock preference for their OWN surfaces: {@code auto} (the viewer's device on
+     * /me, the translated pattern in email), {@code h12}, or {@code h23}. Never applied to
+     * invitee-facing pages or invitee emails — a public booking page must not carry one person's
+     * preference. Values match Intl's {@code hourCycle} vocabulary.
+     */
+    @Column(name = "time_format", nullable = false, length = 8)
+    public String timeFormat = "auto";
+
+    /** The legal {@link #timeFormat} values; anything else is coerced to {@code auto} on save. */
+    public static final java.util.Set<String> HOUR_CYCLES = java.util.Set.of("auto", "h12", "h23");
+
     /** When false, the owner suppresses their own notification emails (Plan 4 gates on this). */
     @Column(name = "owner_notifications_enabled", nullable = false)
     public boolean ownerNotificationsEnabled = true;
