@@ -62,6 +62,10 @@ public final class Layout {
                  documentElement.lang is region-less ('en' = US defaults = AM/PM for everyone).
                  resolvedOptions() only reports hourCycle when an hour field is requested. */
               var HC = new Intl.DateTimeFormat(undefined, {hour:'numeric'}).resolvedOptions().hourCycle;
+              /* On /me the host may force a cycle; invitee pages never emit data-hc, so the
+                 device keeps deciding there. Empty string means "auto". */
+              var forcedHC = document.body.dataset.hc;
+              if (forcedHC) { HC = forcedHC; }
               function render() {
                 var tz = picker ? picker.value : (document.body.dataset.tz || detected);
                 if (label) { label.textContent = tz; }

@@ -48,4 +48,16 @@ public class OwnerInfo {
         OwnerSettings s = settings();
         return (s == null || s.timezone == null) ? "" : s.timezone;
     }
+
+    /**
+     * The owner's forced Intl {@code hourCycle} ({@code h12}/{@code h23}), or "" when they chose
+     * {@code auto} — the client treats "" as "let the device decide", which is what auto means.
+     */
+    public String getHourCycle() {
+        OwnerSettings s = settings();
+        if (s == null || s.timeFormat == null || "auto".equals(s.timeFormat)) {
+            return "";
+        }
+        return s.timeFormat;
+    }
 }

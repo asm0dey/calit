@@ -66,4 +66,44 @@ class AdminTimeRenderingTest {
                 // the trip's timezone instead of their configured one).
                 .body(containsString("picker ? picker.value : (document.body.dataset.tz || detected)"));
     }
+
+    /** An explicit host preference reaches the /me pages... */
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void dashboardCarriesAnExplicitHourCycle() {
+        given().formParam("ownerName", "Admin")
+                .formParam("ownerEmail", "admin@example.com")
+                .formParam("timezone", "UTC")
+                .formParam("locale", "en")
+                .formParam("timeFormat", "h23")
+                .when()
+                .post("/me/settings")
+                .then()
+                .statusCode(200);
+
+        given().when()
+                .get("/me")
+                .then()
+                .statusCode(200)
+                .body(containsString("data-hc=\"h23\""))
+                // the script prefers the server value over the device probe
+                .body(containsString("document.body.dataset.hc"));
+    }
+
+    /** ...and "auto" leaves the device in charge, so no cycle is forced. */
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void autoEmitsNoForcedHourCycle() {
+        given().formParam("ownerName", "Admin")
+                .formParam("ownerEmail", "admin@example.com")
+                .formParam("timezone", "UTC")
+                .formParam("locale", "en")
+                .formParam("timeFormat", "auto")
+                .when()
+                .post("/me/settings")
+                .then()
+                .statusCode(200);
+
+        given().when().get("/me").then().statusCode(200).body(containsString("data-hc=\"\""));
+    }
 }

@@ -130,4 +130,25 @@ class LayoutLocaleMarkerTest {
                 // the formatting call must carry the resolved cycle
                 .body(containsString("hourCycle: HC"));
     }
+
+    /**
+     * The host's clock preference must never reach a public booking page.
+     *
+     * <p>Regression guard, green by construction — NOT a red-first TDD test. Public pages render
+     * from base.html, which has never emitted data-hc, so this passes before and after this task.
+     * It fails the day someone copies the attribute over from adminBase.html and starts leaking
+     * one host's clock convention to every invitee.</p>
+     */
+    @Test
+    void publicBookingPageCarriesNoHostHourCycle() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+
+        given().when()
+                .get("/layouttest/lt-intro")
+                .then()
+                .statusCode(200)
+                .body(org.hamcrest.Matchers.not(containsString("data-hc=")));
+    }
 }
