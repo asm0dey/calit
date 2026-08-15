@@ -34,6 +34,18 @@ This override wins over the owner setting, the `calit_lang` cookie, and the brow
 
 The booking calendar starts the week on the visitor's regional convention — Sunday in the US and Israel, Monday in Germany and most of the world. This follows the **browser's** locale (region included), not the page's display language, so it is correct even when the two differ.
 
+### 12- or 24-hour clock
+
+Times on the booking page follow the **visitor's own device**, not the page's display language. A visitor whose device is set to a 24-hour region sees `14:30`; one on a 12-hour region sees `2:30 PM`. Both see the same instant — only the label differs, and the booking that gets made is identical either way.
+
+Only the clock format follows the device. The words around it — weekday, month, and connectors — stay in the page's display language, so a Hebrew page shows a Hebrew date with the visitor's own clock convention rather than switching to English.
+
+The page owner's own time-format setting (below) is **never** applied here. A public booking page carries no one person's preference, so what a visitor sees depends only on their device.
+
+:::note
+Seeing the wrong format? It is your browser's language setting, not calit. Firefox and Chrome derive their clock convention from the browser's own language list rather than the operating system's regional format, so an English-language browser on a 24-hour machine may still show `AM`/`PM`. Changing the browser's preferred language, or enabling its "use the operating system's regional settings" option, changes what calit displays.
+:::
+
 ### Email language
 
 The language a visitor uses when booking is remembered for that booking. Any follow-up emails they receive — confirmation, reminder, cancellation, reschedule, and declined notices — are sent in that same language.
@@ -48,6 +60,24 @@ Account owners control their own language independently of any visitor's browser
 ### Changing the language
 
 Go to **Settings** (accessible from the `/me` navigation) and find the **Language** field. Choose **English**, **Deutsch**, or **עברית** and save. The change takes effect immediately.
+
+### Time format (12- or 24-hour)
+
+**Settings → Time format** controls the clock used on your own pages and in your own emails. It has three values:
+
+| Value | On your `/me` pages | In emails you receive |
+| --- | --- | --- |
+| **Automatic** (default) | Follows the device you are viewing on | Keeps the format your language already uses (24-hour in all three shipped languages) |
+| **24-hour** | `14:30` | `14:30` |
+| **12-hour** | `2:30 PM` | `2:30 PM` |
+
+`Automatic` means something slightly different on each side, because an email has no device to read: your pages follow whatever machine you open them on, while your emails keep the format built into your language. Upgrading an existing installation changes nothing — every account starts on `Automatic`, which reproduces the previous behaviour exactly.
+
+This setting is yours alone. It never changes what a visitor sees on your public booking page, and it never changes the emails your invitees or their guests receive — those always follow the invitee's own device and language.
+
+:::caution
+Choosing **12-hour** with German or Hebrew as your language produces a mixed result — for example `יום חמישי, 20 באוגוסט 2026 בשעה 2:30 PM`. The `AM`/`PM` marker comes from the underlying locale data, which uses the Latin abbreviation for both languages, and calit cannot override it. If that looks wrong, use **24-hour** or **Automatic**.
+:::
 
 ## Adding more languages
 
