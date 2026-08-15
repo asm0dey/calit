@@ -55,7 +55,8 @@ class GoogleCalendarListPortTest {
     void googleErrorCarriesStatusAndMessageOnTheFirstLine() throws IOException {
         var port = portThatFailsWith(serviceDisabled());
 
-        var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(new GoogleCredential()));
+        var credential = new GoogleCredential();
+        var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(credential));
 
         // Operators read the first line of the WARN; the status and Google's own words must be there.
         assertTrue(thrown.getMessage().contains("HTTP 403"), thrown.getMessage());
@@ -69,7 +70,8 @@ class GoogleCalendarListPortTest {
         var port = portThatFailsWith(new GoogleJsonResponseException(
                 new HttpResponseException.Builder(502, "Bad Gateway", new HttpHeaders()), null));
 
-        var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(new GoogleCredential()));
+        var credential = new GoogleCredential();
+        var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(credential));
 
         assertEquals("calendarList.list failed: HTTP 502", thrown.getMessage());
     }
@@ -78,7 +80,8 @@ class GoogleCalendarListPortTest {
     void plainIoErrorStillWrapsWithTheCallName() throws IOException {
         var port = portThatFailsWith(new IOException("connect timed out"));
 
-        var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(new GoogleCredential()));
+        var credential = new GoogleCredential();
+        var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(credential));
 
         assertEquals("calendarList.list failed", thrown.getMessage());
         assertEquals("connect timed out", thrown.getCause().getMessage());
