@@ -28,6 +28,8 @@ import javax.crypto.spec.SecretKeySpec;
 @ApplicationScoped
 public class GoogleTokenService {
 
+    private static final org.jboss.logging.Logger LOG = org.jboss.logging.Logger.getLogger(GoogleTokenService.class);
+
     private static final String AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
     private static final String TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 
@@ -163,6 +165,11 @@ public class GoogleTokenService {
         c.needsReconnect = false;
         c.reconnectNotifiedAt = null; // recovery via manual reconnect re-arms future notifications
         c.persist();
+        // A connect that "looks fine" but stores no refresh token breaks every later refresh, so say
+        // which half happened. No token values, only whether one arrived.
+        LOG.infof(
+                "Google account connected for owner %d (credential %d), refreshToken=%s",
+                ownerId, c.id, c.refreshToken == null ? "MISSING" : "stored");
     }
 
     /**
@@ -198,6 +205,7 @@ public class GoogleTokenService {
             c.persist();
             return c.accessToken;
         } catch (RuntimeException ex) {
+            LOG.warnf(ex, "Google access-token refresh failed for credential %d; flagging needsReconnect", c.id);
             // The failing refresh rolls back THIS transaction; persist the flag in a separate,
             // committed transaction so "needs reconnect" survives the rollback and reaches the UI.
             Long credId = c.id;
@@ -241,11 +249,13 @@ public class GoogleTokenService {
             c.persist();
             return ProbeResult.OK;
         } catch (GoogleInvalidGrantException e) {
+            LOG.warnf("Google probe: credential %d rejected (invalid_grant); owner must reconnect", credentialId);
             c.needsReconnect = true; // managed entity, flushes with this committed transaction
             c.persist();
             return ProbeResult.INVALID_GRANT;
         } catch (RuntimeException e) {
             // Transient: network blip, 429, or 5xx. Leave state untouched and retry next cycle.
+            LOG.debugf(e, "Google probe: transient failure for credential %d; state untouched", credentialId);
             return ProbeResult.TRANSIENT;
         }
     }
@@ -313,13 +323,18 @@ public class GoogleTokenService {
             // Any other OAuth/HTTP status (429, 5xx, ...) is transient -> generic IllegalStateException,
             // which the probe treats as "leave the account alone, try again next hour".
             String error = e.getDetails() != null ? e.getDetails().getError() : null;
+            String description = e.getDetails() != null ? e.getDetails().getErrorDescription() : null;
             if (e.getStatusCode() == 400 && "invalid_grant".equals(error)) {
                 throw new GoogleInvalidGrantException("Google refresh token rejected: invalid_grant", e);
             }
+            // Carry Google's own error/error_description into the message: without it the operator
+            // only sees an HTTP status and cannot tell a bad client_secret from a revoked scope.
             throw new IllegalStateException(
-                    "Google token request failed: " + e.getStatusCode() + " " + e.getMessage(), e);
+                    "Google token request (" + grantType + ") failed: HTTP " + e.getStatusCode() + " error=" + error
+                            + " description=" + description,
+                    e);
         } catch (IOException e) {
-            throw new IllegalStateException("Google token request I/O error", e);
+            throw new IllegalStateException("Google token request (" + grantType + ") I/O error", e);
         }
     }
 

@@ -27,6 +27,8 @@ import site.asm0dey.calit.user.CurrentOwner;
 @RolesAllowed("user")
 public class GooglePageResource {
 
+    private static final org.jboss.logging.Logger LOG = org.jboss.logging.Logger.getLogger(GooglePageResource.class);
+
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance google(
@@ -102,6 +104,9 @@ public class GooglePageResource {
                     }
                 } catch (RuntimeException ex) {
                     // Transient failure: banner + fall back to saved rows so config stays visible.
+                    // Log it — the UI only says "couldn't load", so this WARN is the only way an
+                    // operator learns WHY (e.g. Calendar API not enabled, 403, revoked scope).
+                    LOG.warnf(ex, "Google calendar list failed for owner %d, credential %d", ownerId, cred.id);
                     loadError = true;
                     loadFailed = true;
                     rows.clear();
@@ -145,6 +150,12 @@ public class GooglePageResource {
             try {
                 live = calendarListPort.listCalendars(cred);
             } catch (RuntimeException ex) {
+                LOG.warnf(
+                        ex,
+                        "Google calendar list failed while saving selection for owner %d, credential %d;"
+                                + " keeping saved rows",
+                        ownerId,
+                        cred.id);
                 continue; // unreachable mid-save: preserved from DB below
             }
             reachable.add(cred.id);

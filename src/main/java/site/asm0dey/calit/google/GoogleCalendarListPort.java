@@ -38,6 +38,15 @@ public class GoogleCalendarListPort implements CalendarListPort {
                     .map(e -> new RemoteCalendar(
                             e.getId(), e.getSummary() == null ? e.getId() : e.getSummary(), meetSupported(e)))
                     .toList();
+        } catch (com.google.api.client.googleapis.json.GoogleJsonResponseException e) {
+            // Put Google's own status + message on the FIRST line: a 403 "Google Calendar API has not
+            // been used in project N" is the usual self-hosting cause, and a bare cause chain buries it.
+            throw new UncheckedIOException(
+                    "calendarList.list failed: HTTP " + e.getStatusCode()
+                            + (e.getDetails() == null
+                                    ? ""
+                                    : " — " + e.getDetails().getMessage()),
+                    e);
         } catch (IOException e) {
             throw new UncheckedIOException("calendarList.list failed", e);
         }
