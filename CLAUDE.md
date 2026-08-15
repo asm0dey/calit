@@ -100,3 +100,5 @@ Public docs site lives on **`docs-site`** branch (Astro Starlight project in `do
 **On every interesting change, update docs too.** Any user-facing change — new/changed env var, route, config flag, setup step, feature, or upgrade/migration note — must land on `docs-site` branch same effort. Docs are part of "done", not follow-up.
 
 **On every release, add a changelog entry.** Cutting a release (`release: X.Y.Z` commit on `main` + `vX.Y.Z` tag) also requires a new section at the top of the manually-maintained changelog on the `docs-site` branch (`docs-site/src/content/docs/releases/changelog.md`), plus bumping the example image tags in `README.md`. The changelog entry is part of the release, not follow-up.
+
+**IMPORTANT**: before you do anything else, run the `beans prime` command and heed its output.
