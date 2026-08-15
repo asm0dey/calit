@@ -4,6 +4,7 @@ import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeTokenRequest;
 import com.google.api.client.googleapis.auth.oauth2.GoogleRefreshTokenRequest;
 import com.google.api.client.http.HttpRequestInitializer;
+import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -261,13 +262,21 @@ public class GoogleTokenService {
     }
 
     /**
+     * The HTTP transport used for token round-trips. Overridable so a test can drive the real
+     * request/error-mapping code against an in-memory transport instead of Google.
+     */
+    protected HttpTransport transport() {
+        return new NetHttpTransport();
+    }
+
+    /**
      * The single network round-trip. Overridable so tests can stub it without touching Google.
      *
      * @param grantType            "authorization_code" or "refresh_token"
      * @param codeOrRefreshToken   the auth code (for exchange) or the refresh token (for refresh)
      */
     protected TokenResponse requestToken(String grantType, String codeOrRefreshToken, Instant now) {
-        NetHttpTransport transport = new NetHttpTransport();
+        HttpTransport transport = transport();
         GsonFactory json = GsonFactory.getDefaultInstance();
         // SEC-SSRF-01: bound the OAuth token round-trip so a hung Google token endpoint can't pin a
         // thread. Fixed destination (no SSRF) — availability hardening.
