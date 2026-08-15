@@ -2,6 +2,7 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -69,6 +70,12 @@ class OwnerTimeFormatSettingTest {
                 .body(containsString("name=\"timeFormat\""))
                 .body(containsString("value=\"auto\""))
                 .body(containsString("value=\"h23\""))
-                .body(containsString("value=\"h12\" selected"));
+                .body(containsString("value=\"h12\" selected"))
+                // Pin that EXACTLY ONE option is selected: a guard that lost its value
+                // comparison (e.g. `{#if settings}selected{/if}`) would mark every option
+                // selected and render invalid HTML, but the positive assertions above alone
+                // wouldn't notice.
+                .body(not(containsString("value=\"auto\" selected")))
+                .body(not(containsString("value=\"h23\" selected")));
     }
 }
