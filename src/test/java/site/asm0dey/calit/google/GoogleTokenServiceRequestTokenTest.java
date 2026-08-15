@@ -91,6 +91,20 @@ class GoogleTokenServiceRequestTokenTest {
     }
 
     @Test
+    void serverErrorCarryingInvalidGrantIsStillTransient() {
+        // Pins the OTHER half of the guard: a 5xx that happens to echo invalid_grant is a blip, and
+        // treating it as a dead grant would permanently flag a healthy account needsReconnect.
+        var svc = new TransportStubbedService(
+                respondingWith(503, "{\"error\":\"invalid_grant\",\"error_description\":\"Backend error\"}"));
+
+        var thrown = assertThrows(
+                IllegalStateException.class, () -> svc.requestToken("refresh_token", "some-refresh-token", NOW));
+
+        assertFalse(thrown instanceof GoogleInvalidGrantException, "only 400 AND invalid_grant means a dead grant");
+        assertTrue(thrown.getMessage().contains("HTTP 503"), thrown.getMessage());
+    }
+
+    @Test
     void networkFailureBecomesIoErrorNotADeadGrant() {
         var transport = new MockHttpTransport.Builder()
                 .setLowLevelHttpRequest(new MockLowLevelHttpRequest() {
