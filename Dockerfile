@@ -41,7 +41,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 # --- Runtime stage: BellSoft minimal musl runtime container (production) ---
 # JRE 26 runs the JDK-25-compiled fast-jar fine (forward-compatible); pure-bytecode app, so the
 # musl libc is a non-issue. The runtime-container image is purpose-built minimal for production.
-FROM bellsoft/liberica-runtime-container:jre-26-musl@sha256:36aefaad55cee03228489d962a7133e5bd42057e732ace27d70ed6ceafa16a79 AS runtime
+FROM bellsoft/liberica-runtime-container:jre-26-musl@sha256:8d7861f704ffc78548556b19cbf4a460ed074cf4f7b31be063f75ac69269011b AS runtime
 WORKDIR /app
 
 # Quarkus fast-jar layout: copy the four pieces in cache-friendly order.
