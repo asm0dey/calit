@@ -1,12 +1,13 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import site.asm0dey.calit.google.CalendarListPort;
 import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
@@ -52,7 +53,7 @@ class GooglePageResourceTest {
     @Test
     void savePersistsSelectedReadAndWriteTarget() {
         var credId = seedSingleAccount();
-        Mockito.when(calendarListPort.listCalendars(Mockito.any()))
+        when(calendarListPort.listCalendars(any()))
                 .thenReturn(List.of(
                         new CalendarListPort.RemoteCalendar("c1", "C1"),
                         new CalendarListPort.RemoteCalendar("c2", "C2")));
@@ -76,7 +77,7 @@ class GooglePageResourceTest {
     @Test
     void saveWithoutWriteTargetReturns400() {
         var credId = seedSingleAccount();
-        Mockito.when(calendarListPort.listCalendars(Mockito.any()))
+        when(calendarListPort.listCalendars(any()))
                 .thenReturn(List.of(
                         new CalendarListPort.RemoteCalendar("c1", "C1"),
                         new CalendarListPort.RemoteCalendar("c2", "C2")));
@@ -96,7 +97,7 @@ class GooglePageResourceTest {
         var xId = ids[0];
         var yId = ids[1];
         // Only X is ever listed (Y is needsReconnect, so production code never lists it).
-        Mockito.when(calendarListPort.listCalendars(Mockito.any()))
+        when(calendarListPort.listCalendars(any()))
                 .thenReturn(List.of(new CalendarListPort.RemoteCalendar("x1", "X1")));
         given().cookie("quarkus-credential", FormAuth.login())
                 .redirects()
@@ -120,7 +121,7 @@ class GooglePageResourceTest {
         var ids = seedHealthyXAndFlaggedY();
         var xId = ids[0];
         // The live listing blows up the way a 403 SERVICE_DISABLED does in production.
-        Mockito.when(calendarListPort.listCalendars(Mockito.any()))
+        when(calendarListPort.listCalendars(any()))
                 .thenThrow(new java.io.UncheckedIOException(
                         "calendarList.list failed: HTTP 403 — Google Calendar API has not been used in project 1",
                         new java.io.IOException("403")));
@@ -144,7 +145,7 @@ class GooglePageResourceTest {
         var xId = ids[0];
         var yId = ids[1];
         // Google dies between page render and save: every listing attempt throws.
-        Mockito.when(calendarListPort.listCalendars(Mockito.any()))
+        when(calendarListPort.listCalendars(any()))
                 .thenThrow(new java.io.UncheckedIOException(
                         "calendarList.list failed: HTTP 403", new java.io.IOException("403")));
 
