@@ -127,8 +127,15 @@ class LayoutLocaleMarkerTest {
                 // probes the device with an hour field — resolvedOptions() omits hourCycle without one
                 .body(containsString("{hour:'numeric'}"))
                 .body(containsString("resolvedOptions().hourCycle"))
-                // the formatting call must carry the resolved cycle
-                .body(containsString("hourCycle: HC"));
+                // The formatting call has TWO branches (timeOnly vs full date+time) that each build
+                // their own options object, so pin each literal SEPARATELY — a loose
+                // containsString("hourCycle: HC") matches if only ONE branch keeps the option,
+                // letting a mutant that deletes it from the OTHER branch slip through green.
+                // The timeOnly branch (no dateStyle) is what book.html's slot list renders via
+                // data-time-only="1" — the exact surface reported in issue #116 — so it must be
+                // pinned on its own, not merely alongside the full-date branch.
+                .body(containsString("{ timeStyle: 'short', timeZone: tz, hourCycle: HC }"))
+                .body(containsString("{ dateStyle: 'full', timeStyle: 'short', timeZone: tz, hourCycle: HC }"));
     }
 
     /**
