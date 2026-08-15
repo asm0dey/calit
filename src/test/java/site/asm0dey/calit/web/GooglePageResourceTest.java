@@ -115,6 +115,53 @@ class GooglePageResourceTest {
         assertWriteTarget(xId, "x1");
     }
 
+    @Test
+    void getShowsBannerAndKeepsSavedRowsWhenGoogleUnreachable() {
+        var ids = seedHealthyXAndFlaggedY();
+        var xId = ids[0];
+        // The live listing blows up the way a 403 SERVICE_DISABLED does in production.
+        Mockito.when(calendarListPort.listCalendars(Mockito.any()))
+                .thenThrow(new java.io.UncheckedIOException(
+                        "calendarList.list failed: HTTP 403 — Google Calendar API has not been used in project 1",
+                        new java.io.IOException("403")));
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/google")
+                .then()
+                .statusCode(200)
+                // The error banner is rendered...
+                .body(org.hamcrest.Matchers.containsString("reach Google for one or more accounts"))
+                // ...and the saved calendar for the healthy account is still listed, not wiped.
+                .body(org.hamcrest.Matchers.containsString("X1"));
+
+        assertCalendarExists(xId, "x1");
+    }
+
+    @Test
+    void savePreservesSelectionWhenGoogleUnreachableMidSave() {
+        var ids = seedHealthyXAndFlaggedY();
+        var xId = ids[0];
+        var yId = ids[1];
+        // Google dies between page render and save: every listing attempt throws.
+        Mockito.when(calendarListPort.listCalendars(Mockito.any()))
+                .thenThrow(new java.io.UncheckedIOException(
+                        "calendarList.list failed: HTTP 403", new java.io.IOException("403")));
+
+        // The form carries nothing usable, so the write target must be preserved from the DB.
+        given().cookie("quarkus-credential", FormAuth.login())
+                .redirects()
+                .follow(false)
+                .contentType("application/x-www-form-urlencoded")
+                .when()
+                .post("/me/google/calendars")
+                .then()
+                .statusCode(303);
+
+        assertWriteTarget(xId, "x1");
+        assertCalendarExists(yId, "y1");
+    }
+
     @Transactional
     void assertWriteTarget(long credId, String googleCalId) {
         long n = GoogleCalendar.count(
