@@ -9,6 +9,7 @@ import com.google.api.client.http.LowLevelHttpResponse;
 import com.google.api.client.testing.http.MockHttpTransport;
 import com.google.api.client.testing.http.MockLowLevelHttpRequest;
 import com.google.api.client.testing.http.MockLowLevelHttpResponse;
+import io.quarkus.test.junit.QuarkusTest;
 import java.io.IOException;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,11 @@ import org.junit.jupiter.api.Test;
 /**
  * Drives the REAL requestToken body (which every other test stubs out) against an in-memory
  * transport, so Google's error payloads are mapped by production code, not by a stub.
+ *
+ * <p>@QuarkusTest is required for the coverage to count: quarkus-jacoco only records what executes
+ * inside the Quarkus test run, so a plain JUnit class would pass while reporting zero coverage.
  */
+@QuarkusTest
 class GoogleTokenServiceRequestTokenTest {
 
     private static final Instant NOW = Instant.parse("2026-01-01T00:00:00Z");
@@ -88,6 +93,18 @@ class GoogleTokenServiceRequestTokenTest {
         // The status alone must not condemn the grant: only 400 AND invalid_grant does.
         assertFalse(thrown instanceof GoogleInvalidGrantException, "400 alone must not mean a dead grant");
         assertTrue(thrown.getMessage().contains("error=invalid_client"), thrown.getMessage());
+    }
+
+    @Test
+    void defaultTransportIsARealNetworkTransport() {
+        // The seam exists only for tests; production must still get a real transport, and a fresh one
+        // per call (the old inline `new NetHttpTransport()` behaviour).
+        var svc = new GoogleTokenService(config());
+
+        var first = svc.transport();
+
+        assertInstanceOf(com.google.api.client.http.javanet.NetHttpTransport.class, first);
+        assertNotSame(first, svc.transport());
     }
 
     @Test
