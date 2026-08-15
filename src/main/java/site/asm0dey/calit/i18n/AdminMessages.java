@@ -722,7 +722,7 @@ public interface AdminMessages {
     @Message("Time format")
     String adm_settings_label_time_format();
 
-    @Message("Automatic (from your device)")
+    @Message("Automatic")
     String adm_settings_time_format_auto();
 
     @Message("24-hour (14:30)")

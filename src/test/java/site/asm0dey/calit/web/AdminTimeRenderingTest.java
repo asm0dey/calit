@@ -4,9 +4,17 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingType.LocationType;
 
 /**
  * /me pages have no #tz-picker, so TZ_SCRIPT used to bail at "if (!picker) return" and leave the
@@ -111,5 +119,106 @@ class AdminTimeRenderingTest {
                 .statusCode(200);
 
         given().when().get("/me").then().statusCode(200).body(containsString("data-hc=\"\""));
+    }
+
+    /**
+     * Seeds a CONFIRMED booking for the admin owner (id 1) at a fixed instant, so the no-JS
+     * fallback text is deterministic across test runs.
+     */
+    private Long seedConfirmedBooking() {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            var slug = "time-render-" + System.nanoTime();
+            MeetingType t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "Time Render Type";
+            t.slug = slug;
+            t.durationMinutes = 30;
+            t.locationType = LocationType.PHONE;
+            t.locationDetail = "+1 555 0100";
+            t.persist();
+
+            Booking b = new Booking();
+            b.ownerId = 1L;
+            b.meetingTypeId = t.id;
+            b.inviteeName = "No JS Reader";
+            b.inviteeEmail = "nojs-reader@example.com";
+            b.startUtc = Instant.parse("2026-08-20T13:00:00Z");
+            b.endUtc = b.startUtc.plusSeconds(1800);
+            b.status = BookingStatus.CONFIRMED;
+            b.manageToken = UUID.randomUUID().toString();
+            b.createdAt = Instant.now();
+            b.answers = Map.of();
+            b.locale = "en";
+            b.persist();
+            return b.id;
+        });
+    }
+
+    /**
+     * The no-JS fallback (what a JS-off visitor actually reads) must be a human-readable
+     * date/time carrying the zone -- not the raw ISO instant. Asia/Tokyo has no DST, so "JST" and
+     * the 22:00 local time are stable regardless of when this test runs.
+     */
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void dashboardNoJsFallbackIsHumanReadableWithZone() {
+        saveTimezone("Asia/Tokyo");
+        seedConfirmedBooking();
+
+        given().when()
+                .get("/me")
+                .then()
+                .statusCode(200)
+                // data-utc attribute is untouched -- the client script still keys off it
+                .body(containsString("data-utc=\"2026-08-20T13:00:00Z\""))
+                // human-rendered fallback carries the zone
+                .body(containsString("22:00"))
+                .body(containsString("(JST)"))
+                // the raw ISO instant is no longer used as the visible fallback text
+                .body(not(containsString("2026-08-20T13:00:00Z UTC")));
+    }
+
+    /** Same fallback requirement on the pending-approval queue. */
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void pendingNoJsFallbackIsHumanReadableWithZone() {
+        saveTimezone("Asia/Tokyo");
+        // approve() would move it off /me/pending, so seed straight into PENDING instead.
+        Long id = QuarkusTransaction.requiringNew().call(() -> {
+            var slug = "time-render-pending-" + System.nanoTime();
+            MeetingType t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "Time Render Pending Type";
+            t.slug = slug;
+            t.durationMinutes = 30;
+            t.locationType = LocationType.PHONE;
+            t.locationDetail = "+1 555 0100";
+            t.requiresApproval = true;
+            t.persist();
+
+            Booking b = new Booking();
+            b.ownerId = 1L;
+            b.meetingTypeId = t.id;
+            b.inviteeName = "No JS Reader";
+            b.inviteeEmail = "nojs-reader-pending@example.com";
+            b.startUtc = Instant.parse("2026-08-20T13:00:00Z");
+            b.endUtc = b.startUtc.plusSeconds(1800);
+            b.status = BookingStatus.PENDING;
+            b.manageToken = UUID.randomUUID().toString();
+            b.createdAt = Instant.now();
+            b.answers = Map.of();
+            b.locale = "en";
+            b.persist();
+            return b.id;
+        });
+
+        given().when()
+                .get("/me/pending")
+                .then()
+                .statusCode(200)
+                .body(containsString("data-utc=\"2026-08-20T13:00:00Z\""))
+                .body(containsString("22:00"))
+                .body(containsString("(JST)"))
+                .body(not(containsString("2026-08-20T13:00:00Z UTC")));
     }
 }
