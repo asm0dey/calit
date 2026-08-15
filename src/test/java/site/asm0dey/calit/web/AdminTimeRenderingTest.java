@@ -58,6 +58,12 @@ class AdminTimeRenderingTest {
                 // the early return is gone
                 .body(not(containsString("if (!picker) { return; }")))
                 // and the no-picker path reads the server-supplied zone
-                .body(containsString("document.body.dataset.tz"));
+                .body(containsString("document.body.dataset.tz"))
+                // pin the fallback ORDER, not just that both operands appear somewhere: RestAssured
+                // can't execute the script, so a bare "dataset.tz" check would still pass if the
+                // ternary were silently inverted to "(detected || document.body.dataset.tz)" — which
+                // would reintroduce the original bug (a travelling host reading their bookings in
+                // the trip's timezone instead of their configured one).
+                .body(containsString("picker ? picker.value : (document.body.dataset.tz || detected)"));
     }
 }
