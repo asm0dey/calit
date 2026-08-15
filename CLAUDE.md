@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**calit** — self-hosted, multi-user Calendly alternative on Quarkus 3.36 / Java 25. Each user get isolated scheduling page at `/<username>/<slug>`: own meeting types, availability, bookings, settings, Google account. Server-rendered HTML via Qute; **progressive enhancement** — every feature works without JavaScript; JS is optional, kept minimal and simple, and only enhances (e.g. a small inline typeahead over a plain input that already submits fine on its own). Stateless — run as N identical replicas; all shared state in Postgres.
+**calit** — self-hosted, multi-user Calendly alternative on Quarkus 3.38 / Java 25. Each user get isolated scheduling page at `/<username>/<slug>`: own meeting types, availability, bookings, settings, Google account. Server-rendered HTML via Qute; **progressive enhancement** — every feature works without JavaScript; JS is optional, kept minimal and simple, and only enhances (e.g. a small inline typeahead over a plain input that already submits fine on its own). Stateless — run as N identical replicas; all shared state in Postgres.
 
 ## Library source / javadocs
 
