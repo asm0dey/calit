@@ -5,7 +5,7 @@ status: in-progress
 type: feature
 priority: normal
 created_at: 2026-08-15T20:31:56Z
-updated_at: 2026-08-15T22:16:33Z
+updated_at: 2026-08-15T22:55:53Z
 ---
 
 Brainstorm + design for GitHub issue #116 — invitee sees 12h AM/PM times because TZ_SCRIPT formats with document.documentElement.lang (UI translation locale, region-less) instead of the viewer's browser locale.
@@ -35,6 +35,6 @@ Brainstorm + design for GitHub issue #116 — invitee sees 12h AM/PM times becau
 - [x] Task 2 — OwnerInfo bean + data-tz + optional picker (b044df6, 8fac21f)
 - [x] Task 3 — V25 + OwnerSettings.timeFormat + validation (1977946)
 - [x] Task 4 — settings select + de/he translations (536dd81)
-- [ ] Task 5 — /me honours the preference (data-hc)
-- [ ] Task 6 — host emails honour the preference
+- [x] Task 5 — /me honours the preference (data-hc) (7436446, cf11f00)
+- [x] Task 6 — host emails honour the preference (9fcd489, 9eef727)
 - [ ] Task 7 — full verification + docs-site
