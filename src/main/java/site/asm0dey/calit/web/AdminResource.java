@@ -254,7 +254,10 @@ public class AdminResource {
     /**
      * The CURRENT owner's stored timezone, for the no-JS {@code display:when(...)} fallback on
      * /me pages -- never a global default or another owner's row (owner-scoping invariant).
-     * "UTC" when settings aren't configured yet or the row has no timezone.
+     * "UTC" when settings aren't configured yet or the row's timezone is {@code null}. If the
+     * row's timezone is a non-null blank string, that blank string is returned verbatim here; the
+     * "UTC" fallback for that case happens one layer down, inside {@code DisplayExtensions.when}'s
+     * catch block.
      */
     private String ownerZone() {
         OwnerSettings s = OwnerSettings.forOwner(currentOwner.id());
