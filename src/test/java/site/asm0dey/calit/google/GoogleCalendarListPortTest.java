@@ -10,15 +10,19 @@ import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.HttpHeaders;
 import com.google.api.client.http.HttpResponseException;
 import com.google.api.services.calendar.Calendar;
+import io.quarkus.test.junit.QuarkusTest;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.user.CurrentOwner;
 
 /**
- * Plain unit test (no @QuarkusTest): the point is the exception mapping, and booting Quarkus for it
- * would cost a Postgres container per run.
+ * The collaborators are hand-built rather than injected — the subject here is pure exception
+ * mapping. @QuarkusTest is nonetheless required: quarkus-jacoco only records what executes inside
+ * the Quarkus test run, so a plain JUnit class would pass while reporting zero coverage. The run
+ * costs nothing extra — the suite reuses one fork and one Dev Services Postgres.
  */
+@QuarkusTest
 class GoogleCalendarListPortTest {
 
     /** Wire a port whose Calendar client fails the calendarList.list call with the given exception. */
@@ -56,6 +60,18 @@ class GoogleCalendarListPortTest {
         // Operators read the first line of the WARN; the status and Google's own words must be there.
         assertTrue(thrown.getMessage().contains("HTTP 403"), thrown.getMessage());
         assertTrue(thrown.getMessage().contains("has not been used in project"), thrown.getMessage());
+    }
+
+    @Test
+    void googleErrorWithoutParsableDetailsStillReportsTheStatus() throws IOException {
+        // A non-JSON error body (proxy HTML, gateway page) leaves getDetails() null. The status still
+        // has to reach the log, and appending a null message must not.
+        var port = portThatFailsWith(new GoogleJsonResponseException(
+                new HttpResponseException.Builder(502, "Bad Gateway", new HttpHeaders()), null));
+
+        var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(new GoogleCredential()));
+
+        assertEquals("calendarList.list failed: HTTP 502", thrown.getMessage());
     }
 
     @Test
