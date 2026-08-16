@@ -5,7 +5,7 @@ status: todo
 type: bug
 priority: normal
 created_at: 2026-08-16T10:07:53Z
-updated_at: 2026-08-16T22:40:11Z
+updated_at: 2026-08-16T22:41:40Z
 blocking:
     - calit-bh5t
 ---
@@ -38,3 +38,6 @@ Shape agreed:
 ## Amended 2026-08-17 (from calit-bh5t design)
 
 `booking.google_calendar_id` is **text**, not VARCHAR(255) — same reasoning as the per-type override columns in `docs/superpowers/specs/2026-08-17-per-meeting-type-write-target-design.md`. Entity field needs `@Column(columnDefinition = "text")` (Hibernate runs validate-only).
+
+
+Port shape decided 2026-08-17: new `record CalendarRef(Long credentialId, String googleCalendarId)` in `google/`; a null ref means "resolve as today" (pre-migration rows). `updateEvent`, `updateEventDetails`, `deleteEvent` take `(ownerId, ref, eventId, ...)`; `CreatedEvent` reports the ref it wrote to so `BookingService` can persist it. calit-bh5t reuses the same type for the create side.
