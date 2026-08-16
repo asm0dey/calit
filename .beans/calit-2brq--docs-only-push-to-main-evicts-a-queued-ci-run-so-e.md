@@ -1,11 +1,11 @@
 ---
 # calit-2brq
 title: Docs-only push to main evicts a queued CI run, so edge never gets rebuilt
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-08-16T10:11:29Z
-updated_at: 2026-08-16T10:11:29Z
+updated_at: 2026-08-16T11:08:35Z
 ---
 
 Observed while cutting 1.20.1: the \`release: 1.20.1\` main run (run 31940816985) ended up \`cancelled\` without ever starting a job, so the \`edge\` image was never rebuilt for that commit.
@@ -32,7 +32,16 @@ Trade-off accepted: two rapid main pushes now build in parallel instead of seria
 
 ## Todo
 
-- [ ] Change the concurrency group in \`.github/workflows/ci.yml\` so push runs are per-SHA
-- [ ] Confirm PR behaviour is unchanged (a new PR push still cancels the in-progress run for that PR)
-- [ ] Confirm \`v*\` tag runs are unaffected
-- [ ] Re-run the cancelled \`release: 1.20.1\` run so \`edge\` actually carries 1.20.1
+- [x] Change the concurrency group in \`.github/workflows/ci.yml\` so push runs are per-SHA
+- [x] Confirm PR behaviour is unchanged (a new PR push still cancels the in-progress run for that PR)
+- [x] Confirm \`v*\` tag runs are unaffected
+- [x] Re-run the cancelled \`release: 1.20.1\` run so \`edge\` actually carries 1.20.1
+
+## Summary of Changes
+
+Shipped in PR #126 (`fix(ci): per-SHA concurrency group for push runs`, merged 2026-08-16, main 085cd21).
+
+- `.github/workflows/ci.yml` concurrency group now appends `-${{ github.sha }}` for `push` events; `cancel-in-progress` unchanged (PR-only).
+- PR behaviour verified unchanged: runs for #126 (5945db6) and the renovate pin PR both completed normally.
+- Tag pushes are `push` events, so they get their own per-SHA group too — no queue, no eviction.
+- No separate re-run of the cancelled `release: 1.20.1` run (31940816985) was needed: the #126 merge push (085cd21, descendant of `release: 1.20.1`) ran the full image matrix — jvm+native amd64/arm64 plus both multi-arch manifest merges — so `edge` carries 1.20.1 code.

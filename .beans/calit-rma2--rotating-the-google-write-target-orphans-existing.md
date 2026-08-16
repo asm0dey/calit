@@ -1,11 +1,13 @@
 ---
 # calit-rma2
 title: Rotating the Google write target orphans existing booking events
-status: draft
+status: todo
 type: bug
 priority: normal
 created_at: 2026-08-16T10:07:53Z
-updated_at: 2026-08-16T10:07:53Z
+updated_at: 2026-08-16T11:20:22Z
+blocking:
+    - calit-bh5t
 ---
 
 A booking row stores only \`googleEventId\` — never the calendar the event was created on. Every later write (\`updateEvent\`, \`updateEventDetails\`, \`deleteEvent\`) resolves the calendar from \`GoogleCalendar.writeTarget(ownerId)\`, i.e. whatever the owner's write target is *now*.
@@ -16,7 +18,19 @@ Raised by the final review of calit-qjqb. The 410/404 tolerance is still right (
 
 ## Todo
 
-- [ ] Check the logs / ask whether write-target rotation actually happens in the wild before paying for a schema change
+- [x] Check the logs / ask whether write-target rotation actually happens in the wild before paying for a schema change — moot: calit-bh5t (per-meeting-type write target) forces the schema change regardless, so the wait-and-see gate is dropped and this bean is promoted out of draft
 - [ ] If it does: add a \`google_calendar_id\` column next to \`google_event_id\` on booking (new Flyway V*.sql — never edit an applied migration), backfill with the current write target
 - [ ] Address event writes by the stored calendar id, falling back to the write target for pre-migration rows
 - [ ] Decide what a 404 means once the calendar id is known — likely "really gone" (tolerate) vs "wrong calendar" (surface to the owner)
+
+## Scope settled 2026-08-16
+
+Promoted from draft because calit-bh5t (per-meeting-type write target) is blocked on this: once a meeting type can override the write calendar, setting an override on a type that already has future bookings orphans every one of those events on the old calendar. That is the feature working as designed, not a rare rotation — so the per-booking address has to land first.
+
+Shape agreed:
+
+- New `V*.sql` adds two NULLABLE columns to `booking`: `google_calendar_id VARCHAR(255)` (Googles own calendar id string) and `google_credential_id BIGINT REFERENCES google_credential(id) ON DELETE SET NULL`.
+- Store Googles calendar id, NOT the local `google_calendar.id`: `CalendarSelectionService.save()` deletes and re-inserts every row for the owner on each save (`CalendarSelectionService.java:41`), so local ids churn on any settings save. The Google-side id survives untick/re-tick.
+- Credential id is needed because the calendar id alone carries no token — `writeContext()` (`GoogleCalendarPort.java:311-318`) needs a `GoogleCredential`. Recovering it via `GoogleCalendar.findByGoogleId` is unreliable: the row may be gone (calendar unticked) and the `(credential, calendar)` uniqueness means a shared calendar can match two rows. Credential rows survive reconnect of the same account (`GoogleTokenService:152` upserts by owner+sub); only an explicit disconnect nulls the column, which degrades to todays fallback.
+- DO NOT backfill existing rows. Stamping them with the current write target is a guess that is wrong exactly for the affected bookings, converting honest "unknown" into confident-wrong. NULL = pre-migration, resolve as today.
+- 404 handling becomes three-state: calendar known -> 404 means genuinely hand-deleted (keep the 1.20.1 tolerance); calendar NULL -> unknown, keep todays lenient behaviour.
