@@ -45,27 +45,39 @@ public final class Layout {
 
               var picker = document.getElementById('tz-picker');
               var label  = document.getElementById('tz-label');
-              if (!picker) { return; }
-              ZONES.forEach(function (z) {
-                var o = document.createElement('option');
-                o.value = z; o.textContent = z;
-                if (z === detected) { o.selected = true; }
-                picker.appendChild(o);
-              });
+              /* The picker is invitee-only. The /me pages have none and must still format, so
+                 fall back to the owner's stored zone (body[data-tz]) and only then to detection. */
+              if (picker) {
+                ZONES.forEach(function (z) {
+                  var o = document.createElement('option');
+                  o.value = z; o.textContent = z;
+                  if (z === detected) { o.selected = true; }
+                  picker.appendChild(o);
+                });
+              }
 
+              /* Words (weekday, month, connector) follow the PAGE language... */
               var LANG = document.documentElement.lang || undefined;
+              /* CALIT_HOUR_CYCLE — ...but 12h-vs-24h follows the VIEWER's device (issue #116).
+                 documentElement.lang is region-less ('en' = US defaults = AM/PM for everyone).
+                 resolvedOptions() only reports hourCycle when an hour field is requested. */
+              var HC = new Intl.DateTimeFormat(undefined, {hour:'numeric'}).resolvedOptions().hourCycle;
+              /* On /me the host may force a cycle; invitee pages never emit data-hc, so the
+                 device keeps deciding there. Empty string means "auto". */
+              var forcedHC = document.body.dataset.hc;
+              if (forcedHC) { HC = forcedHC; }
               function render() {
-                var tz = picker.value;
+                var tz = picker ? picker.value : (document.body.dataset.tz || detected);
                 if (label) { label.textContent = tz; }
                 document.querySelectorAll('[data-utc]').forEach(function (el) {
                   var d = new Date(el.dataset.utc);
                   var opts = (el.dataset.timeOnly === '1')
-                    ? { timeStyle: 'short', timeZone: tz }
-                    : { dateStyle: 'full', timeStyle: 'short', timeZone: tz };
+                    ? { timeStyle: 'short', timeZone: tz, hourCycle: HC }
+                    : { dateStyle: 'full', timeStyle: 'short', timeZone: tz, hourCycle: HC };
                   el.textContent = d.toLocaleString(LANG, opts);
                 });
               }
-              picker.addEventListener('change', render);
+              if (picker) { picker.addEventListener('change', render); }
               render();
             })();
             </script>

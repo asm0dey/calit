@@ -719,6 +719,18 @@ public interface AdminMessages {
     @Message("Timezone")
     String adm_settings_label_timezone();
 
+    @Message("Time format")
+    String adm_settings_label_time_format();
+
+    @Message("Automatic")
+    String adm_settings_time_format_auto();
+
+    @Message("24-hour (14:30)")
+    String adm_settings_time_format_h23();
+
+    @Message("12-hour (2:30 PM)")
+    String adm_settings_time_format_h12();
+
     @Message("Send me (the owner) email notifications for bookings")
     String adm_settings_label_notifications();
 

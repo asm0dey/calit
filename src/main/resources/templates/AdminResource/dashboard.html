@@ -3,6 +3,7 @@
 {@java.lang.String tzScript}
 {@java.lang.Boolean isAdmin}
 {@java.lang.String title}
+{@java.lang.String zone}
 {#include adminBase title=title pendingCount=pendingCount active="dashboard" isAdmin=isAdmin}
   <h1 class="text-2xl font-bold mb-4">{adm:adm_dashboard_h1}</h1>
 
@@ -25,7 +26,7 @@
     {#for b in upcoming}
       <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 gap-1">
         <p><strong>{b.inviteeName}</strong> ({b.inviteeEmail})</p>
-        <p class="text-sm text-base-content/70"><time data-utc="{b.startUtc}">{b.startUtc} UTC</time></p>
+        <p class="text-sm text-base-content/70"><time data-utc="{b.startUtc}">{display:when(b.startUtc, zone)}</time></p>
         {#if b.meetLink}<p><a class="link link-primary" href="{b.meetLink}">{b.meetLink}</a></p>{/if}
         <p><a class="link link-primary" href="/me/bookings/{b.id}/manage">{adm:adm_dashboard_btn_manage}</a></p>
       </div></div>

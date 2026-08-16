@@ -2,6 +2,7 @@
 {@java.lang.String tzScript}
 {@java.lang.Boolean isAdmin}
 {@java.lang.String title}
+{@java.lang.String zone}
 {#include adminBase title=title pendingCount=pending.size() active="pending" isAdmin=isAdmin}
   <h1 class="text-2xl font-bold mb-4">{adm:adm_pending_h1}</h1>
   {#if pending.isEmpty()}
@@ -11,7 +12,7 @@
     {#for b in pending}
       <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 gap-2">
         <p><strong>{b.inviteeName}</strong> ({b.inviteeEmail})</p>
-        <p class="text-sm text-base-content/70"><time data-utc="{b.startUtc}">{b.startUtc} UTC</time></p>
+        <p class="text-sm text-base-content/70"><time data-utc="{b.startUtc}">{display:when(b.startUtc, zone)}</time></p>
         <div class="flex gap-2">
           <form method="post" action="/me/bookings/{b.id}/approve"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-primary btn-sm">{adm:adm_pending_btn_approve}</button></form>
           <form method="post" action="/me/bookings/{b.id}/decline"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">{adm:adm_pending_btn_decline}</button></form>

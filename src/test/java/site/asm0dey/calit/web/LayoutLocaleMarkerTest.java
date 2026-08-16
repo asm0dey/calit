@@ -107,4 +107,55 @@ class LayoutLocaleMarkerTest {
                 .body(containsString("Zeiten angezeigt in:"))
                 .body(org.hamcrest.Matchers.not(containsString("Times shown in:")));
     }
+
+    /**
+     * Issue #116: the time path must take its 12h/24h choice from the VIEWER's device, not from
+     * the page's translation locale (bare "en" carries US defaults, hence AM/PM for everyone).
+     * Words still follow documentElement.lang — only hourCycle moves.
+     */
+    @Test
+    void timesResolveHourCycleFromTheViewersDevice() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+
+        given().when()
+                .get("/layouttest/lt-intro")
+                .then()
+                .statusCode(200)
+                .body(containsString("CALIT_HOUR_CYCLE"))
+                // probes the device with an hour field — resolvedOptions() omits hourCycle without one
+                .body(containsString("{hour:'numeric'}"))
+                .body(containsString("resolvedOptions().hourCycle"))
+                // The formatting call has TWO branches (timeOnly vs full date+time) that each build
+                // their own options object, so pin each literal SEPARATELY — a loose
+                // containsString("hourCycle: HC") matches if only ONE branch keeps the option,
+                // letting a mutant that deletes it from the OTHER branch slip through green.
+                // The timeOnly branch (no dateStyle) is what book.html's slot list renders via
+                // data-time-only="1" — the exact surface reported in issue #116 — so it must be
+                // pinned on its own, not merely alongside the full-date branch.
+                .body(containsString("{ timeStyle: 'short', timeZone: tz, hourCycle: HC }"))
+                .body(containsString("{ dateStyle: 'full', timeStyle: 'short', timeZone: tz, hourCycle: HC }"));
+    }
+
+    /**
+     * The host's clock preference must never reach a public booking page.
+     *
+     * <p>Regression guard, green by construction — NOT a red-first TDD test. Public pages render
+     * from base.html, which has never emitted data-hc, so this passes before and after this task.
+     * It fails the day someone copies the attribute over from adminBase.html and starts leaking
+     * one host's clock convention to every invitee.</p>
+     */
+    @Test
+    void publicBookingPageCarriesNoHostHourCycle() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+
+        given().when()
+                .get("/layouttest/lt-intro")
+                .then()
+                .statusCode(200)
+                .body(org.hamcrest.Matchers.not(containsString("data-hc=")));
+    }
 }

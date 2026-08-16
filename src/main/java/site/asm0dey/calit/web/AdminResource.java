@@ -36,7 +36,7 @@ public class AdminResource {
     @SuppressWarnings("java:S107")
     public static class Templates {
         public static native TemplateInstance dashboard(
-                List<Booking> upcoming, long pendingCount, String tzScript, boolean isAdmin, String title);
+                List<Booking> upcoming, long pendingCount, String tzScript, boolean isAdmin, String title, String zone);
 
         public static native TemplateInstance meetingTypes(
                 List<MeetingType> types,
@@ -97,7 +97,7 @@ public class AdminResource {
                 String title);
 
         public static native TemplateInstance pending(
-                List<Booking> pending, String tzScript, boolean isAdmin, String title);
+                List<Booking> pending, String tzScript, boolean isAdmin, String title, String zone);
 
         public static native TemplateInstance manageBooking(
                 Booking booking,
@@ -251,6 +251,19 @@ public class AdminResource {
         return Booking.count("ownerId = ?1 and status = ?2", currentOwner.id(), BookingStatus.PENDING);
     }
 
+    /**
+     * The CURRENT owner's stored timezone, for the no-JS {@code display:when(...)} fallback on
+     * /me pages -- never a global default or another owner's row (owner-scoping invariant).
+     * "UTC" when settings aren't configured yet or the row's timezone is {@code null}. If the
+     * row's timezone is a non-null blank string, that blank string is returned verbatim here; the
+     * "UTC" fallback for that case happens one layer down, inside {@code DisplayExtensions.when}'s
+     * catch block.
+     */
+    private String ownerZone() {
+        OwnerSettings s = OwnerSettings.forOwner(currentOwner.id());
+        return (s == null || s.timezone == null) ? "UTC" : s.timezone;
+    }
+
     @GET
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance dashboard() {
@@ -262,7 +275,8 @@ public class AdminResource {
                 BookingStatus.CONFIRMED,
                 Instant.now());
         var pendingCount = pendingCount();
-        return Templates.dashboard(upcoming, pendingCount, Layout.TZ_SCRIPT, isAdmin(), m().adm_dashboard_title());
+        return Templates.dashboard(
+                upcoming, pendingCount, Layout.TZ_SCRIPT, isAdmin(), m().adm_dashboard_title(), ownerZone());
     }
 
     /**
@@ -1125,7 +1139,8 @@ public class AdminResource {
             @RestForm String ownerEmail,
             @RestForm String timezone,
             @RestForm String locale,
-            @RestForm String ownerNotificationsEnabled) {
+            @RestForm String ownerNotificationsEnabled,
+            @RestForm String timeFormat) {
         // Persist in its own tx that commits before the settings render (#75); return the (now
         // detached) row so the render below reads its committed field values with no connection held.
         OwnerSettings s = QuarkusTransaction.requiringNew().call(() -> {
@@ -1138,6 +1153,7 @@ public class AdminResource {
             row.ownerEmail = ownerEmail;
             row.timezone = timezone;
             row.locale = AppLocales.isSupported(locale) ? locale : "en";
+            row.timeFormat = timeFormat != null && OwnerSettings.HOUR_CYCLES.contains(timeFormat) ? timeFormat : "auto";
             // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
             row.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
             row.persist();
@@ -1284,7 +1300,7 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance pending() {
         List<Booking> pending = Booking.list(PENDING_BY_OWNER_QUERY, currentOwner.id(), BookingStatus.PENDING);
-        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin(), m().adm_pending_title());
+        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin(), m().adm_pending_title(), ownerZone());
     }
 
     /** Load a booking owned by the current owner, or 404. */
@@ -1394,7 +1410,7 @@ public class AdminResource {
         requireOwnedBooking(id);
         bookingService.approve(id); // PENDING→CONFIRMED (+ Google event if connected)
         List<Booking> pending = Booking.list(PENDING_BY_OWNER_QUERY, currentOwner.id(), BookingStatus.PENDING);
-        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin(), m().adm_pending_title());
+        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin(), m().adm_pending_title(), ownerZone());
     }
 
     @POST
@@ -1405,7 +1421,7 @@ public class AdminResource {
         requireOwnedBooking(id);
         bookingService.decline(id); // PENDING→DECLINED
         List<Booking> pending = Booking.list(PENDING_BY_OWNER_QUERY, currentOwner.id(), BookingStatus.PENDING);
-        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin(), m().adm_pending_title());
+        return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin(), m().adm_pending_title(), ownerZone());
     }
 
     @GET

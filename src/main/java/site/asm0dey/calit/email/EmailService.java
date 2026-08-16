@@ -333,13 +333,13 @@ public class EmailService {
                 l,
                 location,
                 locale -> messages.forLocale(locale).email_requested_subject(label(l)),
-                (role, locale, zone, greetingName, linkBooking) -> Templates.requested(
+                (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates.requested(
                                 role,
                                 locale.getLanguage(),
                                 greetingName,
                                 l.booking.inviteeName,
                                 label(l),
-                                format(l.booking.startUtc, zone, locale),
+                                format(l.booking.startUtc, zone, locale, hourCycle),
                                 l.meetingType.durationMinutes,
                                 location,
                                 isMeet(l),
@@ -364,13 +364,13 @@ public class EmailService {
                 l,
                 location,
                 locale -> messages.forLocale(locale).email_confirmed_subject(label(l)),
-                (role, locale, zone, greetingName, linkBooking) -> Templates.confirmation(
+                (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates.confirmation(
                                 role,
                                 locale.getLanguage(),
                                 greetingName,
                                 l.booking.inviteeName,
                                 label(l),
-                                format(l.booking.startUtc, zone, locale),
+                                format(l.booking.startUtc, zone, locale, hourCycle),
                                 l.meetingType.durationMinutes,
                                 location,
                                 isMeet(l),
@@ -396,13 +396,13 @@ public class EmailService {
                 l,
                 location,
                 locale -> messages.forLocale(locale).email_approved_subject(label(l)),
-                (role, locale, zone, greetingName, linkBooking) -> Templates.confirmation(
+                (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates.confirmation(
                                 role,
                                 locale.getLanguage(),
                                 greetingName,
                                 l.booking.inviteeName,
                                 label(l),
-                                format(l.booking.startUtc, zone, locale),
+                                format(l.booking.startUtc, zone, locale, hourCycle),
                                 l.meetingType.durationMinutes,
                                 location,
                                 isMeet(l),
@@ -436,13 +436,13 @@ public class EmailService {
                 l,
                 resolveLocation(l),
                 locale -> messages.forLocale(locale).email_declined_subject(label(l)),
-                (role, locale, zone, greetingName, linkBooking) -> Templates.declined(
+                (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates.declined(
                                 role,
                                 locale.getLanguage(),
                                 greetingName,
                                 l.booking.inviteeName,
                                 label(l),
-                                format(l.booking.startUtc, zone, locale),
+                                format(l.booking.startUtc, zone, locale, hourCycle),
                                 l.meetingType.durationMinutes)
                         .setLocale(locale)
                         .render(),
@@ -466,7 +466,7 @@ public class EmailService {
                 l,
                 location,
                 locale -> messages.forLocale(locale).email_rescheduled_subject(label(l)),
-                (role, locale, zone, greetingName, linkBooking) -> Templates.reschedule(
+                (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates.reschedule(
                                 role,
                                 e.byOwner(),
                                 locale.getLanguage(),
@@ -474,8 +474,8 @@ public class EmailService {
                                 l.owner.ownerName,
                                 greetingName,
                                 label(l),
-                                format(l.booking.startUtc, zone, locale),
-                                format(e.oldStartUtc(), zone, locale),
+                                format(l.booking.startUtc, zone, locale, hourCycle),
+                                format(e.oldStartUtc(), zone, locale, hourCycle),
                                 l.meetingType.durationMinutes,
                                 location,
                                 isMeet(l),
@@ -499,7 +499,7 @@ public class EmailService {
                 l,
                 location,
                 locale -> messages.forLocale(locale).email_updated_subject(label(l)),
-                (role, locale, zone, greetingName, linkBooking) -> Templates.updated(
+                (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates.updated(
                                 role,
                                 e.byOwner(),
                                 desc,
@@ -508,7 +508,7 @@ public class EmailService {
                                 l.owner.ownerName,
                                 greetingName,
                                 label(l),
-                                format(l.booking.startUtc, zone, locale),
+                                format(l.booking.startUtc, zone, locale, hourCycle),
                                 l.meetingType.durationMinutes,
                                 location,
                                 isMeet(l),
@@ -532,7 +532,7 @@ public class EmailService {
                 l,
                 resolveLocation(l),
                 locale -> messages.forLocale(locale).email_cancelled_subject(label(l)),
-                (role, locale, zone, greetingName, linkBooking) -> Templates.cancellation(
+                (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates.cancellation(
                                 role,
                                 e.byOwner(),
                                 locale.getLanguage(),
@@ -540,7 +540,7 @@ public class EmailService {
                                 l.owner.ownerName,
                                 greetingName,
                                 label(l),
-                                format(l.booking.startUtc, zone, locale),
+                                format(l.booking.startUtc, zone, locale, hourCycle),
                                 l.meetingType.durationMinutes)
                         .setLocale(locale)
                         .render(),
@@ -561,13 +561,13 @@ public class EmailService {
                 l,
                 location,
                 locale -> messages.forLocale(locale).email_reminder_subject(label(l)),
-                (role, locale, zone, greetingName, linkBooking) -> Templates.reminder(
+                (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates.reminder(
                                 role,
                                 locale.getLanguage(),
                                 greetingName,
                                 l.booking.inviteeName,
                                 label(l),
-                                format(l.booking.startUtc, zone, locale),
+                                format(l.booking.startUtc, zone, locale, hourCycle),
                                 l.meetingType.durationMinutes,
                                 location,
                                 isMeet(l),
@@ -746,10 +746,13 @@ public class EmailService {
      * booking's owner side, that HOST's own {@code OwnerSettings}); {@code linkBooking} is the row
      * whose tokens back the manage/cancel/approve/decline URLs (that host's own row for a group
      * owner copy, the lead row otherwise).
+     * {@code hourCycle} is that recipient's own clock preference — the host's
+     * {@code OwnerSettings.timeFormat} for an owner copy, always {@code "auto"} for the invitee.
      */
     @FunctionalInterface
     private interface RecipientBodyRenderer {
-        String render(String role, Locale locale, ZoneId zone, String greetingName, Booking linkBooking);
+        String render(
+                String role, Locale locale, ZoneId zone, String greetingName, Booking linkBooking, String hourCycle);
     }
 
     /**
@@ -805,7 +808,7 @@ public class EmailService {
                 from,
                 l.booking.inviteeEmail,
                 subjectForLocale.apply(inviteeLocale),
-                bodyForRecipient.render(INVITEE_ROLE, inviteeLocale, l.zone, l.booking.inviteeName, l.booking),
+                bodyForRecipient.render(INVITEE_ROLE, inviteeLocale, l.zone, l.booking.inviteeName, l.booking, "auto"),
                 ics);
 
         if (l.booking.groupId != null) {
@@ -817,7 +820,13 @@ public class EmailService {
                         from,
                         hd.settings.ownerEmail,
                         subjectForLocale.apply(hostLocale),
-                        bodyForRecipient.render(OWNER_ROLE, hostLocale, hostZone, hd.settings.ownerName, hd.booking),
+                        bodyForRecipient.render(
+                                OWNER_ROLE,
+                                hostLocale,
+                                hostZone,
+                                hd.settings.ownerName,
+                                hd.booking,
+                                hd.settings.timeFormat),
                         ics);
             }
         } else if (l.owner.ownerNotificationsEnabled) {
@@ -826,7 +835,8 @@ public class EmailService {
                     from,
                     l.owner.ownerEmail,
                     subjectForLocale.apply(ownerLocale),
-                    bodyForRecipient.render(OWNER_ROLE, ownerLocale, l.zone, l.owner.ownerName, l.booking),
+                    bodyForRecipient.render(
+                            OWNER_ROLE, ownerLocale, l.zone, l.owner.ownerName, l.booking, l.owner.timeFormat),
                     ics);
         }
     }
@@ -880,8 +890,20 @@ public class EmailService {
         return l.meetingType.locationType == LocationType.GOOGLE_MEET;
     }
 
+    /** Invitee-facing paths: always the locale's own translated pattern. */
     private String format(Instant instant, ZoneId zone, Locale locale) {
-        String pattern = messages.forLocale(locale).email_datetime_pattern();
+        return format(instant, zone, locale, "auto");
+    }
+
+    /**
+     * Recipient-aware variant. {@code hourCycle} is that recipient's {@code OwnerSettings.timeFormat}
+     * for a host copy and always {@code auto} for an invitee copy. Only an explicit {@code h12}
+     * switches patterns: a server has no device to probe, so {@code auto} means "leave the
+     * translated pattern alone" — which keeps every existing host's mail byte-identical.
+     */
+    private String format(Instant instant, ZoneId zone, Locale locale, String hourCycle) {
+        var m = messages.forLocale(locale);
+        String pattern = "h12".equals(hourCycle) ? m.email_datetime_pattern_h12() : m.email_datetime_pattern();
         return DateTimeFormatter.ofPattern(pattern, locale).format(instant.atZone(zone));
     }
 

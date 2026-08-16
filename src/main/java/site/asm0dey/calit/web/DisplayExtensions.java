@@ -1,6 +1,10 @@
 package site.asm0dey.calit.web;
 
 import io.quarkus.qute.TemplateExtension;
+import java.time.DateTimeException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Qute template extensions that humanize UPPER_SNAKE_CASE enum constants for display:
@@ -58,5 +62,30 @@ public class DisplayExtensions {
     @TemplateExtension(namespace = NAMESPACE)
     public static String name(Enum<?> e) {
         return e == null ? "" : e.name();
+    }
+
+    /** Mirrors AdminResource#renderManage's manage-hub date/time format for the no-JS fallback. */
+    private static final DateTimeFormatter WHEN_FMT = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)");
+
+    /**
+     * Formats {@code instant} in {@code zoneId} as e.g. "Thursday, 20 August 2026 at 22:00 (JST)"
+     * -- the same pattern used for the manage-booking page, carrying the zone so the result is
+     * intelligible without JavaScript (a bare "22:00" wouldn't say which zone it's in). Null
+     * instant -> "". {@code OwnerSettings.timezone} is stored straight from the form with no
+     * validation, so an unparseable/blank/null zone id falls back to UTC rather than throwing
+     * {@link DateTimeException} and 500-ing the whole page.
+     */
+    @TemplateExtension(namespace = NAMESPACE)
+    public static String when(Instant instant, String zoneId) {
+        if (instant == null) {
+            return "";
+        }
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(zoneId);
+        } catch (DateTimeException | NullPointerException _) {
+            zone = ZoneId.of("UTC");
+        }
+        return WHEN_FMT.format(instant.atZone(zone));
     }
 }

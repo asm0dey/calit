@@ -532,6 +532,10 @@ public interface AppMessages {
     @Message("EEEE, d MMMM yyyy 'at' HH:mm")
     String email_datetime_pattern();
 
+    /** 12-hour variant of {@link #email_datetime_pattern()}, used when a host chose {@code h12}. */
+    @Message("EEEE, d MMMM yyyy 'at' h:mm a")
+    String email_datetime_pattern_h12();
+
     // ---- Email body — shared labels ----
 
     /** Greeting line used in most booking emails. */

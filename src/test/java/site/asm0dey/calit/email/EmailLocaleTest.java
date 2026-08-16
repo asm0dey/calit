@@ -11,8 +11,11 @@ import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +27,7 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.i18n.AppLocales;
 
 /**
  * Verifies locale-aware email rendering:
@@ -78,6 +82,37 @@ class EmailLocaleTest {
         String deSubj = messages.forTag("de").email_google_disconnected_subject();
         assertFalse(deSubj.isBlank(), "German Google-disconnected subject must not be blank");
         assertNotEquals(enSubj, deSubj, "German Google-disconnected subject must differ from English");
+    }
+
+    // ---- 1b. h12 pattern is a valid, renderable DateTimeFormatter pattern in every locale ----
+
+    @Test
+    void h12DatetimePatternResolvesAndFormatsForEveryLocale() {
+        var instant = Instant.parse("2026-06-08T13:00:00Z");
+        var zone = ZoneId.of("UTC");
+        var zoned = instant.atZone(zone);
+
+        for (String tag : List.of("en", "de", "he")) {
+            Locale locale = AppLocales.pick(tag);
+            String pattern = messages.forTag(tag).email_datetime_pattern_h12();
+            assertFalse(pattern.isBlank(), "h12 pattern for '" + tag + "' must not be blank");
+
+            DateTimeFormatter formatter;
+            try {
+                formatter = DateTimeFormatter.ofPattern(pattern, locale);
+            } catch (IllegalArgumentException e) {
+                throw new AssertionError(
+                        "h12 pattern for '" + tag + "' is not a valid DateTimeFormatter pattern: " + pattern, e);
+            }
+
+            String rendered;
+            try {
+                rendered = formatter.format(zoned);
+            } catch (RuntimeException e) {
+                throw new AssertionError("h12 pattern for '" + tag + "' failed to format an instant: " + pattern, e);
+            }
+            assertFalse(rendered.isBlank(), "h12 rendering for '" + tag + "' must not be blank; pattern: " + pattern);
+        }
     }
 
     // ---- 2. End-to-end: de booking → German date string in body ----
