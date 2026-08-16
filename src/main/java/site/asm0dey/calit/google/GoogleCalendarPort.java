@@ -284,6 +284,18 @@ public class GoogleCalendarPort implements CalendarPort {
                     .delete(target.googleCalendarId, eventId)
                     .setSendUpdates("all")
                     .execute();
+        } catch (GoogleJsonResponseException e) {
+            // 410 Gone / 404 Not Found: the event was already deleted on Google (e.g. by the owner,
+            // directly in Google Calendar). The end state we wanted already holds, so deleting is
+            // idempotent from the caller's side — let the local cancellation proceed. Every other
+            // status still fails loudly.
+            if (e.getStatusCode() != 410 && e.getStatusCode() != 404) {
+                throw new UncheckedIOException("deleteEvent failed", e);
+            }
+            org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class)
+                    .infof(
+                            "Google event %s on calendar %s (owner %d) was already deleted (HTTP %d); treating delete as done",
+                            eventId, target.googleCalendarId, ownerId, e.getStatusCode());
         } catch (IOException e) {
             throw new UncheckedIOException("deleteEvent failed", e);
         }
