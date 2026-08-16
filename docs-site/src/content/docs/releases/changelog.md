@@ -7,6 +7,23 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## 1.20.1
+
+Cancelling a booking works again when the Google event was already deleted.
+
+- **Cancelling no longer fails when the Google event is already gone.** If you
+  deleted a booking's event straight from Google Calendar, cancelling that
+  booking in calit returned a 500 and left it uncancelled: Google answers
+  `410 Gone` for an event that no longer exists, and calit treated that as a
+  hard error. An event that is already gone is now the outcome we wanted, so
+  the cancellation goes through — the booking is cancelled and the invitee
+  still gets the cancellation mail and `.ics`. Any other Google failure still
+  aborts the cancel loudly, and rescheduling onto a deleted event still errors
+  rather than silently reporting a move that never happened.
+  ([#118](https://github.com/asm0dey/calit/issues/118))
+
+Nothing to do on upgrade — no configuration or database changes.
+
 ## 1.20.0
 
 Booking-page times now follow each visitor's own device, a per-account time
