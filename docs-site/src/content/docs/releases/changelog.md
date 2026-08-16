@@ -7,6 +7,29 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- **Booking-page times now follow the visitor's own device.** Times were
+  formatted using the page's display language, so bare `en` meant US defaults
+  and every visitor to an English page saw `2:30 PM` rather than `14:30`. Only
+  the clock format changed — weekday and month names still follow the page's
+  language, so Hebrew and German pages keep their own wording.
+  ([#116](https://github.com/asm0dey/calit/issues/116))
+- **New per-account time format setting.** **Settings → Time format** offers
+  Automatic, 24-hour and 12-hour, applied to your own `/me` pages and the
+  emails you receive. It defaults to Automatic, which reproduces the previous
+  output exactly, so upgrading changes nothing. The setting is yours alone — it
+  never changes what a visitor sees on your booking page, nor the mail your
+  invitees and their guests receive.
+  ([#122](https://github.com/asm0dey/calit/pull/122))
+- **Fixed raw timestamps on the dashboard.** `/me` and the pending-approvals
+  list printed `2026-08-20T13:00:00Z UTC` instead of a readable time. They now
+  render in your configured timezone, and remain readable with JavaScript
+  disabled. The same bug also affected the public cancel and guest-decline
+  pages, which invitees do see. ([#122](https://github.com/asm0dey/calit/pull/122))
+
 ## 1.19.0
 
 Full timezone list for invitees, a Compose default fix, and a booking crash fix.
