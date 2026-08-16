@@ -59,7 +59,7 @@ class RescheduleCancelTest {
         assertEquals(SLOT_10, loaded.startUtc);
         assertEquals(SLOT_10.plusSeconds(3600), loaded.endUtc);
         verify(calendarPort, times(1))
-                .updateEvent(anyLong(), eq("evt-r"), eq(SLOT_10), eq(SLOT_10.plusSeconds(3600)), any());
+                .updateEvent(anyLong(), any(), eq("evt-r"), eq(SLOT_10), eq(SLOT_10.plusSeconds(3600)), any());
 
         // Old 09:00 time is free again; new 10:00 time is now taken.
         List<TimeSlot> avail = bookingService.availableSlots(t, DAY, DAY);
@@ -91,8 +91,8 @@ class RescheduleCancelTest {
         assertEquals(SLOT_10, loaded.startUtc);
         assertNull(loaded.googleEventId, "the prior event is deleted on re-request");
         assertNull(loaded.meetLink);
-        verify(calendarPort, times(1)).deleteEvent(anyLong(), eq("evt-ra"));
-        verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any());
+        verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), eq("evt-ra"));
+        verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -116,7 +116,7 @@ class RescheduleCancelTest {
         Booking loaded = Booking.findById(b.id);
         assertEquals(SLOT_09, loaded.startUtc);
         assertEquals(beforeSeq, loaded.icsSequence, "no-op must not bump the sequence");
-        verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any());
+        verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -139,7 +139,7 @@ class RescheduleCancelTest {
 
         Booking loaded = Booking.findById(b.id);
         assertEquals(BookingStatus.CANCELLED, loaded.status);
-        verify(calendarPort, times(1)).deleteEvent(anyLong(), eq("evt-c"));
+        verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), eq("evt-c"));
         // 09:00 slot is bookable again.
         assertTrue(bookingService.availableSlots(t, DAY, DAY).stream()
                 .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
@@ -173,6 +173,7 @@ class RescheduleCancelTest {
         verify(calendarPort, times(1))
                 .updateEvent(
                         anyLong(),
+                        any(),
                         eq("evt-rg"),
                         eq(SLOT_10),
                         eq(SLOT_10.plusSeconds(3600)),

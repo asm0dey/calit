@@ -82,7 +82,8 @@ class UpdateDetailsTest {
         assertEquals("Q3 planning", after.description);
         assertTrue(after.icsSequence > beforeSeq, "sequence bumped");
         verify(calendarPort, times(1))
-                .updateEventDetails(anyLong(), eq("evt-ud"), eq("Roadmap sync with Pat"), eq("Q3 planning"), any());
+                .updateEventDetails(
+                        anyLong(), any(), eq("evt-ud"), eq("Roadmap sync with Pat"), eq("Q3 planning"), any());
     }
 
     @Test
@@ -125,7 +126,7 @@ class UpdateDetailsTest {
 
         Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findById(b.id));
         assertEquals(beforeSeq, after.icsSequence, "no-op must not bump the sequence");
-        verify(calendarPort, never()).updateEventDetails(anyLong(), any(), any(), any(), any());
+        verify(calendarPort, never()).updateEventDetails(anyLong(), any(), any(), any(), any(), any());
     }
 
     @Test

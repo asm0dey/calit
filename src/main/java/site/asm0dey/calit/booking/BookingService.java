@@ -837,7 +837,7 @@ public class BookingService {
             boolean byOwner) {
         if (reApproval) {
             if (calendarPort.isConnected(type.ownerId) && priorEventId != null) {
-                calendarPort.deleteEvent(type.ownerId, priorEventId);
+                calendarPort.deleteEvent(type.ownerId, null, priorEventId);
             }
             bookingRequestedEvent.fire(new BookingRequested(booking.id)); // re-approval request
         } else {
@@ -845,6 +845,7 @@ public class BookingService {
                 OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
                 calendarPort.updateEvent(
                         type.ownerId,
+                        null,
                         booking.googleEventId,
                         booking.startUtc,
                         booking.endUtc,
@@ -971,6 +972,7 @@ public class BookingService {
             OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
             calendarPort.updateEventDetails(
                     type.ownerId,
+                    null,
                     booking.googleEventId,
                     googleSummary(type, booking),
                     googleDescription(type, booking),
@@ -1023,6 +1025,7 @@ public class BookingService {
         if (eventId != null && organizer != null && calendarPort.isConnected(organizer)) {
             calendarPort.updateEventDetails(
                     organizer,
+                    null,
                     eventId,
                     googleSummary(type, lead),
                     googleDescription(type, lead),
@@ -1172,7 +1175,7 @@ public class BookingService {
     private void cancelSingle(Booking booking, boolean byOwner) {
         booking.status = BookingStatus.CANCELLED;
         if (calendarPort.isConnected(booking.ownerId) && booking.googleEventId != null) {
-            calendarPort.deleteEvent(booking.ownerId, booking.googleEventId);
+            calendarPort.deleteEvent(booking.ownerId, null, booking.googleEventId);
         }
         bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner));
     }
@@ -1189,7 +1192,7 @@ public class BookingService {
         for (Booking r : Booking.<Booking>group(groupId)) {
             if (r.googleEventId != null) {
                 if (calendarPort.isConnected(r.ownerId)) {
-                    calendarPort.deleteEvent(r.ownerId, r.googleEventId);
+                    calendarPort.deleteEvent(r.ownerId, null, r.googleEventId);
                 }
                 r.googleEventId = null;
                 r.meetLink = null;
@@ -1241,6 +1244,7 @@ public class BookingService {
             OwnerSettings owner = OwnerSettings.forOwner(guest.ownerId);
             calendarPort.updateEvent(
                     guest.ownerId,
+                    null,
                     booking.googleEventId,
                     booking.startUtc,
                     booking.endUtc,

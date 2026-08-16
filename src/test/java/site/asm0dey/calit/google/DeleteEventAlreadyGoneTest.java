@@ -76,7 +76,7 @@ class DeleteEventAlreadyGoneTest {
         seedWriteTarget("sub-gone");
         var port = portThatFailsWith(status(410, "Gone"));
 
-        assertDoesNotThrow(() -> port.deleteEvent(1L, "evt-gone"));
+        assertDoesNotThrow(() -> port.deleteEvent(1L, null, "evt-gone"));
     }
 
     @Test
@@ -85,7 +85,7 @@ class DeleteEventAlreadyGoneTest {
         seedWriteTarget("sub-missing");
         var port = portThatFailsWith(status(404, "Not Found"));
 
-        assertDoesNotThrow(() -> port.deleteEvent(1L, "evt-missing"));
+        assertDoesNotThrow(() -> port.deleteEvent(1L, null, "evt-missing"));
     }
 
     @Test
@@ -94,7 +94,7 @@ class DeleteEventAlreadyGoneTest {
         seedWriteTarget("sub-boom");
         var port = portThatFailsWith(status(500, "Internal Server Error"));
 
-        var thrown = assertThrows(UncheckedIOException.class, () -> port.deleteEvent(1L, "evt-boom"));
+        var thrown = assertThrows(UncheckedIOException.class, () -> port.deleteEvent(1L, null, "evt-boom"));
         assertEquals("deleteEvent failed", thrown.getMessage());
     }
 
@@ -104,7 +104,7 @@ class DeleteEventAlreadyGoneTest {
         seedWriteTarget("sub-timeout");
         var port = portThatFailsWith(new IOException("connect timed out"));
 
-        var thrown = assertThrows(UncheckedIOException.class, () -> port.deleteEvent(1L, "evt-timeout"));
+        var thrown = assertThrows(UncheckedIOException.class, () -> port.deleteEvent(1L, null, "evt-timeout"));
         assertEquals("connect timed out", thrown.getCause().getMessage());
     }
 }

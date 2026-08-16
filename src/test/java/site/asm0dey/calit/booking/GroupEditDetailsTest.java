@@ -109,7 +109,8 @@ class GroupEditDetailsTest {
 
         // the shared Google event is patched exactly once, via the organizer (creator, owner id 1).
         verify(calendarPort, times(1))
-                .updateEventDetails(eq(1L), eq("grp-evt"), eq("Roadmap sync with Sam"), eq("Q3 planning"), anyList());
+                .updateEventDetails(
+                        eq(1L), any(), eq("grp-evt"), eq("Roadmap sync with Sam"), eq("Q3 planning"), anyList());
 
         // guests reconcile on the lead row only.
         Booking freshLead = Booking.leadOfGroup(lead.groupId, 1L);
@@ -157,7 +158,8 @@ class GroupEditDetailsTest {
             assertEquals("Roadmap sync", r.title);
             assertEquals("Q3 planning", r.description);
         });
-        verify(calendarPort, never()).updateEventDetails(anyLong(), anyString(), anyString(), anyString(), anyList());
+        verify(calendarPort, never())
+                .updateEventDetails(anyLong(), any(), anyString(), anyString(), anyString(), anyList());
         assertEquals(detailsChangedBefore + 1, DETAILS_CHANGED.get());
     }
 
@@ -216,6 +218,6 @@ class GroupEditDetailsTest {
 
         verify(calendarPort, times(1))
                 .updateEventDetails(
-                        eq(v.id), eq("grp-evt-cohost"), eq("Cohost organized with Sam"), eq("desc"), anyList());
+                        eq(v.id), any(), eq("grp-evt-cohost"), eq("Cohost organized with Sam"), eq("desc"), anyList());
     }
 }

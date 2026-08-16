@@ -251,6 +251,7 @@ class BookingServiceGuestTest {
         verify(calendarPort, times(1))
                 .updateEvent(
                         anyLong(),
+                        any(),
                         eq("evt-d"),
                         eq(SLOT_09),
                         eq(SLOT_09.plusSeconds(3600)),
