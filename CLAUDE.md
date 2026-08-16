@@ -91,7 +91,7 @@ Flyway migrations `V1…V25` in `src/main/resources/db/migration/`, applied at b
 
 ## Docker / CI
 
-`Dockerfile` multi-stage: Bun compiles CSS → BellSoft **Liberica JDK 26** builds → **Liberica JRE 26 (musl)** runs. Tests skipped in image — run `mvn test` on host (with Docker) before building. CI is `.github/workflows/ci.yml` (test/build/merge/release, native multi-arch images to `ghcr.io/asm0dey/calit`). Dependency updates via **Renovate** (`renovate.json`), not Dependabot.
+`Dockerfile` multi-stage: Bun compiles CSS → BellSoft **Liberica JDK 26** builds → **Liberica JRE 26 (musl)** runs. Tests skipped in image — run `mvn test` on host (with Docker) before building. CI is `.github/workflows/ci.yml` (test/build/merge/release, native multi-arch images to `ghcr.io/asm0dey/calit`). Dependency updates via **Renovate** (`renovate.json`), not Dependabot. The `changes` job gates the image matrix: a push to `main` that touched only `.beans/**`, root-level markdown (`README.md`, `CLAUDE.md`, …), `docs/**`, `.agents/**`, `.claude/**` or `LICENSE` builds no image and publishes no `edge`/`sha-*` tag — that is intentional, not a broken run. `v*` tag pushes always build.
 
 ## Documentation
 
