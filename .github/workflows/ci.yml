@@ -109,7 +109,11 @@ jobs:
           fi
           changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA" -- . \
             ':(exclude).beans/**' ':(exclude)*.md' ':(exclude).agents/**' \
-            ':(exclude).claude/**' ':(exclude)LICENSE')
+            ':(exclude).claude/**' ':(exclude)LICENSE') || {
+            echo "git diff failed -> code=true"
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
           if [ -n "$changed" ]; then
             echo "code changed:"; echo "$changed"
             echo "code=true" >> "$GITHUB_OUTPUT"
