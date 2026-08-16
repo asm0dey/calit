@@ -83,7 +83,7 @@ public class DisplayExtensions {
         ZoneId zone;
         try {
             zone = ZoneId.of(zoneId);
-        } catch (DateTimeException | NullPointerException e) {
+        } catch (DateTimeException | NullPointerException _) {
             zone = ZoneId.of("UTC");
         }
         return WHEN_FMT.format(instant.atZone(zone));

@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,23 +46,20 @@ class DisplayExtensionsTest {
      * dashboard.
      */
     @Test
-    void whenBadZoneIdFallsBackToUtcInsteadOfThrowing() {
+    void whenUnusableZoneIdFallsBackToUtcInsteadOfThrowing() {
         var i = Instant.parse("2026-08-20T13:00:00Z");
-        String out = DisplayExtensions.when(i, "Not/AZone");
-        assertTrue(out.contains("(UTC)"), "expected UTC fallback; got: " + out);
-    }
-
-    @Test
-    void whenBlankZoneIdFallsBackToUtcInsteadOfThrowing() {
-        var i = Instant.parse("2026-08-20T13:00:00Z");
-        String out = DisplayExtensions.when(i, "");
-        assertTrue(out.contains("(UTC)"), "expected UTC fallback; got: " + out);
-    }
-
-    @Test
-    void whenNullZoneIdFallsBackToUtcInsteadOfThrowing() {
-        var i = Instant.parse("2026-08-20T13:00:00Z");
-        String out = DisplayExtensions.when(i, null);
-        assertTrue(out.contains("(UTC)"), "expected UTC fallback; got: " + out);
+        // ZoneId.of throws a different exception per input: ZoneRulesException for an unknown id,
+        // DateTimeException for blank, NullPointerException for null. assertAll reports every
+        // failing input in one run rather than stopping at the first.
+        assertAll(
+                () -> assertTrue(
+                        DisplayExtensions.when(i, "Not/AZone").contains("(UTC)"),
+                        "unknown zone id must fall back to UTC; got: " + DisplayExtensions.when(i, "Not/AZone")),
+                () -> assertTrue(
+                        DisplayExtensions.when(i, "").contains("(UTC)"),
+                        "blank zone id must fall back to UTC; got: " + DisplayExtensions.when(i, "")),
+                () -> assertTrue(
+                        DisplayExtensions.when(i, null).contains("(UTC)"),
+                        "null zone id must fall back to UTC; got: " + DisplayExtensions.when(i, null)));
     }
 }

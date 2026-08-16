@@ -187,7 +187,7 @@ class AdminTimeRenderingTest {
     void pendingNoJsFallbackIsHumanReadableWithZone() {
         saveTimezone("Asia/Tokyo");
         // approve() would move it off /me/pending, so seed straight into PENDING instead.
-        Long id = QuarkusTransaction.requiringNew().call(() -> {
+        QuarkusTransaction.requiringNew().run(() -> {
             var slug = "time-render-pending-" + System.nanoTime();
             MeetingType t = new MeetingType();
             t.ownerId = 1L;
@@ -212,7 +212,6 @@ class AdminTimeRenderingTest {
             b.answers = Map.of();
             b.locale = "en";
             b.persist();
-            return b.id;
         });
 
         given().when()
