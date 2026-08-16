@@ -5,7 +5,7 @@
 [![Container](https://img.shields.io/badge/ghcr.io-asm0dey%2Fcalit-2496ED?logo=docker&logoColor=white)](https://github.com/asm0dey/calit/pkgs/container/calit)
 [![Docs](https://img.shields.io/badge/docs-asm0dey.github.io%2Fcalit-3b82f6)](https://asm0dey.github.io/calit/)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
-[![Quarkus](https://img.shields.io/badge/Quarkus-3.37-4695EB?logo=quarkus&logoColor=white)](https://quarkus.io)
+[![Quarkus](https://img.shields.io/badge/Quarkus-3.38-4695EB?logo=quarkus&logoColor=white)](https://quarkus.io)
 [![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)](https://bell-sw.com/libericajdk/)
 
 **calit** is a self-hosted, multi-user scheduling app — a Calendly alternative built on Quarkus. Every
@@ -39,8 +39,8 @@ site is the source of truth.
 
 ## Run it
 
-Prebuilt multi-arch images are published to **`ghcr.io/asm0dey/calit`** (tags: `latest`, `1.19.0`,
-`1.19.0-native`). The fastest path is Docker Compose:
+Prebuilt multi-arch images are published to **`ghcr.io/asm0dey/calit`** (tags: `latest`, `1.20.0`,
+`1.20.0-native`). The fastest path is Docker Compose:
 
 ```bash
 cp .env.example .env    # set at least DB_PASSWORD, SESSION_ENCRYPTION_KEY, APP_BASE_URL, MAIL_*
