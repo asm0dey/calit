@@ -58,7 +58,7 @@ class GroupBookingWriteTest {
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
         when(calendarPort.createEvent(
                         anyLong(), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-1", "https://meet/x", "https://cal/x"));
+                .thenReturn(new CreatedEvent("evt-1", "https://meet/x", "https://cal/x", null));
         type(false);
 
         Booking lead = bookingService.book(
@@ -96,7 +96,7 @@ class GroupBookingWriteTest {
         when(calendarPort.isConnected(cohostId)).thenReturn(true);
         when(calendarPort.createEvent(
                         anyLong(), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-1", "https://meet/x", "https://cal/x"));
+                .thenReturn(new CreatedEvent("evt-1", "https://meet/x", "https://cal/x", null));
 
         Booking lead = bookingService.book(
                 1L, "intro", nextMonday10(), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());

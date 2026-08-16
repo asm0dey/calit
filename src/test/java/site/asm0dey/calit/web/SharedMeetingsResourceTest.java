@@ -101,7 +101,7 @@ class SharedMeetingsResourceTest {
         when(calendarPort.isConnected(argThat(id -> id != null && !id.equals(creatorId))))
                 .thenReturn(false);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt", "meet", "cal"));
+                .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
     }
 
     // ---- Dashboard consent: GET /me/shared/requests ----

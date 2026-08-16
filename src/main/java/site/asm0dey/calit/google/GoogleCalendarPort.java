@@ -119,7 +119,11 @@ public class GoogleCalendarPort implements CalendarPort {
         try {
             Event created = insert(cred, target, event, createMeetLink);
             String meetLink = createMeetLink ? extractMeetLink(created) : null;
-            return new CreatedEvent(created.getId(), meetLink, created.getHtmlLink());
+            return new CreatedEvent(
+                    created.getId(),
+                    meetLink,
+                    created.getHtmlLink(),
+                    new CalendarRef(cred.id, target.googleCalendarId));
         } catch (GoogleJsonResponseException e) {
             return handleCreateFailure(e, cred, target, event, createMeetLink);
         } catch (IOException e) {
@@ -195,7 +199,8 @@ public class GoogleCalendarPort implements CalendarPort {
         event.setConferenceData(null);
         try {
             Event created = insert(cred, target, event, false);
-            return new CreatedEvent(created.getId(), null, created.getHtmlLink());
+            return new CreatedEvent(
+                    created.getId(), null, created.getHtmlLink(), new CalendarRef(cred.id, target.googleCalendarId));
         } catch (IOException ex) {
             throw new UncheckedIOException("createEvent failed", ex);
         }

@@ -46,7 +46,7 @@ class RescheduleCancelTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-r", "https://meet.google.com/r-r-r", "h"));
+                .thenReturn(new CreatedEvent("evt-r", "https://meet.google.com/r-r-r", "h", null));
 
         Booking b = bookingService.book(
                 1L, "resched", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
@@ -79,7 +79,7 @@ class RescheduleCancelTest {
 
         // Book PENDING, then approve so it has a CONFIRMED Google event to delete on reschedule.
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-ra", "https://meet.google.com/ra-1-2", "h"));
+                .thenReturn(new CreatedEvent("evt-ra", "https://meet.google.com/ra-1-2", "h", null));
         Booking b = bookingService.book(
                 1L, "resched-approval", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
         bookingService.approve(b.id);
@@ -103,7 +103,7 @@ class RescheduleCancelTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-nn", "https://meet.google.com/n-n-n", "h"));
+                .thenReturn(new CreatedEvent("evt-nn", "https://meet.google.com/n-n-n", "h", null));
 
         Booking b = bookingService.book(
                 1L, "resched-noop", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
@@ -127,7 +127,7 @@ class RescheduleCancelTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-c", "https://meet.google.com/c-c-c", "h"));
+                .thenReturn(new CreatedEvent("evt-c", "https://meet.google.com/c-c-c", "h", null));
 
         Booking b = bookingService.book(
                 1L, "cancel", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
@@ -153,7 +153,7 @@ class RescheduleCancelTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-rg", null, "https://calendar.google.com/evt-rg"));
+                .thenReturn(new CreatedEvent("evt-rg", null, "https://calendar.google.com/evt-rg", null));
 
         Booking b = bookingService.book(
                 1L,

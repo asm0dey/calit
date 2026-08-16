@@ -154,7 +154,7 @@ class BookingPostTest {
         // createEvent returns a known Meet link that BookingService stores on Booking.meetLink.
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent(
-                        "evt-1", "https://meet.google.com/known-test-link", "https://calendar.google.com/evt-1"));
+                        "evt-1", "https://meet.google.com/known-test-link", "https://calendar.google.com/evt-1", null));
         seed();
 
         var chosen = firstSlot("confirm-type"); // the absolute UTC instant the invitee submits (…Z)
@@ -255,7 +255,7 @@ class BookingPostTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent(
-                        "evt-owner", "https://meet.google.com/owned", "https://calendar.google.com/evt-owner"));
+                        "evt-owner", "https://meet.google.com/owned", "https://calendar.google.com/evt-owner", null));
         seed();
 
         var chosen = firstSlot("confirm-type");

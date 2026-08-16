@@ -70,7 +70,7 @@ class GroupEditDetailsTest {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("grp-evt", "meet", "cal"));
+                .thenReturn(new CreatedEvent("grp-evt", "meet", "cal", null));
     }
 
     @Test
@@ -209,7 +209,7 @@ class GroupEditDetailsTest {
         when(calendarPort.isConnected(1L)).thenReturn(false);
         when(calendarPort.isConnected(v.id)).thenReturn(true);
         when(calendarPort.createEvent(eq(v.id), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("grp-evt-cohost", "meet", "cal"));
+                .thenReturn(new CreatedEvent("grp-evt-cohost", "meet", "cal", null));
 
         Booking lead = bookingService.book(
                 1L, "intro", nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());

@@ -76,7 +76,7 @@ class BookingResourceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-rest", "https://meet.google.com/rest-1234-xyz", "h"));
+                .thenReturn(new CreatedEvent("evt-rest", "https://meet.google.com/rest-1234-xyz", "h", null));
 
         given().contentType("application/json")
                 .body(
@@ -122,7 +122,7 @@ class BookingResourceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-avail", "https://meet.google.com/av-1-2", "h"));
+                .thenReturn(new CreatedEvent("evt-avail", "https://meet.google.com/av-1-2", "h", null));
 
         given().contentType("application/json")
                 .body(
@@ -155,7 +155,7 @@ class BookingResourceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-x", "https://meet.google.com/a-b-c", "h"));
+                .thenReturn(new CreatedEvent("evt-x", "https://meet.google.com/a-b-c", "h", null));
 
         var body = "{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
                 + "\"inviteeName\":\"First\",\"inviteeEmail\":\"first@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}";
@@ -183,7 +183,7 @@ class BookingResourceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-cancel", "https://meet.google.com/cn-1-2", "h"));
+                .thenReturn(new CreatedEvent("evt-cancel", "https://meet.google.com/cn-1-2", "h", null));
 
         String token = given().contentType("application/json")
                 .body(

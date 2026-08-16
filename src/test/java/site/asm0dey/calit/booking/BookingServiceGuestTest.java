@@ -168,7 +168,7 @@ class BookingServiceGuestTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-g", null, "https://calendar.google.com/evt-g"));
+                .thenReturn(new CreatedEvent("evt-g", null, "https://calendar.google.com/evt-g", null));
 
         bookingService.book(
                 1L,
@@ -228,7 +228,7 @@ class BookingServiceGuestTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-d", null, "https://calendar.google.com/evt-d"));
+                .thenReturn(new CreatedEvent("evt-d", null, "https://calendar.google.com/evt-d", null));
 
         Booking b = bookingService.book(
                 1L,

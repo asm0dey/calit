@@ -64,7 +64,7 @@ class BookServiceTest {
         when(calendarPort.createEvent(
                         anyLong(), anyString(), anyString(), eq(SLOT_09), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent(
-                        "evt-99", "https://meet.google.com/xyz-1234-pqr", "https://calendar.google.com/evt-99"));
+                        "evt-99", "https://meet.google.com/xyz-1234-pqr", "https://calendar.google.com/evt-99", null));
 
         // No per-type fields and the only global field (seeded description) is optional,
         // so an empty answers map books successfully.
@@ -100,7 +100,7 @@ class BookServiceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-ph", null, "h"));
+                .thenReturn(new CreatedEvent("evt-ph", null, "h", null));
 
         Booking b = bookingService.book(
                 1L, "book-phone", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
@@ -166,7 +166,7 @@ class BookServiceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-opt", "https://meet.google.com/opt-1-2", "h"));
+                .thenReturn(new CreatedEvent("evt-opt", "https://meet.google.com/opt-1-2", "h", null));
 
         Booking b = bookingService.book(
                 1L, "book-optional", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
@@ -234,7 +234,7 @@ class BookServiceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-ans", "https://meet.google.com/ans-1-2", "h"));
+                .thenReturn(new CreatedEvent("evt-ans", "https://meet.google.com/ans-1-2", "h", null));
 
         Booking b = bookingService.book(
                 1L,
@@ -263,7 +263,7 @@ class BookServiceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-1", "https://meet.google.com/a-b-c", "h"));
+                .thenReturn(new CreatedEvent("evt-1", "https://meet.google.com/a-b-c", "h", null));
 
         bookingService.book(
                 1L, "book-double", SLOT_09, "First", "first@example.com", Map.of(), "tok", "", "en", List.of());

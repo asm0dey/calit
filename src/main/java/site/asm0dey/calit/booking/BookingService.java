@@ -433,6 +433,10 @@ public class BookingService {
                 type.locationDetail);
         organizerRow.googleEventId = created.googleEventId();
         organizerRow.meetLink = created.meetLink();
+        organizerRow.googleCalendarId =
+                created.calendar() == null ? null : created.calendar().googleCalendarId();
+        organizerRow.googleCredentialId =
+                created.calendar() == null ? null : created.calendar().credentialId();
         // propagate the meet link to the lead row too so invitee-facing views show it
         if (lead.meetLink == null) {
             lead.meetLink = created.meetLink();
@@ -517,6 +521,10 @@ public class BookingService {
                 type.locationDetail);
         booking.googleEventId = created.googleEventId();
         booking.meetLink = created.meetLink();
+        booking.googleCalendarId =
+                created.calendar() == null ? null : created.calendar().googleCalendarId();
+        booking.googleCredentialId =
+                created.calendar() == null ? null : created.calendar().credentialId();
     }
 
     /**

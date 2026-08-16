@@ -80,7 +80,7 @@ class GroupCancelRescheduleTest {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt", "meet", "cal"));
+                .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
     }
 
     // --- (a) cancel: any host cancels -> all rows CANCELLED, deleteEvent called once ---
@@ -209,7 +209,7 @@ class GroupCancelRescheduleTest {
     void singleHostOwnerRescheduleOfApprovalTypeStaysConfirmed() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-s", "meet-s", "cal-s"));
+                .thenReturn(new CreatedEvent("evt-s", "meet-s", "cal-s", null));
         singleHostType("solo-approval", true);
 
         Booking b = bookingService.book(
@@ -232,7 +232,7 @@ class GroupCancelRescheduleTest {
     void singleHostInviteeRescheduleOfApprovalTypeRevertsToPending() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-s2", "meet-s2", "cal-s2"));
+                .thenReturn(new CreatedEvent("evt-s2", "meet-s2", "cal-s2", null));
         singleHostType("solo-approval-2", true);
 
         Booking b = bookingService.book(
