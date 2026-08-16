@@ -5,7 +5,7 @@ status: todo
 type: feature
 priority: normal
 created_at: 2026-08-16T11:10:11Z
-updated_at: 2026-08-16T11:18:48Z
+updated_at: 2026-08-16T22:40:03Z
 blocked_by:
     - calit-rma2
 ---
@@ -44,3 +44,15 @@ Interacts with calit-rma2: once the write calendar can differ per meeting type, 
 - The owner-level `write_target` is therefore renamed in user-facing terms to **default write target** — it stops being "the calendar" and becomes the fallback. UI labels + `de`/`he` values change; the DB column stays `write_target` (a rename would be a migration and a Hibernate mapping change for zero behaviour).
 - Resolution order for a write: meeting type override -> owner default write target -> the existing "no write target selected" error.
 - Uniqueness rule is unchanged: still at most one default per owner (`idx_google_calendar_single_write_target`, `CalendarSelectionService.java:38`). The override does not need that constraint — it points at one calendar per meeting type by definition.
+
+## Design settled 2026-08-17
+
+Spec: `docs/superpowers/specs/2026-08-17-per-meeting-type-write-target-design.md` (commit 065c4f0).
+
+- Override is per **(type, host)**: `meeting_type` columns hold the creator's choice, `meeting_type_host` columns hold each co-host's own choice for that shared type. Resolution runs for whichever owner `MeetingHosts.chooseOrganizer` picks; that method is unchanged.
+- Stored as a (google_credential_id BIGINT REFERENCES google_credential ON DELETE SET NULL, google_calendar_id **text**) pair, not an FK to `google_calendar.id` — `CalendarSelectionService.save()` deletes+reinserts every row per save, so local ids churn. `text` not VARCHAR(255): no reason for the cap; entity needs `columnDefinition = "text"` under validate-only Hibernate.
+- Dangling override (calendar unticked / account disconnected) -> fall back to the owner default, WARN log (type id, calendar id, ownerId), and the edit form shows "calendar no longer available — using default". Never fails the booking.
+- New `WriteTargetResolver` in `google/` owns the resolution order; `createEvent` takes the resolved target instead of calling `requireWriteTarget(ownerId)`.
+- Meet gate (AdminResource:604,619) follows the **creator's** resolved calendar only. Co-host overrides do not affect it; a co-host organizer with a non-Meet calendar degrades via the existing `handleCreateFailure`.
+- Co-host UI goes on the existing `/me/shared/{typeId}/availability` page (`SharedMeetingsResource`, next to the per-host buffers form) — no new page.
+- calit-rma2 ships and is verified FIRST, as its own change.
