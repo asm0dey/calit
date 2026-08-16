@@ -294,8 +294,8 @@ public class GoogleCalendarPort implements CalendarPort {
             }
             org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class)
                     .infof(
-                            "Google event %s was already deleted (HTTP %d); treating delete as done",
-                            eventId, e.getStatusCode());
+                            "Google event %s on calendar %s (owner %d) was already deleted (HTTP %d); treating delete as done",
+                            eventId, target.googleCalendarId, ownerId, e.getStatusCode());
         } catch (IOException e) {
             throw new UncheckedIOException("deleteEvent failed", e);
         }

@@ -49,6 +49,9 @@ public interface CalendarPort {
     void updateEventDetails(
             Long ownerId, String eventId, String summary, String description, List<String> attendeeEmails);
 
-    /** Remove an existing event (cancel); {@code sendUpdates=all}. */
+    /**
+     * Remove an existing event (cancel); {@code sendUpdates=all}. This operation is idempotent: an event
+     * that is already gone on the provider's side counts as success.
+     */
     void deleteEvent(Long ownerId, String eventId);
 }
