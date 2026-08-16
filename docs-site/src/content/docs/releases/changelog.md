@@ -7,9 +7,10 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.20.0
 
-Merged but not yet in a tagged release.
+Booking-page times now follow each visitor's own device, a per-account time
+format setting, and diagnostics for Google Calendar sync failures.
 
 - **Booking-page times now follow the visitor's own device.** Times were
   formatted using the page's display language, so bare `en` meant US defaults
