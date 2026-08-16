@@ -29,6 +29,20 @@ Merged but not yet in a tagged release.
   render in your configured timezone, and remain readable with JavaScript
   disabled. The same bug also affected the public cancel and guest-decline
   pages, which invitees do see. ([#122](https://github.com/asm0dey/calit/pull/122))
+- **Google Calendar sync now says why it failed.** Every failure on the Google
+  path was swallowed silently, so anyone hitting "Couldn't reach Google for one
+  or more accounts" on `/me/google` found nothing in their container logs and
+  had nothing to report. calit now logs at each of those points — a failed
+  calendar list, a refused token refresh, a revoked account — and puts Google's
+  own status and message on the first line, so a `403 Calendar API has not been
+  used in project N` is no longer buried in a cause chain. A single startup line
+  reports the effective client id, redirect URIs and scope; the client secret is
+  only ever reported as set or missing. No secrets are logged. For more detail,
+  set `QUARKUS_LOG_CATEGORY__SITE_ASM0DEY_CALIT_GOOGLE__LEVEL=DEBUG` — see
+  [Google OAuth → Troubleshooting](/calit/installation/google-oauth/#troubleshooting).
+  ([#98](https://github.com/asm0dey/calit/issues/98))
+- **Dependencies.** Quarkus 3.38.2, BouncyCastle 1.85.2, and refreshed Liberica
+  and PostgreSQL base images.
 
 ## 1.19.0
 
