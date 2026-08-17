@@ -10,7 +10,24 @@ Set the days and hours you are generally available each week. These are your bas
 
 ![Weekly availability editor](/calit/img/availability.png)
 
-Rules can be global (apply to all your meeting types) or scoped to a specific meeting type.
+Each day can hold several time frames, and the copy buttons mirror one day onto the others. A day with no frames is a day you are not available.
+
+### Global hours and per-meeting-type hours
+
+You have one **global** weekly schedule (`/me/availability`), and each meeting type can keep a schedule **of its own** (on the meeting type's page, under *Working hours*).
+
+- A meeting type with **no hours of its own** follows your global schedule. Change the global grid later and that type follows along.
+- A meeting type **with any hours of its own** is driven by that grid alone: it is bookable exactly when its own grid says so, and a weekday you leave blank there is **not bookable for that type** — your global hours do not fill the gap.
+
+So to say *"this meeting type is never available on Thursdays"*, open the type's *Working hours*, clear Thursday with **Remove availability**, and save. Every other day keeps its frames.
+
+To make this switch obvious, a meeting type that has no hours of its own opens with its grid already **filled in with your global hours**. Nothing is stored until you press *Save working hours*; saving turns those hours into that type's own schedule, and from then on the grid is the whole truth for that type.
+
+:::caution[Upgrading from 1.20.x or earlier]
+Earlier versions filled a blank weekday in a meeting type's grid with your global hours for that weekday. A type configured for, say, Monday and Tuesday only was still bookable on every other day your global schedule covered.
+
+After upgrading, such a type is bookable **only** on the days its own grid lists. If you relied on the old behaviour, open each affected meeting type and add the missing days (the copy buttons make this quick). Meeting types with no hours of their own are unaffected.
+:::
 
 ## Date overrides
 
@@ -29,7 +46,7 @@ Like rules, overrides can be global or scoped to a single meeting type. A per-ty
 
 When an invitee views your booking page, calit calculates the available slots by:
 
-1. Starting from your weekly availability windows (or the date override if one exists for that day).
+1. Starting from that meeting type's own weekly windows — or your global ones if the type has none — or the date override if one exists for that day.
 2. Subtracting time blocked by existing confirmed or pending bookings, plus any buffer-before and buffer-after configured on the meeting type.
 3. Discarding slots that fall within the **minimum notice** window (too soon to book).
 4. Discarding slots beyond the **booking horizon** (too far in the future).
