@@ -48,7 +48,7 @@ class ApproveDeclineTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                         anyLong(), anyString(), anyString(), eq(SLOT_09), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-ap", "https://meet.google.com/ap-1-2", "h"));
+                .thenReturn(new CreatedEvent("evt-ap", "https://meet.google.com/ap-1-2", "h", null));
 
         Booking b = bookingService.book(
                 1L, "approve", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());

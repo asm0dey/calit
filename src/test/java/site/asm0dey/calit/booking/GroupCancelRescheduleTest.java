@@ -80,7 +80,7 @@ class GroupCancelRescheduleTest {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt", "meet", "cal"));
+                .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
     }
 
     // --- (a) cancel: any host cancels -> all rows CANCELLED, deleteEvent called once ---
@@ -103,7 +103,7 @@ class GroupCancelRescheduleTest {
         bookingService.cancel(cohostRow.manageToken, true);
 
         Booking.<Booking>group(lead.groupId).forEach(r -> assertEquals(BookingStatus.CANCELLED, r.status));
-        verify(calendarPort, times(1)).deleteEvent(1L, "evt");
+        verify(calendarPort, times(1)).deleteEvent(1L, null, "evt");
         assertNull(Booking.<Booking>leadOfGroup(lead.groupId, 1L).googleEventId);
     }
 
@@ -131,7 +131,7 @@ class GroupCancelRescheduleTest {
         assertDoesNotThrow(() -> bookingService.cancel(cohostRow.manageToken, true));
 
         Booking.<Booking>group(lead.groupId).forEach(r -> assertEquals(BookingStatus.CANCELLED, r.status));
-        verify(calendarPort, never()).deleteEvent(anyLong(), anyString());
+        verify(calendarPort, never()).deleteEvent(anyLong(), any(), anyString());
         assertNull(Booking.<Booking>leadOfGroup(lead.groupId, 1L).googleEventId);
     }
 
@@ -160,7 +160,7 @@ class GroupCancelRescheduleTest {
             assertNull(r.googleEventId);
             assertNull(r.meetLink);
         });
-        verify(calendarPort, times(1)).deleteEvent(anyLong(), anyString());
+        verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), anyString());
         // no second event is created on a re-approval reschedule
         verify(calendarPort, times(1))
                 .createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
@@ -198,7 +198,7 @@ class GroupCancelRescheduleTest {
                 assertEquals(BookingStatus.PENDING, r.status, "other hosts revert to pending");
             }
         }
-        verify(calendarPort, times(1)).deleteEvent(anyLong(), anyString());
+        verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), anyString());
         assertNull(Booking.<Booking>leadOfGroup(lead.groupId, 1L).googleEventId);
     }
 
@@ -209,7 +209,7 @@ class GroupCancelRescheduleTest {
     void singleHostOwnerRescheduleOfApprovalTypeStaysConfirmed() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-s", "meet-s", "cal-s"));
+                .thenReturn(new CreatedEvent("evt-s", "meet-s", "cal-s", null));
         singleHostType("solo-approval", true);
 
         Booking b = bookingService.book(
@@ -223,8 +223,8 @@ class GroupCancelRescheduleTest {
         assertEquals(BookingStatus.CONFIRMED, loaded.status, "owner-initiated reschedule stays confirmed");
         assertEquals(nextMonday(13), loaded.startUtc);
         assertNotNull(loaded.googleEventId, "the event is patched in place, not dropped");
-        verify(calendarPort, times(1)).updateEvent(anyLong(), eq("evt-s"), eq(nextMonday(13)), any(), any());
-        verify(calendarPort, never()).deleteEvent(anyLong(), anyString());
+        verify(calendarPort, times(1)).updateEvent(anyLong(), any(), eq("evt-s"), eq(nextMonday(13)), any(), any());
+        verify(calendarPort, never()).deleteEvent(anyLong(), any(), anyString());
     }
 
     @Test
@@ -232,7 +232,7 @@ class GroupCancelRescheduleTest {
     void singleHostInviteeRescheduleOfApprovalTypeRevertsToPending() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-s2", "meet-s2", "cal-s2"));
+                .thenReturn(new CreatedEvent("evt-s2", "meet-s2", "cal-s2", null));
         singleHostType("solo-approval-2", true);
 
         Booking b = bookingService.book(
@@ -246,8 +246,8 @@ class GroupCancelRescheduleTest {
         assertEquals(BookingStatus.PENDING, loaded.status, "invitee-initiated reschedule reverts to pending");
         assertNull(loaded.googleEventId, "prior event is deleted on re-request");
         assertNull(loaded.meetLink);
-        verify(calendarPort, times(1)).deleteEvent(anyLong(), eq("evt-s2"));
-        verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any());
+        verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), eq("evt-s2"));
+        verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any(), any());
     }
 
     // --- (e) Task 11 review fix: group reschedule to an adjacent slot must not be falsely rejected
@@ -304,7 +304,7 @@ class GroupCancelRescheduleTest {
             assertEquals(BookingStatus.CONFIRMED, r.status, "auto-confirm group reschedule stays confirmed");
             assertEquals(nextMonday(15), r.startUtc);
         });
-        verify(calendarPort, times(1)).deleteEvent(1L, "evt");
+        verify(calendarPort, times(1)).deleteEvent(1L, null, "evt");
         verify(calendarPort, times(2))
                 .createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
         assertEquals(rescheduledBefore + 1, RESCHEDULED.get(), "BookingRescheduled fired once");

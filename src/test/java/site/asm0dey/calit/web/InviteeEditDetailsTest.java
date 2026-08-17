@@ -85,7 +85,7 @@ class InviteeEditDetailsTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-ie", "https://meet.google.com/ie", "h"));
+                .thenReturn(new CreatedEvent("evt-ie", "https://meet.google.com/ie", "h", null));
         var token = seed();
         given().when()
                 .get("/booking/" + token + "/manage")

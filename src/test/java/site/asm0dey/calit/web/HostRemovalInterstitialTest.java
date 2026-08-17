@@ -71,7 +71,7 @@ class HostRemovalInterstitialTest {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt", "meet", "cal"));
+                .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
     }
 
     @Test

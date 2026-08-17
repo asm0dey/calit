@@ -85,7 +85,7 @@ class ManageBookingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-m", "https://meet.google.com/manage-link", "h"));
+                .thenReturn(new CreatedEvent("evt-m", "https://meet.google.com/manage-link", "h", null));
         var token = seedBooking();
 
         given().when()
@@ -117,7 +117,7 @@ class ManageBookingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-m3", "https://meet.google.com/manage-link3", "h"));
+                .thenReturn(new CreatedEvent("evt-m3", "https://meet.google.com/manage-link3", "h", null));
         var token = seedBooking();
 
         // Pull a reschedule slot's absolute UTC instant from the manage page's radio value,
@@ -147,7 +147,7 @@ class ManageBookingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-m2", "https://meet.google.com/manage-link2", "h"));
+                .thenReturn(new CreatedEvent("evt-m2", "https://meet.google.com/manage-link2", "h", null));
         var token = seedBooking();
 
         given().contentType("application/x-www-form-urlencoded")

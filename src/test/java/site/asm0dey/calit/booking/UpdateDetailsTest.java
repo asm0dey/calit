@@ -71,7 +71,7 @@ class UpdateDetailsTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-ud", null, "h"));
+                .thenReturn(new CreatedEvent("evt-ud", null, "h", null));
         Booking b = seedConfirmed("upd-1");
         int beforeSeq = b.icsSequence;
 
@@ -82,7 +82,8 @@ class UpdateDetailsTest {
         assertEquals("Q3 planning", after.description);
         assertTrue(after.icsSequence > beforeSeq, "sequence bumped");
         verify(calendarPort, times(1))
-                .updateEventDetails(anyLong(), eq("evt-ud"), eq("Roadmap sync with Pat"), eq("Q3 planning"), any());
+                .updateEventDetails(
+                        anyLong(), any(), eq("evt-ud"), eq("Roadmap sync with Pat"), eq("Q3 planning"), any());
     }
 
     @Test
@@ -115,7 +116,7 @@ class UpdateDetailsTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-noop", null, "h"));
+                .thenReturn(new CreatedEvent("evt-noop", null, "h", null));
         Booking b = seedConfirmed("upd-4"); // no override, no guests
         int beforeSeq = b.icsSequence;
         clearInvocations(calendarPort);
@@ -125,7 +126,7 @@ class UpdateDetailsTest {
 
         Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findById(b.id));
         assertEquals(beforeSeq, after.icsSequence, "no-op must not bump the sequence");
-        verify(calendarPort, never()).updateEventDetails(anyLong(), any(), any(), any(), any());
+        verify(calendarPort, never()).updateEventDetails(anyLong(), any(), any(), any(), any(), any());
     }
 
     @Test

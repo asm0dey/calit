@@ -38,20 +38,36 @@ public interface CalendarPort {
             boolean createMeetLink,
             String locationText);
 
-    /** Move an existing event to a new time window and replace its attendee list (reschedule / guest sync); {@code sendUpdates=all}. A null or empty attendee list leaves attendees unchanged. */
-    void updateEvent(Long ownerId, String eventId, Instant start, Instant end, List<String> attendeeEmails);
+    /**
+     * Move an existing event to a new time window and replace its attendee list (reschedule / guest
+     * sync); {@code sendUpdates=all}. A null or empty attendee list leaves attendees unchanged.
+     *
+     * @param ref where the event lives; null resolves the owner's default write target (pre-V26 rows)
+     */
+    void updateEvent(
+            Long ownerId, CalendarRef ref, String eventId, Instant start, Instant end, List<String> attendeeEmails);
 
     /**
-     * Patch an existing event's summary + description (and re-sync attendees), leaving its time untouched;
-     * {@code sendUpdates=all} so Google re-notifies everyone. Used when the host/invitee edits the meeting's
-     * name, description, or guest list. A null or empty attendee list leaves attendees unchanged.
+     * Patch an existing event's summary + description (and re-sync attendees), leaving its time
+     * untouched; {@code sendUpdates=all} so Google re-notifies everyone. Used when the host/invitee
+     * edits the meeting's name, description, or guest list. A null or empty attendee list leaves
+     * attendees unchanged.
+     *
+     * @param ref where the event lives; null resolves the owner's default write target (pre-V26 rows)
      */
     void updateEventDetails(
-            Long ownerId, String eventId, String summary, String description, List<String> attendeeEmails);
+            Long ownerId,
+            CalendarRef ref,
+            String eventId,
+            String summary,
+            String description,
+            List<String> attendeeEmails);
 
     /**
-     * Remove an existing event (cancel); {@code sendUpdates=all}. This operation is idempotent: an event
-     * that is already gone on the provider's side counts as success.
+     * Remove an existing event (cancel); {@code sendUpdates=all}. This operation is idempotent: an
+     * event that is already gone on the provider's side counts as success.
+     *
+     * @param ref where the event lives; null resolves the owner's default write target (pre-V26 rows)
      */
-    void deleteEvent(Long ownerId, String eventId);
+    void deleteEvent(Long ownerId, CalendarRef ref, String eventId);
 }

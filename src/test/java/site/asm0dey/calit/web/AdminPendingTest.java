@@ -86,7 +86,7 @@ class AdminPendingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-p", "https://meet.google.com/pending", "h"));
+                .thenReturn(new CreatedEvent("evt-p", "https://meet.google.com/pending", "h", null));
         var id = seedPendingBooking();
 
         given().cookie("quarkus-credential", FormAuth.login())
@@ -106,7 +106,7 @@ class AdminPendingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-a", "https://meet.google.com/approved", "h"));
+                .thenReturn(new CreatedEvent("evt-a", "https://meet.google.com/approved", "h", null));
         var id = seedPendingBooking();
 
         given().cookie("quarkus-credential", FormAuth.login())

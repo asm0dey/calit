@@ -119,7 +119,11 @@ public class GoogleCalendarPort implements CalendarPort {
         try {
             Event created = insert(cred, target, event, createMeetLink);
             String meetLink = createMeetLink ? extractMeetLink(created) : null;
-            return new CreatedEvent(created.getId(), meetLink, created.getHtmlLink());
+            return new CreatedEvent(
+                    created.getId(),
+                    meetLink,
+                    created.getHtmlLink(),
+                    new CalendarRef(cred.id, target.googleCalendarId));
         } catch (GoogleJsonResponseException e) {
             return handleCreateFailure(e, cred, target, event, createMeetLink);
         } catch (IOException e) {
@@ -195,7 +199,8 @@ public class GoogleCalendarPort implements CalendarPort {
         event.setConferenceData(null);
         try {
             Event created = insert(cred, target, event, false);
-            return new CreatedEvent(created.getId(), null, created.getHtmlLink());
+            return new CreatedEvent(
+                    created.getId(), null, created.getHtmlLink(), new CalendarRef(cred.id, target.googleCalendarId));
         } catch (IOException ex) {
             throw new UncheckedIOException("createEvent failed", ex);
         }
@@ -225,10 +230,9 @@ public class GoogleCalendarPort implements CalendarPort {
 
     @Override
     @Transactional
-    public void updateEvent(Long ownerId, String eventId, Instant start, Instant end, List<String> attendeeEmails) {
-        var ctx = writeContext(ownerId);
-        GoogleCalendar target = ctx.target();
-        GoogleCredential cred = ctx.cred();
+    public void updateEvent(
+            Long ownerId, CalendarRef ref, String eventId, Instant start, Instant end, List<String> attendeeEmails) {
+        var addr = writeAddress(ownerId, ref);
         Event patch = new Event().setStart(eventTime(ownerId, start)).setEnd(eventTime(ownerId, end));
         if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
             patch.setAttendees(attendeeEmails.stream()
@@ -237,9 +241,9 @@ public class GoogleCalendarPort implements CalendarPort {
         }
         try {
             // sendUpdates=all so Google emails attendees the new time and notifies anyone added/removed.
-            client(cred)
+            client(addr.cred())
                     .events()
-                    .patch(target.googleCalendarId, eventId, patch)
+                    .patch(addr.calendarId(), eventId, patch)
                     .setSendUpdates("all")
                     .execute();
         } catch (IOException e) {
@@ -250,10 +254,13 @@ public class GoogleCalendarPort implements CalendarPort {
     @Override
     @Transactional
     public void updateEventDetails(
-            Long ownerId, String eventId, String summary, String description, List<String> attendeeEmails) {
-        var ctx = writeContext(ownerId);
-        GoogleCalendar target = ctx.target();
-        GoogleCredential cred = ctx.cred();
+            Long ownerId,
+            CalendarRef ref,
+            String eventId,
+            String summary,
+            String description,
+            List<String> attendeeEmails) {
+        var addr = writeAddress(ownerId, ref);
         Event patch = new Event().setSummary(summary).setDescription(description);
         if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
             patch.setAttendees(attendeeEmails.stream()
@@ -261,9 +268,9 @@ public class GoogleCalendarPort implements CalendarPort {
                     .toList());
         }
         try {
-            client(cred)
+            client(addr.cred())
                     .events()
-                    .patch(target.googleCalendarId, eventId, patch)
+                    .patch(addr.calendarId(), eventId, patch)
                     .setSendUpdates("all")
                     .execute();
         } catch (IOException e) {
@@ -273,15 +280,13 @@ public class GoogleCalendarPort implements CalendarPort {
 
     @Override
     @Transactional
-    public void deleteEvent(Long ownerId, String eventId) {
-        var ctx = writeContext(ownerId);
-        GoogleCalendar target = ctx.target();
-        GoogleCredential cred = ctx.cred();
+    public void deleteEvent(Long ownerId, CalendarRef ref, String eventId) {
+        var addr = writeAddress(ownerId, ref);
         try {
             // sendUpdates=all so Google emails the attendees the cancellation.
-            client(cred)
+            client(addr.cred())
                     .events()
-                    .delete(target.googleCalendarId, eventId)
+                    .delete(addr.calendarId(), eventId)
                     .setSendUpdates("all")
                     .execute();
         } catch (GoogleJsonResponseException e) {
@@ -294,8 +299,12 @@ public class GoogleCalendarPort implements CalendarPort {
             }
             org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class)
                     .infof(
-                            "Google event %s on calendar %s (owner %d) was already deleted (HTTP %d); treating delete as done",
-                            eventId, target.googleCalendarId, ownerId, e.getStatusCode());
+                            "Google event %s on calendar %s (owner %d, address %s) was already deleted (HTTP %d); treating delete as done",
+                            eventId,
+                            addr.calendarId(),
+                            ownerId,
+                            addr.stored() ? "stored" : "default-write-target",
+                            e.getStatusCode());
         } catch (IOException e) {
             throw new UncheckedIOException("deleteEvent failed", e);
         }
@@ -319,6 +328,26 @@ public class GoogleCalendarPort implements CalendarPort {
             throw new IllegalStateException("Write-target calendar has no credential; reconnect Google.");
         }
         return new WriteContext(target, cred);
+    }
+
+    /** A calendar id to write on plus the credential that authenticates it. */
+    private record WriteAddress(String calendarId, GoogleCredential cred, boolean stored) {}
+
+    /**
+     * The address to write at: the stored one when it is usable, else the owner's default write
+     * target. A stored ref is unusable when the account was disconnected (credential id nulled by
+     * the FK, or the row is gone) or when it belongs to another owner — both degrade to the
+     * pre-calit-rma2 behaviour rather than failing the call.
+     */
+    private WriteAddress writeAddress(Long ownerId, CalendarRef ref) {
+        if (ref != null && ref.googleCalendarId() != null && ref.credentialId() != null) {
+            GoogleCredential cred = GoogleCredential.findById(ref.credentialId());
+            if (cred != null && ownerId.equals(cred.ownerId)) {
+                return new WriteAddress(ref.googleCalendarId(), cred, true);
+            }
+        }
+        var ctx = writeContext(ownerId);
+        return new WriteAddress(ctx.target().googleCalendarId, ctx.cred(), false);
     }
 
     /**

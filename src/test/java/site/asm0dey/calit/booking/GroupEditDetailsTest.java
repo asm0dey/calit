@@ -21,7 +21,9 @@ import site.asm0dey.calit.booking.events.BookingDetailsChanged;
 import site.asm0dey.calit.booking.events.GuestRemoved;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.google.CalendarRef;
 import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
 
@@ -70,13 +72,30 @@ class GroupEditDetailsTest {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("grp-evt", "meet", "cal"));
+                .thenReturn(new CreatedEvent("grp-evt", "meet", "cal", null));
+    }
+
+    /** Seed a real GoogleCredential row so a group event row's google_credential_id FK holds. */
+    private static GoogleCredential seedCredential(String sub) {
+        GoogleCredential cred = new GoogleCredential();
+        cred.ownerId = 1L;
+        cred.refreshToken = "rt";
+        cred.googleSub = sub;
+        cred.persist();
+        return cred;
     }
 
     @Test
     @io.quarkus.test.TestTransaction
     void groupEditWritesTitleToAllRowsPatchesEventOnceAndReconcilesGuestsOnLeadOnly() {
         stubOrganizerOnCreator();
+        // Report a real stored calendar ref (not the null pre-V26 shape stubOrganizerOnCreator()
+        // defaults to) so the group's event row carries one, and the later patch can be verified
+        // to address it specifically rather than "whatever ref, if any".
+        GoogleCredential cred = seedCredential("sub-group-details");
+        CalendarRef ref = new CalendarRef(cred.id, "grp-cal@example.com");
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+                .thenReturn(new CreatedEvent("grp-evt", "meet", "cal", ref));
         groupType(); // auto-confirm -> event created immediately
 
         Booking lead = bookingService.book(
@@ -107,9 +126,11 @@ class GroupEditDetailsTest {
                 .forEach(r ->
                         assertEquals(seqBefore.get(r.id) + 1, r.icsSequence, "icsSequence must bump on row " + r.id));
 
-        // the shared Google event is patched exactly once, via the organizer (creator, owner id 1).
+        // the shared Google event is patched exactly once, via the organizer (creator, owner id 1),
+        // addressed at the ref the event was actually created on.
         verify(calendarPort, times(1))
-                .updateEventDetails(eq(1L), eq("grp-evt"), eq("Roadmap sync with Sam"), eq("Q3 planning"), anyList());
+                .updateEventDetails(
+                        eq(1L), eq(ref), eq("grp-evt"), eq("Roadmap sync with Sam"), eq("Q3 planning"), anyList());
 
         // guests reconcile on the lead row only.
         Booking freshLead = Booking.leadOfGroup(lead.groupId, 1L);
@@ -157,7 +178,8 @@ class GroupEditDetailsTest {
             assertEquals("Roadmap sync", r.title);
             assertEquals("Q3 planning", r.description);
         });
-        verify(calendarPort, never()).updateEventDetails(anyLong(), anyString(), anyString(), anyString(), anyList());
+        verify(calendarPort, never())
+                .updateEventDetails(anyLong(), any(), anyString(), anyString(), anyString(), anyList());
         assertEquals(detailsChangedBefore + 1, DETAILS_CHANGED.get());
     }
 
@@ -195,6 +217,31 @@ class GroupEditDetailsTest {
 
     @Test
     @io.quarkus.test.TestTransaction
+    void groupEditWhenNoHostEverHadGoogleSkipsTheRemotePatch() {
+        // Neither host is Google-connected at booking time, so createGroupGoogleEvent's organizer
+        // lookup comes back null and no row ever gets a googleEventId -> groupEventRow(...) is null.
+        // updateGroupDetails's `eventRow != null && ...` guard must short-circuit on that null, not
+        // dereference eventRow.ownerId.
+        groupType();
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+
+        Booking lead = bookingService.book(
+                1L, "intro", nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+        Booking.<Booking>group(lead.groupId).forEach(r -> assertNull(r.googleEventId));
+
+        assertDoesNotThrow(() -> bookingService.updateDetails(
+                lead.manageToken, "Roadmap sync", "Q3 planning", List.of("ana@x.com"), true));
+
+        Booking.<Booking>group(lead.groupId).forEach(r -> {
+            assertEquals("Roadmap sync", r.title);
+            assertEquals("Q3 planning", r.description);
+        });
+        verify(calendarPort, never())
+                .updateEventDetails(anyLong(), any(), anyString(), anyString(), anyString(), anyList());
+    }
+
+    @Test
+    @io.quarkus.test.TestTransaction
     void groupEditByCohostOrganizerPatchesEventViaCohostOwnerId() {
         // Creator NOT connected to Google, co-host IS -> co-host is the organizer of the shared event.
         MultiHostFixtures.settings(1L, "pasha");
@@ -207,7 +254,7 @@ class GroupEditDetailsTest {
         when(calendarPort.isConnected(1L)).thenReturn(false);
         when(calendarPort.isConnected(v.id)).thenReturn(true);
         when(calendarPort.createEvent(eq(v.id), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("grp-evt-cohost", "meet", "cal"));
+                .thenReturn(new CreatedEvent("grp-evt-cohost", "meet", "cal", null));
 
         Booking lead = bookingService.book(
                 1L, "intro", nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
@@ -216,6 +263,6 @@ class GroupEditDetailsTest {
 
         verify(calendarPort, times(1))
                 .updateEventDetails(
-                        eq(v.id), eq("grp-evt-cohost"), eq("Cohost organized with Sam"), eq("desc"), anyList());
+                        eq(v.id), any(), eq("grp-evt-cohost"), eq("Cohost organized with Sam"), eq("desc"), anyList());
     }
 }

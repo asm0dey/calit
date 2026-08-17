@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.google.CalendarRef;
 
 @Entity
 @Table(name = "booking")
@@ -38,6 +39,14 @@ public class Booking extends PanacheEntityBase {
 
     @Column(name = "google_event_id")
     public String googleEventId;
+
+    /** Google's calendar id for {@link #googleEventId}; null on rows created before V26. */
+    @Column(name = "google_calendar_id", columnDefinition = "text")
+    public String googleCalendarId;
+
+    /** The connected account the event was created with; nulled when that account is disconnected. */
+    @Column(name = "google_credential_id")
+    public Long googleCredentialId;
 
     @Column(name = "meet_link", length = 512)
     public String meetLink;
@@ -141,6 +150,11 @@ public class Booking extends PanacheEntityBase {
             return description;
         }
         return (type.description != null && !type.description.isBlank()) ? type.description : null;
+    }
+
+    /** This row's Google event address, or null when unknown (pre-V26 rows) — see {@link CalendarRef}. */
+    public CalendarRef calendarRef() {
+        return googleCalendarId == null ? null : new CalendarRef(googleCredentialId, googleCalendarId);
     }
 
     /** Feature 16: how many bookings this invitee email created in [dayStart, dayEnd). */
