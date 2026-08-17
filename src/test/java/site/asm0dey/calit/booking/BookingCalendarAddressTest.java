@@ -46,16 +46,12 @@ class BookingCalendarAddressTest {
     private static final LocalDate DAY =
             Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
     private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant();
+    private static final Instant SLOT_10 = DAY.atTime(10, 0).atZone(ZONE).toInstant();
 
     @Test
     @TestTransaction
     void storesAndReadsBackTheEventAddress() {
-        // google_credential_id carries a real FK to google_credential(id); seed a row so the FK holds.
-        GoogleCredential cred = new GoogleCredential();
-        cred.ownerId = 1L;
-        cred.refreshToken = "rt";
-        cred.googleSub = "sub-address-test";
-        cred.persist();
+        GoogleCredential cred = seedCredential("sub-address-test");
 
         Booking b = seed();
         b.googleEventId = "evt-1";
@@ -80,12 +76,7 @@ class BookingCalendarAddressTest {
     @Test
     @TestTransaction
     void bookingRecordsTheCalendarTheEventWasCreatedOn() {
-        // google_credential_id carries a real FK to google_credential(id); seed a row so the FK holds.
-        GoogleCredential cred = new GoogleCredential();
-        cred.ownerId = 1L;
-        cred.refreshToken = "rt";
-        cred.googleSub = "sub-created-test";
-        cred.persist();
+        GoogleCredential cred = seedCredential("sub-created-test");
 
         stubGoogle(new CalendarRef(cred.id, "work@example.com"), "evt-created");
 
@@ -99,12 +90,7 @@ class BookingCalendarAddressTest {
     @Test
     @TestTransaction
     void cancelDeletesOnTheStoredCalendar() {
-        // google_credential_id carries a real FK to google_credential(id); seed a row so the FK holds.
-        GoogleCredential cred = new GoogleCredential();
-        cred.ownerId = 1L;
-        cred.refreshToken = "rt";
-        cred.googleSub = "sub-cancel-test";
-        cred.persist();
+        GoogleCredential cred = seedCredential("sub-cancel-test");
 
         CalendarRef ref = new CalendarRef(cred.id, "work@example.com");
         stubGoogle(ref, "evt-cancel");
@@ -126,6 +112,31 @@ class BookingCalendarAddressTest {
         verify(calendarPort).deleteEvent(eq(booked.ownerId), isNull(), eq("evt-old"));
     }
 
+    @Test
+    @TestTransaction
+    void rescheduleOfAnApprovalTypeDeletesOnTheStoredCalendar() {
+        // Task 4 Step 4: an invitee-initiated reschedule of an approval type re-enters PENDING and
+        // deletes the prior Google event. `priorRef` in BookingService.reschedule/applyRescheduleOutcome
+        // must be captured BEFORE the re-approval block clears googleCalendarId/googleCredentialId --
+        // otherwise the delete would address the wrong (cleared/null) ref.
+        GoogleCredential cred = seedCredential("sub-resched-test");
+        CalendarRef ref = new CalendarRef(cred.id, "work@example.com");
+        stubGoogle(ref, "evt-resched");
+        Booking booked = bookAnySlot("addr-resched", true);
+        bookingService.approve(booked.id);
+
+        // Invitee-initiated (byOwner defaults false) -> triggers re-approval.
+        bookingService.reschedule(booked.manageToken, SLOT_10);
+
+        verify(calendarPort).deleteEvent(eq(booked.ownerId), eq(ref), eq("evt-resched"));
+
+        Booking loaded = Booking.findById(booked.id);
+        assertEquals(BookingStatus.PENDING, loaded.status);
+        assertNull(loaded.googleEventId);
+        assertNull(loaded.googleCalendarId);
+        assertNull(loaded.googleCredentialId);
+    }
+
     /** Google connected, no busy time, createEvent returning an event at the given address. */
     private void stubGoogle(CalendarRef address, String eventId) {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
@@ -137,6 +148,11 @@ class BookingCalendarAddressTest {
 
     /** Seed owner settings + a 09:00-11:00 type on DAY, then book the 09:00 slot. */
     private Booking bookAnySlot(String slug) {
+        return bookAnySlot(slug, false);
+    }
+
+    /** Seed owner settings + a 09:00-11:00 type on DAY, then book the 09:00 slot. */
+    private Booking bookAnySlot(String slug, boolean requiresApproval) {
         OwnerSettings s = OwnerSettings.forOwner(1L);
         if (s == null) {
             s = new OwnerSettings();
@@ -155,6 +171,7 @@ class BookingCalendarAddressTest {
         t.minNoticeMinutes = 0;
         t.horizonDays = 50_000;
         t.locationType = MeetingType.LocationType.GOOGLE_MEET;
+        t.requiresApproval = requiresApproval;
         t.persist();
 
         AvailabilityRule r = new AvailabilityRule();
@@ -166,6 +183,16 @@ class BookingCalendarAddressTest {
         r.persist();
 
         return bookingService.book(1L, slug, SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+    }
+
+    /** Seed a real GoogleCredential row so a booking's google_credential_id FK holds. */
+    private static GoogleCredential seedCredential(String sub) {
+        GoogleCredential cred = new GoogleCredential();
+        cred.ownerId = 1L;
+        cred.refreshToken = "rt";
+        cred.googleSub = sub;
+        cred.persist();
+        return cred;
     }
 
     /** Minimal valid booking row for owner 1 (the always-present admin), on a type it also owns. */
