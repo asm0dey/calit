@@ -1,11 +1,11 @@
 ---
 # calit-tuwd
 title: 'Fix SonarCloud coverage gate on PR #133'
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-08-17T09:01:52Z
-updated_at: 2026-08-17T09:35:56Z
+updated_at: 2026-08-17T09:37:22Z
 ---
 
 Add test-only coverage for GoogleCalendarPort.updateEvent/updateEventDetails, writeAddress fallback branches, group-details null guard, and declineGuest stored-ref path. No production code changes.
@@ -28,5 +28,10 @@ Add test-only coverage for GoogleCalendarPort.updateEvent/updateEventDetails, wr
 - [x] Run spotless:apply
 - [x] Run full suite (842 tests, 0 failures)
 - [x] Confirm git diff e51fb13 -- src/main is empty
-- [ ] Commit
-- [ ] Write report file
+- [x] Commit (2211245)
+- [x] Write report file
+
+
+
+## Summary of Changes
+Added test-only coverage to close the SonarCloud new_coverage gate on PR #133. Commit 2211245. 842 tests total (835 pre-existing + 7 new), 0 failures. git diff e51fb13..HEAD touches only test files + this bean file; src/main unchanged. Full RED/GREEN evidence in .superpowers/sdd/rma2-coverage-fix-report.md.
