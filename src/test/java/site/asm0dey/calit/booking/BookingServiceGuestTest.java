@@ -20,7 +20,9 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.google.CalendarRef;
 import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.google.GoogleCredential;
 
 @QuarkusTest
 class BookingServiceGuestTest {
@@ -258,7 +260,55 @@ class BookingServiceGuestTest {
                         eq(List.of("sam@example.com", "owner@example.com", "g2@example.com")));
     }
 
+    @Test
+    @TestTransaction
+    void declineGuestAddressesTheEventOnTheBookingsStoredCalendarRef() {
+        // declineGuest reads the owner id off the guest row and the calendar ref off the booking
+        // row -- two different objects. Prove both are wired correctly (not, say, the owner's
+        // current write target) by giving the booking a distinct stored ref and asserting the
+        // patch is addressed there.
+        seedSettings();
+        meetingTypeWithMondayWindow("guest-decline-ref", LocationType.GOOGLE_MEET, false);
+        GoogleCredential cred = seedCredential("sub-guest-decline-ref");
+        CalendarRef ref = new CalendarRef(cred.id, "stored@example.com");
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+                .thenReturn(new CreatedEvent("evt-ref", null, "https://calendar.google.com/evt-ref", ref));
+
+        Booking b = bookingService.book(
+                1L,
+                "guest-decline-ref",
+                SLOT_09,
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok-ref",
+                "",
+                "en",
+                List.of("g1@example.com"));
+
+        BookingGuest g1 = BookingGuest.<BookingGuest>allForBooking(b.id).stream()
+                .filter(g -> g.email.equals("g1@example.com"))
+                .findFirst()
+                .orElseThrow();
+
+        bookingService.declineGuest(g1.declineToken);
+
+        verify(calendarPort, times(1)).updateEvent(eq(1L), eq(ref), eq("evt-ref"), any(), any(), any());
+    }
+
     // --- helpers ---
+
+    /** Seed a real GoogleCredential row so a booking's google_credential_id FK holds. */
+    private static GoogleCredential seedCredential(String sub) {
+        GoogleCredential cred = new GoogleCredential();
+        cred.ownerId = 1L;
+        cred.refreshToken = "rt";
+        cred.googleSub = sub;
+        cred.persist();
+        return cred;
+    }
 
     private void seedSettings() {
         // Idempotent upsert: a non-@TestTransaction REST test (MeetingTypeResourceTest PUT /api/settings)
