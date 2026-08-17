@@ -1,11 +1,11 @@
 ---
 # calit-6a7z
 title: 'GH #127: booking page does not honor per-type working hours'
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-08-17T07:18:30Z
-updated_at: 2026-08-17T07:54:43Z
+updated_at: 2026-08-17T08:03:10Z
 ---
 
 Upstream report: https://github.com/asm0dey/calit/issues/127 (reporter h200101, on `latest`).
@@ -56,8 +56,16 @@ Facts established from code + screenshots:
 - [x] workplan.js: data-clear-day handler; button in all three grids
 - [x] Reword the working-hours hints + de/he translations for every new/changed string
 - [x] Full suite (823/823) + spotless
-- [ ] docs-site: usage docs for the new semantics
+- [x] docs-site: usage docs + 1.20.2 changelog (ae25408, 45708f1, pushed)
 
 ## Retrofit decision (2026-08-17)
 
 A V26 migration that copied the owner's global hours onto the weekdays a partly-configured type left blank was written, verified against scratch data, then DROPPED on the user's call: an old type with frames on Mon+Tue and none on Thursday should simply become UNAVAILABLE on Thursday. So no data migration ships — old types just take the new semantics. Types with no rules at all keep inheriting the global week live (editing the global grid still propagates to them).
+
+## Summary of Changes
+
+Root cause: `SlotService.Availability.windowsFor` treated a meeting type's weekly rules as a per-WEEKDAY override — a weekday the type left blank fell back to the owner's global rules for that weekday. A type configured Mon+Tue only therefore stayed bookable every day the global grid covered, and no per-type way to close a weekday existed. Original behaviour (first availability commit 25c8073), not a regression; #122 and mis-owned rows were ruled out on the way.
+
+Fix (PR #134, squashed as dd79264): weekly rules are all-or-nothing per type. A type with ANY rule owns its whole week and a blank weekday is closed; a type with NO rules still inherits the global week live. No migration — old partly-configured types simply close the days they never filled in, which is what the reporter wanted. Editor: a type with no hours of its own renders its grid prefilled from the global week (same for a co-host's grid on a shared type), and every day row gained a "Remove availability" button (`workplan.js` `data-clear-day`). Hints reworded, de + he translated. Tests: 823/823, including a red-first `typeWithAnyRuleIsClosedOnTheDaysItLeavesBlank` and `AdminTypeHoursPrefillTest`.
+
+Docs: availability page rewritten with global-vs-per-type semantics and an upgrade caution; 1.20.2 changelog entry. Released as 1.20.2.
