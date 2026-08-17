@@ -5,7 +5,7 @@ status: todo
 type: bug
 priority: normal
 created_at: 2026-08-16T10:07:53Z
-updated_at: 2026-08-16T11:20:22Z
+updated_at: 2026-08-16T22:40:11Z
 blocking:
     - calit-bh5t
 ---
@@ -34,3 +34,7 @@ Shape agreed:
 - Credential id is needed because the calendar id alone carries no token — `writeContext()` (`GoogleCalendarPort.java:311-318`) needs a `GoogleCredential`. Recovering it via `GoogleCalendar.findByGoogleId` is unreliable: the row may be gone (calendar unticked) and the `(credential, calendar)` uniqueness means a shared calendar can match two rows. Credential rows survive reconnect of the same account (`GoogleTokenService:152` upserts by owner+sub); only an explicit disconnect nulls the column, which degrades to todays fallback.
 - DO NOT backfill existing rows. Stamping them with the current write target is a guess that is wrong exactly for the affected bookings, converting honest "unknown" into confident-wrong. NULL = pre-migration, resolve as today.
 - 404 handling becomes three-state: calendar known -> 404 means genuinely hand-deleted (keep the 1.20.1 tolerance); calendar NULL -> unknown, keep todays lenient behaviour.
+
+## Amended 2026-08-17 (from calit-bh5t design)
+
+`booking.google_calendar_id` is **text**, not VARCHAR(255) — same reasoning as the per-type override columns in `docs/superpowers/specs/2026-08-17-per-meeting-type-write-target-design.md`. Entity field needs `@Column(columnDefinition = "text")` (Hibernate runs validate-only).

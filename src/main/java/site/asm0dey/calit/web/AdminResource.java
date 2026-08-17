@@ -642,13 +642,16 @@ public class AdminResource {
         MeetingType t = requireType(id);
         List<BookingField> fields = BookingField.list("meetingTypeId = ?1 order by position", id);
         List<AvailabilityRule> rules = AvailabilityRule.list("meetingTypeId = ?1 order by dayOfWeek", id);
+        // Issue #127: a type with no hours of its own inherits the global week, so PREFILL its grid
+        // with those hours. Saving then materializes "same as global" instead of silently closing
+        // every day the host never touched (the grid is the type's whole week once any row exists).
         List<DateOverride> overrides = overridesForType(id);
         String title = m().adm_meetingTypeDetail_title_prefix().stripTrailing() + " " + t.name;
         return Templates.meetingTypeDetail(
                 t,
                 fields,
                 rules,
-                weekRows(rules),
+                weekRows(rules.isEmpty() ? globalRules() : rules),
                 overrides,
                 hostRows(t),
                 LocationType.values(),

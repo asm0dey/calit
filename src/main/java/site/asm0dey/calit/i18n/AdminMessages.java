@@ -232,7 +232,7 @@ public interface AdminMessages {
     String adm_meetingTypes_section_working_hours();
 
     @Message(
-            "Weekly hours for this meeting type. Leave a day blank to use the global default; fill a day to override it for this type.")
+            "Weekly hours for this meeting type. Leave every day blank to inherit your global default hours; fill any day and these hours become the type's whole week, with the blank days not bookable.")
     String adm_meetingTypes_working_hours_hint();
 
     @Message("to")
@@ -437,8 +437,12 @@ public interface AdminMessages {
     String adm_detail_section_working_hours();
 
     @Message(
-            "Weekly hours for this meeting type. When any frame is set for a day, it replaces the global default hours for that day. Each day can hold several time frames; use the copy buttons to mirror one day, then Save.")
+            "Weekly hours for this meeting type. These hours ARE its week: a day with no frames is not bookable. Until you save them the grid shows your global default hours. Each day can hold several time frames; use the copy buttons to mirror one day, then Save.")
     String adm_detail_working_hours_hint();
+
+    /** Clears one day's frames in a weekly-schedule grid — shared by every workplan grid. */
+    @Message("Remove availability")
+    String adm_workplan_clear_day();
 
     @Message("to")
     String adm_detail_to();
