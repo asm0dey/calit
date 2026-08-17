@@ -80,6 +80,37 @@ class SlotServiceTest {
         assertTrue(slots.isEmpty());
     }
 
+    /**
+     * Issue #127: a type that defines ANY working hours owns its whole week, so a weekday it leaves
+     * blank is CLOSED for that type. The old per-weekday fallback let the owner's global grid leak
+     * back in, which made a Mon/Tue-only type bookable every day the global grid covered.
+     */
+    @Test
+    @TestTransaction
+    void typeWithAnyRuleIsClosedOnTheDaysItLeavesBlank() {
+        seedSettings("Europe/Amsterdam");
+        MeetingType t = meetingType("intro-60", 60);
+        globalRule(WORKDAY.getDayOfWeek(), "09:00", "11:00"); // global opens WORKDAY
+        typedRule(t.id, WORKDAY.getDayOfWeek().plus(1), "13:00", "14:00"); // the type opens only the NEXT day
+
+        List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
+
+        assertTrue(slots.isEmpty());
+    }
+
+    /** A type with no rules of its own still inherits the owner's global week (unchanged). */
+    @Test
+    @TestTransaction
+    void typeWithoutOwnRulesStillUsesGlobalHours() {
+        seedSettings("Europe/Amsterdam");
+        MeetingType t = meetingType("intro-60", 60);
+        globalRule(WORKDAY.getDayOfWeek(), "09:00", "11:00");
+
+        List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
+
+        assertEquals(2, slots.size());
+    }
+
     @Test
     @TestTransaction
     void handlesMultipleWindowsSameDay() {
