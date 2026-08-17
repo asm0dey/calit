@@ -5,7 +5,7 @@ status: todo
 type: feature
 priority: normal
 created_at: 2026-08-16T11:10:11Z
-updated_at: 2026-08-16T22:40:03Z
+updated_at: 2026-08-17T13:42:27Z
 blocked_by:
     - calit-rma2
 ---
@@ -56,3 +56,15 @@ Spec: `docs/superpowers/specs/2026-08-17-per-meeting-type-write-target-design.md
 - Meet gate (AdminResource:604,619) follows the **creator's** resolved calendar only. Co-host overrides do not affect it; a co-host organizer with a non-Meet calendar degrades via the existing `handleCreateFailure`.
 - Co-host UI goes on the existing `/me/shared/{typeId}/availability` page (`SharedMeetingsResource`, next to the per-host buffers form) — no new page.
 - calit-rma2 ships and is verified FIRST, as its own change.
+
+## Grilled 2026-08-17 (design interview)
+
+Plan: `docs/superpowers/plans/2026-08-17-per-meeting-type-write-target.md`.
+
+- **Vocabulary** (`CONTEXT.md`): the Owner-level calendar stays the **write target** (its definition already means "by default"); the new per-(type, host) choice is a **write override**; an override naming a calendar the Host no longer has is a **dangling override**. The earlier plan to rename `GoogleCalendar.writeTarget` -> `defaultWriteTarget` and relabel the Google page is DROPPED — the glossary reserves that phrasing under *Fallback address*.
+- **Disconnect half-row** (`google_credential_id` nulled by the FK, `google_calendar_id` left behind) reads as a DANGLING override, not as "unset": WARN on write, warning alert on the form. The resolver keys "is there an override?" off the calendar id alone.
+- **Never silently erased**: the dangling entry in the picker carries the sentinel value `keep`, so saving anything else on that form round-trips the stored override untouched. Only an explicit pick clears or changes it.
+- **Counted notice on a move**: after a save that changes the write override, the page says how many upcoming bookings stay on the calendar they were created on (`AdminResource.bookingsStayingBehind`). Clearing an override compares against the write target, not null.
+- **Create form gets the picker too**, not just the detail page; no `keep`/dangling state there, and the Meet gate sees the chosen calendar.
+- **Co-host + Meet unchanged**: the gate runs at edit time on the Creator's calendar, and the organizer is only known at booking time, so a Co-host organizer on a non-Meet calendar still degrades via `handleCreateFailure`.
+- ADR written: `docs/adr/0004-the-write-override-names-a-calendar-by-its-google-identity.md`.
