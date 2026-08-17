@@ -1,11 +1,11 @@
 ---
 # calit-rma2
 title: Rotating the Google write target orphans existing booking events
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-08-16T10:07:53Z
-updated_at: 2026-08-16T22:54:09Z
+updated_at: 2026-08-17T08:29:00Z
 blocking:
     - calit-bh5t
 ---
@@ -20,8 +20,8 @@ Raised by the final review of calit-qjqb. The 410/404 tolerance is still right (
 
 - [x] Check the logs / ask whether write-target rotation actually happens in the wild before paying for a schema change — moot: calit-bh5t (per-meeting-type write target) forces the schema change regardless, so the wait-and-see gate is dropped and this bean is promoted out of draft
 - [x] Add a \`google_calendar_id\` column next to \`google_event_id\` on booking (new Flyway V*.sql — never edit an applied migration); NOT backfilled per the design decision below (NULL = unknown, resolve as today) — DONE 2026-08-17 as Task 1 of the rma2 split-plan. V26 adds \`google_calendar_id\`/\`google_credential_id\`, plus \`Booking.calendarRef()\` and \`google.CalendarRef\`. Commit b6bed22.
-- [ ] Address event writes by the stored calendar id, falling back to the write target for pre-migration rows
-- [ ] Decide what a 404 means once the calendar id is known — likely "really gone" (tolerate) vs "wrong calendar" (surface to the owner)
+- [x] Address event writes by the stored calendar id, falling back to the write target for pre-migration rows — DONE 2026-08-17, Tasks 2-4 of the rma2 split-plan (commits 73925b1, e703b37, 02c6605, 1e8c3ef)
+- [x] Decide what a 404 means once the calendar id is known — SPLIT OUT to calit-8dqz. This plan deliberately scoped it to logging the distinction (stored vs default-write-target) and kept 1.20.1 blanket tolerance; the tolerate-vs-surface decision needs field evidence first.
 
 ## Scope settled 2026-08-16
 
@@ -41,3 +41,47 @@ Shape agreed:
 
 
 Port shape decided 2026-08-17: new `record CalendarRef(Long credentialId, String googleCalendarId)` in `google/`; a null ref means "resolve as today" (pre-migration rows). `updateEvent`, `updateEventDetails`, `deleteEvent` take `(ownerId, ref, eventId, ...)`; `CreatedEvent` reports the ref it wrote to so `BookingService` can persist it. calit-bh5t reuses the same type for the create side.
+
+## Summary of Changes
+
+Shipped in PR #133 (branch `feat/per-booking-calendar-address`), 6 code commits over 5 planned tasks.
+
+**Schema.** `V26__booking_calendar_address.sql` adds two nullable columns to `booking`:
+`google_calendar_id text` (Google’s own calendar id string, not the local `google_calendar.id` —
+`CalendarSelectionService.save()` deletes and re-inserts every row per owner on each save, so
+local ids churn) and `google_credential_id bigint REFERENCES google_credential(id) ON DELETE SET NULL`.
+
+**Types.** New `google/CalendarRef(Long credentialId, String googleCalendarId)`.
+`Booking.calendarRef()` returns one, or null. `CreatedEvent` gained a 4th component reporting the
+address the event was actually written to.
+
+**Behaviour.** `CalendarPort.updateEvent` / `updateEventDetails` / `deleteEvent` each take a
+`CalendarRef`. `GoogleCalendarPort.writeAddress(ownerId, ref)` resolves it behind an owner-scope
+guard — a ref that is null, or whose credential row is missing or belongs to another owner, falls
+back to the owner’s current write target rather than throwing. All 7 later-write call sites in
+`BookingService` now pass `booking.calendarRef()`. Reschedule captures `priorRef` *before* the
+re-approval block clears the address, so the delete still reaches the old calendar. Both address
+columns are cleared at exactly the two sites that clear `googleEventId`, and nowhere else.
+`groupEventId` + `organizerOwnerOf` collapsed into one `groupEventRow(UUID)` lookup so id, owner,
+and ref always come from the same row.
+
+**No backfill — deliberate.** NULL means “address unknown, resolve as before”. Stamping existing
+rows with the current write target would be confidently wrong for exactly the bookings this bug
+affects. The rationale is recorded in the migration body, not just the plan.
+
+**Create side unchanged.** `createEvent` still resolves the owner’s default write target; the
+per-meeting-type override is calit-bh5t’s job and reuses `CalendarRef`.
+
+**Verification.** Full suite 827/827 green (run before and after the two folded Renovate bumps),
+`spotless:check` clean, `quarkus:dev` boot applied Flyway through v26 with Hibernate `validate`
+raising no mismatch. Every task passed a spec+quality review; a final whole-branch review confirmed
+the owner-scope guard, migration safety (metadata-only ADD COLUMN; rollback to a pre-V26 app is
+safe under Flyway’s default `*:future` ignore) and the NULL-address paths.
+
+**Split out, not dropped:** calit-8dqz (what a 404 should mean now the calendar is known),
+calit-64hy (disconnect leaves a half-address that 500s on reschedule), calit-wsdr (index the FK
+column), calit-vi8n (cosmetic tidy-ups).
+
+**Release note owed:** the behaviour change is user-observable — cancelling now removes the event
+from the calendar it was created on even after a write-target rotation or a new account — so it
+needs a changelog entry on `docs-site` in whichever release ships it.
