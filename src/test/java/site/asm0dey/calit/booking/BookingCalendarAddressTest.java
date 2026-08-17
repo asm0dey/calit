@@ -98,7 +98,7 @@ class BookingCalendarAddressTest {
 
         bookingService.cancel(booked.manageToken, true);
 
-        verify(calendarPort).deleteEvent(eq(booked.ownerId), eq(ref), eq("evt-cancel"));
+        verify(calendarPort).deleteEvent(booked.ownerId, ref, "evt-cancel");
     }
 
     @Test
@@ -128,7 +128,7 @@ class BookingCalendarAddressTest {
         // Invitee-initiated (byOwner defaults false) -> triggers re-approval.
         bookingService.reschedule(booked.manageToken, SLOT_10);
 
-        verify(calendarPort).deleteEvent(eq(booked.ownerId), eq(ref), eq("evt-resched"));
+        verify(calendarPort).deleteEvent(booked.ownerId, ref, "evt-resched");
 
         Booking loaded = Booking.findById(booked.id);
         assertEquals(BookingStatus.PENDING, loaded.status);
