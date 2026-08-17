@@ -7,6 +7,32 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## 1.20.2
+
+A meeting type's working hours are now its whole week, so you can close a
+weekday for one meeting type.
+
+- **A weekday you leave blank in a meeting type's working hours is no longer
+  bookable.** Until now that day silently fell back to your global weekly
+  hours, so a meeting type configured for Monday and Tuesday only stayed
+  bookable every other day your global schedule covered — and there was no way
+  to say "never on Thursdays" for a single meeting type short of one date
+  override per calendar date. A meeting type that defines any hours of its own
+  is now driven by that grid alone. A meeting type with no hours of its own
+  still follows your global schedule, and still picks up later edits to it.
+  ([#127](https://github.com/asm0dey/calit/issues/127))
+- **The hours editor fills itself in and can clear a day.** A meeting type with
+  no hours of its own opens with your global hours already filled in — nothing
+  is stored until you save — and every day row has a **Remove availability**
+  button that empties that day. Same on a co-host's own hours for a shared
+  meeting type.
+
+On upgrade, check any meeting type that has its own working hours: it is now
+bookable **only** on the days its own grid lists. Add the missing days there if
+you were relying on the old fallback (the copy buttons make it quick). Meeting
+types with no hours of their own are unaffected. No configuration or database
+changes.
+
 ## 1.20.1
 
 Cancelling a booking works again when the Google event was already deleted.
