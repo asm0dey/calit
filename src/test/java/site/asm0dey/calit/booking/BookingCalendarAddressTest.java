@@ -137,6 +137,35 @@ class BookingCalendarAddressTest {
         assertNull(loaded.googleCredentialId);
     }
 
+    @Test
+    @TestTransaction
+    void rescheduleOfANonApprovalTypePatchesTheStoredCalendar() {
+        // Companion to rescheduleOfAnApprovalTypeDeletesOnTheStoredCalendar: the auto-confirm path
+        // patches the existing event via updateEvent instead of deleting it, and must address that
+        // patch at the booking's *stored* ref, not the owner's current write target.
+        GoogleCredential cred = seedCredential("sub-resched-auto-test");
+        CalendarRef ref = new CalendarRef(cred.id, "work@example.com");
+        stubGoogle(ref, "evt-resched-auto");
+        Booking booked = bookAnySlot("addr-resched-auto"); // requiresApproval=false
+
+        bookingService.reschedule(booked.manageToken, SLOT_10);
+
+        verify(calendarPort).updateEvent(eq(booked.ownerId), eq(ref), eq("evt-resched-auto"), any(), any(), any());
+    }
+
+    @Test
+    @TestTransaction
+    void updateDetailsPatchesTheStoredCalendar() {
+        GoogleCredential cred = seedCredential("sub-details-test");
+        CalendarRef ref = new CalendarRef(cred.id, "work@example.com");
+        stubGoogle(ref, "evt-details");
+        Booking booked = bookAnySlot("addr-details");
+
+        bookingService.updateDetails(booked.manageToken, "New title", "New description", null, false);
+
+        verify(calendarPort).updateEventDetails(eq(booked.ownerId), eq(ref), eq("evt-details"), any(), any(), any());
+    }
+
     /** Google connected, no busy time, createEvent returning an event at the given address. */
     private void stubGoogle(CalendarRef address, String eventId) {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);

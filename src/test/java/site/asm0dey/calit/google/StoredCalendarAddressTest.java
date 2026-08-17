@@ -2,6 +2,7 @@ package site.asm0dey.calit.google;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,6 +22,7 @@ import site.asm0dey.calit.user.AppUser;
 class StoredCalendarAddressTest {
 
     private Calendar.Events events;
+    private GoogleTokenService tokens;
 
     @Test
     @Transactional
@@ -31,6 +33,27 @@ class StoredCalendarAddressTest {
         port.deleteEvent(1L, new CalendarRef(credId, "old-work@example.com"), "evt-1");
 
         verify(events).delete("old-work@example.com", "evt-1");
+    }
+
+    @Test
+    @Transactional
+    void deletesUsingTheStoredRefsCredentialNotTheWriteTargetsCredential() throws IOException {
+        // The whole point of storing credentialId (not just googleCalendarId) is the multi-account
+        // case: the owner's *current* write target may live on a different Google account than the
+        // one the event was actually created on. writeAddress must mint the access token for the
+        // ref's credential, not the write-target's.
+        seedWriteTarget("sub-multi-a", "default@example.com");
+        GoogleCredential credB = new GoogleCredential();
+        credB.ownerId = 1L;
+        credB.refreshToken = "rt-b";
+        credB.googleSub = "sub-multi-b";
+        credB.persist();
+        GoogleCalendarPort port = port();
+
+        port.deleteEvent(1L, new CalendarRef(credB.id, "b@example.com"), "evt-multi");
+
+        verify(events).delete("b@example.com", "evt-multi");
+        verify(tokens).validAccessToken(argThat(c -> credB.id.equals(c.id)), any());
     }
 
     @Test
@@ -65,7 +88,7 @@ class StoredCalendarAddressTest {
 
     /** A port whose events.delete(...).execute() succeeds, capturing the calendar id it was called with. */
     private GoogleCalendarPort port() throws IOException {
-        var tokens = mock(GoogleTokenService.class);
+        tokens = mock(GoogleTokenService.class);
         when(tokens.validAccessToken(any(), any())).thenReturn("access-token");
 
         Calendar.Events.Delete delete = mock(Calendar.Events.Delete.class);
