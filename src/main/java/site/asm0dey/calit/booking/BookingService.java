@@ -23,6 +23,7 @@ import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.BusyInterval;
 import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.google.CalendarRef;
 import site.asm0dey.calit.google.CalendarUnavailableException;
 import site.asm0dey.calit.google.CreatedEvent;
 import site.asm0dey.calit.i18n.AppLocales;
@@ -798,11 +799,14 @@ public class BookingService {
         // own slot is free (they just picked it), so re-approving themselves would be theater.
         var reApproval = type.requiresApproval && !byOwner;
         String priorEventId = booking.googleEventId;
+        CalendarRef priorRef = booking.calendarRef();
         if (reApproval) {
             // Feature 14: return to the approval queue; drop any existing event.
             booking.status = BookingStatus.PENDING;
             booking.googleEventId = null;
             booking.meetLink = null;
+            booking.googleCalendarId = null;
+            booking.googleCredentialId = null;
         }
 
         // Reconcile guests (if the caller supplied a list) inside the same transaction. Collect the
@@ -826,7 +830,7 @@ public class BookingService {
             guestRemovedEvent.fire(new GuestRemoved(booking.id, guestId));
         }
 
-        applyRescheduleOutcome(booking, type, oldStart, priorEventId, reApproval, byOwner);
+        applyRescheduleOutcome(booking, type, oldStart, priorEventId, priorRef, reApproval, byOwner);
         return booking;
     }
 
@@ -841,11 +845,12 @@ public class BookingService {
             MeetingType type,
             Instant oldStart,
             String priorEventId,
+            CalendarRef priorRef,
             boolean reApproval,
             boolean byOwner) {
         if (reApproval) {
             if (calendarPort.isConnected(type.ownerId) && priorEventId != null) {
-                calendarPort.deleteEvent(type.ownerId, null, priorEventId);
+                calendarPort.deleteEvent(type.ownerId, priorRef, priorEventId);
             }
             bookingRequestedEvent.fire(new BookingRequested(booking.id)); // re-approval request
         } else {
@@ -853,7 +858,7 @@ public class BookingService {
                 OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
                 calendarPort.updateEvent(
                         type.ownerId,
-                        null,
+                        booking.calendarRef(),
                         booking.googleEventId,
                         booking.startUtc,
                         booking.endUtc,
@@ -980,7 +985,7 @@ public class BookingService {
             OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
             calendarPort.updateEventDetails(
                     type.ownerId,
-                    null,
+                    booking.calendarRef(),
                     booking.googleEventId,
                     googleSummary(type, booking),
                     googleDescription(type, booking),
@@ -1028,13 +1033,12 @@ public class BookingService {
             }
         }
 
-        String eventId = groupEventId(booking.groupId);
-        Long organizer = organizerOwnerOf(booking.groupId);
-        if (eventId != null && organizer != null && calendarPort.isConnected(organizer)) {
+        Booking eventRow = groupEventRow(booking.groupId);
+        if (eventRow != null && calendarPort.isConnected(eventRow.ownerId)) {
             calendarPort.updateEventDetails(
-                    organizer,
-                    null,
-                    eventId,
+                    eventRow.ownerId,
+                    eventRow.calendarRef(),
+                    eventRow.googleEventId,
                     googleSummary(type, lead),
                     googleDescription(type, lead),
                     groupAttendeeEmails(type, booking.groupId, meetingHosts.hostOwnerIds(type)));
@@ -1045,26 +1049,13 @@ public class BookingService {
     }
 
     /**
-     * The Google event id shared by a group booking (only the organizer's row carries it — see
-     * {@link #createGroupGoogleEvent}), or null when the group never had a Google event.
+     * The group row carrying the shared Google event (the organizer's — see
+     * {@link #createGroupGoogleEvent}), or null when the group never had one.
      */
-    private String groupEventId(UUID groupId) {
+    private Booking groupEventRow(UUID groupId) {
         for (Booking r : Booking.<Booking>group(groupId)) {
             if (r.googleEventId != null) {
-                return r.googleEventId;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * The owner id of the group row that carries the shared Google event (the organizer), or null
-     * when the group never had a Google event.
-     */
-    private Long organizerOwnerOf(UUID groupId) {
-        for (Booking r : Booking.<Booking>group(groupId)) {
-            if (r.googleEventId != null) {
-                return r.ownerId;
+                return r;
             }
         }
         return null;
@@ -1183,7 +1174,7 @@ public class BookingService {
     private void cancelSingle(Booking booking, boolean byOwner) {
         booking.status = BookingStatus.CANCELLED;
         if (calendarPort.isConnected(booking.ownerId) && booking.googleEventId != null) {
-            calendarPort.deleteEvent(booking.ownerId, null, booking.googleEventId);
+            calendarPort.deleteEvent(booking.ownerId, booking.calendarRef(), booking.googleEventId);
         }
         bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner));
     }
@@ -1200,10 +1191,12 @@ public class BookingService {
         for (Booking r : Booking.<Booking>group(groupId)) {
             if (r.googleEventId != null) {
                 if (calendarPort.isConnected(r.ownerId)) {
-                    calendarPort.deleteEvent(r.ownerId, null, r.googleEventId);
+                    calendarPort.deleteEvent(r.ownerId, r.calendarRef(), r.googleEventId);
                 }
                 r.googleEventId = null;
                 r.meetLink = null;
+                r.googleCalendarId = null;
+                r.googleCredentialId = null;
             }
         }
     }
@@ -1252,7 +1245,7 @@ public class BookingService {
             OwnerSettings owner = OwnerSettings.forOwner(guest.ownerId);
             calendarPort.updateEvent(
                     guest.ownerId,
-                    null,
+                    booking.calendarRef(),
                     booking.googleEventId,
                     booking.startUtc,
                     booking.endUtc,

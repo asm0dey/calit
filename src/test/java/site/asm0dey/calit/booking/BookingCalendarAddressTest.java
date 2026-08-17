@@ -7,6 +7,8 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.quarkus.test.InjectMock;
@@ -92,6 +94,36 @@ class BookingCalendarAddressTest {
         Booking loaded = Booking.findById(booked.id);
         assertEquals("work@example.com", loaded.googleCalendarId);
         assertEquals(cred.id, loaded.googleCredentialId);
+    }
+
+    @Test
+    @TestTransaction
+    void cancelDeletesOnTheStoredCalendar() {
+        // google_credential_id carries a real FK to google_credential(id); seed a row so the FK holds.
+        GoogleCredential cred = new GoogleCredential();
+        cred.ownerId = 1L;
+        cred.refreshToken = "rt";
+        cred.googleSub = "sub-cancel-test";
+        cred.persist();
+
+        CalendarRef ref = new CalendarRef(cred.id, "work@example.com");
+        stubGoogle(ref, "evt-cancel");
+        Booking booked = bookAnySlot("addr-cancel");
+
+        bookingService.cancel(booked.manageToken, true);
+
+        verify(calendarPort).deleteEvent(eq(booked.ownerId), eq(ref), eq("evt-cancel"));
+    }
+
+    @Test
+    @TestTransaction
+    void cancelOfAPreMigrationRowPassesNoAddress() {
+        stubGoogle(null, "evt-old"); // createEvent reports no address, as pre-V26 rows have none
+        Booking booked = bookAnySlot("addr-old");
+
+        bookingService.cancel(booked.manageToken, true);
+
+        verify(calendarPort).deleteEvent(eq(booked.ownerId), isNull(), eq("evt-old"));
     }
 
     /** Google connected, no busy time, createEvent returning an event at the given address. */

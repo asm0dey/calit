@@ -1,11 +1,11 @@
 ---
 # calit-rma2
 title: Rotating the Google write target orphans existing booking events
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-08-16T10:07:53Z
-updated_at: 2026-08-16T22:41:40Z
+updated_at: 2026-08-16T22:54:09Z
 blocking:
     - calit-bh5t
 ---
@@ -19,7 +19,7 @@ Raised by the final review of calit-qjqb. The 410/404 tolerance is still right (
 ## Todo
 
 - [x] Check the logs / ask whether write-target rotation actually happens in the wild before paying for a schema change — moot: calit-bh5t (per-meeting-type write target) forces the schema change regardless, so the wait-and-see gate is dropped and this bean is promoted out of draft
-- [ ] If it does: add a \`google_calendar_id\` column next to \`google_event_id\` on booking (new Flyway V*.sql — never edit an applied migration), backfill with the current write target
+- [x] Add a \`google_calendar_id\` column next to \`google_event_id\` on booking (new Flyway V*.sql — never edit an applied migration); NOT backfilled per the design decision below (NULL = unknown, resolve as today) — DONE 2026-08-17 as Task 1 of the rma2 split-plan. V26 adds \`google_calendar_id\`/\`google_credential_id\`, plus \`Booking.calendarRef()\` and \`google.CalendarRef\`. Commit b6bed22.
 - [ ] Address event writes by the stored calendar id, falling back to the write target for pre-migration rows
 - [ ] Decide what a 404 means once the calendar id is known — likely "really gone" (tolerate) vs "wrong calendar" (surface to the owner)
 
