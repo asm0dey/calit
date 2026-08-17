@@ -99,8 +99,13 @@ public class SlotService {
         /**
          * The day's bookable windows. A {@link DateOverride} for the date REPLACES weekly hours: its
          * windows are used as-is (empty list => day off => no windows). When no override exists, the
-         * weekly rules apply. Override precedence: per-type wins, else this owner's global; rules:
-         * per-type for the day-of-week wins, else this owner's global for that day-of-week.
+         * weekly rules apply. Override precedence: per-type wins, else this owner's global.
+         *
+         * <p>Weekly rules are all-or-nothing per type (issue #127): a type that defines ANY rule owns
+         * its whole week, so a weekday it leaves blank is CLOSED rather than falling back to the
+         * owner's global hours for that weekday. Only a type with no rules at all inherits the global
+         * week. The old per-weekday fallback made a Mon/Tue-only type bookable every day the owner's
+         * global grid covered.
          */
         List<Window> windowsFor(LocalDate date) {
             DateOverride override = typedOverrides.get(date);
@@ -112,12 +117,10 @@ public class SlotService {
                         .map(w -> new Window(w.startTime, w.endTime))
                         .toList();
             }
-            var dow = date.getDayOfWeek();
-            List<AvailabilityRule> rules = typedRules.get(dow);
-            if (rules == null || rules.isEmpty()) {
-                rules = globalRules.getOrDefault(dow, List.of());
-            }
-            return rules.stream().map(r -> new Window(r.startTime, r.endTime)).toList();
+            var week = typedRules.isEmpty() ? globalRules : typedRules;
+            return week.getOrDefault(date.getDayOfWeek(), List.<AvailabilityRule>of()).stream()
+                    .map(r -> new Window(r.startTime, r.endTime))
+                    .toList();
         }
     }
 

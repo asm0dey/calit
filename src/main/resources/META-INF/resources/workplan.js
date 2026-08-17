@@ -5,6 +5,7 @@
   //   [data-remove-frame]         remove the frame it sits in
   //   [data-copy-all="DAY"]       replace every other day's frames with DAY's
   //   [data-copy-weekdays="DAY"]  replace Mon–Fri frames with DAY's
+  //   [data-clear-day="DAY"]      drop every frame of that day (day becomes unavailable on save)
   // The server bulk-saves parallel frameDay[]/frameStart[]/frameEnd[] arrays; each frame
   // carries a hidden frameDay so copied frames are reassigned to their target day.
   let WEEKDAYS = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
@@ -82,6 +83,9 @@
     } else if (Object.hasOwn(btn.dataset, "removeFrame")) {
       e.preventDefault();
       btn.closest("[data-frame]").remove();
+    } else if (Object.hasOwn(btn.dataset, "clearDay")) {
+      e.preventDefault();
+      frameBox(dayRow(grid, btn.dataset.clearDay)).innerHTML = "";
     } else if (Object.hasOwn(btn.dataset, "copyAll")) {
       e.preventDefault();
       copyDay(grid, btn.dataset.copyAll, allDays(grid));

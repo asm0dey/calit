@@ -209,12 +209,18 @@ public class SharedMeetingsResource {
         }
         List<AvailabilityRule> rules = AvailabilityRule.list(
                 "ownerId = ?1 and meetingTypeId = ?2 order by dayOfWeek", currentOwner.id(), typeId);
+        // Issue #127: with no hours of their own on this type, this host inherits their global week —
+        // prefill the grid with it so the first save materializes those hours rather than closing
+        // every untouched day (once any row exists the grid IS this host's whole week for the type).
+        List<AvailabilityRule> week = rules.isEmpty()
+                ? AvailabilityRule.list("ownerId = ?1 and meetingTypeId is null order by dayOfWeek", currentOwner.id())
+                : rules;
         List<DateOverride> overrides = ownTypeOverrides(typeId);
         return Templates.sharedAvailability(
                 type,
                 h,
                 rules,
-                WeekRow.fromRules(rules),
+                WeekRow.fromRules(week),
                 overrides,
                 DayOfWeek.values(),
                 pendingCount(),
