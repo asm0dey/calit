@@ -7,6 +7,33 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- **Cancelling or rescheduling now reaches the event on the calendar it was
+  actually created on.** calit remembered a booking's Google event id but not
+  which calendar it lived on, so every later change was aimed at whichever
+  calendar is your write target *now*. If you switched that target — or
+  connected a different Google account — between taking a booking and
+  cancelling it, calit aimed at the wrong calendar. Google replies "no such
+  event", which since 1.20.1 is treated as "already deleted", so the
+  cancellation looked like it worked while the meeting stayed on your old
+  calendar forever. Rescheduling failed outright instead. Each booking now
+  records the calendar and account its event was created on, and every later
+  cancel, reschedule or detail edit is addressed there.
+  ([#133](https://github.com/asm0dey/calit/pull/133))
+- **Bookings taken before this upgrade are not retrofitted.** They have no
+  stored calendar, so they keep resolving the old way — the fix protects
+  bookings made from this version onward, not meetings already stranded on a
+  calendar you have since stopped writing to. Existing bookings were left
+  alone on purpose: guessing that they belong on your current write target
+  would be wrong for precisely the bookings this bug affected.
+
+Nothing to do on upgrade — the database migration runs itself, and there are
+no new settings. Disconnecting a Google account still clears the stored
+calendar for its bookings, which fall back to the previous behaviour.
+
 ## 1.20.2
 
 A meeting type's working hours are now its whole week, so you can close a
