@@ -425,6 +425,7 @@ public class BookingService {
         List<String> attendees = groupAttendeeEmails(type, groupId, hostIds);
         CreatedEvent created = calendarPort.createEvent(
                 organizer,
+                null,
                 googleSummary(type, lead),
                 googleDescription(type, lead),
                 lead.startUtc,
@@ -513,6 +514,7 @@ public class BookingService {
         OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
         CreatedEvent created = calendarPort.createEvent(
                 type.ownerId,
+                null,
                 googleSummary(type, booking),
                 googleDescription(type, booking),
                 booking.startUtc,

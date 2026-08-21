@@ -70,7 +70,8 @@ class UpdateDetailsTest {
     void updateDetailsPersistsOverridesBumpsSequenceAndPatchesGoogle() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-ud", null, "h", null));
         Booking b = seedConfirmed("upd-1");
         int beforeSeq = b.icsSequence;
@@ -115,7 +116,8 @@ class UpdateDetailsTest {
     void updateDetailsNoOpDoesNotBumpOrPatch() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-noop", null, "h", null));
         Booking b = seedConfirmed("upd-4"); // no override, no guests
         int beforeSeq = b.icsSequence;
