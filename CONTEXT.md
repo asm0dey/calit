@@ -84,7 +84,9 @@ _Avoid_: primary calendar, default calendar, target
 **Write override**:
 A Host's choice of a different calendar for one meeting type's Google events, instead of their
 write target. Unset — the normal case — means the write target. Each Host of a shared meeting type
-has their own; the one that counts is the organizer's.
+has their own; the one that counts is the organizer's. That is true of where the event is *written*.
+Whether a type may offer a Google Meet link is a separate question, answered once against the
+Creator's resolved calendar — a Co-host's override never changes what the type offers.
 _Avoid_: per-type calendar, type calendar, default write target (the write target already is the
 default)
 

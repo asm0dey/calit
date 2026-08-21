@@ -100,7 +100,7 @@ class SharedMeetingsResourceTest {
         when(calendarPort.isConnected(creatorId)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && !id.equals(creatorId))))
                 .thenReturn(false);
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
     }
 

@@ -85,7 +85,7 @@ class AdminPendingTest {
     void pendingQueueListsPendingBookingWithApproveDeclineForms() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-p", "https://meet.google.com/pending", "h", null));
         var id = seedPendingBooking();
 
@@ -105,7 +105,7 @@ class AdminPendingTest {
     void approveConfirmsTheBooking() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-a", "https://meet.google.com/approved", "h", null));
         var id = seedPendingBooking();
 

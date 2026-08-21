@@ -97,6 +97,7 @@ public class GoogleCalendarPort implements CalendarPort {
     @Transactional
     public CreatedEvent createEvent(
             Long ownerId,
+            CalendarRef target,
             String summary,
             String description,
             Instant start,
@@ -104,8 +105,8 @@ public class GoogleCalendarPort implements CalendarPort {
             List<String> attendeeEmails,
             boolean createMeetLink,
             String locationText) {
-        var ctx = writeContext(ownerId);
-        GoogleCalendar target = ctx.target();
+        var ctx = writeContext(ownerId, target);
+        GoogleCalendar targetCalendar = ctx.target();
         GoogleCredential cred = ctx.cred();
         Event event = buildEvent(
                 summary,
@@ -117,15 +118,15 @@ public class GoogleCalendarPort implements CalendarPort {
                 locationText);
 
         try {
-            Event created = insert(cred, target, event, createMeetLink);
+            Event created = insert(cred, targetCalendar, event, createMeetLink);
             String meetLink = createMeetLink ? extractMeetLink(created) : null;
             return new CreatedEvent(
                     created.getId(),
                     meetLink,
                     created.getHtmlLink(),
-                    new CalendarRef(cred.id, target.googleCalendarId));
+                    new CalendarRef(cred.id, targetCalendar.googleCalendarId));
         } catch (GoogleJsonResponseException e) {
-            return handleCreateFailure(e, cred, target, event, createMeetLink);
+            return handleCreateFailure(e, cred, targetCalendar, event, createMeetLink);
         } catch (IOException e) {
             throw new UncheckedIOException("createEvent failed", e);
         }
@@ -303,7 +304,7 @@ public class GoogleCalendarPort implements CalendarPort {
                             eventId,
                             addr.calendarId(),
                             ownerId,
-                            addr.stored() ? "stored" : "default-write-target",
+                            addr.stored() ? "stored" : "write-target",
                             e.getStatusCode());
         } catch (IOException e) {
             throw new UncheckedIOException("deleteEvent failed", e);
@@ -328,6 +329,25 @@ public class GoogleCalendarPort implements CalendarPort {
             throw new IllegalStateException("Write-target calendar has no credential; reconnect Google.");
         }
         return new WriteContext(target, cred);
+    }
+
+    /**
+     * The calendar to create on: the given (already resolved) override when it still names one of
+     * this owner's selected calendars, else the owner's write target. The second guard is
+     * belt-and-braces — {@code WriteTargetResolver} already degrades a dangling override — so a
+     * crafted or stale ref can never write onto another owner's calendar.
+     */
+    private WriteContext writeContext(Long ownerId, CalendarRef ref) {
+        if (ref != null) {
+            GoogleCalendar target = GoogleCalendar.findOwned(ownerId, ref.credentialId(), ref.googleCalendarId());
+            if (target != null) {
+                GoogleCredential cred = GoogleCredential.findById(target.googleCredentialId);
+                if (cred != null && ownerId.equals(cred.ownerId)) {
+                    return new WriteContext(target, cred);
+                }
+            }
+        }
+        return writeContext(ownerId);
     }
 
     /** A calendar id to write on plus the credential that authenticates it. */

@@ -1,11 +1,11 @@
 ---
 # calit-bh5t
 title: Per-meeting-type write target
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-08-16T11:10:11Z
-updated_at: 2026-08-17T13:42:27Z
+updated_at: 2026-08-21T18:51:00Z
 blocked_by:
     - calit-rma2
 ---
@@ -28,15 +28,15 @@ Interacts with calit-rma2: once the write calendar can differ per meeting type, 
 ## Todo
 
 - [x] Decide UX: per-type setting is an OPTIONAL override; unset = owner default (decided 2026-08-16)
-- [ ] Rename the owner-level setting to "default write target" in UI strings + de/he translations
-- [ ] Rename in code where it stays readable (GoogleCalendar.writeTarget -> defaultWriteTarget); keep the google_calendar.write_target COLUMN as is (rename would cost a migration for nothing)
-- [ ] Migration for the per-type calendar column (nullable, null = owner write target)
-- [ ] Resolve the write calendar per meeting type in the Google write paths
-- [ ] Owner-scope validation of the selected calendar row
-- [ ] Follow the per-type calendar in the Meet gating check
-- [ ] Tests, incl. degraded no-Google mode
-- [ ] de + he translations for new strings
-- [ ] Docs on `docs-site` branch
+- [x] ~~Rename the owner-level setting to "default write target" in UI strings + de/he translations~~ — DROPPED in design: `CONTEXT.md` puts "default write target" on the glossary avoid list (the write target already *is* the default) and reserves that phrasing under *Fallback address*.
+- [x] ~~Rename in code (GoogleCalendar.writeTarget -> defaultWriteTarget)~~ — DROPPED with the above. `GoogleCalendar.writeTarget` keeps its name; the column was never going to change.
+- [x] Migration for the write-override columns — `V27__meeting_type_write_target.sql`, additive and nullable on both `meeting_type` and `meeting_type_host`, no backfill
+- [x] Resolve the write calendar per (type, Host) — `WriteTargetResolver`, consumed by `BookingService` and `CalendarPort.createEvent`
+- [x] Owner-scope validation server-side — `requireOwnedCalendar` on both pages, re-checked again in `GoogleCalendarPort.writeContext`
+- [x] Meet gate follows the resolved calendar — `WriteTargetResolver.blocksMeet`, answered against the Creator's calendar by design
+- [x] Tests incl. degraded no-Google mode — 98.2% new-code line coverage; cross-tenant and never-erase properties pinned with deliberate-break-verified tests
+- [x] de + he translations — six new keys, bundle parity verified 0 missing / 0 extra in both locales
+- [x] Docs on `docs-site` — branch `docs/per-meeting-type-write-override`: changelog bullet under `## Unreleased` plus a `google-oauth.md` section (PR number still `#TBD`)
 
 ## Decisions
 
@@ -68,3 +68,25 @@ Plan: `docs/superpowers/plans/2026-08-17-per-meeting-type-write-target.md`.
 - **Create form gets the picker too**, not just the detail page; no `keep`/dangling state there, and the Meet gate sees the chosen calendar.
 - **Co-host + Meet unchanged**: the gate runs at edit time on the Creator's calendar, and the organizer is only known at booking time, so a Co-host organizer on a non-Meet calendar still degrades via `handleCreateFailure`.
 - ADR written: `docs/adr/0004-the-write-override-names-a-calendar-by-its-google-identity.md`.
+
+## Summary of Changes
+
+Shipped on `feat/per-meeting-type-write-override` (17+ commits off `71750d3`), nine planned tasks executed with a fresh implementer and an independent review per task, plus a whole-branch review and one fix wave.
+
+**What a Host gets:** any meeting type can be given its own connected Google calendar — a **write override** — and that type's events are created there instead of on their write target. Each Host of a shared type sets their own, independently. Unset is the normal case and means "use my write target", so nothing changes for anyone who ignores the feature, and no migration or configuration step is required.
+
+**Shape:** an override stores `(google_credential_id, google_calendar_id)` rather than an FK to the local calendar row — see `docs/adr/0004`. Calendar selection saves by delete-and-reinsert, so an FK would be orphaned by an unrelated settings save; a Google identity survives an untick and a later re-tick.
+
+**The guarantee that drove the design:** a **dangling override** — calendar unticked, or its account disconnected so the FK nulled the credential — never fails a Booking and is never erased behind the Host's back. The write falls back to the write target, the page says the choice is not in effect, and the stored value round-trips untouched through unrelated saves via the `keep` sentinel.
+
+**Two defects found in the plan itself, both caught by implementers and upheld:**
+- The plan's sample guard `!KEEP.equals(x)` cleared a live override whenever a POST omitted the field — and the field genuinely is omitted in normal browser use, because the `<select>` renders only when the Host has a selected calendar, which is exactly the disconnected Host whose override is dangling. Corrected to `x != null && !KEEP.equals(x)` on both pages and pinned by a test that fails against the original.
+- The plan's briefs repeatedly used "default write target", which `CONTEXT.md` bans. Swept out of everything this branch authored.
+
+**Verification:** full suite green after the fix wave. New-code line coverage 111/113 (98.2%). Cross-tenant resolution on the group-booking path and the never-erase guard are each pinned by tests verified to fail when the code is deliberately broken.
+
+**Also landed:** [[calit-gsl7]] (merged in — a red suite blocks a PR, so the fixture repair was a prerequisite, not a side quest) and a `CONTEXT.md` clarification that the Meet gate follows the Creator's resolved calendar, not the organizer's.
+
+**Follow-ups filed:** [[calit-szew]], plus six from the final review — the bare 400 on a Meet/non-Meet conflict, the co-host Meet gate, the missing plural form, the no-op moved-bookings notice, the `blocksMeet` no-calendar test, and the untested Google-failure retry path.
+
+**Not done here:** the docs branch is committed but unpushed and its changelog still carries `#TBD` — it needs the real PR number before either branch is pushed.

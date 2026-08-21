@@ -9,6 +9,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -125,10 +126,11 @@ class AdminTimeRenderingTest {
     }
 
     /**
-     * Seeds a CONFIRMED booking for the admin owner (id 1) at a fixed instant, so the no-JS
-     * fallback text is deterministic across test runs.
+     * Seeds a CONFIRMED booking for the admin owner (id 1) at the given instant. The dashboard
+     * filters on {@code startUtc >= Instant.now()}, so callers that need it to still render must
+     * pass a future instant.
      */
-    private Long seedConfirmedBooking() {
+    private Long seedConfirmedBooking(Instant startUtc) {
         return QuarkusTransaction.requiringNew().call(() -> {
             var slug = "time-render-" + System.nanoTime();
             MeetingType t = new MeetingType();
@@ -145,7 +147,7 @@ class AdminTimeRenderingTest {
             b.meetingTypeId = t.id;
             b.inviteeName = "No JS Reader";
             b.inviteeEmail = "nojs-reader@example.com";
-            b.startUtc = Instant.parse("2026-08-20T13:00:00Z");
+            b.startUtc = startUtc;
             b.endUtc = b.startUtc.plusSeconds(1800);
             b.status = BookingStatus.CONFIRMED;
             b.manageToken = UUID.randomUUID().toString();
@@ -160,25 +162,29 @@ class AdminTimeRenderingTest {
     /**
      * The no-JS fallback (what a JS-off visitor actually reads) must be a human-readable
      * date/time carrying the zone -- not the raw ISO instant. Asia/Tokyo has no DST, so "JST" and
-     * the 22:00 local time are stable regardless of when this test runs.
+     * the 22:00 local time are stable regardless of when this test runs; the DATE must still be in
+     * the future (the dashboard filters {@code startUtc >= Instant.now()}), so it is pinned a year
+     * ahead of today rather than to a literal calendar date that would eventually fall into the
+     * past and make the dashboard filter it out.
      */
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void dashboardNoJsFallbackIsHumanReadableWithZone() {
         saveTimezone("Asia/Tokyo");
-        seedConfirmedBooking();
+        var startUtc = LocalDate.now(ZoneOffset.UTC).plusYears(1).atTime(13, 0).toInstant(ZoneOffset.UTC);
+        seedConfirmedBooking(startUtc);
 
         given().when()
                 .get("/me")
                 .then()
                 .statusCode(200)
                 // data-utc attribute is untouched -- the client script still keys off it
-                .body(containsString("data-utc=\"2026-08-20T13:00:00Z\""))
+                .body(containsString("data-utc=\"" + startUtc + "\""))
                 // human-rendered fallback carries the zone
                 .body(containsString("22:00"))
                 .body(containsString("(JST)"))
                 // the raw ISO instant is no longer used as the visible fallback text
-                .body(not(containsString("2026-08-20T13:00:00Z UTC")));
+                .body(not(containsString(startUtc + " UTC")));
     }
 
     /** Same fallback requirement on the pending-approval queue. */
@@ -246,12 +252,17 @@ class AdminTimeRenderingTest {
     void dashboardAndPendingRenderTheAuthenticatedOwnersOwnTimezoneNotOwner1s() {
         seedOwnerOneTimezone("Europe/Amsterdam");
         var ownerBId = seedSecondOwnerWithTimezone("tz-owner-b", "Asia/Tokyo");
-        seedBookingForOwner(ownerBId, LocalDate.of(2026, 8, 20), BookingStatus.CONFIRMED, false);
-        seedBookingForOwner(ownerBId, LocalDate.of(2026, 8, 21), BookingStatus.PENDING, true);
+        // The dashboard's CONFIRMED booking must stay in the future (startUtc >= Instant.now()),
+        // so both days are pinned a year ahead of today rather than to literal calendar dates that
+        // would eventually fall into the past. Distinct days keep the two bookings from tripping
+        // the DB's same-owner exclusion constraint.
+        var day1 = LocalDate.now().plusYears(1);
+        seedBookingForOwner(ownerBId, day1, BookingStatus.CONFIRMED, false);
+        seedBookingForOwner(ownerBId, day1.plusDays(1), BookingStatus.PENDING, true);
 
         // Owner B's zone (Asia/Tokyo, no DST -- stable regardless of when this runs) renders the
         // 13:00 UTC start as 22:00 JST. Under the OwnerSettings.forOwner(1L) mutation this would
-        // instead render owner 1's Europe/Amsterdam zone (15:00 CEST that same August day).
+        // instead render owner 1's Europe/Amsterdam zone (15:00 CEST that same time of year).
         given().when()
                 .get("/me")
                 .then()

@@ -5,7 +5,7 @@ status: todo
 type: bug
 priority: normal
 created_at: 2026-08-17T10:52:27Z
-updated_at: 2026-08-17T11:00:52Z
+updated_at: 2026-08-21T15:31:47Z
 ---
 
 `GoogleCalendarPort.updateEvent` (:249) and `updateEventDetails` (:276) catch only
@@ -87,3 +87,7 @@ So:
   mirror is missing.
 - **calit-r8et is scrapped** by the same ADR: there is no event deletion to detect, so no
   webhook and no reconcile scheduler. This bean's recreate-on-write IS the whole mechanism.
+
+## Related finding (2026-08-21, from calit-bh5t Task 3 review)
+
+`GoogleCalendarPort.clearDeletedWriteTarget` sets `needsReconnect = true` on the whole credential when a calendar 404s — the same flag used when the account is genuinely broken. Once per-meeting-type write overrides ship, a deleted *secondary* calendar produces the same "reconnect Google" prompt as a dead account, even though the account and the write target are both fine. Pre-existing, but overrides make it far more visible.
