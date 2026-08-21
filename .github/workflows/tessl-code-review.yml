@@ -1,0 +1,77 @@
+name: Tessl Code Review
+
+# One review when the pull request is ready for review, and another whenever
+# someone mentions @tessl-code-review in a comment on it. Pushing new commits
+# does not start a review on its own.
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        description: Pull-request number to review
+        required: true
+
+# The minimum the Action needs: read the head to review it, report the
+# Tessl Code Review check on it, publish a native review, and post or clear a
+# visible failure notice.
+permissions:
+  contents: read
+  checks: write
+  issues: write
+  pull-requests: write
+
+# One review at a time per pull request. A newer run waits instead of
+# superseding the running one. GitHub holds only one waiting run per group, so
+# a third request arriving during a run replaces the one already waiting.
+concurrency:
+  group: tessl-code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs['pr-number'] }}
+  cancel-in-progress: false
+
+jobs:
+  review:
+    # A coarse prefilter, and only that: it keeps a runner from starting for
+    # every comment in the repository. Whether a comment actually requests a
+    # review is the Action's decision — the handle as a whole token, so
+    # @tessl-code-reviewer does not count — and `allowed-associations` below is
+    # where this workflow says who may ask. A workflow expression cannot match a
+    # token boundary, which is why this condition is loose on purpose.
+    if: >-
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
+      github.event_name == 'workflow_dispatch' ||
+      ((github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment') &&
+        (github.event_name != 'issue_comment' || github.event.issue.pull_request != null) &&
+        (github.event.issue.state == 'open' || github.event.pull_request.state == 'open') &&
+        contains(github.event.comment.body, '@tessl-code-review'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # The major tag moves to each 1.x release, so fixes arrive without editing
+      # this file. Pin the release's full commit SHA instead if you want the
+      # revision frozen, and accept that updates then need a deliberate bump.
+      # The Action checks out the pull-request head itself, so this job needs no
+      # checkout step.
+      - uses: tesslio/code-review-action@v1
+        with:
+          tessl-token: ${{ secrets.TESSL_TOKEN }}
+          # Who may request a review by mentioning the handle. The Action
+          # enforces it. Remove it to accept any author.
+          allowed-associations: OWNER,MEMBER,COLLABORATOR
+          # Named review profile. The standard profile is the supported default.
+          profile: standard
+          # advisory publishes a COMMENT review. No review outcome fails this
+          # check, though a technical failure to run or publish still does.
+          mode: advisory
+          # Optional. A JSON array replaces the profile's lens selection with an
+          # exact ordered list.
+          # lenses: >-
+          #   ["tessl/code-review@0.0.3#review-correctness-and-data-integrity"]
+          #
+          # Supplies the pull-request number for events that carry no
+          # pull-request context. Empty on pull_request events, where the Action
+          # resolves the pull request itself.
+          pr-number: ${{ github.event.issue.number || inputs['pr-number'] }}
