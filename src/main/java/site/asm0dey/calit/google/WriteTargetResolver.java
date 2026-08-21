@@ -27,6 +27,15 @@ public class WriteTargetResolver {
     private static final Logger LOG = Logger.getLogger(WriteTargetResolver.class);
 
     /**
+     * The write-calendar picker's sentinel form value meaning "leave the stored override exactly as
+     * it is" (including a dangling one). Both {@code AdminResource} (creator) and
+     * {@code SharedMeetingsResource} (co-host) render it as the dangling option's value and compare
+     * their submitted {@code writeCalendar} field against it -- one definition so the two save paths
+     * can never silently diverge on the string that stops an override from being erased.
+     */
+    public static final String KEEP = "keep";
+
+    /**
      * The stored write override for this (type, host), or null when unset. A row whose credential
      * was nulled by disconnecting the account keeps its calendar id, and that half-row IS an
      * override — a dangling one. Reading it as "unset" would hide the very case the Host needs to

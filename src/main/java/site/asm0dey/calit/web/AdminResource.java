@@ -501,9 +501,6 @@ public class AdminResource {
         }
     }
 
-    /** Form value that means "leave the stored write override exactly as it is" (a dangling one). */
-    private static final String KEEP_WRITE_CALENDAR = "keep";
-
     /**
      * Parse a submitted {@code "credentialId:googleCalendarId"} write-override choice, or null for
      * "use my write target". A pair that is not one of THIS owner's selected calendars is refused —
@@ -718,7 +715,9 @@ public class AdminResource {
         // "keep" round-trips a dangling override through an unrelated save instead of erasing it.
         var writeCalendarValue = override == null
                 ? ""
-                : (writeCalendarDangling ? "keep" : override.credentialId() + ":" + override.googleCalendarId());
+                : (writeCalendarDangling
+                        ? WriteTargetResolver.KEEP
+                        : override.credentialId() + ":" + override.googleCalendarId());
         String title = m().adm_meetingTypeDetail_title_prefix().stripTrailing() + " " + t.name;
         return Templates.meetingTypeDetail(
                 t,
@@ -819,7 +818,7 @@ public class AdminResource {
                 // or any POST not built from the rendered <select>) is treated the same as an
                 // explicit "keep" -- only a real field value from the picker may clear or change the
                 // stored override, never its absence.
-                if (writeCalendar != null && !KEEP_WRITE_CALENDAR.equals(writeCalendar)) {
+                if (writeCalendar != null && !WriteTargetResolver.KEEP.equals(writeCalendar)) {
                     var ref = requireOwnedCalendar(writeCalendar);
                     // Clearing the override does not mean "no calendar": the type falls back to the
                     // write target, so that is what the bookings left behind are compared against.

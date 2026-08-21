@@ -242,7 +242,9 @@ public class SharedMeetingsResource {
         // "keep" round-trips a dangling override through an unrelated save instead of erasing it.
         var writeCalendarValue = override == null
                 ? ""
-                : (writeCalendarDangling ? "keep" : override.credentialId() + ":" + override.googleCalendarId());
+                : (writeCalendarDangling
+                        ? WriteTargetResolver.KEEP
+                        : override.credentialId() + ":" + override.googleCalendarId());
         return Templates.sharedAvailability(
                 type,
                 h,
@@ -358,12 +360,6 @@ public class SharedMeetingsResource {
         return availabilityInstance(typeId, null);
     }
 
-    /**
-     * Form value that means "leave the stored write override exactly as it is" (a dangling one).
-     * Mirrors {@code AdminResource}'s constant of the same name and meaning.
-     */
-    private static final String KEEP_WRITE_CALENDAR = "keep";
-
     @POST
     @Path("/shared/{typeId}/buffers")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -380,7 +376,7 @@ public class SharedMeetingsResource {
         // writeCalendar field) -- both leave a dangling override exactly as it is. Absence must never
         // be read as "clear": only an explicit "" clears the override, and only a real
         // "credentialId:calendarId" value changes it.
-        var keep = writeCalendar == null || KEEP_WRITE_CALENDAR.equals(writeCalendar);
+        var keep = writeCalendar == null || WriteTargetResolver.KEEP.equals(writeCalendar);
         CalendarRef ref = keep ? null : WriteTargetResolver.parseRef(writeCalendar);
         if (ref != null && !writeTargets.owns(currentOwner.id(), ref)) {
             return availabilityInstance(typeId, m().adm_detail_error_write_calendar_unknown());

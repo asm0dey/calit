@@ -31,6 +31,7 @@ class SharedWriteCalendarTest {
         GoogleCalendar.deleteAll();
         GoogleCredential.deleteAll();
         AppUser.delete("username", "shared-cal-creator");
+        AppUser.delete("username", "shared-cal-cohost2");
     }
 
     @Test
@@ -97,6 +98,51 @@ class SharedWriteCalendarTest {
         MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
         assertNull(h.googleCredentialId);
         assertEquals("was-on-a-disconnected-account@example.com", h.googleCalendarId);
+    }
+
+    @Test
+    void savingTheCohostsCalendarLeavesTheCreatorsOverrideAndTheOtherCohostsRowUntouched() {
+        // The structural guarantee (requireAcceptedHost keys off currentOwner.id(), so this save can
+        // never reach MeetingType's own columns or another host's row) is pinned here rather than
+        // left implicit in WriteTargetResolver.writeOverride: a reader of this test file should see
+        // the multi-tenancy boundary without having to trace the resolver to be convinced of it.
+        var credId = seedOwnerCalendars();
+        var typeId = seedSharedType();
+        setCreatorOverride(typeId, "creator-own-override@example.com");
+        var otherCohostId = addSecondCohostWithOverride(typeId, "other-cohost-override@example.com");
+
+        saveBuffers(typeId, credId + ":work@example.com").statusCode(200);
+
+        MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
+        assertEquals(credId, h.googleCredentialId);
+        assertEquals("work@example.com", h.googleCalendarId);
+
+        MeetingType t = MeetingType.findById(typeId);
+        assertNull(t.googleCredentialId);
+        assertEquals("creator-own-override@example.com", t.googleCalendarId);
+
+        MeetingTypeHost other = MeetingTypeHost.find(typeId, otherCohostId);
+        assertNull(other.googleCredentialId);
+        assertEquals("other-cohost-override@example.com", other.googleCalendarId);
+    }
+
+    /** Sets the type creator's OWN write override directly on {@code MeetingType} -- never touched by a co-host save. */
+    @Transactional
+    void setCreatorOverride(Long typeId, String calendarId) {
+        MeetingType t = MeetingType.findById(typeId);
+        t.googleCalendarId = calendarId;
+        t.persist();
+    }
+
+    /** A second, distinct co-host on the same type, with their own pre-existing override. Returns their owner id. */
+    @Transactional
+    Long addSecondCohostWithOverride(Long typeId, String calendarId) {
+        AppUser other = AppUser.create("shared-cal-cohost2", "x", false);
+        other.persist();
+        MeetingTypeHost h = MeetingTypeHost.of(typeId, other.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED);
+        h.googleCalendarId = calendarId;
+        h.persist();
+        return other.id;
     }
 
     @Transactional
