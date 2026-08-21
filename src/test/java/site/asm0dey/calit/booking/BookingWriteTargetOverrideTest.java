@@ -73,7 +73,7 @@ class BookingWriteTargetOverrideTest {
 
     @Test
     @TestTransaction
-    void withoutAnOverrideUsesTheDefaultWriteTarget() {
+    void withoutAnOverrideUsesTheWriteTarget() {
         var credId = seedCredential("sub-book-default");
         seedCalendar(credId, "default@example.com", true);
         stubGoogle();

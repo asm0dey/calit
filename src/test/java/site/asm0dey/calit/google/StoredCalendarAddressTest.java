@@ -204,7 +204,7 @@ class StoredCalendarAddressTest {
         s.persist();
     }
 
-    /** Owner 1 gets one connected account and one default write-target calendar. Returns the credential id. */
+    /** Owner 1 gets one connected account and one write-target calendar. Returns the credential id. */
     private static Long seedWriteTarget(String sub, String calendarId) {
         GoogleCredential c = new GoogleCredential();
         c.ownerId = 1L;

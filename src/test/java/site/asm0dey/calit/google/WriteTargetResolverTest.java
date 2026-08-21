@@ -27,7 +27,7 @@ class WriteTargetResolverTest {
 
     @Test
     @TestTransaction
-    void noOverrideResolvesToTheDefaultWriteTarget() {
+    void noOverrideResolvesToTheWriteTarget() {
         var credId = seedCredential("sub-res-none");
         seedCalendar(1L, credId, "default@example.com", true, true);
         MeetingType t = seedType(1L);
@@ -75,7 +75,7 @@ class WriteTargetResolverTest {
 
     @Test
     @TestTransaction
-    void danglingOverrideFallsBackToTheDefault() {
+    void danglingOverrideFallsBackToTheWriteTarget() {
         var credId = seedCredential("sub-res-dangling");
         seedCalendar(1L, credId, "default@example.com", true, true);
         MeetingType t = seedType(1L);

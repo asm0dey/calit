@@ -304,7 +304,7 @@ public class GoogleCalendarPort implements CalendarPort {
                             eventId,
                             addr.calendarId(),
                             ownerId,
-                            addr.stored() ? "stored" : "default-write-target",
+                            addr.stored() ? "stored" : "write-target",
                             e.getStatusCode());
         } catch (IOException e) {
             throw new UncheckedIOException("deleteEvent failed", e);
