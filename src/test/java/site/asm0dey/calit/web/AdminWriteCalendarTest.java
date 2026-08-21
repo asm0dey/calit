@@ -117,6 +117,37 @@ class AdminWriteCalendarTest {
     }
 
     @Test
+    void anUnrelatedSaveWithNoWriteCalendarFieldKeepsADanglingOverrideOnADisconnectedAccount() {
+        // Zero selected calendars means meetingTypeDetail.html never renders the
+        // <select name="writeCalendar"> at all (it's gated behind writeCalendars.size > 0) -- so an
+        // ordinary save (renaming, changing duration) by a Host whose Google account is fully
+        // disconnected posts NO writeCalendar field at all, not "keep" and not "". That must not be
+        // read as "clear the override": it's exactly the Host who most needs the dangling override
+        // to survive so they can fix it once they reconnect.
+        var typeId = seedType(null, "was-on-a-disconnected-account@example.com");
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Write cal")
+                .formParam("slug", "write-cal-" + typeId)
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "PHONE")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                // Deliberately no "writeCalendar" formParam at all.
+                .when()
+                .post("/me/meeting-types/" + typeId + "/edit")
+                .then()
+                .statusCode(200);
+
+        MeetingType t = MeetingType.findById(typeId);
+        assertNull(t.googleCredentialId);
+        assertEquals("was-on-a-disconnected-account@example.com", t.googleCalendarId);
+    }
+
+    @Test
     void movingATypeWithUpcomingBookingsSaysTheyStayBehind() {
         var credId = seedOwnerCalendars();
         var typeId = seedType(credId, "default@example.com");
