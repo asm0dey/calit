@@ -240,12 +240,7 @@ public class SharedMeetingsResource {
         var override = writeTargets.writeOverride(currentOwner.id(), type);
         var writeCalendars = GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id());
         var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
-        // "keep" round-trips a dangling override through an unrelated save instead of erasing it.
-        var writeCalendarValue = override == null
-                ? ""
-                : (writeCalendarDangling
-                        ? WriteTargetResolver.KEEP
-                        : override.credentialId() + ":" + override.googleCalendarId());
+        var writeCalendarValue = WriteTargetResolver.writeCalendarValue(override, writeCalendarDangling);
         return Templates.sharedAvailability(
                 type,
                 h,
@@ -387,33 +382,45 @@ public class SharedMeetingsResource {
             MeetingTypeHost h = requireAcceptedHost(typeId);
             h.bufferBeforeMinutes = parseNonNegativeIntOrNull(bufferBeforeMinutes);
             h.bufferAfterMinutes = parseNonNegativeIntOrNull(bufferAfterMinutes);
-            if (!keep) {
-                MeetingType type = MeetingType.findById(typeId);
-                if (type == null) {
-                    throw new NotFoundException("No meeting type " + typeId);
-                }
-                // Clearing falls back to this Host's write target -- compare against that, not null.
-                // The count is for the whole shared type, not just this Co-host's own rows: a group
-                // booking has one Google event, on the organizer's calendar, so "bookings that stay
-                // behind" is a property of the type, not of the Host reading this page.
-                staying.set(AdminResource.bookingsStayingBehind(
-                        type, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id())));
-                // Write the override to whichever storage writeOverride() reads it from (see the
-                // comment above in availabilityInstance()): the type's own columns for the Creator --
-                // an accepted CREATOR host row can reach this page too -- otherwise this Co-host's own
-                // meeting_type_host row.
-                if (currentOwner.id().equals(type.ownerId)) {
-                    type.googleCredentialId = ref == null ? null : ref.credentialId();
-                    type.googleCalendarId = ref == null ? null : ref.googleCalendarId();
-                } else {
-                    h.googleCredentialId = ref == null ? null : ref.credentialId();
-                    h.googleCalendarId = ref == null ? null : ref.googleCalendarId();
-                }
-            }
+            staying.set(applyWriteCalendar(h, typeId, keep, ref));
         });
         return staying.get() > 0
                 ? availabilityInstance(typeId, null, m().adm_detail_write_calendar_moved(staying.get()))
                 : availabilityInstance(typeId, null);
+    }
+
+    /**
+     * Applies the resolved write-calendar choice to whichever storage {@link
+     * WriteTargetResolver#writeOverride} reads it from (called INSIDE {@code saveBuffers}'s tx, on
+     * the already-loaded host row) and returns how many upcoming bookings stay behind on their old
+     * calendar as a result. Returns {@code 0} when {@code keep} is true -- nothing is changed.
+     */
+    private long applyWriteCalendar(MeetingTypeHost h, Long typeId, boolean keep, CalendarRef ref) {
+        if (keep) {
+            return 0L;
+        }
+        MeetingType type = MeetingType.findById(typeId);
+        if (type == null) {
+            throw new NotFoundException("No meeting type " + typeId);
+        }
+        // Clearing falls back to this Host's write target -- compare against that, not null.
+        // The count is for the whole shared type, not just this Co-host's own rows: a group
+        // booking has one Google event, on the organizer's calendar, so "bookings that stay
+        // behind" is a property of the type, not of the Host reading this page.
+        long staying = AdminResource.bookingsStayingBehind(
+                type, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id()));
+        // Write the override to whichever storage writeOverride() reads it from (see the
+        // comment above in availabilityInstance()): the type's own columns for the Creator --
+        // an accepted CREATOR host row can reach this page too -- otherwise this Co-host's own
+        // meeting_type_host row.
+        if (currentOwner.id().equals(type.ownerId)) {
+            type.googleCredentialId = ref == null ? null : ref.credentialId();
+            type.googleCalendarId = ref == null ? null : ref.googleCalendarId();
+        } else {
+            h.googleCredentialId = ref == null ? null : ref.credentialId();
+            h.googleCalendarId = ref == null ? null : ref.googleCalendarId();
+        }
+        return staying;
     }
 
     /**

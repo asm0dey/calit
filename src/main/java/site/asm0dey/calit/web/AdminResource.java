@@ -712,12 +712,7 @@ public class AdminResource {
         var override = writeTargets.writeOverride(currentOwner.id(), t);
         var writeCalendars = GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id());
         var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
-        // "keep" round-trips a dangling override through an unrelated save instead of erasing it.
-        var writeCalendarValue = override == null
-                ? ""
-                : (writeCalendarDangling
-                        ? WriteTargetResolver.KEEP
-                        : override.credentialId() + ":" + override.googleCalendarId());
+        var writeCalendarValue = WriteTargetResolver.writeCalendarValue(override, writeCalendarDangling);
         String title = m().adm_meetingTypeDetail_title_prefix().stripTrailing() + " " + t.name;
         return Templates.meetingTypeDetail(
                 t,
@@ -814,19 +809,7 @@ public class AdminResource {
                 meetingHosts.assertSlugFreeAcrossHosts(t, newSlug);
                 t.name = name;
                 t.slug = newSlug;
-                // A submission that omits the field entirely (a client that predates this feature,
-                // or any POST not built from the rendered <select>) is treated the same as an
-                // explicit "keep" -- only a real field value from the picker may clear or change the
-                // stored override, never its absence.
-                if (writeCalendar != null && !WriteTargetResolver.KEEP.equals(writeCalendar)) {
-                    var ref = requireOwnedCalendar(writeCalendar);
-                    // Clearing the override does not mean "no calendar": the type falls back to the
-                    // write target, so that is what the bookings left behind are compared against.
-                    staying.set(bookingsStayingBehind(
-                            t, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id())));
-                    t.googleCredentialId = ref == null ? null : ref.credentialId();
-                    t.googleCalendarId = ref == null ? null : ref.googleCalendarId();
-                }
+                staying.set(applyWriteCalendar(t, writeCalendar));
                 applyEditableFields(
                         t,
                         durationMinutes,
@@ -846,6 +829,30 @@ public class AdminResource {
         return staying.get() > 0
                 ? detailInstance(id, null, m().adm_detail_write_calendar_moved(staying.get()))
                 : detailInstance(id);
+    }
+
+    /**
+     * Applies a submitted {@code writeCalendar} field to {@code t}'s stored override (called INSIDE
+     * the edit tx, before flush) and returns how many upcoming bookings stay behind on their old
+     * calendar as a result. Returns {@code 0} when the field means "keep": an explicit {@link
+     * WriteTargetResolver#KEEP}, or the field's outright absence.
+     *
+     * <p>A submission that omits the field entirely (a client that predates this feature, or any
+     * POST not built from the rendered {@code <select>}) is treated the same as an explicit "keep"
+     * -- only a real field value from the picker may clear or change the stored override, never its
+     * absence.
+     */
+    private long applyWriteCalendar(MeetingType t, String writeCalendar) {
+        if (writeCalendar == null || WriteTargetResolver.KEEP.equals(writeCalendar)) {
+            return 0L;
+        }
+        var ref = requireOwnedCalendar(writeCalendar);
+        // Clearing the override does not mean "no calendar": the type falls back to the write
+        // target, so that is what the bookings left behind are compared against.
+        long staying = bookingsStayingBehind(t, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id()));
+        t.googleCredentialId = ref == null ? null : ref.credentialId();
+        t.googleCalendarId = ref == null ? null : ref.googleCalendarId();
+        return staying;
     }
 
     /**

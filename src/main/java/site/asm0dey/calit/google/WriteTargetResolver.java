@@ -92,6 +92,22 @@ public class WriteTargetResolver {
     }
 
     /**
+     * The write-calendar picker's three-valued form encoding for {@code override}: {@code ""} when
+     * there is no override, {@link #KEEP} when {@code dangling} (round-trips a dangling override
+     * through an unrelated save instead of erasing it), else the
+     * {@code "credentialId:googleCalendarId"} pair -- byte-identical to {@link
+     * GoogleCalendar#optionValue()}, which the template compares against to pre-select the matching
+     * {@code <option>}. {@code AdminResource} (creator) and {@code SharedMeetingsResource} (co-host)
+     * both call this one method so their two save paths can never silently diverge on the encoding.
+     */
+    public static String writeCalendarValue(CalendarRef override, boolean dangling) {
+        if (override == null) {
+            return "";
+        }
+        return dangling ? KEEP : override.credentialId() + ":" + override.googleCalendarId();
+    }
+
+    /**
      * True when the calendar this host would write {@code type} on cannot mint Google Meet links, so
      * GOOGLE_MEET must be refused. False when there is no calendar yet — don't over-block, the owner
      * may pick a Meet-capable one later.
