@@ -26,6 +26,7 @@ import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.google.CalendarRef;
 import site.asm0dey.calit.google.CalendarUnavailableException;
 import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.google.WriteTargetResolver;
 import site.asm0dey.calit.i18n.AppLocales;
 
 @ApplicationScoped
@@ -38,6 +39,7 @@ public class BookingService {
     private final CalendarPort calendarPort;
     private final CaptchaVerifier captchaVerifier;
     private final MeetingHosts meetingHosts;
+    private final WriteTargetResolver writeTargets;
     private final long perEmailDailyCap;
 
     /**
@@ -51,11 +53,13 @@ public class BookingService {
             CalendarPort calendarPort,
             CaptchaVerifier captchaVerifier,
             MeetingHosts meetingHosts,
+            WriteTargetResolver writeTargets,
             @ConfigProperty(name = "calit.abuse.per-email-daily-cap", defaultValue = "10") long perEmailDailyCap) {
         this.slotService = slotService;
         this.calendarPort = calendarPort;
         this.captchaVerifier = captchaVerifier;
         this.meetingHosts = meetingHosts;
+        this.writeTargets = writeTargets;
         this.perEmailDailyCap = perEmailDailyCap;
     }
 
@@ -425,7 +429,7 @@ public class BookingService {
         List<String> attendees = groupAttendeeEmails(type, groupId, hostIds);
         CreatedEvent created = calendarPort.createEvent(
                 organizer,
-                null,
+                writeTargets.resolve(organizer, type),
                 googleSummary(type, lead),
                 googleDescription(type, lead),
                 lead.startUtc,
@@ -514,7 +518,7 @@ public class BookingService {
         OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
         CreatedEvent created = calendarPort.createEvent(
                 type.ownerId,
-                null,
+                writeTargets.resolve(type.ownerId, type),
                 googleSummary(type, booking),
                 googleDescription(type, booking),
                 booking.startUtc,
