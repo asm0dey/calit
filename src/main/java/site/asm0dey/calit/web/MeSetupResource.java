@@ -106,8 +106,14 @@ public class MeSetupResource {
         // Step 3: a brand-new owner has no availability at all, so their meeting types would offer no
         // slots and the working-hours grid would render empty. Seed Mon–Fri 09:00–18:00 globals here —
         // MeOwnerFilter forces every user through this wizard before they can use /me, whichever path
-        // created their row. Idempotent, so a second submit can't double the rules.
-        DefaultAvailabilitySeeder.seedGlobalDefaults(ownerId);
+        // created their row. Gated on settingsComplete (read before it's set below) rather than on the
+        // row count: an owner can legitimately hold zero global rules after clearing their weekly grid
+        // via the bulk-save endpoint, and MeOwnerFilter still lets an already-onboarded user re-POST
+        // here — a count-based guard would re-seed hours they deliberately cleared. This is "first
+        // completion only"; the row-count guard stays inside seedGlobalDefaults as belt-and-braces.
+        if (!me.settingsComplete) {
+            DefaultAvailabilitySeeder.seedGlobalDefaults(ownerId);
+        }
 
         me.settingsComplete = true;
         return Response.seeOther(UriBuilder.fromUri("/me").build()).build();

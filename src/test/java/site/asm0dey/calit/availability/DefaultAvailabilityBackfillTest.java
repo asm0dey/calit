@@ -80,9 +80,16 @@ class DefaultAvailabilityBackfillTest {
     void leavesOwnersWithExistingGlobalRulesAlone() throws IOException {
         var configured = seedUser("legacy2");
         seedOneRule(configured, DayOfWeek.SATURDAY);
+        assertNotEquals(
+                1L, configured, "must differ from the bare admin (id 1) for the assertion below to mean anything");
         runBackfill();
         assertEquals(1, globalCount(configured), "hand-set hours must survive untouched");
         assertTrue(AvailabilityRule.globalForOwner(configured, DayOfWeek.MONDAY).isEmpty());
+        // Pins the NOT EXISTS correlation to owner_id: a non-correlated guard (e.g. "skip everyone if
+        // ANY availability_rule row exists anywhere") would also make both assertions above pass by
+        // seeding nobody at all. Admin (id 1, seeded bare by DatabaseResetCallback) must still be
+        // backfilled in this same run to prove the guard is per-owner.
+        assertEquals(5, globalCount(1L), "another owner with no hours is still backfilled");
     }
 
     @Test

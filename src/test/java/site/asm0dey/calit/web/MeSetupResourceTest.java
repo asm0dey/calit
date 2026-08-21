@@ -236,6 +236,29 @@ class MeSetupResourceTest {
         assertEquals(5, countGlobalRules(id));
     }
 
+    @Test
+    @TestSecurity(
+            user = "wiz8",
+            roles = {"user"})
+    void reSubmittingAfterClearingHoursDoesNotReSeed() {
+        var id = seed("wiz8", false);
+        completeWizard();
+        assertEquals(5, countGlobalRules(id), "precondition: wizard seeded the usual defaults");
+
+        clearGlobalRules(id); // owner deliberately cleared their weekly grid via bulk-save
+        assertEquals(0, countGlobalRules(id), "precondition: hours are now empty");
+
+        completeWizard(); // MeOwnerFilter still lets an onboarded user re-POST /me/setup
+
+        assertEquals(
+                0, countGlobalRules(id), "re-submitting an already-onboarded wizard must not re-seed cleared hours");
+    }
+
+    @Transactional
+    void clearGlobalRules(Long ownerId) {
+        AvailabilityRule.delete("ownerId = ?1 and meetingTypeId is null", ownerId);
+    }
+
     private void completeWizard() {
         given().contentType("application/x-www-form-urlencoded")
                 .formParam("ownerName", "Wiz")

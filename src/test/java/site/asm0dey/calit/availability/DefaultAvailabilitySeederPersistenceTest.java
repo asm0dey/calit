@@ -43,6 +43,11 @@ class DefaultAvailabilitySeederPersistenceTest {
     }
 
     @Test
+    void doesNothingForNullOwner() {
+        assertEquals(0, seed(null), "a null owner id must write nothing");
+    }
+
+    @Test
     void doesNotSeedWhenOwnerAlreadyHasGlobalRules() {
         seedOneSaturdayRule(1L);
         assertEquals(0, seed(1L));
