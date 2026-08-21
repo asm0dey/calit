@@ -45,7 +45,8 @@ class RescheduleCancelTest {
         MeetingType t = meetingTypeWithMondayWindow("resched", false);
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-r", "https://meet.google.com/r-r-r", "h", null));
 
         Booking b = bookingService.book(
@@ -78,7 +79,8 @@ class RescheduleCancelTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
 
         // Book PENDING, then approve so it has a CONFIRMED Google event to delete on reschedule.
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-ra", "https://meet.google.com/ra-1-2", "h", null));
         Booking b = bookingService.book(
                 1L, "resched-approval", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
@@ -102,7 +104,8 @@ class RescheduleCancelTest {
         meetingTypeWithMondayWindow("resched-noop", false);
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-nn", "https://meet.google.com/n-n-n", "h", null));
 
         Booking b = bookingService.book(
@@ -126,7 +129,8 @@ class RescheduleCancelTest {
         MeetingType t = meetingTypeWithMondayWindow("cancel", false);
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-c", "https://meet.google.com/c-c-c", "h", null));
 
         Booking b = bookingService.book(
@@ -152,7 +156,8 @@ class RescheduleCancelTest {
         meetingTypeWithMondayWindow("resched-guest", false);
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-rg", null, "https://calendar.google.com/evt-rg", null));
 
         Booking b = bookingService.book(

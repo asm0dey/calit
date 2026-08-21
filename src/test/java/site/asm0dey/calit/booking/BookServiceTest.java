@@ -62,7 +62,7 @@ class BookServiceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), anyString(), anyString(), eq(SLOT_09), any(), any(), anyBoolean(), any()))
+                        anyLong(), any(), anyString(), anyString(), eq(SLOT_09), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent(
                         "evt-99", "https://meet.google.com/xyz-1234-pqr", "https://calendar.google.com/evt-99", null));
 
@@ -80,6 +80,7 @@ class BookServiceTest {
         verify(calendarPort, times(1))
                 .createEvent(
                         anyLong(),
+                        any(),
                         anyString(),
                         anyString(),
                         eq(SLOT_09),
@@ -99,7 +100,8 @@ class BookServiceTest {
         t.persist();
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-ph", null, "h", null));
 
         Booking b = bookingService.book(
@@ -109,7 +111,15 @@ class BookServiceTest {
         assertNull(b.meetLink, "no Meet link for a non-Meet location");
         verify(calendarPort, times(1))
                 .createEvent(
-                        anyLong(), anyString(), anyString(), any(), any(), any(), eq(false), eq("+31 20 123 4567"));
+                        anyLong(),
+                        any(),
+                        anyString(),
+                        anyString(),
+                        any(),
+                        any(),
+                        any(),
+                        eq(false),
+                        eq("+31 20 123 4567"));
     }
 
     @Test
@@ -128,7 +138,7 @@ class BookServiceTest {
         assertNull(b.meetLink);
         // createEvent and freeBusy must never be called when disconnected.
         verify(calendarPort, never())
-                .createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
         verify(calendarPort, never()).freeBusy(anyLong(), any(), any());
     }
 
@@ -151,7 +161,7 @@ class BookServiceTest {
         assertNull(b.meetLink);
         // The PENDING request must NOT touch Google.
         verify(calendarPort, never())
-                .createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
         assertEquals(requestedBefore + 1, REQUESTED.get(), "BookingRequested fired for approval type");
         assertEquals(confirmedBefore, CONFIRMED.get(), "BookingConfirmed NOT fired for a PENDING request");
     }
@@ -165,7 +175,8 @@ class BookServiceTest {
         meetingTypeWithMondayWindow("book-optional", LocationType.GOOGLE_MEET, false);
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-opt", "https://meet.google.com/opt-1-2", "h", null));
 
         Booking b = bookingService.book(
@@ -233,7 +244,8 @@ class BookServiceTest {
         requiredField(t.id, "company", "Company");
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-ans", "https://meet.google.com/ans-1-2", "h", null));
 
         Booking b = bookingService.book(
@@ -262,7 +274,8 @@ class BookServiceTest {
         meetingTypeWithMondayWindow("book-double", LocationType.GOOGLE_MEET, false);
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-1", "https://meet.google.com/a-b-c", "h", null));
 
         bookingService.book(

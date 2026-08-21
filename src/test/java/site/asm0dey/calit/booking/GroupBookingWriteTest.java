@@ -57,7 +57,7 @@ class GroupBookingWriteTest {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
         when(calendarPort.createEvent(
-                        anyLong(), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any()))
+                        anyLong(), any(), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-1", "https://meet/x", "https://cal/x", null));
         type(false);
 
@@ -72,6 +72,7 @@ class GroupBookingWriteTest {
         verify(calendarPort, times(1))
                 .createEvent(
                         eq(1L),
+                        any(),
                         anyString(),
                         anyString(),
                         any(),
@@ -95,7 +96,7 @@ class GroupBookingWriteTest {
         when(calendarPort.isConnected(1L)).thenReturn(false);
         when(calendarPort.isConnected(cohostId)).thenReturn(true);
         when(calendarPort.createEvent(
-                        anyLong(), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any()))
+                        anyLong(), any(), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-1", "https://meet/x", "https://cal/x", null));
 
         Booking lead = bookingService.book(
@@ -103,7 +104,8 @@ class GroupBookingWriteTest {
 
         // event created on the co-host (organizer), not on the creator
         verify(calendarPort, times(1))
-                .createEvent(eq(cohostId), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any());
+                .createEvent(
+                        eq(cohostId), any(), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any());
         Booking cohostRow = Booking.<Booking>group(lead.groupId).stream()
                 .filter(r -> r.ownerId == cohostId)
                 .findFirst()
@@ -128,6 +130,6 @@ class GroupBookingWriteTest {
             assertNotNull(r.approvalToken);
         });
         verify(calendarPort, never())
-                .createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 }
