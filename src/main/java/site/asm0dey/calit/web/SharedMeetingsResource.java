@@ -233,9 +233,10 @@ public class SharedMeetingsResource {
                 : rules;
         List<DateOverride> overrides = ownTypeOverrides(typeId);
         // currentOwner's own write-calendar override for this type. WriteTargetResolver.writeOverride
-        // picks the right storage for us: the type's own MeetingType columns when currentOwner IS the
-        // creator (a creator can reach this page too, via their own CREATOR host row), otherwise this
-        // Co-host's meeting_type_host row — never another host's row.
+        // picks the right storage for this READ: the type's own MeetingType columns when currentOwner
+        // IS the creator (a creator can reach this page too, via their own CREATOR host row), otherwise
+        // this Co-host's meeting_type_host row — never another host's row. saveBuffers() below must
+        // route its WRITE the same way, or a Creator's save lands on a row this read never looks at.
         var override = writeTargets.writeOverride(currentOwner.id(), type);
         var writeCalendars = GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id());
         var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
@@ -387,15 +388,27 @@ public class SharedMeetingsResource {
             h.bufferBeforeMinutes = parseNonNegativeIntOrNull(bufferBeforeMinutes);
             h.bufferAfterMinutes = parseNonNegativeIntOrNull(bufferAfterMinutes);
             if (!keep) {
+                MeetingType type = MeetingType.findById(typeId);
+                if (type == null) {
+                    throw new NotFoundException("No meeting type " + typeId);
+                }
                 // Clearing falls back to this Host's write target -- compare against that, not null.
                 // The count is for the whole shared type, not just this Co-host's own rows: a group
                 // booking has one Google event, on the organizer's calendar, so "bookings that stay
                 // behind" is a property of the type, not of the Host reading this page.
                 staying.set(AdminResource.bookingsStayingBehind(
-                        MeetingType.findById(typeId),
-                        ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id())));
-                h.googleCredentialId = ref == null ? null : ref.credentialId();
-                h.googleCalendarId = ref == null ? null : ref.googleCalendarId();
+                        type, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id())));
+                // Write the override to whichever storage writeOverride() reads it from (see the
+                // comment above in availabilityInstance()): the type's own columns for the Creator --
+                // an accepted CREATOR host row can reach this page too -- otherwise this Co-host's own
+                // meeting_type_host row.
+                if (currentOwner.id().equals(type.ownerId)) {
+                    type.googleCredentialId = ref == null ? null : ref.credentialId();
+                    type.googleCalendarId = ref == null ? null : ref.googleCalendarId();
+                } else {
+                    h.googleCredentialId = ref == null ? null : ref.credentialId();
+                    h.googleCalendarId = ref == null ? null : ref.googleCalendarId();
+                }
             }
         });
         return staying.get() > 0
