@@ -23,12 +23,15 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.google.CalendarRef;
 import site.asm0dey.calit.google.CreatedEvent;
 import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
+import site.asm0dey.calit.test.MultiHostFixtures;
+import site.asm0dey.calit.user.AppUser;
 
 /** A booking's Google event is created on the meeting type's write calendar, not blindly on the default. */
 @QuarkusTest
@@ -123,6 +126,68 @@ class BookingWriteTargetOverrideTest {
                 .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
 
+    /**
+     * Group path, per-Host scoping: the organizer is a CO-HOST (not the creator), and the two
+     * hosts carry DIFFERENT overrides. The event must land on the organizer's (cohost's) own
+     * override, never the creator's -- this is the property that guards against writing one
+     * user's meeting into another user's calendar.
+     */
+    @Test
+    @TestTransaction
+    void groupOrganizerUsesTheCohostsOwnOverrideNotTheCreators() {
+        var creatorCredId = seedCredential(1L, "sub-group-creator");
+        seedCalendar(1L, creatorCredId, "creator-default@example.com", true);
+        seedCalendar(1L, creatorCredId, "creator-override@example.com", false);
+
+        AppUser cohost = MultiHostFixtures.enabledUser("cohost-group-override");
+        Long cohostId = cohost.id;
+        var cohostCredId = seedCredential(cohostId, "sub-group-cohost");
+        seedCalendar(cohostId, cohostCredId, "cohost-default@example.com", true);
+        seedCalendar(cohostId, cohostCredId, "cohost-override@example.com", false);
+
+        MultiHostFixtures.settings(1L, "owner");
+        MultiHostFixtures.settings(cohostId, "cohost");
+        MultiHostFixtures.rule(1L, DAY.getDayOfWeek(), 9, 11);
+        MultiHostFixtures.rule(cohostId, DAY.getDayOfWeek(), 9, 11);
+
+        MeetingType t = MultiHostFixtures.acceptedTwoHostType(1L, cohostId, "group-override", 60, false);
+        t.locationType = MeetingType.LocationType.PHONE;
+        // Creator's own override -- set directly on MeetingType (see book()'s comment below).
+        t.googleCredentialId = creatorCredId;
+        t.googleCalendarId = "creator-override@example.com";
+        t.persist();
+        // Cohost's own override -- lives on their MeetingTypeHost row, not on MeetingType.
+        MeetingTypeHost cohostRow = MeetingTypeHost.find(t.id, cohostId);
+        cohostRow.googleCredentialId = cohostCredId;
+        cohostRow.googleCalendarId = "cohost-override@example.com";
+        cohostRow.persist();
+
+        // Only the cohost is Google-connected. MeetingHosts.chooseOrganizer picks the creator ONLY
+        // when the creator is connected, else the lowest-id connected host -- with the creator
+        // disconnected here, the cohost is the sole connected candidate, so it is unambiguously the
+        // organizer. Not a coin flip between hosts.
+        when(calendarPort.isConnected(1L)).thenReturn(false);
+        when(calendarPort.isConnected(cohostId)).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+                .thenReturn(new CreatedEvent("evt-1", null, null, null));
+
+        bookingService.book(1L, t.slug, SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+
+        verify(calendarPort)
+                .createEvent(
+                        eq(cohostId),
+                        eq(new CalendarRef(cohostCredId, "cohost-override@example.com")),
+                        anyString(),
+                        anyString(),
+                        any(),
+                        any(),
+                        any(),
+                        anyBoolean(),
+                        any());
+    }
+
     private void stubGoogle() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
@@ -131,7 +196,13 @@ class BookingWriteTargetOverrideTest {
                 .thenReturn(new CreatedEvent("evt-1", null, null, null));
     }
 
-    /** Seed owner settings + a 09:00-11:00 type (with the given override) on DAY, then book 09:00. */
+    /**
+     * Seed owner settings + a 09:00-11:00 type (with the given override) on DAY, then book 09:00.
+     * The override itself is just {@code MeetingType.googleCredentialId}/{@code googleCalendarId}
+     * set directly on the type row -- there is no separate override table for the creator's own
+     * override (a co-host's override lives on their {@code MeetingTypeHost} row instead, see
+     * {@link #groupOrganizerUsesTheCohostsOwnOverrideNotTheCreators}).
+     */
     private Booking book(String slug, Long credId, String calendarId) {
         OwnerSettings s = OwnerSettings.forOwner(1L);
         if (s == null) {
@@ -167,8 +238,12 @@ class BookingWriteTargetOverrideTest {
     }
 
     private static Long seedCredential(String sub) {
+        return seedCredential(1L, sub);
+    }
+
+    private static Long seedCredential(Long ownerId, String sub) {
         GoogleCredential c = new GoogleCredential();
-        c.ownerId = 1L;
+        c.ownerId = ownerId;
         c.refreshToken = "rt";
         c.googleSub = sub;
         c.persist();
@@ -176,8 +251,12 @@ class BookingWriteTargetOverrideTest {
     }
 
     private static void seedCalendar(Long credId, String calId, boolean writeTarget) {
+        seedCalendar(1L, credId, calId, writeTarget);
+    }
+
+    private static void seedCalendar(Long ownerId, Long credId, String calId, boolean writeTarget) {
         GoogleCalendar c = new GoogleCalendar();
-        c.ownerId = 1L;
+        c.ownerId = ownerId;
         c.googleCredentialId = credId;
         c.googleCalendarId = calId;
         c.summary = calId;
