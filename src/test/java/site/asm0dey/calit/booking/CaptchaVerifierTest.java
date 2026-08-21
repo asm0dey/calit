@@ -1,6 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
@@ -51,6 +52,25 @@ class CaptchaVerifierTest {
         return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * Mint and solve a challenge with an arbitrary HMAC key and expiry window. A negative
+     * {@code expiresInSeconds} produces an already-expired challenge.
+     */
+    static String payloadSignedWith(String hmacKey, long expiresInSeconds) throws Exception {
+        var opts = new Altcha.ChallengeOptions()
+                .algorithm(Altcha.Algorithm.SHA256)
+                .maxNumber(100000)
+                .hmacKey(hmacKey)
+                .expiresInSeconds(expiresInSeconds);
+        Altcha.Challenge ch = Altcha.createChallenge(opts);
+        Altcha.Solution sol =
+                Altcha.solveChallenge(ch.challenge(), ch.salt(), Altcha.Algorithm.SHA256, ch.maxnumber(), 0);
+        String json = "{\"algorithm\":\"" + ch.algorithm() + "\",\"challenge\":\"" + ch.challenge()
+                + "\",\"number\":" + sol.number() + ",\"salt\":\"" + ch.salt()
+                + "\",\"signature\":\"" + ch.signature() + "\"}";
+        return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+    }
+
     @Test
     void validSolutionPasses() throws Exception {
         var payload = validPayload();
@@ -65,9 +85,50 @@ class CaptchaVerifierTest {
 
     @Test
     void tamperedSolutionThrows() throws Exception {
-        // Flip the last base64 char to corrupt the signature/number.
-        var payload = validPayload();
-        var bad = payload.substring(0, payload.length() - 2) + (payload.endsWith("A=") ? "B=" : "A=");
+        // Corrupt the signature inside the payload, NOT the base64 tail. The encoded payload ends in
+        // "=" padding whose low bits decode to nothing, so flipping its last character leaves the
+        // decoded bytes unchanged roughly half the time -- the payload then verifies correctly and
+        // the test silently asserts nothing. Which case you land in depends on the random challenge,
+        // so it failed at random on any branch until this was fixed.
+        var json = new String(Base64.getDecoder().decode(validPayload()), StandardCharsets.UTF_8);
+        var marker = "\"signature\":\"";
+        var at = json.indexOf(marker) + marker.length();
+        var tampered = json.substring(0, at) + (json.charAt(at) == '0' ? '1' : '0') + json.substring(at + 1);
+        assertNotEquals(json, tampered, "the tamper must actually change the payload");
+
+        var bad = Base64.getEncoder().encodeToString(tampered.getBytes(StandardCharsets.UTF_8));
         assertThrows(AbuseException.class, () -> verifier.verify(null, bad));
+    }
+
+    @Test
+    void aChallengeSignedWithAnotherKeyIsRejected() throws Exception {
+        // The property that makes the whole scheme worth anything: an attacker cannot mint their own
+        // challenge and solve it. Every other test here mints AND verifies with KEY, so none of them
+        // would notice if verification silently used a different secret -- or an empty one, which
+        // CaptchaVerifier's altchaHmacKey().orElse("") makes reachable on a misconfigured deployment.
+        var forged = payloadSignedWith("not-the-server-key", 300);
+        assertThrows(AbuseException.class, () -> verifier.verify(null, forged));
+    }
+
+    @Test
+    void anExpiredChallengeIsRejected() throws Exception {
+        // CaptchaVerifier passes checkExpires=true and AltchaResource mints with a 300s window;
+        // nothing exercised that until now.
+        var stale = payloadSignedWith(KEY, -60);
+        assertThrows(AbuseException.class, () -> verifier.verify(null, stale));
+    }
+
+    @Test
+    void aSolvedPayloadCanBeReplayedUntilItExpires() throws Exception {
+        // CHARACTERIZATION, not an endorsement. ALTCHA verification is stateless -- HMAC, hash and
+        // expiry only -- so without a consumed-solution store the same payload verifies repeatedly
+        // inside its 300s window. That is a documented, accepted risk (see AltchaResource): the
+        // honeypot and the per-email daily cap are the abuse backstops.
+        //
+        // This test exists so the day someone adds that store, it fails and tells them the behaviour
+        // changed, instead of the change landing unnoticed.
+        var payload = validPayload();
+        assertDoesNotThrow(() -> verifier.verify(null, payload));
+        assertDoesNotThrow(() -> verifier.verify(null, payload));
     }
 }
