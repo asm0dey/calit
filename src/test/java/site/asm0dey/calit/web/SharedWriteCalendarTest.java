@@ -1,18 +1,25 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
+import site.asm0dey.calit.google.WriteTargetResolver;
 import site.asm0dey.calit.user.AppUser;
 
 /**
@@ -25,6 +32,7 @@ class SharedWriteCalendarTest {
     @AfterEach
     @Transactional
     void cleanup() {
+        Booking.delete("meetingTypeId in (select t.id from MeetingType t where t.slug like ?1)", "shared-cal-%");
         MeetingTypeHost.delete(
                 "meetingTypeId in (select t.id from MeetingType t where t.slug like ?1)", "shared-cal-%");
         MeetingType.delete("slug like ?1", "shared-cal-%");
@@ -126,6 +134,78 @@ class SharedWriteCalendarTest {
         assertEquals("other-cohost-override@example.com", other.googleCalendarId);
     }
 
+    @Test
+    void creatorHittingTheSharedUrlDirectlyWritesTheOverrideOntoTheMeetingTypeNotTheHostRow() {
+        // shared.html never links a Creator here (it sends CREATOR rows to
+        // /me/meeting-types/{id}), but nothing stops a Creator from hitting this URL directly --
+        // their accepted CREATOR host row passes requireAcceptedHost just fine.
+        // writeOverride() (the READ, in availabilityInstance()) resolves the override from
+        // MeetingType's own columns for the Creator; saveBuffers (the WRITE) must land on that
+        // same storage or the picker's choice would revert on the next render.
+        var credId = seedOwnerCalendars();
+        var typeId = seedOwnTypeWithCohost();
+
+        saveBuffers(typeId, credId + ":work@example.com").statusCode(200);
+
+        MeetingType t = MeetingType.findById(typeId);
+        assertEquals(credId, t.googleCredentialId);
+        assertEquals("work@example.com", t.googleCalendarId);
+
+        // Never on the Creator's own host row either.
+        MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
+        assertNull(h.googleCredentialId);
+        assertNull(h.googleCalendarId);
+    }
+
+    @Test
+    void aDanglingOverrideIsWarnedAboutOnTheForm() {
+        var credId = seedOwnerCalendars();
+        var typeId = seedSharedType();
+        setHostOverride(typeId, credId, "unticked@example.com");
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/shared/" + typeId + "/availability")
+                .then()
+                .statusCode(200)
+                .body(containsString("data-write-calendar-dangling"))
+                // Qute can't reference the WriteTargetResolver.KEEP constant directly -- the
+                // template hardcodes its literal, so this test is the guarantee that the two
+                // stay in sync (b50235c unified the constant precisely so the save paths, and
+                // this render, can't silently diverge on the sentinel string).
+                .body(containsString("value=\"" + WriteTargetResolver.KEEP + "\""));
+    }
+
+    @Test
+    void aLiveOverrideRendersAsTheSelectedOption() {
+        // Regression pin for the picker's selected-option binding (sharedAvailability.html:48):
+        // if writeCalendarValue stopped matching cal.optionValue, the FIRST option would render
+        // selected instead, and the next unrelated save would silently clear this live override.
+        var credId = seedOwnerCalendars();
+        var typeId = seedSharedType();
+        setHostOverride(typeId, credId, "work@example.com");
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/shared/" + typeId + "/availability")
+                .then()
+                .statusCode(200)
+                .body(containsString("value=\"" + credId + ":work@example.com\" selected"))
+                .body(not(containsString("value=\"\" selected")));
+    }
+
+    @Test
+    void movingTheCohostsCalendarSaysUpcomingBookingsStayBehind() {
+        var credId = seedOwnerCalendars();
+        var typeId = seedSharedType();
+        setHostOverride(typeId, credId, "default@example.com");
+        seedUpcomingBooking(typeId, credId, "default@example.com");
+
+        saveBuffers(typeId, credId + ":work@example.com")
+                .statusCode(200)
+                .body(containsString("stay on the calendar they were created on"));
+    }
+
     /** Sets the type creator's OWN write override directly on {@code MeetingType} -- never touched by a co-host save. */
     @Transactional
     void setCreatorOverride(Long typeId, String calendarId) {
@@ -194,6 +274,49 @@ class SharedWriteCalendarTest {
         MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED)
                 .persist();
         return t.id;
+    }
+
+    /**
+     * A type owned by owner 1 (the logged-in user) that also carries a real ACCEPTED CREATOR host
+     * row for owner 1 -- that row only materializes once a co-host exists (see {@code
+     * AdminResource#hostRows}), which is exactly what lets a Creator reach the co-host page's
+     * {@code requireAcceptedHost} guard at all.
+     */
+    @Transactional
+    Long seedOwnTypeWithCohost() {
+        MeetingType t = new MeetingType();
+        t.ownerId = 1L;
+        t.name = "Shared cal own";
+        t.slug = "shared-cal-own-" + UUID.randomUUID();
+        t.durationMinutes = 30;
+        t.locationType = MeetingType.LocationType.PHONE;
+        t.persist();
+        MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED)
+                .persist();
+        AppUser other = AppUser.create("shared-cal-cohost2", "x", false);
+        other.persist();
+        MeetingTypeHost.of(t.id, other.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED)
+                .persist();
+        return t.id;
+    }
+
+    /** One CONFIRMED booking a week out whose Google event lives on {@code calendarId}. */
+    @Transactional
+    void seedUpcomingBooking(Long typeId, Long credId, String calendarId) {
+        Booking b = new Booking();
+        b.ownerId = 1L;
+        b.meetingTypeId = typeId;
+        b.inviteeName = "Ada";
+        b.inviteeEmail = "ada@example.com";
+        b.startUtc = Instant.now().plus(7, ChronoUnit.DAYS);
+        b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
+        b.status = BookingStatus.CONFIRMED;
+        b.createdAt = Instant.now();
+        b.manageToken = UUID.randomUUID().toString();
+        b.googleEventId = "evt-staying";
+        b.googleCredentialId = credId;
+        b.googleCalendarId = calendarId;
+        b.persist();
     }
 
     /** A connected calendar owned by the type's creator, not by owner 1. */

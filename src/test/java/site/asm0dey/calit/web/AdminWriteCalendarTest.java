@@ -2,6 +2,7 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -17,6 +18,7 @@ import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
+import site.asm0dey.calit.google.WriteTargetResolver;
 import site.asm0dey.calit.user.AppUser;
 
 /**
@@ -85,7 +87,28 @@ class AdminWriteCalendarTest {
                 .then()
                 .statusCode(200)
                 .body(containsString("data-write-calendar-dangling"))
-                .body(containsString("value=\"keep\""));
+                // Qute can't reference the WriteTargetResolver.KEEP constant directly -- the
+                // template hardcodes its literal, so this test is the guarantee that the two
+                // stay in sync (b50235c unified the constant precisely so the save paths, and
+                // this render, can't silently diverge on the sentinel string).
+                .body(containsString("value=\"" + WriteTargetResolver.KEEP + "\""));
+    }
+
+    @Test
+    void aLiveOverrideRendersAsTheSelectedOption() {
+        // Regression pin for the picker's selected-option binding (meetingTypeDetail.html:72):
+        // if writeCalendarValue stopped matching cal.optionValue, the FIRST option would render
+        // selected instead, and the next unrelated save would silently clear this live override.
+        var credId = seedOwnerCalendars();
+        var typeId = seedType(credId, "work@example.com");
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/meeting-types/" + typeId)
+                .then()
+                .statusCode(200)
+                .body(containsString("value=\"" + credId + ":work@example.com\" selected"))
+                .body(not(containsString("value=\"\" selected")));
     }
 
     @Test
