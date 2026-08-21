@@ -70,6 +70,32 @@ public class GoogleCalendar extends PanacheEntityBase {
                 .firstResult();
     }
 
+    /**
+     * This owner's selected calendar with the given Google id on the given connected account, or
+     * null. Unlike {@link #findByGoogleId(Long, String)} this disambiguates a calendar shared into
+     * two accounts, which is exactly what a stored (credential, calendar) override names.
+     */
+    public static GoogleCalendar findOwned(Long ownerId, Long googleCredentialId, String googleCalendarId) {
+        if (googleCredentialId == null || googleCalendarId == null) {
+            return null;
+        }
+        return find(
+                        "ownerId = ?1 and googleCredentialId = ?2 and googleCalendarId = ?3",
+                        ownerId,
+                        googleCredentialId,
+                        googleCalendarId)
+                .firstResult();
+    }
+
+    /**
+     * This calendar as a {@code "credentialId:googleCalendarId"} form value — the encoding the Google
+     * settings page already uses for its checkboxes/radios, and what the write-calendar pickers
+     * submit. A method (not template string-concat) because Qute has no concatenation operator.
+     */
+    public String optionValue() {
+        return googleCredentialId + ":" + googleCalendarId;
+    }
+
     /** Remove all of this owner's calendar selections (used before re-saving). */
     public static long deleteForOwner(Long ownerId) {
         return delete("ownerId", ownerId);

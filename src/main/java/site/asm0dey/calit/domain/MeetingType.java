@@ -72,6 +72,17 @@ public class MeetingType extends PanacheEntityBase {
     @Column(name = "slot_interval_minutes")
     public Integer slotIntervalMinutes;
 
+    /**
+     * Optional per-type override of the creator's write calendar: Google's calendar id. Null means
+     * "use the creator's default write target". Resolved by {@code WriteTargetResolver}.
+     */
+    @Column(name = "google_calendar_id", columnDefinition = "text")
+    public String googleCalendarId;
+
+    /** The connected account {@link #googleCalendarId} belongs to; nulled when that account is disconnected. */
+    @Column(name = "google_credential_id")
+    public Long googleCredentialId;
+
     /** Cadence (minutes) between consecutive slot starts; falls back to the duration when unset/non-positive. */
     public int effectiveSlotIntervalMinutes() {
         return (slotIntervalMinutes != null && slotIntervalMinutes > 0) ? slotIntervalMinutes : durationMinutes;
