@@ -54,16 +54,6 @@ public class GoogleCalendar extends PanacheEntityBase {
         return find("ownerId = ?1 and writeTarget = true", ownerId).firstResult();
     }
 
-    /**
-     * True when this owner has a write target that CANNOT mint Google Meet links, so GOOGLE_MEET
-     * meeting types must be forbidden. False when there is no write target yet (don't over-block:
-     * an owner may connect/pick a Meet-capable calendar later) or when the target supports Meet.
-     */
-    public static boolean writeTargetBlocksMeet(Long ownerId) {
-        var wt = writeTarget(ownerId);
-        return wt != null && !wt.supportsMeet;
-    }
-
     /** This owner's calendar with the given Google id, or null. */
     public static GoogleCalendar findByGoogleId(Long ownerId, String googleCalendarId) {
         return find("ownerId = ?1 and googleCalendarId = ?2", ownerId, googleCalendarId)

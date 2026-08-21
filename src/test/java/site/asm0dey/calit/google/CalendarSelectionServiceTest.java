@@ -70,7 +70,7 @@ class CalendarSelectionServiceTest {
                         cred.id, "nomeet@example.com", "No Meet", false, true, false)));
         GoogleCalendar wt = GoogleCalendar.writeTarget(1L);
         assertFalse(wt.supportsMeet, "capability must persist from the selection");
-        assertTrue(GoogleCalendar.writeTargetBlocksMeet(1L), "a non-Meet write target blocks Meet");
+        assertFalse(wt.supportsMeet, "a non-Meet write target is remembered as such");
     }
 
     private static GoogleCredential cred(long owner, String sub) {
