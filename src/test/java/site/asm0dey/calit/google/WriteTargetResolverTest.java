@@ -16,8 +16,8 @@ import site.asm0dey.calit.user.AppUser;
 
 /**
  * Resolution order for a write: the (type, host) override when it still names one of that owner's
- * selected calendars, else that owner's default write target. A dangling override degrades to the
- * default instead of failing the booking.
+ * selected calendars, else that owner's write target. A dangling override degrades to the write
+ * target instead of failing the booking.
  */
 @QuarkusTest
 class WriteTargetResolverTest {
