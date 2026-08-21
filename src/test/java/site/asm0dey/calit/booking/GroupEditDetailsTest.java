@@ -71,7 +71,7 @@ class GroupEditDetailsTest {
     private void stubOrganizerOnCreator() {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("grp-evt", "meet", "cal", null));
     }
 
@@ -94,7 +94,7 @@ class GroupEditDetailsTest {
         // to address it specifically rather than "whatever ref, if any".
         GoogleCredential cred = seedCredential("sub-group-details");
         CalendarRef ref = new CalendarRef(cred.id, "grp-cal@example.com");
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("grp-evt", "meet", "cal", ref));
         groupType(); // auto-confirm -> event created immediately
 
@@ -103,7 +103,7 @@ class GroupEditDetailsTest {
         List<Booking> rows = Booking.group(lead.groupId);
         assertEquals(2, rows.size());
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
 
         var detailsChangedBefore = DETAILS_CHANGED.get();
         Map<Long, Integer> seqBefore = new java.util.HashMap<>();
@@ -163,7 +163,7 @@ class GroupEditDetailsTest {
         List<Booking> rows = Booking.group(lead.groupId);
         assertEquals(2, rows.size());
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
 
         // The organizer (creator, owner id 1) disconnects Google after confirmation.
         when(calendarPort.isConnected(1L)).thenReturn(false);
@@ -253,7 +253,7 @@ class GroupEditDetailsTest {
 
         when(calendarPort.isConnected(1L)).thenReturn(false);
         when(calendarPort.isConnected(v.id)).thenReturn(true);
-        when(calendarPort.createEvent(eq(v.id), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(eq(v.id), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("grp-evt-cohost", "meet", "cal", null));
 
         Booking lead = bookingService.book(

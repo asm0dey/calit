@@ -152,7 +152,7 @@ class BookingPostTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         // createEvent returns a known Meet link that BookingService stores on Booking.meetLink.
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent(
                         "evt-1", "https://meet.google.com/known-test-link", "https://calendar.google.com/evt-1", null));
         seed();
@@ -253,7 +253,7 @@ class BookingPostTest {
     void postSetsBookingOwnerIdFromResolvedUser() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent(
                         "evt-owner", "https://meet.google.com/owned", "https://calendar.google.com/evt-owner", null));
         seed();

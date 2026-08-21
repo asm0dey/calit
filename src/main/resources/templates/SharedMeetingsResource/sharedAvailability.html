@@ -3,16 +3,26 @@
 {@java.util.List<site.asm0dey.calit.domain.AvailabilityRule> rules}
 {@java.util.List<site.asm0dey.calit.web.WeekRow> week}
 {@java.util.List<site.asm0dey.calit.domain.DateOverride> overrides}
+{@java.util.List<site.asm0dey.calit.google.GoogleCalendar> writeCalendars}
+{@java.lang.String writeCalendarValue}
+{@java.lang.Boolean writeCalendarDangling}
 {@java.time.DayOfWeek[] daysOfWeek}
 {@java.lang.Long pendingCount}
 {@java.lang.Boolean isAdmin}
 {@java.lang.String error}
+{@java.lang.String notice}
 {@java.lang.String title}
 {#include adminBase title=title pendingCount=pendingCount active="shared" isAdmin=isAdmin}
   <p class="mb-2"><a class="link link-hover text-sm" href="/me/shared/requests">{adm:adm_shared_availability_back}</a></p>
   <h1 class="text-2xl font-bold mb-4">{type.name}</h1>
   {#if error}
   <div class="alert alert-error mb-4 max-w-2xl"><span>{error}</span></div>
+  {/if}
+  {#if notice}
+  <div class="alert alert-info mb-4 max-w-2xl"><span>{notice}</span></div>
+  {/if}
+  {#if writeCalendarDangling}
+  <div class="alert alert-warning mb-4 max-w-2xl" data-write-calendar-dangling><span>{adm:adm_detail_write_calendar_dangling}</span></div>
   {/if}
 
   <div class="space-y-3">
@@ -27,6 +37,18 @@
           <input id="sh-buffer-before" class="input w-full" type="number" name="bufferBeforeMinutes" min="0" value="{#if host.bufferBeforeMinutes}{host.bufferBeforeMinutes}{/if}">
           <label class="label" for="sh-buffer-after">{adm:adm_shared_availability_buffer_after_label}</label>
           <input id="sh-buffer-after" class="input w-full" type="number" name="bufferAfterMinutes" min="0" value="{#if host.bufferAfterMinutes}{host.bufferAfterMinutes}{/if}">
+          {#if writeCalendars.size > 0}
+          <label class="label" for="sh-write-calendar">{adm:adm_detail_label_write_calendar}</label>
+          <select id="sh-write-calendar" class="select w-full" name="writeCalendar">
+            {#if writeCalendarDangling}
+              <option value="keep" selected>{adm:adm_detail_write_calendar_missing}</option>
+            {/if}
+            <option value=""{#if writeCalendarValue == ''} selected{/if}>{adm:adm_detail_write_calendar_default}</option>
+            {#for cal in writeCalendars}
+              <option value="{cal.optionValue}"{#if writeCalendarValue == cal.optionValue} selected{/if}>{cal.summary}</option>
+            {/for}
+          </select>
+          {/if}
           <button type="submit" class="btn btn-primary mt-2">{adm:adm_shared_availability_btn_save_buffers}</button>
         </form>
       </div>
