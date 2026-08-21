@@ -16,6 +16,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import org.jboss.resteasy.reactive.RestForm;
 import site.asm0dey.calit.booking.Booking;
@@ -413,7 +414,7 @@ public class SharedMeetingsResource {
         // comment above in availabilityInstance()): the type's own columns for the Creator --
         // an accepted CREATOR host row can reach this page too -- otherwise this Co-host's own
         // meeting_type_host row.
-        if (currentOwner.id().equals(type.ownerId)) {
+        if (Objects.equals(currentOwner.id(), type.ownerId)) {
             type.googleCredentialId = ref == null ? null : ref.credentialId();
             type.googleCalendarId = ref == null ? null : ref.googleCalendarId();
         } else {
