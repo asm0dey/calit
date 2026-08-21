@@ -41,14 +41,15 @@ Merged but not yet in a tagged release.
   meeting-type page warns you, and your pick is kept rather than quietly
   erased. Changing a type's calendar tells you how many upcoming bookings
   stay on the calendar they were created on.
-  ([#134](https://github.com/asm0dey/calit/pull/134))
+  <!-- PR number unconfirmed: no PR opened yet for this entry -->
+  ([#TBD](https://github.com/asm0dey/calit/pull/TBD))
 
-Nothing to do on upgrade — the database migration runs itself, and there are
-no new settings. Disconnecting a Google account still clears the stored
-calendar for its bookings, which fall back to the previous behaviour. The new
-per-type calendar setting is empty on every existing meeting type, which
-means "use my write target" — exactly today's behaviour — and existing
-bookings are not moved to a type's new calendar.
+Nothing to configure and no database changes to make — the migration runs
+itself. Disconnecting a Google account still clears the stored calendar for
+its bookings, which fall back to the previous behaviour. Every existing
+meeting type's write override starts unset, which means "use my write
+target" — exactly today's behaviour — and existing bookings are not moved to
+a type's new calendar.
 
 ## 1.20.2
 

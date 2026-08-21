@@ -74,13 +74,13 @@ Every meeting type writes to that calendar — its **write target** — unless t
 
 ### Sending one meeting type to a different calendar
 
-A meeting type can write its own events to a different calendar than your write target. Open **Meeting types**, pick the type, and under **Basics** choose a calendar under **Calendar for new events**. The blank option, **My write target**, is the default — leave it alone and that type keeps writing to your write target, exactly as before. Only calendars you've selected on `/me/google` appear in the list.
+A meeting type can write its own events to a different calendar than your write target. Open **Meeting types**, pick the type, and under **Basics** choose a calendar under **Calendar for new events** — the same picker also appears on the **Location** step when you first create a meeting type. The blank option, **My write target**, is the default — leave it alone and that type keeps writing to your write target, exactly as before. Only calendars you've selected on `/me/google` appear in the list.
 
 On a shared meeting type, each host picks their own: the creator sets it on the meeting-type page above, and every co-host sets theirs from **Shared**, under that type, next to their buffers. Whichever host's calendar a given booking's event actually lands on is the one whose choice took effect.
 
 If the calendar a meeting type points at is later unticked on `/me/google`, or the connected account it belongs to is disconnected, bookings keep working — they fall back to your write target, and the meeting-type page shows a warning that the choice is no longer in effect. Your pick is not erased: saving other fields on that page leaves it exactly as it was, so re-ticking the calendar (or making it the write target again) on `/me/google` puts it straight back to work. Reconnecting a *disconnected* account doesn't heal it on its own — reconnecting creates a new connection, so you'll need to pick the calendar again there.
 
-Choosing **Google Meet** as a location depends on whether the calendar a type actually writes to can generate Meet links, not on your write target. If a meeting type is pointed at a calendar that can't, Google Meet is not offered as a location for it.
+Choosing **Google Meet** as a location depends on whether the calendar a type actually writes to can generate Meet links, not on your write target. If a meeting type is pointed at a calendar that can't, Google Meet is not offered as a location for it. On a shared meeting type this check always follows the creator's own calendar — a co-host's calendar choice doesn't change whether Google Meet is offered.
 
 Changing a meeting type's calendar only affects bookings made after the change — events already created keep the calendar they were created on. When you save a new calendar, calit tells you how many upcoming bookings that leaves behind.
 
