@@ -1,11 +1,11 @@
 ---
 # calit-sjwh
 title: New users get no default availability — the seeder was never wired to the first-login wizard
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-08-21T18:56:14Z
-updated_at: 2026-08-21T22:08:56Z
+updated_at: 2026-08-21T22:16:46Z
 ---
 
 `DefaultAvailabilitySeeder` is dead code in production. Its `onStart` observer is `// intentionally no-op until Phase 4 wires per-owner seeding`, and `weekdayDefaults()` (Mon-Fri 09:00-18:00, global) is package-private with **no production caller** — `grep -rn 'DefaultAvailabilitySeeder|weekdayDefaults' src/main/java` finds only the class itself. Only `DefaultAvailabilitySeederTest` calls it.
@@ -21,3 +21,11 @@ Found while capturing docs screenshots for [[calit-bh5t]]: two users created thr
 - [x] Make it idempotent — completing the wizard twice must not double the rules
 - [x] Test that a newly created user has bookable hours without touching the availability editor
 - [x] Confirm the working-hours help text is true once defaults exist, or reword it
+
+## Summary of Changes
+
+Seeding lives in the first-login wizard (`MeSetupResource#submit`), not at user creation: `MeOwnerFilter` bounces anyone with `settingsComplete == false` to `/me/setup` and that method is the only writer of `settingsComplete = true`, so all five creation paths (/setup, /signup, admin invite, Google, OIDC) are covered by one call. `DefaultAvailabilitySeeder` dropped its CDI annotations and its no-op `onStart` and became a static helper with `seedGlobalDefaults(ownerId)`, which stamps `owner_id` and no-ops when the owner already has any global rule.
+
+`settingsComplete` is written once and never again, so accounts that onboarded before this change would never have re-entered the wizard. `V28__seed_default_availability.sql` backfills them with the same hours and the same skip-if-any-global-rule guard, verified by a test that executes the migration's own SQL text off the classpath rather than a retyped copy.
+
+The working-hours help text (AdminMessages:460) is true as written now that defaults exist, so no string or translation changes. Commits e407d69 (wizard seeding) and de5f9fe (V28 backfill).
