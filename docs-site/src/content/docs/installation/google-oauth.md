@@ -63,6 +63,27 @@ Each user connects their **own** Google account from the owner console (`/me`). 
 - Creates a Google Calendar event on the user's calendar.
 - Generates a Google Meet link included in the booking confirmation.
 
+## Choosing calendars
+
+Once an account is connected, `/me/google` lists its calendars with two independent choices per row:
+
+- **Read busy** — block your availability against that calendar's existing events. Tick as many calendars as you like, across every connected account.
+- **Write events here** — the one calendar, across all your connected accounts, that new bookings are created on by default. Only one calendar can hold it at a time.
+
+Every meeting type writes to that calendar — its **write target** — unless the type says otherwise.
+
+### Sending one meeting type to a different calendar
+
+A meeting type can write its own events to a different calendar than your write target. Open **Meeting types**, pick the type, and under **Basics** choose a calendar under **Calendar for new events**. The blank option, **My write target**, is the default — leave it alone and that type keeps writing to your write target, exactly as before. Only calendars you've selected on `/me/google` appear in the list.
+
+On a shared meeting type, each host picks their own: the creator sets it on the meeting-type page above, and every co-host sets theirs from **Shared**, under that type, next to their buffers. Whichever host's calendar a given booking's event actually lands on is the one whose choice took effect.
+
+If the calendar a meeting type points at is later unticked on `/me/google`, or the connected account it belongs to is disconnected, bookings keep working — they fall back to your write target, and the meeting-type page shows a warning that the choice is no longer in effect. Your pick is not erased: saving other fields on that page leaves it exactly as it was, so re-ticking the calendar (or making it the write target again) on `/me/google` puts it straight back to work. Reconnecting a *disconnected* account doesn't heal it on its own — reconnecting creates a new connection, so you'll need to pick the calendar again there.
+
+Choosing **Google Meet** as a location depends on whether the calendar a type actually writes to can generate Meet links, not on your write target. If a meeting type is pointed at a calendar that can't, Google Meet is not offered as a location for it.
+
+Changing a meeting type's calendar only affects bookings made after the change — events already created keep the calendar they were created on. When you save a new calendar, calit tells you how many upcoming bookings that leaves behind.
+
 ## OAuth verification
 
 Until your OAuth app is verified, Google shows users an **"Google hasn't verified this app"** warning and caps the app at **100 new users** (a per-project lifetime cap that cannot be reset). To remove the warning and lift the cap, complete verification in the Google Cloud Console:

@@ -29,10 +29,26 @@ Merged but not yet in a tagged release.
   calendar you have since stopped writing to. Existing bookings were left
   alone on purpose: guessing that they belong on your current write target
   would be wrong for precisely the bookings this bug affected.
+- **Each meeting type can pick the Google calendar its events land on.**
+  Before, every booking of every meeting type was created on the one
+  calendar marked as your write target, so a personal "Coaching" type and a
+  work "Client intro" type could not live on different calendars. Now a
+  meeting type can name any of your selected calendars, your write target is
+  what a type uses when it names none, and on a shared type each host picks
+  their own — whoever organizes a booking writes it on their choice. If the
+  chosen calendar is later unselected or its account is disconnected,
+  bookings fall back to your write target instead of failing, the
+  meeting-type page warns you, and your pick is kept rather than quietly
+  erased. Changing a type's calendar tells you how many upcoming bookings
+  stay on the calendar they were created on.
+  ([#134](https://github.com/asm0dey/calit/pull/134))
 
 Nothing to do on upgrade — the database migration runs itself, and there are
 no new settings. Disconnecting a Google account still clears the stored
-calendar for its bookings, which fall back to the previous behaviour.
+calendar for its bookings, which fall back to the previous behaviour. The new
+per-type calendar setting is empty on every existing meeting type, which
+means "use my write target" — exactly today's behaviour — and existing
+bookings are not moved to a type's new calendar.
 
 ## 1.20.2
 
