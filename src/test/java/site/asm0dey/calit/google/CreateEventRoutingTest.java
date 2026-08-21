@@ -22,6 +22,7 @@ class CreateEventRoutingTest {
                 IllegalStateException.class,
                 () -> port.createEvent(
                         1L,
+                        null,
                         "s",
                         "d",
                         Instant.now(),

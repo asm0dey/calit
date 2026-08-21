@@ -20,9 +20,12 @@ public interface CalendarPort {
     List<BusyInterval> freeBusy(Long ownerId, Instant from, Instant to);
 
     /**
-     * Create an event on the given owner's write-target calendar, always with {@code sendUpdates=all}
-     * so Google emails the attendees the invite.
+     * Create an event on the given calendar, always with {@code sendUpdates=all} so Google emails the
+     * attendees the invite.
      *
+     * @param target         where to create it: the meeting type's resolved write calendar. Null — or
+     *                       one that no longer names a selected calendar — falls back to the owner's
+     *                       write target, which is what every create did before calit-bh5t
      * @param createMeetLink when true, attach a Google Meet conference (returns a non-null meetLink);
      *                       when false, no conference is created and {@code locationText} is set as the
      *                       event location instead, and the returned meetLink is null
@@ -30,6 +33,7 @@ public interface CalendarPort {
      */
     CreatedEvent createEvent(
             Long ownerId,
+            CalendarRef target,
             String summary,
             String description,
             Instant start,
@@ -42,7 +46,7 @@ public interface CalendarPort {
      * Move an existing event to a new time window and replace its attendee list (reschedule / guest
      * sync); {@code sendUpdates=all}. A null or empty attendee list leaves attendees unchanged.
      *
-     * @param ref where the event lives; null resolves the owner's default write target (pre-V26 rows)
+     * @param ref where the event lives; null resolves the owner's write target (pre-V26 rows)
      */
     void updateEvent(
             Long ownerId, CalendarRef ref, String eventId, Instant start, Instant end, List<String> attendeeEmails);
@@ -53,7 +57,7 @@ public interface CalendarPort {
      * edits the meeting's name, description, or guest list. A null or empty attendee list leaves
      * attendees unchanged.
      *
-     * @param ref where the event lives; null resolves the owner's default write target (pre-V26 rows)
+     * @param ref where the event lives; null resolves the owner's write target (pre-V26 rows)
      */
     void updateEventDetails(
             Long ownerId,
@@ -67,7 +71,7 @@ public interface CalendarPort {
      * Remove an existing event (cancel); {@code sendUpdates=all}. This operation is idempotent: an
      * event that is already gone on the provider's side counts as success.
      *
-     * @param ref where the event lives; null resolves the owner's default write target (pre-V26 rows)
+     * @param ref where the event lives; null resolves the owner's write target (pre-V26 rows)
      */
     void deleteEvent(Long ownerId, CalendarRef ref, String eventId);
 }

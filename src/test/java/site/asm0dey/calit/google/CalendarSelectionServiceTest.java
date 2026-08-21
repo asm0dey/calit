@@ -61,7 +61,7 @@ class CalendarSelectionServiceTest {
 
     @Test
     @Transactional
-    void persistsMeetCapabilityAndBlocksMeetWhenUnsupported() {
+    void persistsMeetCapabilityWhenUnsupported() {
         GoogleCredential cred = cred(1L, "sub-meet");
         cred.persist();
         service.save(
@@ -70,7 +70,6 @@ class CalendarSelectionServiceTest {
                         cred.id, "nomeet@example.com", "No Meet", false, true, false)));
         GoogleCalendar wt = GoogleCalendar.writeTarget(1L);
         assertFalse(wt.supportsMeet, "capability must persist from the selection");
-        assertTrue(GoogleCalendar.writeTargetBlocksMeet(1L), "a non-Meet write target blocks Meet");
     }
 
     private static GoogleCredential cred(long owner, String sub) {

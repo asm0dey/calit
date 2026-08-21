@@ -40,6 +40,19 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 - Mailer mocked in `%dev`/`%test`; Google + Turnstile disabled by default. Full booking flow runs zero external accounts.
 - RestAssured can't execute JS — tests assert on stable marker comments (e.g. `CALIT_TZ_REFORMAT`) instead of running scripts.
 
+**Never open a PR while the test suite is red.** `mvn test` must be fully green —
+0 failures, 0 errors, `BUILD SUCCESS` — before a branch becomes a pull request,
+and the run has to be the *whole* suite, not the classes you happened to touch.
+No exceptions for "that failure is unrelated" or "it was already broken on
+`main`": if a test fails on your branch, fixing it is part of your branch. Land
+the repair first (its own commit, or merged in from its own branch) and say in
+the PR that you did.
+
+A failure you did not cause is still a failure the reviewer has to triage, and
+"known red" is how a suite stops being a signal at all. When a pre-existing
+break genuinely blocks you, fix it as a prerequisite rather than annotating it —
+that is what makes the green run mean something.
+
 ## Formatting
 
 - **Java**: **Spotless + palantir-java-format** (PALANTIR) + curated **CleanThat** mutators (diamond operator, `var`, method refs, redundant-code cleanup). Config in `pom.xml` (`spotless-maven-plugin`).
