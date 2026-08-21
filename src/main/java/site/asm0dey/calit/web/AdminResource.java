@@ -21,8 +21,8 @@ import site.asm0dey.calit.booking.*;
 import site.asm0dey.calit.domain.*;
 import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
-import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
+import site.asm0dey.calit.google.WriteTargetResolver;
 import site.asm0dey.calit.i18n.*;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
@@ -151,6 +151,8 @@ public class AdminResource {
 
     final MeetingHosts meetingHosts;
 
+    final WriteTargetResolver writeTargets;
+
     final CurrentOwner currentOwner;
 
     final String baseUrl;
@@ -167,6 +169,7 @@ public class AdminResource {
     public AdminResource(
             BookingService bookingService,
             MeetingHosts meetingHosts,
+            WriteTargetResolver writeTargets,
             CurrentOwner currentOwner,
             SecurityIdentity identity,
             AdminMessageResolver adminMsgs,
@@ -176,6 +179,7 @@ public class AdminResource {
             @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440") int reminderLeadMinutes) {
         this.bookingService = bookingService;
         this.meetingHosts = meetingHosts;
+        this.writeTargets = writeTargets;
         this.currentOwner = currentOwner;
         this.identity = identity;
         this.adminMsgs = adminMsgs;
@@ -460,7 +464,7 @@ public class AdminResource {
         t.secret = "on".equals(secret); // unchecked checkbox sends no value
         t.minNoticeMinutes = minNoticeMinutes;
         t.horizonDays = horizonDays;
-        t.locationType = parseLocationType(locationType);
+        t.locationType = parseLocationType(locationType, t);
         t.locationDetail = (locationDetail == null || locationDetail.isBlank()) ? null : locationDetail;
         // Slot cadence: blank = back-to-back (null → falls back to durationMinutes).
         t.slotIntervalMinutes = (slotIntervalMinutes == null || slotIntervalMinutes.isBlank())
@@ -597,11 +601,20 @@ public class AdminResource {
     }
 
     /**
-     * Location types offered on the create form. Drops GOOGLE_MEET when this owner's write-target
-     * calendar can't mint Meet links, so the option is never even shown (it would 400 at booking).
+     * Location types offered on the create form, where no type (hence no override) exists yet: the
+     * owner's write target decides.
      */
     private LocationType[] allowedLocationTypes() {
-        if (GoogleCalendar.writeTargetBlocksMeet(currentOwner.id())) {
+        return allowedLocationTypes(null);
+    }
+
+    /**
+     * Location types offered for {@code type}. Drops GOOGLE_MEET when the calendar this type writes
+     * on — its own override, else the owner's write target — can't mint Meet links, so the option is
+     * never even shown (it would 400 at booking).
+     */
+    private LocationType[] allowedLocationTypes(MeetingType type) {
+        if (writeTargets.blocksMeet(currentOwner.id(), type)) {
             return Arrays.stream(LocationType.values())
                     .filter(lt -> lt != LocationType.GOOGLE_MEET)
                     .toArray(LocationType[]::new);
@@ -610,15 +623,16 @@ public class AdminResource {
     }
 
     /**
-     * Enforces the gate behind {@link #allowedLocationTypes()} for the actual write (the edit form
-     * still shows every type so a stale value renders, and crafted POSTs must not slip through):
-     * GOOGLE_MEET is rejected when the write target can't create Meet links.
+     * Enforces the gate behind {@link #allowedLocationTypes(MeetingType)} for the actual write (the
+     * edit form still shows every type so a stale value renders, and crafted POSTs must not slip
+     * through): GOOGLE_MEET is rejected when the calendar this type writes on can't create Meet
+     * links.
      */
-    private LocationType parseLocationType(String locationType) {
+    private LocationType parseLocationType(String locationType, MeetingType type) {
         LocationType lt = LocationType.valueOf(locationType);
-        if (lt == LocationType.GOOGLE_MEET && GoogleCalendar.writeTargetBlocksMeet(currentOwner.id())) {
+        if (lt == LocationType.GOOGLE_MEET && writeTargets.blocksMeet(currentOwner.id(), type)) {
             throw new BadRequestException(
-                    "The selected write-target calendar can't create Google Meet links; pick another location.");
+                    "The selected write calendar can't create Google Meet links; pick another location.");
         }
         return lt;
     }
