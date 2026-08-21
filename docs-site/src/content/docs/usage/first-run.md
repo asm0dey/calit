@@ -16,6 +16,8 @@ The account created at `/setup` is automatically granted the site-admin role (`i
 
 After signing in for the first time you are redirected to `/me/setup`, a short wizard that lets you configure your timezone, display name, and other personal settings before you start using the app.
 
+Completing it also gives you a starting set of [weekly availability](/calit/usage/availability/) — Monday–Friday 09:00–18:00 — so your first meeting type is bookable without a detour through the availability editor. Change or clear those hours whenever you like; they are set once, at this point, and not reapplied later.
+
 ## Next steps
 
 - [Configure meeting types](/calit/usage/meeting-types/) to define what your invitees can book.

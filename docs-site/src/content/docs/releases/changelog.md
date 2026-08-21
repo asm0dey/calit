@@ -42,13 +42,29 @@ Merged but not yet in a tagged release.
   erased. Changing a type's calendar tells you how many upcoming bookings
   stay on the calendar they were created on.
   ([#142](https://github.com/asm0dey/calit/pull/142))
+- **New accounts now start with working hours already set.** Finishing the
+  first-login wizard used to leave an account with no availability at all: its
+  meeting types offered no bookable slots, and the working-hours grid rendered
+  empty even though its help text promised your global defaults. Completing the
+  wizard now sets Monday–Friday 09:00–18:00 as your global hours, which you can
+  edit, extend, or clear like any other. Clearing them sticks — the defaults are
+  set once, when you first complete the wizard, not restored afterwards.
+  ([#145](https://github.com/asm0dey/calit/pull/145))
 
-Nothing to configure and no database changes to make — the migration runs
-itself. Disconnecting a Google account still clears the stored calendar for
-its bookings, which fall back to the previous behaviour. Every existing
-meeting type's write override starts unset, which means "use my write
-target" — exactly today's behaviour — and existing bookings are not moved to
-a type's new calendar.
+Nothing to configure. The migrations run themselves. Disconnecting a Google
+account still clears the stored calendar for its bookings, which fall back to
+the previous behaviour. Every existing meeting type's write override starts
+unset, which means "use my write target" — exactly today's behaviour — and
+existing bookings are not moved to a type's new calendar.
+
+Accounts that were created before this release and have **no global hours at
+all** are given Monday–Friday 09:00–18:00 on upgrade. Anything you already set
+is left untouched, and disabled accounts are skipped. One case to know about: if
+you deliberately kept an account with no global hours, its meeting types that
+have no hours of their own become bookable on those defaults. Such a type offers
+no slots today, so it was already effectively parked — but if you want it to
+stay that way, give it hours of its own or clear the global grid again after
+upgrading.
 
 ## 1.20.2
 
