@@ -36,6 +36,12 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 ```
 
 - Surefire runs **`reuseForks=true`**: ONE reused JVM fork + ONE Dev Services Postgres shared across all same-profile `@QuarkusTest` classes (cold-boot per class took minutes). `@TestProfile` classes trigger in-JVM Quarkus restart. Heap pinned `-Xms512m -Xmx6g`.
+- Dev Services Postgres is **reused between runs** (`quarkus.datasource.devservices.reuse=true` in
+  `src/test/resources/application.properties`) and the reuse hash knows nothing about your branch or
+  worktree — a container parked by a branch with more migrations would otherwise fail the next boot with
+  `FlywayValidateException: Detected applied migration not resolved locally: NN`. `quarkus.flyway.clean-at-start=true`
+  (same file) drops and re-migrates the schema on every `%test` boot, so a stale container is harmless.
+  If you ever need a genuinely fresh container, run with `-Dquarkus.datasource.devservices.reuse=false`.
 - `DatabaseResetCallback` (registered via `src/test/resources/META-INF/services/`) truncates + reseeds DB per test. Admin user **always id 1**. Write owner-scoped tests against that invariant.
 - Mailer mocked in `%dev`/`%test`; Google + Turnstile disabled by default. Full booking flow runs zero external accounts.
 - RestAssured can't execute JS — tests assert on stable marker comments (e.g. `CALIT_TZ_REFORMAT`) instead of running scripts.
