@@ -41,8 +41,7 @@ Merged but not yet in a tagged release.
   meeting-type page warns you, and your pick is kept rather than quietly
   erased. Changing a type's calendar tells you how many upcoming bookings
   stay on the calendar they were created on.
-  <!-- PR number unconfirmed: no PR opened yet for this entry -->
-  ([#TBD](https://github.com/asm0dey/calit/pull/TBD))
+  ([#142](https://github.com/asm0dey/calit/pull/142))
 
 Nothing to configure and no database changes to make — the migration runs
 itself. Disconnecting a Google account still clears the stored calendar for
