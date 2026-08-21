@@ -16,12 +16,16 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import org.jboss.resteasy.reactive.RestForm;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.booking.MeetingHosts;
 import site.asm0dey.calit.domain.*;
+import site.asm0dey.calit.google.CalendarRef;
+import site.asm0dey.calit.google.GoogleCalendar;
+import site.asm0dey.calit.google.WriteTargetResolver;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AdminMessageResolver;
 import site.asm0dey.calit.i18n.AdminMessages;
@@ -61,10 +65,14 @@ public class SharedMeetingsResource {
                 List<AvailabilityRule> rules,
                 List<WeekRow> week,
                 List<DateOverride> overrides,
+                List<GoogleCalendar> writeCalendars,
+                String writeCalendarValue,
+                boolean writeCalendarDangling,
                 DayOfWeek[] daysOfWeek,
                 Long pendingCount,
                 boolean isAdmin,
                 String error,
+                String notice,
                 String title);
 
         public static native TemplateInstance revokeConfirm(
@@ -76,6 +84,8 @@ public class SharedMeetingsResource {
     final CurrentOwner currentOwner;
 
     final MeetingHosts meetingHosts;
+
+    final WriteTargetResolver writeTargets;
 
     final BookingService bookingService;
 
@@ -89,12 +99,14 @@ public class SharedMeetingsResource {
     public SharedMeetingsResource(
             CurrentOwner currentOwner,
             MeetingHosts meetingHosts,
+            WriteTargetResolver writeTargets,
             BookingService bookingService,
             SecurityIdentity identity,
             AdminMessageResolver adminMsgs,
             ActiveLocale activeLocale) {
         this.currentOwner = currentOwner;
         this.meetingHosts = meetingHosts;
+        this.writeTargets = writeTargets;
         this.bookingService = bookingService;
         this.identity = identity;
         this.adminMsgs = adminMsgs;
@@ -202,6 +214,10 @@ public class SharedMeetingsResource {
     }
 
     private TemplateInstance availabilityInstance(Long typeId, String error) {
+        return availabilityInstance(typeId, error, null);
+    }
+
+    private TemplateInstance availabilityInstance(Long typeId, String error, String notice) {
         MeetingTypeHost h = requireAcceptedHost(typeId);
         MeetingType type = MeetingType.findById(typeId);
         if (type == null) {
@@ -216,16 +232,31 @@ public class SharedMeetingsResource {
                 ? AvailabilityRule.list("ownerId = ?1 and meetingTypeId is null order by dayOfWeek", currentOwner.id())
                 : rules;
         List<DateOverride> overrides = ownTypeOverrides(typeId);
+        // currentOwner's own write-calendar override for this type. WriteTargetResolver.writeOverride
+        // picks the right storage for us: the type's own MeetingType columns when currentOwner IS the
+        // creator (a creator can reach this page too, via their own CREATOR host row), otherwise this
+        // Co-host's meeting_type_host row — never another host's row.
+        var override = writeTargets.writeOverride(currentOwner.id(), type);
+        var writeCalendars = GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id());
+        var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
+        // "keep" round-trips a dangling override through an unrelated save instead of erasing it.
+        var writeCalendarValue = override == null
+                ? ""
+                : (writeCalendarDangling ? "keep" : override.credentialId() + ":" + override.googleCalendarId());
         return Templates.sharedAvailability(
                 type,
                 h,
                 rules,
                 WeekRow.fromRules(week),
                 overrides,
+                writeCalendars,
+                writeCalendarValue,
+                writeCalendarDangling,
                 DayOfWeek.values(),
                 pendingCount(),
                 isAdmin(),
                 error,
+                notice,
                 m().adm_shared_availability_title(type.name));
     }
 
@@ -327,6 +358,12 @@ public class SharedMeetingsResource {
         return availabilityInstance(typeId, null);
     }
 
+    /**
+     * Form value that means "leave the stored write override exactly as it is" (a dangling one).
+     * Mirrors {@code AdminResource}'s constant of the same name and meaning.
+     */
+    private static final String KEEP_WRITE_CALENDAR = "keep";
+
     @POST
     @Path("/shared/{typeId}/buffers")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -334,15 +371,40 @@ public class SharedMeetingsResource {
     public TemplateInstance saveBuffers(
             @PathParam("typeId") Long typeId,
             @RestForm String bufferBeforeMinutes,
-            @RestForm String bufferAfterMinutes) {
-        // The host row is loaded + dirty-mutated INSIDE the tx so its buffer changes flush on commit,
-        // which happens before the render (#75).
+            @RestForm String bufferAfterMinutes,
+            @RestForm String writeCalendar) {
+        // The host row is loaded + dirty-mutated INSIDE the tx so its changes flush on commit, which
+        // happens before the render (#75). A write calendar that is not this owner's is refused and
+        // nothing is saved; "keep" -- and the field's OUTRIGHT ABSENCE (a Host whose account is
+        // disconnected never gets the <select> rendered at all, so their ordinary saves carry no
+        // writeCalendar field) -- both leave a dangling override exactly as it is. Absence must never
+        // be read as "clear": only an explicit "" clears the override, and only a real
+        // "credentialId:calendarId" value changes it.
+        var keep = writeCalendar == null || KEEP_WRITE_CALENDAR.equals(writeCalendar);
+        CalendarRef ref = keep ? null : WriteTargetResolver.parseRef(writeCalendar);
+        if (ref != null && !writeTargets.owns(currentOwner.id(), ref)) {
+            return availabilityInstance(typeId, m().adm_detail_error_write_calendar_unknown());
+        }
+        var staying = new AtomicLong();
         QuarkusTransaction.requiringNew().run(() -> {
             MeetingTypeHost h = requireAcceptedHost(typeId);
             h.bufferBeforeMinutes = parseNonNegativeIntOrNull(bufferBeforeMinutes);
             h.bufferAfterMinutes = parseNonNegativeIntOrNull(bufferAfterMinutes);
+            if (!keep) {
+                // Clearing falls back to this Host's write target -- compare against that, not null.
+                // The count is for the whole shared type, not just this Co-host's own rows: a group
+                // booking has one Google event, on the organizer's calendar, so "bookings that stay
+                // behind" is a property of the type, not of the Host reading this page.
+                staying.set(AdminResource.bookingsStayingBehind(
+                        MeetingType.findById(typeId),
+                        ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id())));
+                h.googleCredentialId = ref == null ? null : ref.credentialId();
+                h.googleCalendarId = ref == null ? null : ref.googleCalendarId();
+            }
         });
-        return availabilityInstance(typeId, null);
+        return staying.get() > 0
+                ? availabilityInstance(typeId, null, m().adm_detail_write_calendar_moved(staying.get()))
+                : availabilityInstance(typeId, null);
     }
 
     /**
