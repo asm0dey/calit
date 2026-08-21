@@ -520,6 +520,14 @@ public class AdminResource {
      * override pass the write target, not null. Those events stay where they were created
      * (calit-rma2 addresses each booking by its stored ref) and the count drives the "they stay
      * behind" notice. A booking with no stored calendar id counts too: it predates V26.
+     *
+     * @implNote Deliberately scoped by {@code meetingTypeId} only, not by any Host's {@code
+     *     ownerId}: on a shared type, "bookings that stay behind" is a property of the TYPE, not of
+     *     whichever Host is saving (see the comment in {@code SharedMeetingsResource.saveBuffers}) —
+     *     a query narrowed to one Host's own rows would silently under-count. This method trusts
+     *     {@code type} to already be authorization-checked by its caller ({@code
+     *     AdminResource.requireType} or {@code SharedMeetingsResource.requireAcceptedHost}); the
+     *     package visibility and {@code static} modifier are not themselves an authorization check.
      */
     static long bookingsStayingBehind(MeetingType type, CalendarRef newTarget) {
         String newCalendarId = newTarget == null ? null : newTarget.googleCalendarId();
@@ -646,19 +654,11 @@ public class AdminResource {
 
     /**
      * Location types offered on the create form, where no type (hence no override) exists yet: the
-     * owner's write target decides.
+     * owner's write target decides whether GOOGLE_MEET can be offered. Drops GOOGLE_MEET when that
+     * calendar can't mint Meet links, so the option is never even shown (it would 400 at booking).
      */
     private LocationType[] allowedLocationTypes() {
-        return allowedLocationTypes(null);
-    }
-
-    /**
-     * Location types offered for {@code type}. Drops GOOGLE_MEET when the calendar this type writes
-     * on — its own override, else the owner's write target — can't mint Meet links, so the option is
-     * never even shown (it would 400 at booking).
-     */
-    private LocationType[] allowedLocationTypes(MeetingType type) {
-        if (writeTargets.blocksMeet(currentOwner.id(), type)) {
+        if (writeTargets.blocksMeet(currentOwner.id(), null)) {
             return Arrays.stream(LocationType.values())
                     .filter(lt -> lt != LocationType.GOOGLE_MEET)
                     .toArray(LocationType[]::new);
@@ -667,10 +667,10 @@ public class AdminResource {
     }
 
     /**
-     * Enforces the gate behind {@link #allowedLocationTypes(MeetingType)} for the actual write (the
-     * edit form still shows every type so a stale value renders, and crafted POSTs must not slip
-     * through): GOOGLE_MEET is rejected when the calendar this type writes on can't create Meet
-     * links.
+     * Enforces the Meet gate for the actual write (the edit/detail form always shows every location
+     * type so a stale value still renders, and crafted POSTs to either form must not slip through):
+     * GOOGLE_MEET is rejected when the calendar this type writes on — its own override, else the
+     * owner's write target — can't create Meet links.
      */
     private LocationType parseLocationType(String locationType, MeetingType type) {
         LocationType lt = LocationType.valueOf(locationType);
