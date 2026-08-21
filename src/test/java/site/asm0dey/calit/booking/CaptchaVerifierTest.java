@@ -1,6 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
@@ -65,9 +66,18 @@ class CaptchaVerifierTest {
 
     @Test
     void tamperedSolutionThrows() throws Exception {
-        // Flip the last base64 char to corrupt the signature/number.
-        var payload = validPayload();
-        var bad = payload.substring(0, payload.length() - 2) + (payload.endsWith("A=") ? "B=" : "A=");
+        // Corrupt the signature inside the payload, NOT the base64 tail. The encoded payload ends in
+        // "=" padding whose low bits decode to nothing, so flipping its last character leaves the
+        // decoded bytes unchanged roughly half the time -- the payload then verifies correctly and
+        // the test silently asserts nothing. Which case you land in depends on the random challenge,
+        // so it failed at random on any branch until this was fixed.
+        var json = new String(Base64.getDecoder().decode(validPayload()), StandardCharsets.UTF_8);
+        var marker = "\"signature\":\"";
+        var at = json.indexOf(marker) + marker.length();
+        var tampered = json.substring(0, at) + (json.charAt(at) == '0' ? '1' : '0') + json.substring(at + 1);
+        assertNotEquals(json, tampered, "the tamper must actually change the payload");
+
+        var bad = Base64.getEncoder().encodeToString(tampered.getBytes(StandardCharsets.UTF_8));
         assertThrows(AbuseException.class, () -> verifier.verify(null, bad));
     }
 }
