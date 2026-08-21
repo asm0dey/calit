@@ -9,7 +9,14 @@ import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.availability.SlotService;
+import site.asm0dey.calit.domain.AvailabilityRule;
+import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.PasswordHasher;
@@ -21,6 +28,9 @@ class MeSetupResourceTest {
 
     @Inject
     EntityManager em;
+
+    @Inject
+    SlotService slotService;
 
     @Transactional
     Long seed(String username, boolean mustChange) {
@@ -187,5 +197,75 @@ class MeSetupResourceTest {
         AppUser after = reload(id);
         assertTrue(after.mustChangePassword, "still forced — onboarding not advanced");
         assertFalse(after.settingsComplete, "settings must not be marked complete on the error path");
+    }
+
+    @Test
+    @TestSecurity(
+            user = "wiz6",
+            roles = {"user"})
+    void completingTheWizardSeedsWeekdayDefaults() {
+        var id = seed("wiz6", false);
+        assertEquals(0, countGlobalRules(id), "precondition: a fresh user has no availability");
+
+        completeWizard();
+
+        assertEquals(5, countGlobalRules(id), "Mon–Fri seeded");
+        var monday = AvailabilityRule.globalForOwner(id, DayOfWeek.MONDAY);
+        assertEquals(1, monday.size());
+        assertEquals(LocalTime.of(9, 0), monday.getFirst().startTime);
+        assertEquals(LocalTime.of(18, 0), monday.getFirst().endTime);
+        assertNull(monday.getFirst().meetingTypeId, "defaults are global, not per-type");
+
+        // The point of the bean: a meeting type made right after onboarding is bookable, with the
+        // availability editor never opened.
+        MeetingType t = seedMeetingType(id);
+        var monday1 = LocalDate.of(2026, 9, 7); // a Monday
+        assertFalse(
+                slotService.generateRawSlots(t, monday1, monday1.plusDays(1)).isEmpty(),
+                "a new user's meeting type must offer slots without touching the availability editor");
+    }
+
+    @Test
+    @TestSecurity(
+            user = "wiz7",
+            roles = {"user"})
+    void seedingIsIdempotentAcrossRepeatedWizardSubmits() {
+        var id = seed("wiz7", false);
+        completeWizard();
+        completeWizard(); // the wizard is still POST-able; a second submit must not double the rules
+        assertEquals(5, countGlobalRules(id));
+    }
+
+    private void completeWizard() {
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("ownerName", "Wiz")
+                .formParam("ownerEmail", "wiz@example.com")
+                .formParam("timezone", "Europe/Amsterdam")
+                .redirects()
+                .follow(false)
+                .when()
+                .post("/me/setup")
+                .then()
+                .statusCode(303);
+    }
+
+    @Transactional
+    long countGlobalRules(Long ownerId) {
+        em.clear();
+        return AvailabilityRule.count("ownerId = ?1 and meetingTypeId is null", ownerId);
+    }
+
+    @Transactional
+    MeetingType seedMeetingType(Long ownerId) {
+        MeetingType t = new MeetingType();
+        t.ownerId = ownerId;
+        t.name = "Intro";
+        t.slug = "intro";
+        t.durationMinutes = 30;
+        t.minNoticeMinutes = 0;
+        t.horizonDays = 50_000;
+        t.locationType = LocationType.GOOGLE_MEET;
+        t.persist();
+        return t;
     }
 }

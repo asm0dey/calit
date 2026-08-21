@@ -1,9 +1,5 @@
 package site.asm0dey.calit.availability;
 
-import io.quarkus.arc.profile.UnlessBuildProfile;
-import io.quarkus.runtime.StartupEvent;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -11,25 +7,39 @@ import java.util.List;
 import site.asm0dey.calit.domain.AvailabilityRule;
 
 /**
- * Phase 2: boot-time GLOBAL availability seeding is disabled — under owner scoping a rule needs an
- * owner_id and at boot no {@code app_user} may exist yet. Default-availability seeding becomes a
- * per-user concern triggered by Phase 4's first-login wizard (which knows the owner id and stamps it),
- * reusing {@link #weekdayDefaults()}.
+ * Default availability for a brand-new owner: Mon–Fri 09:00–18:00, global (meetingTypeId == null).
+ *
+ * <p>Not a CDI bean and not boot-time: under owner scoping a rule needs an owner_id, and at boot no
+ * {@code app_user} need exist. Seeding is a per-user concern, driven from the first-login wizard
+ * ({@code MeSetupResource#submit}) — the one place every user must pass through before they can use
+ * {@code /me} at all, whichever of the five creation paths made their row.</p>
  */
-@ApplicationScoped
-@UnlessBuildProfile("test")
-public class DefaultAvailabilitySeeder {
+public final class DefaultAvailabilitySeeder {
+
+    private DefaultAvailabilitySeeder() {}
 
     /**
-     * Phase 2: boot-time GLOBAL seeding is disabled — a rule now needs an owner_id and at boot no
-     * app_user may exist. Phase 4's first-login wizard seeds each new owner's default availability
-     * (it knows the owner id and stamps it), reusing {@link #weekdayDefaults()}.
+     * Persists this owner's Mon–Fri 09:00–18:00 global defaults and returns how many rules were
+     * written. Idempotent: an owner who already has ANY global rule is left alone and 0 is returned,
+     * so completing the wizard twice — or a user who set hours by hand before finishing it — never
+     * ends up with doubled rules. Must be called inside a transaction.
      */
-    void onStart(@Observes StartupEvent ev) {
-        // intentionally no-op until Phase 4 wires per-owner seeding
+    public static int seedGlobalDefaults(Long ownerId) {
+        if (ownerId == null) {
+            return 0;
+        }
+        if (AvailabilityRule.count("ownerId = ?1 and meetingTypeId is null", ownerId) > 0) {
+            return 0;
+        }
+        List<AvailabilityRule> rules = weekdayDefaults();
+        for (AvailabilityRule r : rules) {
+            r.ownerId = ownerId;
+            r.persist();
+        }
+        return rules.size();
     }
 
-    /** Mon–Fri 09:00–18:00, global (meetingTypeId == null). */
+    /** Mon–Fri 09:00–18:00, global (meetingTypeId == null). Unstamped — the caller sets ownerId. */
     static List<AvailabilityRule> weekdayDefaults() {
         List<AvailabilityRule> rules = new ArrayList<>();
         for (DayOfWeek d : List.of(

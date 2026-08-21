@@ -12,6 +12,7 @@ import jakarta.ws.rs.core.UriBuilder;
 import java.time.ZoneId;
 import java.util.List;
 import org.jboss.resteasy.reactive.RestForm;
+import site.asm0dey.calit.availability.DefaultAvailabilitySeeder;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AdminMessageResolver;
@@ -101,6 +102,12 @@ public class MeSetupResource {
         s.ownerEmail = ownerEmail;
         s.timezone = timezone;
         s.persist();
+
+        // Step 3: a brand-new owner has no availability at all, so their meeting types would offer no
+        // slots and the working-hours grid would render empty. Seed Mon–Fri 09:00–18:00 globals here —
+        // MeOwnerFilter forces every user through this wizard before they can use /me, whichever path
+        // created their row. Idempotent, so a second submit can't double the rules.
+        DefaultAvailabilitySeeder.seedGlobalDefaults(ownerId);
 
         me.settingsComplete = true;
         return Response.seeOther(UriBuilder.fromUri("/me").build()).build();
