@@ -171,7 +171,7 @@ class BookingCalendarAddressTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), anyString(), anyString(), eq(SLOT_09), any(), any(), anyBoolean(), any()))
+                        anyLong(), any(), anyString(), anyString(), eq(SLOT_09), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent(eventId, null, null, address));
     }
 

@@ -54,20 +54,36 @@ public class GoogleCalendar extends PanacheEntityBase {
         return find("ownerId = ?1 and writeTarget = true", ownerId).firstResult();
     }
 
-    /**
-     * True when this owner has a write target that CANNOT mint Google Meet links, so GOOGLE_MEET
-     * meeting types must be forbidden. False when there is no write target yet (don't over-block:
-     * an owner may connect/pick a Meet-capable calendar later) or when the target supports Meet.
-     */
-    public static boolean writeTargetBlocksMeet(Long ownerId) {
-        var wt = writeTarget(ownerId);
-        return wt != null && !wt.supportsMeet;
-    }
-
     /** This owner's calendar with the given Google id, or null. */
     public static GoogleCalendar findByGoogleId(Long ownerId, String googleCalendarId) {
         return find("ownerId = ?1 and googleCalendarId = ?2", ownerId, googleCalendarId)
                 .firstResult();
+    }
+
+    /**
+     * This owner's selected calendar with the given Google id on the given connected account, or
+     * null. Unlike {@link #findByGoogleId(Long, String)} this disambiguates a calendar shared into
+     * two accounts, which is exactly what a stored (credential, calendar) override names.
+     */
+    public static GoogleCalendar findOwned(Long ownerId, Long googleCredentialId, String googleCalendarId) {
+        if (googleCredentialId == null || googleCalendarId == null) {
+            return null;
+        }
+        return find(
+                        "ownerId = ?1 and googleCredentialId = ?2 and googleCalendarId = ?3",
+                        ownerId,
+                        googleCredentialId,
+                        googleCalendarId)
+                .firstResult();
+    }
+
+    /**
+     * This calendar as a {@code "credentialId:googleCalendarId"} form value — the encoding the Google
+     * settings page already uses for its checkboxes/radios, and what the write-calendar pickers
+     * submit. A method (not template string-concat) because Qute has no concatenation operator.
+     */
+    public String optionValue() {
+        return googleCredentialId + ":" + googleCalendarId;
     }
 
     /** Remove all of this owner's calendar selections (used before re-saving). */

@@ -47,7 +47,7 @@ class ApproveDeclineTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), anyString(), anyString(), eq(SLOT_09), any(), any(), anyBoolean(), any()))
+                        anyLong(), any(), anyString(), anyString(), eq(SLOT_09), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-ap", "https://meet.google.com/ap-1-2", "h", null));
 
         Booking b = bookingService.book(
@@ -64,6 +64,7 @@ class ApproveDeclineTest {
         verify(calendarPort, times(1))
                 .createEvent(
                         anyLong(),
+                        any(),
                         anyString(),
                         anyString(),
                         eq(SLOT_09),
@@ -93,7 +94,7 @@ class ApproveDeclineTest {
         Booking loaded = Booking.findById(b.id);
         assertEquals(BookingStatus.DECLINED, loaded.status);
         verify(calendarPort, never())
-                .createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
         // DECLINED leaves the partial constraint -> 09:00 is bookable again.
         List<TimeSlot> avail = bookingService.availableSlots(t, DAY, DAY);
         assertTrue(avail.stream().anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));

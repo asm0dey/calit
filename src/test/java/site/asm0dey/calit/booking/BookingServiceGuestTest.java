@@ -169,7 +169,8 @@ class BookingServiceGuestTest {
         meetingTypeWithMondayWindow("guest-attendees", LocationType.GOOGLE_MEET, false);
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-g", null, "https://calendar.google.com/evt-g", null));
 
         bookingService.book(
@@ -187,6 +188,7 @@ class BookingServiceGuestTest {
         verify(calendarPort, times(1))
                 .createEvent(
                         anyLong(),
+                        any(),
                         anyString(),
                         anyString(),
                         eq(SLOT_09),
@@ -229,7 +231,8 @@ class BookingServiceGuestTest {
         meetingTypeWithMondayWindow("guest-decline-sync", LocationType.GOOGLE_MEET, false);
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-d", null, "https://calendar.google.com/evt-d", null));
 
         Booking b = bookingService.book(
@@ -273,7 +276,8 @@ class BookingServiceGuestTest {
         CalendarRef ref = new CalendarRef(cred.id, "stored@example.com");
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt-ref", null, "https://calendar.google.com/evt-ref", ref));
 
         Booking b = bookingService.book(

@@ -1,4 +1,5 @@
 {@java.util.List<site.asm0dey.calit.domain.MeetingType> types}
+{@java.util.List<site.asm0dey.calit.google.GoogleCalendar> writeCalendars}
 {@site.asm0dey.calit.domain.MeetingType.LocationType[] locationTypes}
 {@java.time.DayOfWeek[] daysOfWeek}
 {@java.lang.Long pendingCount}
@@ -90,6 +91,15 @@
         <p class="text-sm text-base-content/60 mb-2">{adm:adm_meetingTypes_location_hint}</p>
         <label class="label">{adm:adm_meetingTypes_label_location_detail}</label>
         <input class="input w-full" type="text" name="locationDetail">
+        {#if writeCalendars.size > 0}
+        <label class="label" for="mt-new-write-calendar">{adm:adm_detail_label_write_calendar}</label>
+        <select id="mt-new-write-calendar" class="select w-full" name="writeCalendar">
+          <option value="" selected>{adm:adm_detail_write_calendar_default}</option>
+          {#for cal in writeCalendars}
+            <option value="{cal.optionValue}">{cal.summary}</option>
+          {/for}
+        </select>
+        {/if}
       </div>
     </div>
 
