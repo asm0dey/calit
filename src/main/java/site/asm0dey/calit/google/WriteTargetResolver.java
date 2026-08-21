@@ -42,7 +42,7 @@ public class WriteTargetResolver {
      * be told about.
      */
     public CalendarRef writeOverride(Long ownerId, MeetingType type) {
-        if (type == null) {
+        if (ownerId == null || type == null) {
             return null;
         }
         if (ownerId.equals(type.ownerId)) {

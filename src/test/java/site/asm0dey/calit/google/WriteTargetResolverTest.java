@@ -27,6 +27,17 @@ class WriteTargetResolverTest {
 
     @Test
     @TestTransaction
+    void aNullOwnerHasNoOverrideRatherThanThrowing() {
+        MeetingType t = seedType(1L);
+        t.googleCredentialId = 1L;
+        t.googleCalendarId = "work@example.com";
+
+        // No owner means no override to read — never a NullPointerException.
+        assertNull(resolver.writeOverride(null, t));
+    }
+
+    @Test
+    @TestTransaction
     void noOverrideResolvesToTheWriteTarget() {
         var credId = seedCredential("sub-res-none");
         seedCalendar(1L, credId, "default@example.com", true, true);
