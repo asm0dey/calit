@@ -6,7 +6,9 @@ calit computes bookable time slots dynamically from your weekly availability rul
 
 ## Weekly availability rules
 
-Set the days and hours you are generally available each week. These are your baseline recurring windows — for example, Monday–Friday 09:00–17:00.
+Set the days and hours you are generally available each week. These are your baseline recurring windows.
+
+A new account starts with **Monday–Friday 09:00–18:00**, set when you complete the [first-login wizard](/calit/usage/first-run/#first-login-wizard). Edit them, extend them, or clear them entirely — the defaults are a starting point, not a floor. Clearing every day leaves you with no global hours, and meeting types that have no hours of their own then offer no slots.
 
 ![Weekly availability editor](/calit/img/availability.png)
 
