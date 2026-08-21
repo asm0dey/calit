@@ -1,11 +1,11 @@
 ---
 # calit-pd1w
 title: CaptchaVerifierTest.tamperedSolutionThrows is flaky — base64 padding bits
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-08-21T19:41:47Z
-updated_at: 2026-08-21T19:47:34Z
+updated_at: 2026-08-21T19:58:20Z
 ---
 
 `CaptchaVerifierTest.tamperedSolutionThrows` fails intermittently on any branch, reddening CI at random.
@@ -32,3 +32,9 @@ Found while merging the batched dependency upgrades ([[calit-bh5t]] session); it
 - [ ] Corrupt the payload in a way that always changes the decoded bytes — decode, flip a byte in the signature, re-encode; or flip a character well inside the string rather than in the final quantum
 - [ ] Assert the corruption actually changed the decoded bytes before asserting the throw, so the test can never silently test nothing
 - [ ] Check the sibling captcha tests for the same trick
+
+## Summary of Changes
+
+Fixed in #144 (merged as `444299f`). The tamper now flips a hex digit of the signature inside the decoded JSON and asserts the payload actually changed, so the test can never again silently verify nothing. Six consecutive runs passed.
+
+Went further while in there, after reading the ALTCHA docs: added a forged-HMAC-key rejection test (the property the whole scheme rests on, previously untested because every test minted and verified with the same key), an expired-challenge test, and a characterization test pinning the documented stateless-replay behaviour so adding a consumed-solution store later announces itself. Both rejection tests were verified to fail when their property is deliberately broken.
