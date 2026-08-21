@@ -13,6 +13,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestForm;
@@ -21,6 +22,8 @@ import site.asm0dey.calit.booking.*;
 import site.asm0dey.calit.domain.*;
 import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
+import site.asm0dey.calit.google.CalendarRef;
+import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.google.WriteTargetResolver;
 import site.asm0dey.calit.i18n.*;
@@ -40,6 +43,7 @@ public class AdminResource {
 
         public static native TemplateInstance meetingTypes(
                 List<MeetingType> types,
+                List<GoogleCalendar> writeCalendars,
                 LocationType[] locationTypes,
                 DayOfWeek[] daysOfWeek,
                 Long pendingCount,
@@ -60,12 +64,16 @@ public class AdminResource {
                 List<WeekRow> week,
                 List<DateOverride> overrides,
                 List<HostRow> hosts,
+                List<GoogleCalendar> writeCalendars,
+                String writeCalendarValue,
+                boolean writeCalendarDangling,
                 LocationType[] locationTypes,
                 FieldType[] fieldTypes,
                 DayOfWeek[] daysOfWeek,
                 Long pendingCount,
                 boolean isAdmin,
                 String error,
+                String notice,
                 String hostTypeaheadScript,
                 String title);
 
@@ -315,6 +323,7 @@ public class AdminResource {
         // Pass LocationType.values() so the form can render the location dropdown options.
         return Templates.meetingTypes(
                 singleHostTypes(),
+                GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id()),
                 allowedLocationTypes(),
                 DayOfWeek.values(),
                 pendingCount(),
@@ -403,6 +412,7 @@ public class AdminResource {
             @RestForm String locationDetail,
             @RestForm String slotIntervalMinutes,
             @RestForm String requiresApproval,
+            @RestForm String writeCalendar,
             MultivaluedMap<String, String> form) {
         // Whole unit-of-work in its own tx that commits BEFORE renderMeetingTypes() below, so no
         // pooled DB connection is held across the Qute render (issue #75). A slug guard rejection
@@ -420,6 +430,9 @@ public class AdminResource {
                 // rows yet); kept for parity with editMeetingType below.
                 assertNoOwnerSlugCollision(t.slug);
                 meetingHosts.assertSlugFreeAcrossHosts(t, t.slug);
+                var ref = requireOwnedCalendar(writeCalendar);
+                t.googleCredentialId = ref == null ? null : ref.credentialId();
+                t.googleCalendarId = ref == null ? null : ref.googleCalendarId();
                 applyEditableFields(
                         t,
                         durationMinutes,
@@ -486,6 +499,40 @@ public class AdminResource {
                 throw new IllegalStateException(m().adm_hosts_error_slug_owned_cohost(slug));
             }
         }
+    }
+
+    /** Form value that means "leave the stored write override exactly as it is" (a dangling one). */
+    private static final String KEEP_WRITE_CALENDAR = "keep";
+
+    /**
+     * Parse a submitted {@code "credentialId:googleCalendarId"} write-override choice, or null for
+     * "use my write target". A pair that is not one of THIS owner's selected calendars is refused —
+     * server-side, not UI-only — so a crafted POST can never point a type at someone else's calendar.
+     */
+    private CalendarRef requireOwnedCalendar(String raw) {
+        CalendarRef ref = WriteTargetResolver.parseRef(raw);
+        if (ref != null && !writeTargets.owns(currentOwner.id(), ref)) {
+            throw new IllegalStateException(m().adm_detail_error_write_calendar_unknown());
+        }
+        return ref;
+    }
+
+    /**
+     * How many upcoming bookings of {@code type} already have a Google event on a calendar other
+     * than {@code newTarget} — the EFFECTIVE calendar after this save, so callers clearing an
+     * override pass the write target, not null. Those events stay where they were created
+     * (calit-rma2 addresses each booking by its stored ref) and the count drives the "they stay
+     * behind" notice. A booking with no stored calendar id counts too: it predates V26.
+     */
+    static long bookingsStayingBehind(MeetingType type, CalendarRef newTarget) {
+        String newCalendarId = newTarget == null ? null : newTarget.googleCalendarId();
+        return Booking.count(
+                "meetingTypeId = ?1 and status in ?2 and startUtc > ?3 and googleEventId is not null "
+                        + "and (googleCalendarId is null or googleCalendarId <> ?4)",
+                type.id,
+                List.of(BookingStatus.CONFIRMED, BookingStatus.PENDING),
+                Instant.now(),
+                newCalendarId == null ? "" : newCalendarId);
     }
 
     /**
@@ -648,11 +695,16 @@ public class AdminResource {
 
     /** Re-render the detail page for one meeting type (shared by every detail-scoped handler). */
     private TemplateInstance detailInstance(Long id) {
-        return detailInstance(id, null);
+        return detailInstance(id, null, null);
     }
 
     /** Re-render the detail page with an error alert (co-host add + slug-collision guards). */
     private TemplateInstance detailInstance(Long id, String error) {
+        return detailInstance(id, error, null);
+    }
+
+    /** Re-render the detail page with an error and/or an informational notice. */
+    private TemplateInstance detailInstance(Long id, String error, String notice) {
         MeetingType t = requireType(id);
         List<BookingField> fields = BookingField.list("meetingTypeId = ?1 order by position", id);
         List<AvailabilityRule> rules = AvailabilityRule.list("meetingTypeId = ?1 order by dayOfWeek", id);
@@ -660,6 +712,13 @@ public class AdminResource {
         // with those hours. Saving then materializes "same as global" instead of silently closing
         // every day the host never touched (the grid is the type's whole week once any row exists).
         List<DateOverride> overrides = overridesForType(id);
+        var override = writeTargets.writeOverride(currentOwner.id(), t);
+        var writeCalendars = GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id());
+        var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
+        // "keep" round-trips a dangling override through an unrelated save instead of erasing it.
+        var writeCalendarValue = override == null
+                ? ""
+                : (writeCalendarDangling ? "keep" : override.credentialId() + ":" + override.googleCalendarId());
         String title = m().adm_meetingTypeDetail_title_prefix().stripTrailing() + " " + t.name;
         return Templates.meetingTypeDetail(
                 t,
@@ -668,12 +727,16 @@ public class AdminResource {
                 weekRows(rules.isEmpty() ? globalRules() : rules),
                 overrides,
                 hostRows(t),
+                writeCalendars,
+                writeCalendarValue,
+                writeCalendarDangling,
                 LocationType.values(),
                 FieldType.values(),
                 DayOfWeek.values(),
                 pendingCount(),
                 isAdmin(),
                 error,
+                notice,
                 Layout.HOST_TYPEAHEAD_SCRIPT,
                 title);
     }
@@ -737,10 +800,12 @@ public class AdminResource {
             @RestForm String locationType,
             @RestForm String locationDetail,
             @RestForm String slotIntervalMinutes,
-            @RestForm String requiresApproval) {
+            @RestForm String requiresApproval,
+            @RestForm String writeCalendar) {
         // Load + mutate + flush in one tx that commits before the detail render (issue #75). Slug
         // guards run BEFORE any field is mutated, so a rejection rolls back an untouched entity and
         // renders the error page outside the tx.
+        var staying = new AtomicLong();
         try {
             QuarkusTransaction.requiringNew().run(() -> {
                 MeetingType t = requireType(id);
@@ -750,6 +815,19 @@ public class AdminResource {
                 meetingHosts.assertSlugFreeAcrossHosts(t, newSlug);
                 t.name = name;
                 t.slug = newSlug;
+                // A submission that omits the field entirely (a client that predates this feature,
+                // or any POST not built from the rendered <select>) is treated the same as an
+                // explicit "keep" -- only a real field value from the picker may clear or change the
+                // stored override, never its absence.
+                if (writeCalendar != null && !KEEP_WRITE_CALENDAR.equals(writeCalendar)) {
+                    var ref = requireOwnedCalendar(writeCalendar);
+                    // Clearing the override does not mean "no calendar": the type falls back to the
+                    // write target, so that is what the bookings left behind are compared against.
+                    staying.set(bookingsStayingBehind(
+                            t, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id())));
+                    t.googleCredentialId = ref == null ? null : ref.credentialId();
+                    t.googleCalendarId = ref == null ? null : ref.googleCalendarId();
+                }
                 applyEditableFields(
                         t,
                         durationMinutes,
@@ -766,7 +844,9 @@ public class AdminResource {
         } catch (IllegalStateException e) {
             return detailInstance(id, localizedMessage(e));
         }
-        return detailInstance(id);
+        return staying.get() > 0
+                ? detailInstance(id, null, m().adm_detail_write_calendar_moved(staying.get()))
+                : detailInstance(id);
     }
 
     /**
