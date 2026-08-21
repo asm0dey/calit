@@ -55,7 +55,7 @@ class AdminMeetGatingOverrideTest {
                 .then();
     }
 
-    /** Owner 1 gets a default write target + a second calendar, and a type overriding onto the second. */
+    /** Owner 1 gets a write target + a second calendar, and a type overriding onto the second. */
     @Transactional
     Long seed(boolean defaultSupportsMeet, boolean overrideSupportsMeet) {
         GoogleCredential c = new GoogleCredential();

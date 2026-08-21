@@ -19,7 +19,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 
-/** createEvent inserts on the calendar it is given, and falls back to the default write target. */
+/** createEvent inserts on the calendar it is given, and falls back to the write target. */
 @QuarkusTest
 class CreateEventTargetTest {
 

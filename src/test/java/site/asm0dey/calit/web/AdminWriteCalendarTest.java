@@ -215,7 +215,7 @@ class AdminWriteCalendarTest {
                 .then();
     }
 
-    /** Owner 1: one account, a default write target and a second selected calendar. Returns the credential id. */
+    /** Owner 1: one account, a write target and a second selected calendar. Returns the credential id. */
     @Transactional
     Long seedOwnerCalendars() {
         GoogleCredential c = new GoogleCredential();
