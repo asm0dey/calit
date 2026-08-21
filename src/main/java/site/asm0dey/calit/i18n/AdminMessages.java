@@ -397,6 +397,26 @@ public interface AdminMessages {
     @Message("Location detail (phone / address / custom; ignored for Google Meet)")
     String adm_detail_label_location_detail();
 
+    @Message("Calendar for new events")
+    String adm_detail_label_write_calendar();
+
+    @Message("My write target")
+    String adm_detail_write_calendar_default();
+
+    @Message("Calendar no longer available — using my write target")
+    String adm_detail_write_calendar_missing();
+
+    @Message(
+            "The calendar this meeting type writes on is no longer available, so new bookings use your write target. Pick a calendar to fix it.")
+    String adm_detail_write_calendar_dangling();
+
+    @Message(
+            "{count} upcoming bookings stay on the calendar they were created on. Only new bookings use the new calendar.")
+    String adm_detail_write_calendar_moved(long count);
+
+    @Message("That calendar is not one of your selected Google calendars.")
+    String adm_detail_error_write_calendar_unknown();
+
     @Message("Secret (hidden from public landing)")
     String adm_detail_label_secret();
 

@@ -10,6 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Need a dependency's API or source? Prefer the **`javadocs` MCP** (configured in `.mcp.json`, server `https://www.javadocs.dev/mcp`) over decompiling jars. Decompile only when the MCP lacks the artifact.
 
+## Agent skills
+
+Skills live in `.agents/skills/`; `.claude/skills/` and `.crush/skills/` are symlinks into it. Nothing under either is tracked — restore after cloning with `bunx skills experimental_install`, which reads `skills-lock.json` and recreates the per-harness symlinks. The `quarkus` skill is not in the lock: it is written by the `quarkus-agent` MCP (`quarkus_skills` / `quarkus_saveSkill`, configured in `.mcp.json`), or comes from a global install.
+
 ## Build & run
 
 ```bash
@@ -35,6 +39,19 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 - `DatabaseResetCallback` (registered via `src/test/resources/META-INF/services/`) truncates + reseeds DB per test. Admin user **always id 1**. Write owner-scoped tests against that invariant.
 - Mailer mocked in `%dev`/`%test`; Google + Turnstile disabled by default. Full booking flow runs zero external accounts.
 - RestAssured can't execute JS — tests assert on stable marker comments (e.g. `CALIT_TZ_REFORMAT`) instead of running scripts.
+
+**Never open a PR while the test suite is red.** `mvn test` must be fully green —
+0 failures, 0 errors, `BUILD SUCCESS` — before a branch becomes a pull request,
+and the run has to be the *whole* suite, not the classes you happened to touch.
+No exceptions for "that failure is unrelated" or "it was already broken on
+`main`": if a test fails on your branch, fixing it is part of your branch. Land
+the repair first (its own commit, or merged in from its own branch) and say in
+the PR that you did.
+
+A failure you did not cause is still a failure the reviewer has to triage, and
+"known red" is how a suite stops being a signal at all. When a pre-existing
+break genuinely blocks you, fix it as a prerequisite rather than annotating it —
+that is what makes the green run mean something.
 
 ## Formatting
 

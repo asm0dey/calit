@@ -24,3 +24,10 @@ working-hours-*.png
 
 # docs site lives on its own branch (docs-site); ignore its working-tree leftovers here
 docs-site/
+
+# Agent skills. `.agents/skills/` is the store; `.claude/skills/` + `.crush/skills/`
+# symlink into it. Nothing here is tracked: `bunx skills experimental_install`
+# restores the lock-managed skills and the symlinks, and the `quarkus` skill is
+# written by the quarkus-agent MCP.
+.claude/skills/
+.agents/skills/

@@ -53,7 +53,7 @@ class GroupApprovalTest {
     void confirmsOnlyAfterEveryHostApproves() {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
         type(true);
 
@@ -65,12 +65,12 @@ class GroupApprovalTest {
         bookingService.approve(rows.get(0).id); // first host approves
         assertEquals(BookingStatus.CONFIRMED, Booking.<Booking>findById(rows.get(0).id).status);
         verify(calendarPort, never())
-                .createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
 
         bookingService.approve(rows.get(1).id); // last host approves -> event + confirm
         Booking.<Booking>group(lead.groupId).forEach(r -> assertEquals(BookingStatus.CONFIRMED, r.status));
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 
     @Test
@@ -78,7 +78,7 @@ class GroupApprovalTest {
     void doubleApproveOnAlreadyConfirmedGroupRowDoesNotDuplicateEvent() {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
                 .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
         type(true);
 
@@ -90,13 +90,13 @@ class GroupApprovalTest {
         bookingService.approve(rows.get(0).id); // first host approves
         bookingService.approve(rows.get(1).id); // last host approves -> event created + group confirmed
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
 
         // Double-submit: re-approve an already-CONFIRMED row (double-click / back-button replay).
         // Must NOT re-run createGroupGoogleEvent -> still exactly ONE event, not two.
         bookingService.approve(rows.get(1).id);
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 
     @Test
@@ -117,7 +117,7 @@ class GroupApprovalTest {
         bookingService.decline(rows.get(1).id);
         Booking.<Booking>group(lead.groupId).forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
         verify(calendarPort, never())
-                .createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 
     @Test
@@ -135,6 +135,6 @@ class GroupApprovalTest {
 
         Booking.<Booking>group(lead.groupId).forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
         verify(calendarPort, never())
-                .createEvent(anyLong(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 }
