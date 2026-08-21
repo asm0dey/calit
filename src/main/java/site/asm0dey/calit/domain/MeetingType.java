@@ -74,7 +74,7 @@ public class MeetingType extends PanacheEntityBase {
 
     /**
      * Optional per-type override of the creator's write calendar: Google's calendar id. Null means
-     * "use the creator's default write target". Resolved by {@code WriteTargetResolver}.
+     * "use the creator's write target". Resolved by {@code WriteTargetResolver}.
      */
     @Column(name = "google_calendar_id", columnDefinition = "text")
     public String googleCalendarId;
