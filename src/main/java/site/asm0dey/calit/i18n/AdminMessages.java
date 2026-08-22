@@ -344,7 +344,7 @@ public interface AdminMessages {
     @Message("Stop co-hosting?")
     String adm_shared_revokeConfirm_title();
 
-    @Message("You have {count} upcoming booking(s) for this shared meeting type. What should happen to them?")
+    @Message("Upcoming bookings for this shared meeting type: {count}. What should happen to them?")
     String adm_shared_revokeConfirm_count(long count);
 
     @Message("Keep bookings, just stop co-hosting")
@@ -560,7 +560,7 @@ public interface AdminMessages {
     @Message("Remove co-host?")
     String adm_hosts_removeConfirm_title();
 
-    @Message("{username} has {count} upcoming booking(s) on this meeting type. What should happen to them?")
+    @Message("{username}'s upcoming bookings on this meeting type: {count}. What should happen to them?")
     String adm_hosts_removeConfirm_count(String username, long count);
 
     @Message("Keep bookings, just remove co-host")
