@@ -7,9 +7,11 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.21.0
 
-Merged but not yet in a tagged release.
+Per-meeting-type Google calendars, working hours for brand-new accounts, a
+disabled account that is genuinely disabled, and every booking now remembering
+the calendar its event was created on.
 
 - **Cancelling or rescheduling now reaches the event on the calendar it was
   actually created on.** calit remembered a booking's Google event id but not
