@@ -1,6 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
@@ -36,7 +37,48 @@ class AdminMeetGatingOverrideTest {
     @Test
     void meetRejectedWhenTheTypeOverridesToANonMeetCalendar() {
         var typeId = seed(true, false); // default can Meet, override cannot
-        editWithLocation(typeId, "GOOGLE_MEET").statusCode(400);
+        // Not a bare 400: the Host lands back on the detail page with a localized message and a
+        // usable form, and nothing is persisted (calit-w7gq).
+        editWithLocation(typeId, "GOOGLE_MEET")
+                .statusCode(200)
+                // Qute HTML-escapes the apostrophe in "can't" (renders as "can&#39;t"); assert on
+                // the unescaped tail of the message instead of fighting the entity encoding.
+                .body(containsString("create Google Meet links"));
+
+        MeetingType t = MeetingType.findById(typeId);
+        org.junit.jupiter.api.Assertions.assertEquals(MeetingType.LocationType.PHONE, t.locationType);
+    }
+
+    @Test
+    void meetRejectionIsLocalized() {
+        var typeId = seed(true, false);
+        // Owner-scoped routes resolve locale from OwnerSettings, not the calit_lang cookie
+        // (LocaleResolutionFilter) -- set it the same way AdminI18nTest does.
+        given().cookie("quarkus-credential", FormAuth.login())
+                .formParam("ownerName", "Admin")
+                .formParam("ownerEmail", "admin@example.com")
+                .formParam("timezone", "UTC")
+                .formParam("locale", "de")
+                .when()
+                .post("/me/settings")
+                .then()
+                .statusCode(200);
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Meet override")
+                .formParam("slug", "meet-override-" + typeId)
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "GOOGLE_MEET")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                .when()
+                .post("/me/meeting-types/" + typeId + "/edit")
+                .then()
+                .statusCode(200)
+                .body(containsString("keine Google-Meet-Links erstellen"));
     }
 
     private io.restassured.response.ValidatableResponse editWithLocation(Long typeId, String locationType) {

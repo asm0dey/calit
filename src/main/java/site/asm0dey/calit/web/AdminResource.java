@@ -675,8 +675,10 @@ public class AdminResource {
     private LocationType parseLocationType(String locationType, MeetingType type) {
         LocationType lt = LocationType.valueOf(locationType);
         if (lt == LocationType.GOOGLE_MEET && writeTargets.blocksMeet(currentOwner.id(), type)) {
-            throw new BadRequestException(
-                    "The selected write calendar can't create Google Meet links; pick another location.");
+            // IllegalStateException, not BadRequestException: both save handlers already catch it
+            // and re-render the localized form. A BadRequestException had no ExceptionMapper, so
+            // the Host got a blank, unlocalized 400 and lost the page (calit-w7gq).
+            throw new IllegalStateException(m().adm_detail_error_location_meet_unsupported());
         }
         return lt;
     }

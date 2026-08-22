@@ -417,6 +417,10 @@ public interface AdminMessages {
     @Message("That calendar is not one of your selected Google calendars.")
     String adm_detail_error_write_calendar_unknown();
 
+    @Message(
+            "The calendar this meeting type writes on can't create Google Meet links. Pick another location, or another calendar.")
+    String adm_detail_error_location_meet_unsupported();
+
     @Message("Secret (hidden from public landing)")
     String adm_detail_label_secret();
 
