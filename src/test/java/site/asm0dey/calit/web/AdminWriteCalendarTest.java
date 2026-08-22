@@ -182,6 +182,38 @@ class AdminWriteCalendarTest {
     }
 
     @Test
+    void resavingTheSameCalendarDoesNotClaimBookingsStayedBehind() {
+        // A booking created on a calendar that is neither the current override nor the one it will
+        // be moved to still sits elsewhere, so the count is non-zero -- but this save did not move
+        // anything, and saying "they stay behind" implies it did. (Deliberately NOT "default@..." --
+        // that's the positive control's move target, and a booking already sitting exactly there
+        // would not be "staying behind" relative to that target, undermining the positive control.)
+        var credId = seedOwnerCalendars();
+        var typeId = seedType(credId, "work@example.com");
+        seedUpcomingBooking(typeId, credId, "elsewhere@example.com");
+
+        edit(typeId, credId + ":work@example.com")
+                .statusCode(200)
+                .body(not(containsString("stay on the calendar they were created on")));
+
+        // Positive control: an actual move still says so.
+        edit(typeId, credId + ":default@example.com")
+                .statusCode(200)
+                .body(containsString("stay on the calendar they were created on"));
+    }
+
+    @Test
+    void reclearingAnAlreadyClearedOverrideDoesNotClaimBookingsStayedBehind() {
+        // "" means "fall back to the write target". Submitting it on a type that already has no
+        // override is also a no-op save.
+        var credId = seedOwnerCalendars();
+        var typeId = seedType(null, null);
+        seedUpcomingBooking(typeId, credId, "work@example.com");
+
+        edit(typeId, "").statusCode(200).body(not(containsString("stay on the calendar they were created on")));
+    }
+
+    @Test
     void theStayBehindNoticeReadsCorrectlyAtCountOne() {
         // The codebase has no i18n pluralization, so the message must be phrased so it is right at
         // every count -- "1 upcoming bookings" was the bug (calit-75vf).

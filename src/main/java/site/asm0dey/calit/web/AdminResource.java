@@ -847,12 +847,19 @@ public class AdminResource {
             return 0L;
         }
         var ref = requireOwnedCalendar(writeCalendar);
-        // Clearing the override does not mean "no calendar": the type falls back to the write
-        // target, so that is what the bookings left behind are compared against.
-        long staying = bookingsStayingBehind(t, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id()));
+        var before = new CalendarRef(t.googleCredentialId, t.googleCalendarId);
         t.googleCredentialId = ref == null ? null : ref.credentialId();
         t.googleCalendarId = ref == null ? null : ref.googleCalendarId();
-        return staying;
+        var after = new CalendarRef(t.googleCredentialId, t.googleCalendarId);
+        if (before.equals(after)) {
+            // The save re-submitted the calendar the type already wrote on. Older bookings may
+            // still sit elsewhere, but nothing moved, so "they stay behind" would imply a move
+            // that did not happen (calit-jk8y).
+            return 0L;
+        }
+        // Clearing the override does not mean "no calendar": the type falls back to the write
+        // target, so that is what the bookings left behind are compared against.
+        return bookingsStayingBehind(t, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id()));
     }
 
     /**
