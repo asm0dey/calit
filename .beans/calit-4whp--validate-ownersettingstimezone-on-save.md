@@ -1,11 +1,11 @@
 ---
 # calit-4whp
 title: Validate OwnerSettings.timezone on save
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-08-16T06:38:59Z
-updated_at: 2026-08-22T12:24:31Z
+updated_at: 2026-08-22T12:29:49Z
 ---
 
 `AdminResource.updateSettings` (~line 1131) stores `row.timezone = timezone` straight from the form with no validation, unlike the `locale` field one line above which guards with `AppLocales.isSupported`.
@@ -25,6 +25,10 @@ Blast radius is worse than "my admin page breaks": the owner's public booking pa
 REACHABILITY IS LOW. `tzField.html` renders a `<select>` populated from `ZoneId.getAvailableZoneIds()`, so a browser cannot submit anything else. Requires a hand-crafted POST, and damages only the attacker's own account (owner-scoped), repairable by saving a valid zone. Pre-existing, not introduced by #116.
 
 ## Todo
-- [ ] Guard on save: `zoneIds().contains(timezone) ? timezone : "UTC"` in `updateSettings`, mirroring the locale guard
-- [ ] Test: POST a garbage timezone, assert it is coerced and the public booking page still renders
+- [x] Guard on save: `zoneIds().contains(timezone) ? timezone : "UTC"` in `updateSettings`, mirroring the locale guard
+- [x] Test: POST a garbage timezone, assert it is coerced and the public booking page still renders (coercion asserted in the DB plus GET /me; the public page is not separately exercised — after coercion the stored value is a valid zone, so that path has nothing left to fail on)
 - [x] Consider whether existing rows need a backfill/repair pass — **NO**. Only reachable by a hand-crafted POST against your own owner-scoped account, and the save-time guard repairs the row on the next save. Not worth a migration.
+
+## Summary of Changes
+
+Added timezone validation to guard against hand-crafted POSTs storing invalid IANA zone IDs. The fix coerces invalid timezones to UTC on save, preventing DateTimeException-500s at eleven unguarded call sites including the public booking page. No backfill migration needed—the guard repairs any existing bad rows on the next save.
