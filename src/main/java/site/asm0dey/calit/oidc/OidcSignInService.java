@@ -84,13 +84,8 @@ public class OidcSignInService {
         AppUser u = AppUser.createOidcUser(username, identity.sub(), grantsAdmin);
         u.persist();
 
-        // Pre-create the settings row so the first-login wizard (/me/setup) can pre-fill the email.
-        OwnerSettings s = new OwnerSettings();
-        s.ownerId = u.id;
-        s.ownerName = "";
-        s.ownerEmail = identity.email() == null ? "" : identity.email();
-        s.timezone = "UTC";
-        s.persist();
+        // Seed the row so the first-login wizard (/me/setup) can pre-fill the email.
+        OwnerSettings.seed(u.id, identity.email());
         return u;
     }
 }
