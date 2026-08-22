@@ -66,6 +66,40 @@ Merged but not yet in a tagged release.
   now returns a plain bad-request error instead of a server error; only a
   hand-crafted request could reach that, never the pages themselves.
   ([#147](https://github.com/asm0dey/calit/pull/147))
+- **A disabled account no longer takes bookings.** Switching an account off
+  stopped it logging in, but left its public page live and bookable: strangers
+  could still book it, and every booking mailed someone who had left. The
+  landing page, the booking page and the JSON booking API now all refuse for a
+  disabled account. Invitees holding an existing manage link can no longer
+  reschedule or change details either — that would put a new time on a departed
+  host's calendar — but they can always still cancel.
+  ([#148](https://github.com/asm0dey/calit/pull/148))
+- **Every /me page now shows times in your configured timezone.** The manage
+  page used your browser's timezone while the dashboard and approval queue used
+  the one in your settings, so the same booking showed two different clock times
+  one click apart if you were travelling. All three now use your configured
+  zone, the zone is named on screen, and the picker on the manage page is an
+  explicit override rather than a second default.
+  ([#148](https://github.com/asm0dey/calit/pull/148))
+- **Saving a Google Meet type whose calendar cannot create Meet links now
+  explains itself.** It used to return a blank error page and lose whatever you
+  had typed into the form. You now land back on the meeting type with a
+  translated message telling you to pick another location or another calendar.
+  ([#148](https://github.com/asm0dey/calit/pull/148))
+- **Reminder emails are no longer silently dropped.** A booking whose owner had
+  no settings row made the reminder fail internally; it was marked as sent and
+  the invitee never received it, with nothing surfacing but a log line. That
+  path now degrades cleanly, and a timezone the system cannot read falls back to
+  UTC instead of breaking every email for that account.
+  ([#148](https://github.com/asm0dey/calit/pull/148))
+- **The "bookings stay behind" notice only appears when the calendar actually
+  changed.** Saving a meeting type without touching its calendar still claimed
+  bookings were staying behind, which read as though something had moved.
+  ([#148](https://github.com/asm0dey/calit/pull/148))
+- **Counted messages read correctly at one.** Several notices said "1 upcoming
+  bookings"; they now read correctly at any count, in English, German and
+  Hebrew.
+  ([#148](https://github.com/asm0dey/calit/pull/148))
 
 Nothing to configure. The migrations run themselves. Disconnecting a Google
 account still clears the stored calendar for its bookings, which fall back to
@@ -81,6 +115,12 @@ have no hours of their own become bookable on those defaults. Such a type offers
 no slots today, so it was already effectively parked — but if you want it to
 stay that way, give it hours of its own or clear the global grid again after
 upgrading.
+
+Nothing to do for the disabled-account and timezone fixes — no configuration
+and no database changes. One caveat worth knowing: bookings that were taken on
+a disabled account's page **before** this upgrade are not cancelled
+retroactively. They stay on the books, and the invitee can still cancel them
+from their existing link.
 
 ## 1.20.2
 
