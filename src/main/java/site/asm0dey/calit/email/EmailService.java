@@ -1,5 +1,6 @@
 package site.asm0dey.calit.email;
 
+import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
@@ -922,7 +923,20 @@ public class EmailService {
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
-        ZoneId zone = ZoneId.of(owner.timezone);
+        if (owner == null) {
+            // No settings row means no address to send the owner copy to, so there is no mail to
+            // build. Returning null gives every caller the same "nothing to send" path the missing-
+            // booking case already takes, instead of an NPE on owner.timezone that the reminder
+            // tick's catch-all would swallow into a silent drop (calit-sv6a). Warn, because after
+            // OwnerSettings.seed covers all five creation paths this should be unreachable --
+            // if it fires, a row got in some other way and someone needs to know.
+            Log.warnf("no owner_settings for owner %d -- skipping mail for booking %d", type.ownerId, booking.id);
+            return null;
+        }
+        // coerceZone, not a bare ZoneId.of: a row written before the save-time guard existed can
+        // still hold an unparseable zone, and a DateTimeException here would take out every mail
+        // for that owner, not just this one (calit-4whp).
+        ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(owner.timezone));
         List<AnswerLine> answers = buildAnswerLines(booking, type);
         List<HostDelivery> hostDeliveries =
                 booking.groupId == null ? List.of() : loadHostDeliveries(booking.groupId, type);
