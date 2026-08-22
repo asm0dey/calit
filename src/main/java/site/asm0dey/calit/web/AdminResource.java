@@ -542,18 +542,25 @@ public class AdminResource {
 
     /**
      * Optional per-type date override captured on the create form: a single overrideDate
-     * plus parallel windowStart[]/windowEnd[] arrays. Blank date → no override; a date with
-     * no (non-blank) windows → day off.
+     * plus parallel windowStart[]/windowEnd[] arrays. Blank OR unparseable date → no override
+     * (crafted/garbage input must never 500 the whole meeting-type create); a date with no
+     * (non-blank) windows → day off.
      */
     private void createInitialDateOverride(Long ownerId, Long typeId, MultivaluedMap<String, String> form) {
         String date = form.getFirst("overrideDate");
         if (date == null || date.isBlank()) {
             return;
         }
+        LocalDate overrideDate;
+        try {
+            overrideDate = LocalDate.parse(date);
+        } catch (DateTimeParseException _) {
+            return; // unparseable date — skip the override rather than fail the whole create
+        }
         DateOverride o = new DateOverride();
         o.ownerId = ownerId;
         o.meetingTypeId = typeId;
-        o.overrideDate = LocalDate.parse(date);
+        o.overrideDate = overrideDate;
         o.persist(); // need the generated id before persisting child windows
         persistWindows(o.id, form);
     }
@@ -561,7 +568,8 @@ public class AdminResource {
     /**
      * Zip parallel {@code windowStart[]}/{@code windowEnd[]} form arrays into
      * {@link DateOverrideWindow} rows under a persisted {@link DateOverride}; a row with a blank
-     * start or end is skipped (none → zero windows = day off).
+     * or unparseable start/end is skipped (none → zero windows = day off) — a single bad window
+     * must never 500 the whole save, matching {@link #persistFrames}.
      */
     private void persistWindows(Long dateOverrideId, MultivaluedMap<String, String> form) {
         List<String> starts = form.getOrDefault("windowStart", List.of());
@@ -570,10 +578,18 @@ public class AdminResource {
             if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
                 continue;
             }
+            LocalTime start;
+            LocalTime end;
+            try {
+                start = LocalTime.parse(starts.get(i));
+                end = LocalTime.parse(ends.get(i));
+            } catch (DateTimeParseException _) {
+                continue; // unparseable window — skip it rather than 500 the whole save
+            }
             DateOverrideWindow w = new DateOverrideWindow();
             w.dateOverrideId = dateOverrideId;
-            w.startTime = LocalTime.parse(starts.get(i));
-            w.endTime = LocalTime.parse(ends.get(i));
+            w.startTime = start;
+            w.endTime = end;
             w.persist();
         }
     }

@@ -270,6 +270,69 @@ class AdminMeetingTypeFormTest {
     }
 
     @Test
+    void createWithGarbageOverrideDateStillCreatesTheType() {
+        var slug = "ov-garbage-" + System.nanoTime();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Garbage Date")
+                .formParam("slug", slug)
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "GOOGLE_MEET")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                .formParam("overrideDate", "not-a-date") // crafted/garbage input, must not 500
+                .formParam("windowStart", "09:00")
+                .formParam("windowEnd", "11:00")
+                .when()
+                .post("/me/meeting-types")
+                .then()
+                .statusCode(200);
+
+        MeetingType t = MeetingType.findBySlug(1L, slug);
+        assertNotNull(t); // the type itself is still created
+        assertEquals(
+                0,
+                site.asm0dey.calit.domain.DateOverride.count("meetingTypeId = ?1", t.id),
+                "unparseable date skipped, not persisted");
+    }
+
+    @Test
+    void createWithGarbageWindowTimeSkipsThatWindowButKeepsTheOverride() {
+        var slug = "ov-garbage-window-" + System.nanoTime();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Garbage Window")
+                .formParam("slug", slug)
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "GOOGLE_MEET")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                .formParam("overrideDate", "2026-12-24")
+                // first window is garbage (must not 500); second is a valid window that must still persist
+                .formParam("windowStart", "not-a-time", "13:00")
+                .formParam("windowEnd", "11:00", "14:00")
+                .when()
+                .post("/me/meeting-types")
+                .then()
+                .statusCode(200);
+
+        MeetingType t = MeetingType.findBySlug(1L, slug);
+        assertNotNull(t);
+        site.asm0dey.calit.domain.DateOverride o = site.asm0dey.calit.domain.DateOverride.find(
+                        "meetingTypeId = ?1", t.id)
+                .firstResult();
+        assertNotNull(o, "valid date still persists the override");
+        assertEquals(
+                1,
+                site.asm0dey.calit.domain.DateOverrideWindow.count("dateOverrideId = ?1", o.id),
+                "garbage window skipped, valid window kept");
+    }
+
+    @Test
     void createWithoutWorkingHoursMakesNoRules() {
         var slug = "nowh-create-" + System.nanoTime();
         given().cookie("quarkus-credential", FormAuth.login())
