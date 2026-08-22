@@ -1352,7 +1352,13 @@ public class AdminResource {
             @RestForm String date, @RestForm String meetingTypeId, MultivaluedMap<String, String> form) {
         QuarkusTransaction.requiringNew().run(() -> {
             // Blank meetingTypeId = this owner's GLOBAL override. A non-blank id must be owned.
-            var typeId = (meetingTypeId == null || meetingTypeId.isBlank()) ? null : Long.valueOf(meetingTypeId);
+            Long typeId;
+            try {
+                typeId = (meetingTypeId == null || meetingTypeId.isBlank()) ? null : Long.valueOf(meetingTypeId);
+            } catch (NumberFormatException _) {
+                // Crafted/garbage id — a clean 400, not a leaked 500 (no ExceptionMapper covers this).
+                throw new BadRequestException("Malformed meeting type id: " + meetingTypeId);
+            }
             if (typeId != null) {
                 requireType(typeId); // 404 a cross-owner type
             }
