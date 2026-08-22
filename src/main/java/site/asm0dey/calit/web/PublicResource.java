@@ -538,10 +538,16 @@ public class PublicResource {
         return Templates.guestDeclined(m.pub_guest_declined_title());
     }
 
-    /** Resolve the {user} segment to an owner, 404 if unknown, and bind CurrentOwner for the request. */
+    /**
+     * Resolve the {user} segment to an owner, 404 if unknown OR DISABLED, and bind CurrentOwner for
+     * the request. A disabled account is 404 rather than a rendered "not accepting bookings" page:
+     * the route already 404s an unknown username, so this needs no template and no three-locale
+     * message, and it does not tell a stranger probing usernames which accounts exist but are
+     * switched off (calit-h8mb).
+     */
     private AppUser resolveOwner(String user) {
         AppUser owner = AppUser.findByUsername(Usernames.normalize(user));
-        if (owner == null) {
+        if (owner == null || !owner.enabled) {
             throw new NotFoundException("No user " + user);
         }
         currentOwner.set(owner);
