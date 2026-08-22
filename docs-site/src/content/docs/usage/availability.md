@@ -12,7 +12,7 @@ A new account starts with **Monday–Friday 09:00–18:00**, set when you comple
 
 ![Weekly availability editor](/calit/img/availability.png)
 
-Each day can hold several time frames, and the copy buttons mirror one day onto the others. A day with no frames is a day you are not available.
+Each day can hold several time frames, and the copy buttons mirror one day onto the others. A day with no frames is a day you are not available. The meeting-type **create** form uses this same grid, so a new type can be given its whole week up front rather than one frame per day.
 
 ### Global hours and per-meeting-type hours
 
@@ -56,3 +56,5 @@ When an invitee views your booking page, calit calculates the available slots by
 ## Timezone handling
 
 Invitees see all slots in **their own local timezone** (detected from their browser). You configure your own timezone in `/me/setup` or in your account settings; all availability rules are interpreted in your timezone, and converted for each visitor automatically.
+
+Your own pages under `/me` — the dashboard, the approval queue, and a booking's manage page — all show times in that configured timezone and name it on screen, so a booking reads the same on every page while you are travelling. The timezone picker on the manage page is a one-off override for that page, not a second default.

@@ -14,8 +14,23 @@ From there, admins can:
 
 - View all registered user accounts.
 - Create a new user by invitation (see below).
-- Lock or unlock an account. A locked user cannot log in.
+- Lock or unlock an account — see [Locking an account](#locking-an-account).
 - Promote or demote the admin role on existing accounts.
+
+## Locking an account
+
+Locking takes an account out of service entirely, not just out of the login form:
+
+- The user cannot log in.
+- Their landing page at `/<username>`, and every meeting type under it, returns **404** — nobody can book them.
+- The JSON booking API refuses bookings for them for the same reason.
+- Invitees holding a manage link for one of their existing bookings can no longer reschedule it or edit its details, since that would put a new time on the calendar of someone who has left. They can always still **cancel**.
+
+Unlocking restores all of it.
+
+:::caution[Existing bookings are not cancelled]
+Locking an account does not cancel the bookings it already has. They stay on the books, and each invitee can still cancel from the link they were emailed. If the person has left for good, cancel their upcoming bookings before locking so the invitees are told.
+:::
 
 ## Inviting a user
 
