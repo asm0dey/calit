@@ -3,8 +3,9 @@
 title: 'jbcontext 2-week trial: keep or remove (decide 2026-09-05)'
 status: in-progress
 type: task
+priority: normal
 created_at: 2026-08-22T09:29:52Z
-updated_at: 2026-08-22T09:29:52Z
+updated_at: 2026-08-22T12:13:07Z
 ---
 
 Trial of JetBrains Context (`jbcontext` 0.9.9, build 592) as a semantic-search layer for this repo. Started 2026-08-22. Decide keep-or-remove on 2026-09-05.
@@ -65,3 +66,19 @@ Three of those are tracked files. Stage explicit paths when committing feature w
 - [ ] After install: remove the duplicate SessionStart hook from `.claude/settings.local.json` (setup-agent adds its own to settings.json — otherwise 3 index runs per session)
 - [ ] After install: check the `.mcp.json` entry uses an absolute binary path — `jbcontext` is not on PATH outside fish (installer only wrote `~/.config/fish/conf.d/jbcontext.fish`)
 - [ ] 2026-09-05: run `jbcontext analyze --agent claude --details`, apply the criteria above, decide
+
+## Data point: 2026-08-22 bug-sweep planning
+
+Wrote `docs/superpowers/plans/2026-08-22-bug-sweep.md` (8 bugs, ~30 file reads). **jbcontext calls: 0.**
+
+Not a signal against the tool — a signal about the task shape. Every bug bean already
+carried exact `file:line` pointers (`AdminResource.java:1131`, `PublicResource.java:542-550`,
+`BookingService.java:1172-1178`), because whoever filed the bean had already done the
+discovery. There was nothing to locate, only code to read. CLAUDE.md's own rule says skip
+context-explorer when the task names the exact file, and that covered all 8 tasks.
+
+Implication for the keep/remove decision: judge the trial on COLD-START tasks ("where does X
+happen", an unfamiliar subsystem, a GH issue with no file named), not on planning from
+well-filed beans. If most calit work starts from a bean with line numbers in it, the tool's
+addressable surface is smaller than the trial assumed — which is itself an argument for
+removing it, but on grounds of task mix, not tool quality.
