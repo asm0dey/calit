@@ -89,8 +89,8 @@ class PublicDisabledOwnerTest {
         seedDisabledOwnerWithHours();
         given().contentType("application/x-www-form-urlencoded")
                 .formParam("startUtc", "2030-01-07T09:00:00Z")
-                .formParam("name", "Stranger")
-                .formParam("email", "stranger@example.com")
+                .formParam("inviteeName", "Stranger")
+                .formParam("inviteeEmail", "stranger@example.com")
                 .when()
                 .post("/disabled-owner/intro")
                 .then()

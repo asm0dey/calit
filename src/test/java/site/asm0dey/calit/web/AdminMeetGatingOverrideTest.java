@@ -4,6 +4,8 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -19,6 +21,9 @@ import site.asm0dey.calit.google.GoogleCredential;
  */
 @QuarkusTest
 class AdminMeetGatingOverrideTest {
+
+    @Inject
+    EntityManager em;
 
     @AfterEach
     @Transactional
@@ -47,6 +52,58 @@ class AdminMeetGatingOverrideTest {
 
         MeetingType t = MeetingType.findById(typeId);
         org.junit.jupiter.api.Assertions.assertEquals(MeetingType.LocationType.PHONE, t.locationType);
+    }
+
+    /**
+     * The write-calendar override (task 4) and the Meet gate (task 5) share editMeetingType's ONE
+     * transaction, and the location select and the calendar select sit in the SAME form -- so one
+     * save can put them in conflict. applyWriteCalendar runs first and mutates the type's calendar
+     * columns; parseLocationType then throws, and the whole tx must roll back rather than leave the
+     * calendar moved but the location refused. Nothing posted both fields together before this.
+     */
+    @Test
+    void aMeetRejectionRollsBackTheWriteCalendarMoveSubmittedInTheSameSave() {
+        var typeId = seed(false, true); // the write target cannot Meet, the override can
+        var credId = ownerCredentialId();
+
+        // The type is seeded on the Meet-capable override. This save asks for GOOGLE_MEET *and*
+        // moves the type onto default@example.com, which cannot mint Meet links -- so it is the
+        // combination, not either field alone, that must be refused.
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Meet override")
+                .formParam("slug", "meet-override-" + typeId)
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "GOOGLE_MEET")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                .formParam("writeCalendar", credId + ":default@example.com")
+                .when()
+                .post("/me/meeting-types/" + typeId + "/edit")
+                .then()
+                .statusCode(200)
+                .body(containsString("create Google Meet links"));
+
+        MeetingType t = reload(typeId);
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "override@example.com",
+                t.googleCalendarId,
+                "the write-calendar move must roll back with the save that was refused");
+        org.junit.jupiter.api.Assertions.assertEquals(MeetingType.LocationType.PHONE, t.locationType);
+    }
+
+    /** Reload from the DB, bypassing the test thread's first-level cache (the POST runs its own tx). */
+    @Transactional
+    MeetingType reload(Long typeId) {
+        em.clear();
+        return MeetingType.findById(typeId);
+    }
+
+    /** The single credential {@link #seed} creates for owner 1. */
+    private static Long ownerCredentialId() {
+        return GoogleCredential.<GoogleCredential>find("ownerId", 1L).firstResult().id;
     }
 
     @Test

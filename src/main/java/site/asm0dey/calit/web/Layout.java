@@ -71,7 +71,7 @@ public final class Layout {
               var forcedHC = document.body.dataset.hc;
               if (forcedHC) { HC = forcedHC; }
               function render() {
-                var tz = picker ? picker.value : (document.body.dataset.tz || detected);
+                var tz = picker ? picker.value : initial;
                 if (label) { label.textContent = tz; }
                 document.querySelectorAll('[data-utc]').forEach(function (el) {
                   var d = new Date(el.dataset.utc);
@@ -87,7 +87,13 @@ public final class Layout {
             </script>
             """;
 
-    /** Reusable timezone-picker bar (detected zone selected client-side by TZ_SCRIPT), localized. */
+    /**
+     * Reusable, localized timezone-picker bar. TZ_SCRIPT fills the {@code <select>} client-side and
+     * pre-selects the zone the page was AUTHORED in: {@code body[data-tz]} where the page emits one
+     * (the owner's stored zone, on /me), otherwise the browser-detected zone (the invitee pages,
+     * which emit none). The viewer can still change it; the selection is an override, not a second
+     * disagreeing default (calit-mhgs).
+     */
     public static String tzBar(AppMessages m) {
         return """
                 <div class="tz-bar">
