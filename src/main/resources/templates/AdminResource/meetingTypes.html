@@ -37,7 +37,7 @@
   </div>
 
   <h2 class="text-xl font-semibold mt-8 mb-3">{adm:adm_meetingTypes_create_h2}</h2>
-  <form method="post" action="/me/meeting-types" class="space-y-3 max-w-2xl">
+  <form method="post" action="/me/meeting-types" data-workplan class="space-y-3 max-w-2xl">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox" checked>
@@ -119,17 +119,43 @@
       <div class="collapse-title font-semibold">{adm:adm_meetingTypes_section_working_hours}</div>
       <div class="collapse-content">
         <p class="text-sm text-base-content/60 mb-2">{adm:adm_meetingTypes_working_hours_hint}</p>
-        <div class="flex flex-col gap-2">
-          {#for d in daysOfWeek}
-            <div class="flex items-center gap-2">
-              <input type="hidden" name="ruleDay" value="{d}">
-              <span class="w-28 text-sm">{display:of(d)}</span>
-              <input class="input input-sm" type="time" name="ruleStart">
-              <span class="text-sm opacity-70">{adm:adm_meetingTypes_to}</span>
-              <input class="input input-sm" type="time" name="ruleEnd">
+        <div class="space-y-2">
+        {#for d in daysOfWeek}
+          <div data-day="{d}" class="card bg-base-200 border border-base-300">
+            <div class="card-body py-3 gap-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <strong class="w-24">{display:of(d)}</strong>
+                <div class="flex flex-wrap gap-1">
+                  <button type="button" class="btn btn-ghost btn-xs" data-add-frame="{d}">{adm:adm_meetingTypes_frame_add}</button>
+                  <button type="button" class="btn btn-ghost btn-xs" data-copy-all="{d}">{adm:adm_meetingTypes_copy_all}</button>
+                  <button type="button" class="btn btn-ghost btn-xs" data-copy-weekdays="{d}">{adm:adm_meetingTypes_copy_weekdays}</button>
+                  <button type="button" class="btn btn-ghost btn-xs text-error" data-clear-day="{d}">{adm:adm_workplan_clear_day}</button>
+                </div>
+              </div>
+              <div data-frames class="space-y-1">
+                <!-- One blank frame seeded server-side: without JS this row IS the editor. -->
+                <div data-frame class="flex items-center gap-2">
+                  <input type="hidden" name="frameDay" value="{d}">
+                  <input class="input input-sm" type="time" name="frameStart">
+                  <span class="text-base-content/60">{adm:adm_meetingTypes_to}</span>
+                  <input class="input input-sm" type="time" name="frameEnd">
+                  <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="{adm:adm_meetingTypes_remove_frame_aria}">&times;</button>
+                </div>
+              </div>
             </div>
-          {/for}
+          </div>
+        {/for}
         </div>
+
+        <template data-frame-template>
+          <div data-frame class="flex items-center gap-2">
+            <input type="hidden" name="frameDay" value="">
+            <input class="input input-sm" type="time" name="frameStart">
+            <span class="text-base-content/60">{adm:adm_meetingTypes_to}</span>
+            <input class="input input-sm" type="time" name="frameEnd">
+            <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="{adm:adm_meetingTypes_remove_frame_aria}">&times;</button>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -184,4 +210,5 @@
   </form>
 
   {#include AdminResource/_copyToast /}
+  <script src="/workplan.js"></script>
 {/include}

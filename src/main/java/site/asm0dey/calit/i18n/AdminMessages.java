@@ -238,6 +238,18 @@ public interface AdminMessages {
     @Message("to")
     String adm_meetingTypes_to();
 
+    @Message("+ Frame")
+    String adm_meetingTypes_frame_add();
+
+    @Message("Copy to all days")
+    String adm_meetingTypes_copy_all();
+
+    @Message("Copy to weekdays")
+    String adm_meetingTypes_copy_weekdays();
+
+    @Message("Remove frame")
+    String adm_meetingTypes_remove_frame_aria();
+
     @Message("Date override")
     String adm_meetingTypes_section_date_override();
 

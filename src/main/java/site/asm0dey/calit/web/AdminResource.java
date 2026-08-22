@@ -446,7 +446,7 @@ public class AdminResource {
                         slotIntervalMinutes,
                         requiresApproval);
                 t.persist(); // need the generated id before scoping child rules/overrides to it
-                createInitialWorkingHours(t.id, t.ownerId, form);
+                persistFrames(t.ownerId, t.id, form);
                 createInitialDateOverride(t.id, t.ownerId, form);
             });
         } catch (IllegalStateException e) {
@@ -538,29 +538,6 @@ public class AdminResource {
                 List.of(BookingStatus.CONFIRMED, BookingStatus.PENDING),
                 Instant.now(),
                 newCalendarId == null ? "" : newCalendarId);
-    }
-
-    /**
-     * Per-type weekly working hours captured on the create form. The form posts parallel
-     * arrays ruleDay[]/ruleStart[]/ruleEnd[] (one row per weekday); a row with a blank
-     * start or end is skipped.
-     */
-    private void createInitialWorkingHours(Long typeId, Long ownerId, MultivaluedMap<String, String> form) {
-        List<String> days = form.getOrDefault("ruleDay", List.of());
-        List<String> starts = form.getOrDefault("ruleStart", List.of());
-        List<String> ends = form.getOrDefault("ruleEnd", List.of());
-        for (var i = 0; i < days.size() && i < starts.size() && i < ends.size(); i++) {
-            if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
-                continue;
-            }
-            AvailabilityRule r = new AvailabilityRule();
-            r.ownerId = ownerId;
-            r.meetingTypeId = typeId;
-            r.dayOfWeek = DayOfWeek.valueOf(days.get(i));
-            r.startTime = LocalTime.parse(starts.get(i));
-            r.endTime = LocalTime.parse(ends.get(i));
-            r.persist();
-        }
     }
 
     /**

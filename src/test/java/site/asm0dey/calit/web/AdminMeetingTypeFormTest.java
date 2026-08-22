@@ -2,11 +2,14 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import io.quarkus.test.junit.QuarkusTest;
+import java.time.DayOfWeek;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.Slugs;
 
@@ -119,20 +122,32 @@ class AdminMeetingTypeFormTest {
     }
 
     @Test
-    void createFormExposesWorkingHoursAndOverrideInputs() {
+    void createFormRendersWorkplanGrid() {
         given().cookie("quarkus-credential", FormAuth.login())
                 .when()
                 .get("/me/meeting-types")
                 .then()
                 .statusCode(200)
-                .body(containsString("name=\"ruleDay\""))
-                .body(containsString("name=\"ruleStart\""))
-                .body(containsString("name=\"ruleEnd\""))
-                .body(containsString("name=\"overrideDate\""));
+                // grid scope + the markers workplan.js binds to
+                .body(containsString("data-workplan"))
+                .body(containsString("data-day=\"MONDAY\""))
+                .body(containsString("data-day=\"SUNDAY\""))
+                .body(containsString("data-frame-template"))
+                .body(containsString("data-add-frame=\"MONDAY\""))
+                .body(containsString("data-copy-all=\"MONDAY\""))
+                .body(containsString("data-copy-weekdays=\"MONDAY\""))
+                .body(containsString("data-clear-day=\"SUNDAY\""))
+                .body(containsString("/workplan.js"))
+                // frame inputs replace the old ruleDay/ruleStart/ruleEnd trio
+                .body(containsString("name=\"frameDay\""))
+                .body(containsString("name=\"frameStart\""))
+                .body(containsString("name=\"frameEnd\""))
+                .body(not(containsString("name=\"ruleDay\"")))
+                .body(containsString("name=\"overrideDate\"")); // date-override block untouched
     }
 
     @Test
-    void createPersistsPerTypeWorkingHours() {
+    void createPersistsPerTypeWorkingHoursFromFrames() {
         var slug = "wh-create-" + System.nanoTime();
         given().cookie("quarkus-credential", FormAuth.login())
                 .contentType("application/x-www-form-urlencoded")
@@ -144,10 +159,10 @@ class AdminMeetingTypeFormTest {
                 .formParam("locationType", "GOOGLE_MEET")
                 .formParam("locationDetail", "")
                 .formParam("slotIntervalMinutes", "")
-                // one filled weekday row + one blank row (must be skipped)
-                .formParam("ruleDay", "MONDAY", "TUESDAY")
-                .formParam("ruleStart", "09:00", "")
-                .formParam("ruleEnd", "17:00", "")
+                // one filled frame + one blank frame (must be skipped)
+                .formParam("frameDay", "MONDAY", "TUESDAY")
+                .formParam("frameStart", "09:00", "")
+                .formParam("frameEnd", "17:00", "")
                 .when()
                 .post("/me/meeting-types")
                 .then()
@@ -155,8 +170,71 @@ class AdminMeetingTypeFormTest {
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
         assertNotNull(t);
-        long count = site.asm0dey.calit.domain.AvailabilityRule.count("meetingTypeId = ?1", t.id);
-        assertEquals(1, count); // only the Monday row, blank Tuesday skipped
+        assertEquals(1, AvailabilityRule.count("meetingTypeId = ?1", t.id)); // blank Tuesday skipped
+    }
+
+    @Test
+    void createPersistsSeveralFramesOnOneDay() {
+        var slug = "wh-multi-" + System.nanoTime();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Split Day")
+                .formParam("slug", slug)
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "PHONE")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                // what "+ Frame" produces: two Monday frames, plus one inverted frame to drop
+                .formParam("frameDay", "MONDAY", "MONDAY", "FRIDAY")
+                .formParam("frameStart", "09:00", "13:00", "17:00")
+                .formParam("frameEnd", "12:00", "17:00", "09:00")
+                .when()
+                .post("/me/meeting-types")
+                .then()
+                .statusCode(200);
+
+        MeetingType t = MeetingType.findBySlug(1L, slug);
+        assertNotNull(t);
+        assertEquals(
+                2,
+                AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY),
+                "both Monday frames persist");
+        assertEquals(
+                0,
+                AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.FRIDAY),
+                "inverted frame dropped, not 500");
+    }
+
+    @Test
+    void noJsSubmitOfTheSeededGridCreatesTheTypedRules() {
+        var slug = "wh-nojs-" + System.nanoTime();
+        // Exactly what the browser posts with JS disabled: the seven server-seeded rows,
+        // two of them filled in by hand, the rest left blank.
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "No JS")
+                .formParam("slug", slug)
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "PHONE")
+                .formParam("locationDetail", "")
+                .formParam("slotIntervalMinutes", "")
+                .formParam("frameDay", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY")
+                .formParam("frameStart", "09:00", "", "10:00", "", "", "", "")
+                .formParam("frameEnd", "17:00", "", "16:00", "", "", "", "")
+                .when()
+                .post("/me/meeting-types")
+                .then()
+                .statusCode(200);
+
+        MeetingType t = MeetingType.findBySlug(1L, slug);
+        assertNotNull(t);
+        assertEquals(2, AvailabilityRule.count("meetingTypeId = ?1", t.id));
+        assertEquals(1, AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY));
+        assertEquals(1, AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.WEDNESDAY));
     }
 
     @Test

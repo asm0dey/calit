@@ -1,11 +1,11 @@
 ---
 # calit-9d76
 title: 'Meeting type create form: use the workplan working-hours grid'
-status: todo
+status: in-progress
 type: feature
 priority: normal
 created_at: 2026-08-15T21:14:55Z
-updated_at: 2026-08-15T21:14:55Z
+updated_at: 2026-08-22T10:05:15Z
 ---
 
 Upstream: https://github.com/asm0dey/calit/issues/120 (reporter confirmed the *edit* page UI is the one to keep).
@@ -24,10 +24,10 @@ Make the create form use the same grid.
 
 ## Todo
 
-- [ ] Replace the ruleDay/ruleStart/ruleEnd block in `meetingTypes.html` with the workplan grid markup (+ `<template data-frame-template>`, `<script src="/workplan.js">`)
-- [ ] Point the create handler at the frame parser; delete the now-dead `ruleDay` parsing path
-- [ ] i18n keys resolved (reused or added with de + he)
-- [ ] Test: creating a meeting type with multiple frames on one day persists both AvailabilityRules
-- [ ] Test: no-JS submit of the default rendered form still creates the expected rules
-- [ ] `mvn spotless:apply` + `mvn test`
-- [ ] Docs: only if user-visible setup steps change (likely not)
+- [x] Replace the ruleDay/ruleStart/ruleEnd block in `meetingTypes.html` with the workplan grid markup (+ `<template data-frame-template>`, `<script src="/workplan.js">`)
+- [x] Point the create handler at the frame parser; delete the now-dead `ruleDay` parsing path
+- [x] i18n keys resolved (reused or added with de + he)
+- [x] Test: creating a meeting type with multiple frames on one day persists both AvailabilityRules
+- [x] Test: no-JS submit of the default rendered form still creates the expected rules
+- [x] `mvn spotless:apply` + `mvn test`
+- [x] Docs: only if user-visible setup steps change (likely not) — no docs change needed, form-parity fix only
