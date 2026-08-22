@@ -21,10 +21,14 @@ import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
 
 /**
- * /me pages have no #tz-picker, so TZ_SCRIPT used to bail at "if (!picker) return" and leave the
- * raw ISO instant on screen. The script must now format without a picker, using the owner's
- * STORED timezone (not the browser-detected one — a travelling host must not silently read their
- * bookings in the trip's zone).
+ * Every /me surface shows times in the owner's STORED timezone, not the browser-detected one — a
+ * travelling host must not silently read their bookings in the trip's zone.
+ *
+ * <p>Two shapes are covered. The dashboard and /me/pending have no {@code #tz-picker}: TZ_SCRIPT
+ * used to bail at {@code if (!picker) return} and leave the raw ISO instant on screen, and must now
+ * format without one. The manage page DOES have a picker, which used to pre-select the detected
+ * zone — so the same booking read two different clock times one click apart (calit-mhgs); the
+ * picker now starts on the stored zone and is an explicit override.</p>
  *
  * <p>RestAssured cannot execute JS, so these assert on the served HTML and the script text.</p>
  */

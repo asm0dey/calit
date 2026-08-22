@@ -280,7 +280,7 @@ class CohostManageTest {
         AppUser cohost = seedCandidate("pin-cohost-" + System.nanoTime());
         seedBookableSettingsAndRules(creator.id);
         seedBookableSettingsAndRules(cohost.id);
-        MeetingType t = seedAcceptedTwoHostType(creator.id, cohost.id, slug);
+        seedAcceptedTwoHostType(creator.id, cohost.id, slug); // seeded for its side effect; the id is not needed
         disableUser(creator.id);
 
         given().when()
