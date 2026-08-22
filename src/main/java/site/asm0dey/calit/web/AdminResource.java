@@ -447,7 +447,7 @@ public class AdminResource {
                         requiresApproval);
                 t.persist(); // need the generated id before scoping child rules/overrides to it
                 persistFrames(t.ownerId, t.id, form);
-                createInitialDateOverride(t.id, t.ownerId, form);
+                createInitialDateOverride(t.ownerId, t.id, form);
             });
         } catch (IllegalStateException e) {
             return renderMeetingTypes(localizedMessage(e));
@@ -545,7 +545,7 @@ public class AdminResource {
      * plus parallel windowStart[]/windowEnd[] arrays. Blank date → no override; a date with
      * no (non-blank) windows → day off.
      */
-    private void createInitialDateOverride(Long typeId, Long ownerId, MultivaluedMap<String, String> form) {
+    private void createInitialDateOverride(Long ownerId, Long typeId, MultivaluedMap<String, String> form) {
         String date = form.getFirst("overrideDate");
         if (date == null || date.isBlank()) {
             return;
