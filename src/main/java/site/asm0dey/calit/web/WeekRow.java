@@ -27,4 +27,19 @@ public record WeekRow(DayOfWeek day, List<AvailabilityRule> frames) {
         }
         return rows;
     }
+
+    /**
+     * Seven rows, one per weekday, each seeded with exactly one blank (unpersisted) frame — the
+     * create-meeting-type form's initial grid state. Without JS, that seeded row IS the editor, so
+     * every day must offer one immediately; {@link #fromRules} can't produce this shape since it
+     * only surfaces days that already have rules. The frame's {@code startTime}/{@code endTime}
+     * are left null; the grid template renders that as an empty input value, never the text "null".
+     */
+    public static List<WeekRow> blank() {
+        List<WeekRow> rows = new ArrayList<>(7);
+        for (DayOfWeek d : DayOfWeek.values()) {
+            rows.add(new WeekRow(d, List.of(new AvailabilityRule())));
+        }
+        return rows;
+    }
 }

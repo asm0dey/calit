@@ -2,6 +2,7 @@
 {@java.util.List<site.asm0dey.calit.google.GoogleCalendar> writeCalendars}
 {@site.asm0dey.calit.domain.MeetingType.LocationType[] locationTypes}
 {@java.time.DayOfWeek[] daysOfWeek}
+{@java.util.List<site.asm0dey.calit.web.WeekRow> week}
 {@java.lang.Long pendingCount}
 {@java.lang.Boolean isAdmin}
 {@java.lang.String username}
@@ -37,7 +38,7 @@
   </div>
 
   <h2 class="text-xl font-semibold mt-8 mb-3">{adm:adm_meetingTypes_create_h2}</h2>
-  <form method="post" action="/me/meeting-types" class="space-y-3 max-w-2xl">
+  <form method="post" action="/me/meeting-types" data-workplan class="space-y-3 max-w-2xl">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox" checked>
@@ -119,16 +120,12 @@
       <div class="collapse-title font-semibold">{adm:adm_meetingTypes_section_working_hours}</div>
       <div class="collapse-content">
         <p class="text-sm text-base-content/60 mb-2">{adm:adm_meetingTypes_working_hours_hint}</p>
-        <div class="flex flex-col gap-2">
-          {#for d in daysOfWeek}
-            <div class="flex items-center gap-2">
-              <input type="hidden" name="ruleDay" value="{d}">
-              <span class="w-28 text-sm">{display:of(d)}</span>
-              <input class="input input-sm" type="time" name="ruleStart">
-              <span class="text-sm opacity-70">{adm:adm_meetingTypes_to}</span>
-              <input class="input input-sm" type="time" name="ruleEnd">
-            </div>
-          {/for}
+        {! One blank frame per day seeded server-side (WeekRow.blank()): without JS these seven
+           rows ARE the editor. The wrapping div matches the other pages' spacing, which they get
+           for free from their own <form>'s space-y-2 (their cards are direct form children; here
+           the grid sits inside collapse-content, one level further nested). !}
+        <div class="space-y-2">
+          {#include AdminResource/_workplanGrid week=week cardClass="bg-base-200" /}
         </div>
       </div>
     </div>
@@ -184,4 +181,5 @@
   </form>
 
   {#include AdminResource/_copyToast /}
+  <script src="/workplan.js"></script>
 {/include}

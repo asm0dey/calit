@@ -110,7 +110,7 @@ User-facing strings are type-safe `@Message` keys: UI bundle `AppMessages` (`{ms
 
 ## Database / migrations
 
-Flyway migrations `V1…V25` in `src/main/resources/db/migration/`, applied at boot (`quarkus.flyway.migrate-at-start=true`). Hibernate **validate-only** (`schema-management.strategy=validate`) — never creates schema; migrations own it. **Never edit applied migration** (Flyway checksum validation fails — even comment changes break it). Add new `V*.sql` for every change.
+Flyway migrations in `src/main/resources/db/migration/`, applied at boot (`quarkus.flyway.migrate-at-start=true`). Hibernate **validate-only** (`schema-management.strategy=validate`) — never creates schema; migrations own it. **Never edit applied migration** (Flyway checksum validation fails — even comment changes break it). Add new `V*.sql` for every change.
 
 ## Config
 

@@ -202,6 +202,23 @@ class AdminMeetingTypeDetailTest {
     }
 
     @Test
+    void addingOverrideWithGarbageDateReturns400AndPersistsNothing() {
+        // The global MalformedDateTimeMapper (registered for DateTimeParseException) already turns
+        // an unguarded LocalDate.parse(date) into a clean 400 here — verified empirically, not
+        // assumed. This test pins that behaviour.
+        var id = seedType("detail-override-garbage-" + System.nanoTime());
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("date", "not-a-date")
+                .when()
+                .post("/me/meeting-types/" + id + "/date-overrides")
+                .then()
+                .statusCode(400);
+
+        assertEquals(0, DateOverride.count("meetingTypeId = ?1", id));
+    }
+
+    @Test
     void addingFieldToUnknownTypeReturns404() {
         given().cookie("quarkus-credential", FormAuth.login())
                 .contentType("application/x-www-form-urlencoded")

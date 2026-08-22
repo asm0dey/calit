@@ -11,42 +11,7 @@
 
   <form method="post" action="/me/availability/bulk" data-workplan class="space-y-2">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-    {#for row in week}
-    <div data-day="{row.day}" class="card bg-base-100 border border-base-300">
-      <div class="card-body py-3 gap-2">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <strong class="w-24">{display:of(row.day)}</strong>
-          <div class="flex flex-wrap gap-1">
-            <button type="button" class="btn btn-ghost btn-xs" data-add-frame="{row.day}">{adm:adm_availability_frame_add}</button>
-            <button type="button" class="btn btn-ghost btn-xs" data-copy-all="{row.day}">{adm:adm_availability_copy_all}</button>
-            <button type="button" class="btn btn-ghost btn-xs" data-copy-weekdays="{row.day}">{adm:adm_availability_copy_weekdays}</button>
-            <button type="button" class="btn btn-ghost btn-xs text-error" data-clear-day="{row.day}">{adm:adm_workplan_clear_day}</button>
-          </div>
-        </div>
-        <div data-frames class="space-y-1">
-          {#for fr in row.frames}
-          <div data-frame class="flex items-center gap-2">
-            <input type="hidden" name="frameDay" value="{row.day}">
-            <input class="input input-sm" type="time" name="frameStart" value="{fr.startTime}">
-            <span class="text-base-content/60">{adm:adm_availability_to}</span>
-            <input class="input input-sm" type="time" name="frameEnd" value="{fr.endTime}">
-            <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="{adm:adm_availability_remove_frame_aria}">&times;</button>
-          </div>
-          {/for}
-        </div>
-      </div>
-    </div>
-    {/for}
-
-    <template data-frame-template>
-      <div data-frame class="flex items-center gap-2">
-        <input type="hidden" name="frameDay" value="">
-        <input class="input input-sm" type="time" name="frameStart">
-        <span class="text-base-content/60">{adm:adm_availability_to}</span>
-        <input class="input input-sm" type="time" name="frameEnd">
-        <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="{adm:adm_availability_remove_frame_aria}">&times;</button>
-      </div>
-    </template>
+    {#include AdminResource/_workplanGrid week=week cardClass="bg-base-100" /}
 
     <button type="submit" class="btn btn-primary mt-2">{adm:adm_availability_btn_save}</button>
   </form>

@@ -46,6 +46,7 @@ public class AdminResource {
                 List<GoogleCalendar> writeCalendars,
                 LocationType[] locationTypes,
                 DayOfWeek[] daysOfWeek,
+                List<WeekRow> week,
                 Long pendingCount,
                 boolean isAdmin,
                 String username,
@@ -326,6 +327,7 @@ public class AdminResource {
                 GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id()),
                 allowedLocationTypes(),
                 DayOfWeek.values(),
+                WeekRow.blank(),
                 pendingCount(),
                 isAdmin(),
                 currentOwner.require().username,
@@ -446,8 +448,8 @@ public class AdminResource {
                         slotIntervalMinutes,
                         requiresApproval);
                 t.persist(); // need the generated id before scoping child rules/overrides to it
-                createInitialWorkingHours(t.id, t.ownerId, form);
-                createInitialDateOverride(t.id, t.ownerId, form);
+                persistFrames(t.ownerId, t.id, form);
+                createInitialDateOverride(t.ownerId, t.id, form);
             });
         } catch (IllegalStateException e) {
             return renderMeetingTypes(localizedMessage(e));
@@ -541,42 +543,26 @@ public class AdminResource {
     }
 
     /**
-     * Per-type weekly working hours captured on the create form. The form posts parallel
-     * arrays ruleDay[]/ruleStart[]/ruleEnd[] (one row per weekday); a row with a blank
-     * start or end is skipped.
-     */
-    private void createInitialWorkingHours(Long typeId, Long ownerId, MultivaluedMap<String, String> form) {
-        List<String> days = form.getOrDefault("ruleDay", List.of());
-        List<String> starts = form.getOrDefault("ruleStart", List.of());
-        List<String> ends = form.getOrDefault("ruleEnd", List.of());
-        for (var i = 0; i < days.size() && i < starts.size() && i < ends.size(); i++) {
-            if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
-                continue;
-            }
-            AvailabilityRule r = new AvailabilityRule();
-            r.ownerId = ownerId;
-            r.meetingTypeId = typeId;
-            r.dayOfWeek = DayOfWeek.valueOf(days.get(i));
-            r.startTime = LocalTime.parse(starts.get(i));
-            r.endTime = LocalTime.parse(ends.get(i));
-            r.persist();
-        }
-    }
-
-    /**
      * Optional per-type date override captured on the create form: a single overrideDate
-     * plus parallel windowStart[]/windowEnd[] arrays. Blank date → no override; a date with
-     * no (non-blank) windows → day off.
+     * plus parallel windowStart[]/windowEnd[] arrays. Blank OR unparseable date → no override
+     * (crafted/garbage input must never 500 the whole meeting-type create); a date with no
+     * (non-blank) windows → day off.
      */
-    private void createInitialDateOverride(Long typeId, Long ownerId, MultivaluedMap<String, String> form) {
+    private void createInitialDateOverride(Long ownerId, Long typeId, MultivaluedMap<String, String> form) {
         String date = form.getFirst("overrideDate");
         if (date == null || date.isBlank()) {
             return;
         }
+        LocalDate overrideDate;
+        try {
+            overrideDate = LocalDate.parse(date);
+        } catch (DateTimeParseException _) {
+            return; // unparseable date — skip the override rather than fail the whole create
+        }
         DateOverride o = new DateOverride();
         o.ownerId = ownerId;
         o.meetingTypeId = typeId;
-        o.overrideDate = LocalDate.parse(date);
+        o.overrideDate = overrideDate;
         o.persist(); // need the generated id before persisting child windows
         persistWindows(o.id, form);
     }
@@ -584,7 +570,8 @@ public class AdminResource {
     /**
      * Zip parallel {@code windowStart[]}/{@code windowEnd[]} form arrays into
      * {@link DateOverrideWindow} rows under a persisted {@link DateOverride}; a row with a blank
-     * start or end is skipped (none → zero windows = day off).
+     * or unparseable start/end is skipped (none → zero windows = day off) — a single bad window
+     * must never 500 the whole save, matching {@link #persistFrames}.
      */
     private void persistWindows(Long dateOverrideId, MultivaluedMap<String, String> form) {
         List<String> starts = form.getOrDefault("windowStart", List.of());
@@ -593,10 +580,18 @@ public class AdminResource {
             if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
                 continue;
             }
+            LocalTime start;
+            LocalTime end;
+            try {
+                start = LocalTime.parse(starts.get(i));
+                end = LocalTime.parse(ends.get(i));
+            } catch (DateTimeParseException _) {
+                continue; // unparseable window — skip it rather than 500 the whole save
+            }
             DateOverrideWindow w = new DateOverrideWindow();
             w.dateOverrideId = dateOverrideId;
-            w.startTime = LocalTime.parse(starts.get(i));
-            w.endTime = LocalTime.parse(ends.get(i));
+            w.startTime = start;
+            w.endTime = end;
             w.persist();
         }
     }
@@ -1359,7 +1354,13 @@ public class AdminResource {
             @RestForm String date, @RestForm String meetingTypeId, MultivaluedMap<String, String> form) {
         QuarkusTransaction.requiringNew().run(() -> {
             // Blank meetingTypeId = this owner's GLOBAL override. A non-blank id must be owned.
-            var typeId = (meetingTypeId == null || meetingTypeId.isBlank()) ? null : Long.valueOf(meetingTypeId);
+            Long typeId;
+            try {
+                typeId = (meetingTypeId == null || meetingTypeId.isBlank()) ? null : Long.valueOf(meetingTypeId);
+            } catch (NumberFormatException _) {
+                // Crafted/garbage id — a clean 400, not a leaked 500 (no ExceptionMapper covers this).
+                throw new BadRequestException("Malformed meeting type id: " + meetingTypeId);
+            }
             if (typeId != null) {
                 requireType(typeId); // 404 a cross-owner type
             }

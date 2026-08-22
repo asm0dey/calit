@@ -73,6 +73,42 @@ class AdminDateOverridesTest {
     }
 
     @Test
+    void createOverrideWithGarbageDateReturns400AndPersistsNothing() {
+        // The global MalformedDateTimeMapper (registered for DateTimeParseException) already turns
+        // an unguarded LocalDate.parse(date) into a clean 400 here — verified empirically, not
+        // assumed. This test pins that behaviour.
+        long before = DateOverride.count();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("date", "not-a-date")
+                .formParam("meetingTypeId", "")
+                .when()
+                .post("/me/date-overrides")
+                .then()
+                .statusCode(400);
+
+        org.junit.jupiter.api.Assertions.assertEquals(before, DateOverride.count());
+    }
+
+    @Test
+    void createOverrideWithGarbageMeetingTypeIdReturns400AndPersistsNothing() {
+        // Long.valueOf(meetingTypeId) had no ExceptionMapper covering NumberFormatException, so a
+        // non-numeric id 500ed until AdminResource.createOverride was given an explicit guard that
+        // throws BadRequestException (JAX-RS maps that to 400 with no extra mapper needed).
+        long before = DateOverride.count();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("date", "2026-07-01")
+                .formParam("meetingTypeId", "not-a-number")
+                .when()
+                .post("/me/date-overrides")
+                .then()
+                .statusCode(400);
+
+        org.junit.jupiter.api.Assertions.assertEquals(before, DateOverride.count());
+    }
+
+    @Test
     void dateOverridesPageRequiresAuth() {
         given().redirects()
                 .follow(false)
