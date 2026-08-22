@@ -151,6 +151,57 @@ class RescheduleCancelTest {
 
     @Test
     @TestTransaction
+    void cancelClearsTheGoogleEventRefs() {
+        seedSettings();
+        meetingTypeWithMondayWindow("cancel-refs", false);
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+                .thenReturn(new CreatedEvent("evt-refs", "https://meet.google.com/r-e-f", "h", null));
+
+        Booking b = bookingService.book(
+                1L, "cancel-refs", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok-refs", "", "en", List.of());
+
+        bookingService.cancel(b.manageToken);
+
+        Booking loaded = Booking.findById(b.id);
+        assertEquals(BookingStatus.CANCELLED, loaded.status);
+        // Same post-state the group path leaves behind (deleteGroupGoogleEvent): a cancelled row
+        // must not keep pointing at an event that no longer exists on Google.
+        assertNull(loaded.googleEventId);
+        assertNull(loaded.meetLink);
+        assertNull(loaded.googleCalendarId);
+        assertNull(loaded.googleCredentialId);
+    }
+
+    @Test
+    @TestTransaction
+    void cancelClearsTheRefsEvenWhenGoogleIsDisconnected() {
+        seedSettings();
+        meetingTypeWithMondayWindow("cancel-refs-off", false);
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(
+                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
+                .thenReturn(new CreatedEvent("evt-off", null, "h", null));
+
+        Booking b = bookingService.book(
+                1L, "cancel-refs-off", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok-off", "", "en", List.of());
+
+        // The owner disconnects Google between booking and cancelling: the remote delete is skipped,
+        // but the local refs must still be cleared (mirrors deleteGroupGoogleEvent's javadoc).
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        bookingService.cancel(b.manageToken);
+
+        Booking loaded = Booking.findById(b.id);
+        verify(calendarPort, never()).deleteEvent(anyLong(), any(), eq("evt-off"));
+        assertNull(loaded.googleEventId);
+        assertNull(loaded.meetLink);
+    }
+
+    @Test
+    @TestTransaction
     void rescheduleSyncsAttendeesWhenGuestRemoved() {
         seedSettings();
         meetingTypeWithMondayWindow("resched-guest", false);
