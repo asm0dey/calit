@@ -39,6 +39,29 @@ class OwnerSettingsForOwnerTest {
         assertNull(OwnerSettings.forOwner(9999L), "unknown owner -> null");
     }
 
+    /**
+     * {@code timezone} is NOT NULL and eleven call sites do an unguarded {@code
+     * ZoneId.of(settings.timezone)} -- including the owner's PUBLIC booking page and the booking
+     * transaction -- so a value the JDK cannot parse 500s them all (calit-4whp).
+     */
+    @Test
+    void coerceZoneKeepsAKnownZoneAndReplacesEverythingElse() {
+        assertEquals("Europe/Amsterdam", OwnerSettings.coerceZone("Europe/Amsterdam"));
+        assertEquals("UTC", OwnerSettings.coerceZone("UTC"));
+        assertEquals("UTC", OwnerSettings.coerceZone("Not/AZone"));
+        assertEquals("UTC", OwnerSettings.coerceZone(null));
+        assertEquals("UTC", OwnerSettings.coerceZone(""));
+        assertEquals("UTC", OwnerSettings.coerceZone("   "));
+    }
+
+    /** The picker is fed from the same list the guard checks against, so every option survives. */
+    @Test
+    void coerceZoneAcceptsEveryZoneThePickerCanOffer() {
+        for (String z : OwnerSettings.zoneIds()) {
+            assertEquals(z, OwnerSettings.coerceZone(z));
+        }
+    }
+
     @Test
     @TestTransaction
     void seedWritesTheNotNullPlaceholders() {

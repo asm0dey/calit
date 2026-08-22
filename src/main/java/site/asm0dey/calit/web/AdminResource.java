@@ -1224,11 +1224,6 @@ public class AdminResource {
                 m().adm_availability_title());
     }
 
-    /** All IANA zone ids, sorted — for the Settings timezone combobox. */
-    private static List<String> zoneIds() {
-        return ZoneId.getAvailableZoneIds().stream().sorted().toList();
-    }
-
     @GET
     @Path("/settings")
     @Produces(MediaType.TEXT_HTML)
@@ -1237,7 +1232,7 @@ public class AdminResource {
                 OwnerSettings.forOwner(currentOwner.id()),
                 reminderLeadMinutes,
                 pendingCount(),
-                zoneIds(),
+                OwnerSettings.zoneIds(),
                 isAdmin(),
                 m().adm_settings_title());
     }
@@ -1265,8 +1260,9 @@ public class AdminResource {
             row.ownerEmail = ownerEmail;
             // Mirror the locale guard below: the <select> can only submit a real zone id, but a
             // crafted POST must not park a value that DateTimeException-500s the owner's public
-            // booking page and every booking on it (calit-4whp).
-            row.timezone = zoneIds().contains(timezone) ? timezone : "UTC";
+            // booking page and every booking on it (calit-4whp). The invariant lives on the entity
+            // because the first-login wizard writes this column too.
+            row.timezone = OwnerSettings.coerceZone(timezone);
             row.locale = AppLocales.isSupported(locale) ? locale : "en";
             row.timeFormat = timeFormat != null && OwnerSettings.HOUR_CYCLES.contains(timeFormat) ? timeFormat : "auto";
             // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
@@ -1278,7 +1274,7 @@ public class AdminResource {
         // request-scoped locale so THIS response (title, {adm:} keys, language dropdown) is in the new language.
         activeLocale.set(AppLocales.pick(s.locale));
         return Templates.settings(
-                s, reminderLeadMinutes, pendingCount(), zoneIds(), isAdmin(), m().adm_settings_title());
+                s, reminderLeadMinutes, pendingCount(), OwnerSettings.zoneIds(), isAdmin(), m().adm_settings_title());
     }
 
     @GET

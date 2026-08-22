@@ -48,6 +48,24 @@ public class OwnerSettings extends PanacheEntityBase {
         return find("ownerId", ownerId).firstResult();
     }
 
+    /** Every zone id the JDK knows, sorted — the source for the settings and wizard pickers. */
+    public static java.util.List<String> zoneIds() {
+        return java.time.ZoneId.getAvailableZoneIds().stream().sorted().toList();
+    }
+
+    /**
+     * Coerces a submitted timezone to a storable value. {@code timezone} is NOT NULL and eleven
+     * call sites do an unguarded {@code ZoneId.of(settings.timezone)} — including the owner's
+     * PUBLIC booking page and the booking transaction — so a value the JDK cannot parse 500s
+     * them all. Anything not a known zone id (including null and blank) becomes {@code "UTC"}.
+     *
+     * <p>Every path that writes {@link #timezone} must call this: the rendered {@code <select>}
+     * can only submit a real zone id, but a crafted POST is not bound by the form (calit-4whp).
+     */
+    public static String coerceZone(String timezone) {
+        return zoneIds().contains(timezone) ? timezone : "UTC";
+    }
+
     /**
      * Persists the placeholder settings row that EVERY account-creation path must leave behind.
      *

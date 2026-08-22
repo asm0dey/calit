@@ -9,7 +9,6 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
-import java.time.ZoneId;
 import java.util.List;
 import org.jboss.resteasy.reactive.RestForm;
 import site.asm0dey.calit.availability.DefaultAvailabilitySeeder;
@@ -51,18 +50,13 @@ public class MeSetupResource {
         this.activeLocale = activeLocale;
     }
 
-    /** All IANA zone ids, sorted — for the timezone combobox. */
-    private static List<String> zoneIds() {
-        return ZoneId.getAvailableZoneIds().stream().sorted().toList();
-    }
-
     @GET
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance wizard() {
         AppUser me = currentOwner.require(); // 401 if no owner resolved (never NPE on a null id)
         OwnerSettings existing = OwnerSettings.forOwner(me.id); // may be null on first visit
         String title = adminMsgs.forLocale(activeLocale.current()).mesetup_title();
-        return Templates.meSetup(me.mustChangePassword, existing, zoneIds(), null, title);
+        return Templates.meSetup(me.mustChangePassword, existing, OwnerSettings.zoneIds(), null, title);
     }
 
     @POST
@@ -83,7 +77,7 @@ public class MeSetupResource {
                 return Response.ok(Templates.meSetup(
                                 true,
                                 OwnerSettings.forOwner(ownerId),
-                                zoneIds(),
+                                OwnerSettings.zoneIds(),
                                 adminMsgs.forLocale(activeLocale.current()).mesetup_choose_new_password(),
                                 adminMsgs.forLocale(activeLocale.current()).mesetup_title()))
                         .build();
@@ -100,7 +94,10 @@ public class MeSetupResource {
         }
         s.ownerName = ownerName;
         s.ownerEmail = ownerEmail;
-        s.timezone = timezone;
+        // Same guard as AdminResource.updateSettings: the rendered <select> can only submit a real
+        // zone id, but a crafted POST is not bound by the form, and an unparseable value 500s the
+        // owner's PUBLIC booking page and the booking transaction (calit-4whp).
+        s.timezone = OwnerSettings.coerceZone(timezone);
         s.persist();
 
         // Step 3: a brand-new owner has no availability at all, so their meeting types would offer no
