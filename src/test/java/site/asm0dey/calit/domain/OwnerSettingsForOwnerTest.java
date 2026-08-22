@@ -38,4 +38,24 @@ class OwnerSettingsForOwnerTest {
         assertEquals("Europe/Berlin", OwnerSettings.forOwner(1002L).timezone);
         assertNull(OwnerSettings.forOwner(9999L), "unknown owner -> null");
     }
+
+    @Test
+    @TestTransaction
+    void seedWritesTheNotNullPlaceholders() {
+        TestOwners.ensure(em, 4242L);
+        var s = OwnerSettings.seed(4242L, "invited@example.com");
+        assertEquals(4242L, s.ownerId);
+        assertEquals("", s.ownerName);
+        assertEquals("invited@example.com", s.ownerEmail);
+        assertEquals("UTC", s.timezone);
+    }
+
+    @Test
+    @TestTransaction
+    void seedTreatsANullEmailAsEmptyNotNull() {
+        // owner_email is NOT NULL; a path with no address to seed (self-service signup, or Google
+        // returning no email) must still satisfy the constraint.
+        TestOwners.ensure(em, 4243L);
+        assertEquals("", OwnerSettings.seed(4243L, null).ownerEmail);
+    }
 }

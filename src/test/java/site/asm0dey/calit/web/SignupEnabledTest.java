@@ -39,6 +39,29 @@ class SignupEnabledTest {
     }
 
     @Test
+    void postSeedsTheOwnerSettingsRow() {
+        // owner_name / owner_email / timezone are NOT NULL and the public booking path reads
+        // OwnerSettings.forOwner(id).timezone unguarded (issue #99). Every other creation path
+        // seeds the row; /signup must too (calit-a4yj).
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("username", "heidi")
+                .formParam("password", "Heidi-pw-12345")
+                .redirects()
+                .follow(false)
+                .when()
+                .post("/signup")
+                .then()
+                .statusCode(303);
+
+        AppUser heidi = AppUser.findByUsername("heidi");
+        var settings = site.asm0dey.calit.domain.OwnerSettings.forOwner(heidi.id);
+        assertNotNull(settings, "a /signup user must have an owner_settings row immediately");
+        assertEquals("UTC", settings.timezone);
+        assertEquals("", settings.ownerName);
+        assertEquals("", settings.ownerEmail);
+    }
+
+    @Test
     void postRejectsReservedUsername() {
         // Reserved word -> re-render form (200) with the localized aggregate error, no user created.
         given().contentType("application/x-www-form-urlencoded")

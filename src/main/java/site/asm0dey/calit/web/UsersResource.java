@@ -119,15 +119,8 @@ public class UsersResource {
             AppUser u = AppUser.create(normalized, null, false); // null hash => cannot log in until activated
             u.settingsComplete = false;
             u.persist();
-            // Pre-create the settings row (mirrors GoogleSignInService.provision): ownerName/timezone
-            // are NOT NULL, so seed placeholders the first-login wizard overwrites; ownerEmail holds
-            // the invite address so resend + the wizard's pre-fill both find it.
-            OwnerSettings s = new OwnerSettings();
-            s.ownerId = u.id;
-            s.ownerName = "";
-            s.ownerEmail = inviteEmail;
-            s.timezone = "UTC";
-            s.persist();
+            // ownerEmail holds the invite address so resend + the wizard's pre-fill both find it.
+            OwnerSettings.seed(u.id, inviteEmail);
             audit.event(identity.getPrincipal().getName(), "invite-user", USER_TARGET + normalized, null);
             return resetService.issue(u.id, now, Duration.ofHours(48));
         });

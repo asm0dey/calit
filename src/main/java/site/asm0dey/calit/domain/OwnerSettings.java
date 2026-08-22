@@ -49,6 +49,28 @@ public class OwnerSettings extends PanacheEntityBase {
     }
 
     /**
+     * Persists the placeholder settings row that EVERY account-creation path must leave behind.
+     *
+     * <p>{@code ownerName}, {@code ownerEmail} and {@code timezone} are NOT NULL, and the public
+     * booking path reads {@code forOwner(id).timezone} unguarded (issue #99) — so an account
+     * without this row is one unguarded read away from an NPE. {@code V24__backfill_owner_settings}
+     * fixed the rows that existed at that boot; it is a one-shot backfill, not a runtime guarantee.
+     * The first-login wizard overwrites every placeholder here.
+     *
+     * @param email the address to seed when the creating path knows one (an invite, or a verified
+     *     Google identity); {@code null} becomes {@code ""} to satisfy the NOT NULL constraint.
+     */
+    public static OwnerSettings seed(Long ownerId, String email) {
+        var s = new OwnerSettings();
+        s.ownerId = ownerId;
+        s.ownerName = "";
+        s.ownerEmail = email == null ? "" : email;
+        s.timezone = "UTC";
+        s.persist();
+        return s;
+    }
+
+    /**
      * Owner ids whose settings email equals {@code email} (case-insensitive). Empty for
      * null/blank input. Used to auto-link a verified Google identity to an existing account;
      * the caller links only when exactly one id is returned.
