@@ -42,16 +42,20 @@ public final class Layout {
               }
               var detected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
               if (ZONES.indexOf(detected) < 0) { ZONES.unshift(detected); }
+              /* CALIT_TZ_INITIAL — the zone the page was AUTHORED in: the owner's stored zone on
+                 /me (adminBase emits body[data-tz]), the viewer's own zone on the invitee pages
+                 (which emit none). The picker starts here and stays an explicit override the
+                 viewer can change; it is no longer a second, disagreeing default (calit-mhgs). */
+              var initial = document.body.dataset.tz || detected;
+              if (ZONES.indexOf(initial) < 0) { ZONES.unshift(initial); }
 
               var picker = document.getElementById('tz-picker');
               var label  = document.getElementById('tz-label');
-              /* The picker is invitee-only. The /me pages have none and must still format, so
-                 fall back to the owner's stored zone (body[data-tz]) and only then to detection. */
               if (picker) {
                 ZONES.forEach(function (z) {
                   var o = document.createElement('option');
                   o.value = z; o.textContent = z;
-                  if (z === detected) { o.selected = true; }
+                  if (z === initial) { o.selected = true; }
                   picker.appendChild(o);
                 });
               }

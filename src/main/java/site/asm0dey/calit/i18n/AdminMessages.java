@@ -120,6 +120,9 @@ public interface AdminMessages {
     @Message("No upcoming bookings.")
     String adm_dashboard_no_upcoming();
 
+    @Message("Times shown in {zone}")
+    String adm_times_shown_in(String zone);
+
     @Message("Manage")
     String adm_dashboard_btn_manage();
 

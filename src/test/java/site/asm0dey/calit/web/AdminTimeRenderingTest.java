@@ -79,6 +79,39 @@ class AdminTimeRenderingTest {
                 .body(containsString("picker ? picker.value : (document.body.dataset.tz || detected)"));
     }
 
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void thePickerDefaultsToTheZoneThePageWasAuthoredIn() {
+        // /me/bookings/{id}/manage HAS a #tz-picker, and the script used to pre-select the
+        // browser-detected zone in it -- so the same booking read 15:00 on the dashboard and 22:00
+        // one click away. The picker now defaults to body[data-tz] (the owner's stored zone on /me)
+        // and only falls back to detection where there is none, i.e. on the invitee pages.
+        given().when()
+                .get("/me")
+                .then()
+                .statusCode(200)
+                .body(containsString("var initial = document.body.dataset.tz || detected;"))
+                .body(containsString("if (z === initial) { o.selected = true; }"))
+                // the detected-zone pre-selection is gone
+                .body(not(containsString("if (z === detected) { o.selected = true; }")));
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void dashboardAndPendingNameTheZoneOnScreen() {
+        // Whichever zone is displayed must be named: the stored zone is no more self-evident than
+        // the detected one, and manageBooking's zone label is the pattern being copied here.
+        saveTimezone("Europe/Amsterdam");
+
+        given().when().get("/me").then().statusCode(200).body(containsString("Times shown in Europe/Amsterdam"));
+
+        given().when()
+                .get("/me/pending")
+                .then()
+                .statusCode(200)
+                .body(containsString("Times shown in Europe/Amsterdam"));
+    }
+
     /** An explicit host preference reaches the /me pages... */
     @Test
     @TestSecurity(user = "admin", roles = "user")
