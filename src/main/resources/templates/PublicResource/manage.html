@@ -11,6 +11,7 @@
 {@java.lang.String descriptionValue}
 {@java.lang.String titlePlaceholder}
 {@java.lang.String descPlaceholder}
+{@java.lang.Boolean hostInactive}
 {#include base title=title}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-2xl mx-auto">
     <div class="card-body">
@@ -21,6 +22,9 @@
         <p><strong>{msg:pub_manage_for_label}</strong> {booking.inviteeName} ({booking.inviteeEmail})</p>
       </div>
 
+      {#if hostInactive}
+        <div class="alert alert-warning" role="status">{msg:pub_manage_host_inactive}</div>
+      {#else}
       <h2 class="text-lg font-semibold mt-2 mb-3">{msg:pub_manage_h2_reschedule}</h2>
       {#if days.isEmpty()}
         <p>{msg:pub_manage_no_alternatives}</p>
@@ -68,6 +72,8 @@
       </form>
 
       <div class="divider"></div>
+      {/if}
+
       <h2 class="text-lg font-semibold mb-3">{msg:pub_manage_h2_cancel}</h2>
       <form method="post" action="/booking/{booking.manageToken}/cancel">
         <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
