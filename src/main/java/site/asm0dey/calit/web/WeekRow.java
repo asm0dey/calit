@@ -38,9 +38,7 @@ public record WeekRow(DayOfWeek day, List<AvailabilityRule> frames) {
     public static List<WeekRow> blank() {
         List<WeekRow> rows = new ArrayList<>(7);
         for (DayOfWeek d : DayOfWeek.values()) {
-            AvailabilityRule blankFrame = new AvailabilityRule();
-            blankFrame.dayOfWeek = d;
-            rows.add(new WeekRow(d, List.of(blankFrame)));
+            rows.add(new WeekRow(d, List.of(new AvailabilityRule())));
         }
         return rows;
     }

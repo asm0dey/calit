@@ -145,6 +145,8 @@ class AdminMeetingTypeFormTest {
                 .body(not(containsString("name=\"ruleDay\"")))
                 // seeded row's hidden frameDay actually carries its OWN day, not a copy-pasted constant
                 .body(containsString("name=\"frameDay\" value=\"SUNDAY\""))
+                // seeded blank frame renders an empty value, never the literal text "null"
+                .body(containsString("name=\"frameStart\" value=\"\""))
                 .body(containsString("name=\"overrideDate\"")); // date-override block untouched
     }
 
