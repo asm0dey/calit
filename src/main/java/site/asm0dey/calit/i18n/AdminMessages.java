@@ -411,7 +411,7 @@ public interface AdminMessages {
     String adm_detail_write_calendar_dangling();
 
     @Message(
-            "{count} upcoming bookings stay on the calendar they were created on. Only new bookings use the new calendar.")
+            "Upcoming bookings that stay on the calendar they were created on: {count}. Only new bookings use the new calendar.")
     String adm_detail_write_calendar_moved(long count);
 
     @Message("That calendar is not one of your selected Google calendars.")

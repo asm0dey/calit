@@ -182,6 +182,20 @@ class AdminWriteCalendarTest {
     }
 
     @Test
+    void theStayBehindNoticeReadsCorrectlyAtCountOne() {
+        // The codebase has no i18n pluralization, so the message must be phrased so it is right at
+        // every count -- "1 upcoming bookings" was the bug (calit-75vf).
+        var credId = seedOwnerCalendars();
+        var typeId = seedType(credId, "default@example.com");
+        seedUpcomingBooking(typeId, credId, "default@example.com");
+
+        edit(typeId, credId + ":work@example.com")
+                .statusCode(200)
+                .body(containsString("stay on the calendar they were created on: 1"))
+                .body(not(containsString("1 upcoming bookings")));
+    }
+
+    @Test
     void createUsesTheChosenCalendar() {
         var credId = seedOwnerCalendars();
         var slug = "write-cal-created-" + UUID.randomUUID();
