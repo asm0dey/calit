@@ -55,7 +55,10 @@ public class BookingResource {
             throw new NotFoundException("Missing user");
         }
         AppUser owner = AppUser.findByUsername(Usernames.normalize(req.user()));
-        if (owner == null) {
+        if (owner == null || !owner.enabled) {
+            // Same guard as PublicResource.resolveOwner: this endpoint resolves the username
+            // itself, so a disabled owner must be refused here too (calit-h8mb). Single-host
+            // types are not covered by MeetingHosts.bookable, which returns true for them.
             throw new NotFoundException("No user " + req.user());
         }
         MeetingType type = MeetingType.findBySlug(owner.id, req.slug());

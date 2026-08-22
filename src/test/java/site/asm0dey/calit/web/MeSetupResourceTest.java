@@ -199,6 +199,43 @@ class MeSetupResourceTest {
         assertFalse(after.settingsComplete, "settings must not be marked complete on the error path");
     }
 
+    /**
+     * The wizard is the OTHER path that writes {@code owner_settings.timezone}, and every user
+     * passes through it. calit-4whp guarded the settings page but not this one, leaving the same
+     * column, the same eleven unguarded {@code ZoneId.of(settings.timezone)} readers -- the owner's
+     * PUBLIC booking page and the booking transaction among them -- and the same blast radius open.
+     */
+    @Test
+    @TestSecurity(
+            user = "wiz9",
+            roles = {"user"})
+    void wizardCoercesAnUnknownTimezoneToUtc() {
+        var id = seed("wiz9", false);
+        // The rendered <select> can only submit a real zone id, so this is a hand-crafted POST.
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("ownerName", "Wiz Nine")
+                .formParam("ownerEmail", "wiz9@example.com")
+                .formParam("timezone", "Not/AZone")
+                .redirects()
+                .follow(false)
+                .when()
+                .post("/me/setup")
+                .then()
+                .statusCode(303);
+
+        assertEquals("UTC", readTimezone(id), "an unknown zone id must be coerced, not stored");
+
+        // And the owner's own /me pages still render (they call ZoneId.of on this value).
+        given().when().get("/me").then().statusCode(200);
+    }
+
+    /** Reads {@code timezone} straight from the DB, bypassing the test thread's first-level cache. */
+    @Transactional
+    String readTimezone(Long ownerId) {
+        em.clear();
+        return OwnerSettings.forOwner(ownerId).timezone;
+    }
+
     @Test
     @TestSecurity(
             user = "wiz6",

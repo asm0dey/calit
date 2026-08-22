@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestForm;
+import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AppMessageResolver;
 import site.asm0dey.calit.user.AppUser;
@@ -77,6 +78,7 @@ public class SignupResource {
         u.mustChangePassword = false; // self-chosen password → no forced reset
         u.settingsComplete = false; // still needs the first-login settings wizard
         u.persist();
+        OwnerSettings.seed(u.id, null); // NOT NULL placeholders; the wizard overwrites them
         // Registered — send them to log in; the wizard kicks in at /me after login.
         return Response.seeOther(UriBuilder.fromUri("/login").build()).build();
     }

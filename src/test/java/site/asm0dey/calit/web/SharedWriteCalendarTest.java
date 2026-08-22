@@ -206,6 +206,30 @@ class SharedWriteCalendarTest {
                 .body(containsString("stay on the calendar they were created on"));
     }
 
+    @Test
+    void resavingTheSameCalendarDoesNotClaimBookingsStayedBehind() {
+        // A booking created on a calendar that is neither the current override nor the one it will
+        // be moved to still sits elsewhere, so the count is non-zero -- but this save did not move
+        // anything, and saying "they stay behind" implies it did. (Deliberately NOT "work@..." --
+        // that's the positive control's move target, and a booking already sitting exactly there
+        // would not be "staying behind" relative to that target, undermining the positive control.)
+        // This exercises the co-host branch: setHostOverride writes to owner 1's OWN
+        // meeting_type_host row, and owner 1 is logged in here as a COHOST (not the type's creator).
+        var credId = seedOwnerCalendars();
+        var typeId = seedSharedType();
+        setHostOverride(typeId, credId, "default@example.com");
+        seedUpcomingBooking(typeId, credId, "elsewhere@example.com");
+
+        saveBuffers(typeId, credId + ":default@example.com")
+                .statusCode(200)
+                .body(not(containsString("stay on the calendar they were created on")));
+
+        // Positive control: an actual move still says so.
+        saveBuffers(typeId, credId + ":work@example.com")
+                .statusCode(200)
+                .body(containsString("stay on the calendar they were created on"));
+    }
+
     /** Sets the type creator's OWN write override directly on {@code MeetingType} -- never touched by a co-host save. */
     @Transactional
     void setCreatorOverride(Long typeId, String calendarId) {

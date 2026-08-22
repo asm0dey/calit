@@ -73,4 +73,38 @@ class AdminSettingsTest {
 
         org.junit.jupiter.api.Assertions.assertTrue(readNotificationsEnabled());
     }
+
+    /** Reads {@code timezone} straight from the DB, bypassing the test thread's first-level cache. */
+    @Transactional
+    String readTimezone() {
+        em.clear();
+        return site.asm0dey.calit.domain.OwnerSettings.forOwner(1L).timezone;
+    }
+
+    @Test
+    void updateSettingsCoercesAnUnknownTimezoneToUtc() {
+        // The <select> can only submit a real zone id, so this is a hand-crafted POST. It must not
+        // be able to park a DateTimeException in the DB: eleven unguarded ZoneId.of(...) call sites
+        // read this column, including the owner's PUBLIC booking page and the booking transaction.
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("ownerName", "New Owner")
+                .formParam("ownerEmail", "new@example.com")
+                .formParam("timezone", "Not/AZone")
+                .formParam("locale", "en")
+                .when()
+                .post("/me/settings")
+                .then()
+                .statusCode(200);
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "UTC", readTimezone(), "an unknown zone id must be coerced, not stored");
+
+        // And the owner's own /me pages still render (they call ZoneId.of on this value).
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me")
+                .then()
+                .statusCode(200);
+    }
 }

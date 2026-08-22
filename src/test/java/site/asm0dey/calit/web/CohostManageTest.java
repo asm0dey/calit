@@ -260,6 +260,36 @@ class CohostManageTest {
         return MultiHostFixtures.acceptedTwoHostType(creatorId, cohostId, slug, 30, false);
     }
 
+    @Transactional
+    void disableUser(Long ownerId) {
+        AppUser u = AppUser.findById(ownerId);
+        u.enabled = false;
+    }
+
+    /**
+     * Pin, not a fix (calit-h8mb): {@link MeetingHosts#addCohost} always ensures a CREATOR row
+     * ({@code MeetingHosts.java:196}), and {@link MeetingHosts#bookable} checks {@code u.enabled}
+     * for EVERY host row ({@code :63-66}) -- so a multi-host type whose CREATOR was disabled after
+     * the co-host accepted was already unbookable via the co-host's alias, before the
+     * resolveOwner guard existed. Confirmed to pass unchanged before that fix (task-6 report).
+     */
+    @Test
+    void disabledCreatorMakesCohostAliasUnbookableViaHostPending() {
+        var slug = "creator-disabled-" + System.nanoTime();
+        AppUser creator = seedCandidate("pin-creator-" + System.nanoTime());
+        AppUser cohost = seedCandidate("pin-cohost-" + System.nanoTime());
+        seedBookableSettingsAndRules(creator.id);
+        seedBookableSettingsAndRules(cohost.id);
+        seedAcceptedTwoHostType(creator.id, cohost.id, slug); // seeded for its side effect; the id is not needed
+        disableUser(creator.id);
+
+        given().when()
+                .get("/" + cohost.username + "/" + slug)
+                .then()
+                .statusCode(200)
+                .body(containsString("CALIT_HOST_PENDING"));
+    }
+
     @Test
     void createRejectsSlugCollidingWithCohostedType() {
         AppUser creator = seedCandidate("other-creator-" + System.nanoTime());

@@ -670,8 +670,10 @@ public class AdminResource {
     private LocationType parseLocationType(String locationType, MeetingType type) {
         LocationType lt = LocationType.valueOf(locationType);
         if (lt == LocationType.GOOGLE_MEET && writeTargets.blocksMeet(currentOwner.id(), type)) {
-            throw new BadRequestException(
-                    "The selected write calendar can't create Google Meet links; pick another location.");
+            // IllegalStateException, not BadRequestException: both save handlers already catch it
+            // and re-render the localized form. A BadRequestException had no ExceptionMapper, so
+            // the Host got a blank, unlocalized 400 and lost the page (calit-w7gq).
+            throw new IllegalStateException(m().adm_detail_error_location_meet_unsupported());
         }
         return lt;
     }
@@ -842,12 +844,19 @@ public class AdminResource {
             return 0L;
         }
         var ref = requireOwnedCalendar(writeCalendar);
-        // Clearing the override does not mean "no calendar": the type falls back to the write
-        // target, so that is what the bookings left behind are compared against.
-        long staying = bookingsStayingBehind(t, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id()));
+        var before = new CalendarRef(t.googleCredentialId, t.googleCalendarId);
         t.googleCredentialId = ref == null ? null : ref.credentialId();
         t.googleCalendarId = ref == null ? null : ref.googleCalendarId();
-        return staying;
+        var after = new CalendarRef(t.googleCredentialId, t.googleCalendarId);
+        if (before.equals(after)) {
+            // The save re-submitted the calendar the type already wrote on. Older bookings may
+            // still sit elsewhere, but nothing moved, so "they stay behind" would imply a move
+            // that did not happen (calit-jk8y).
+            return 0L;
+        }
+        // Clearing the override does not mean "no calendar": the type falls back to the write
+        // target, so that is what the bookings left behind are compared against.
+        return bookingsStayingBehind(t, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id()));
     }
 
     /**
@@ -1210,11 +1219,6 @@ public class AdminResource {
                 m().adm_availability_title());
     }
 
-    /** All IANA zone ids, sorted — for the Settings timezone combobox. */
-    private static List<String> zoneIds() {
-        return ZoneId.getAvailableZoneIds().stream().sorted().toList();
-    }
-
     @GET
     @Path("/settings")
     @Produces(MediaType.TEXT_HTML)
@@ -1223,7 +1227,7 @@ public class AdminResource {
                 OwnerSettings.forOwner(currentOwner.id()),
                 reminderLeadMinutes,
                 pendingCount(),
-                zoneIds(),
+                OwnerSettings.zoneIds(),
                 isAdmin(),
                 m().adm_settings_title());
     }
@@ -1249,7 +1253,11 @@ public class AdminResource {
             }
             row.ownerName = ownerName;
             row.ownerEmail = ownerEmail;
-            row.timezone = timezone;
+            // Mirror the locale guard below: the <select> can only submit a real zone id, but a
+            // crafted POST must not park a value that DateTimeException-500s the owner's public
+            // booking page and every booking on it (calit-4whp). The invariant lives on the entity
+            // because the first-login wizard writes this column too.
+            row.timezone = OwnerSettings.coerceZone(timezone);
             row.locale = AppLocales.isSupported(locale) ? locale : "en";
             row.timeFormat = timeFormat != null && OwnerSettings.HOUR_CYCLES.contains(timeFormat) ? timeFormat : "auto";
             // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
@@ -1261,7 +1269,7 @@ public class AdminResource {
         // request-scoped locale so THIS response (title, {adm:} keys, language dropdown) is in the new language.
         activeLocale.set(AppLocales.pick(s.locale));
         return Templates.settings(
-                s, reminderLeadMinutes, pendingCount(), zoneIds(), isAdmin(), m().adm_settings_title());
+                s, reminderLeadMinutes, pendingCount(), OwnerSettings.zoneIds(), isAdmin(), m().adm_settings_title());
     }
 
     @GET

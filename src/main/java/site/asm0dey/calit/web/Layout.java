@@ -42,16 +42,20 @@ public final class Layout {
               }
               var detected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
               if (ZONES.indexOf(detected) < 0) { ZONES.unshift(detected); }
+              /* CALIT_TZ_INITIAL — the zone the page was AUTHORED in: the owner's stored zone on
+                 /me (adminBase emits body[data-tz]), the viewer's own zone on the invitee pages
+                 (which emit none). The picker starts here and stays an explicit override the
+                 viewer can change; it is no longer a second, disagreeing default (calit-mhgs). */
+              var initial = document.body.dataset.tz || detected;
+              if (ZONES.indexOf(initial) < 0) { ZONES.unshift(initial); }
 
               var picker = document.getElementById('tz-picker');
               var label  = document.getElementById('tz-label');
-              /* The picker is invitee-only. The /me pages have none and must still format, so
-                 fall back to the owner's stored zone (body[data-tz]) and only then to detection. */
               if (picker) {
                 ZONES.forEach(function (z) {
                   var o = document.createElement('option');
                   o.value = z; o.textContent = z;
-                  if (z === detected) { o.selected = true; }
+                  if (z === initial) { o.selected = true; }
                   picker.appendChild(o);
                 });
               }
@@ -67,7 +71,7 @@ public final class Layout {
               var forcedHC = document.body.dataset.hc;
               if (forcedHC) { HC = forcedHC; }
               function render() {
-                var tz = picker ? picker.value : (document.body.dataset.tz || detected);
+                var tz = picker ? picker.value : initial;
                 if (label) { label.textContent = tz; }
                 document.querySelectorAll('[data-utc]').forEach(function (el) {
                   var d = new Date(el.dataset.utc);
@@ -83,7 +87,13 @@ public final class Layout {
             </script>
             """;
 
-    /** Reusable timezone-picker bar (detected zone selected client-side by TZ_SCRIPT), localized. */
+    /**
+     * Reusable, localized timezone-picker bar. TZ_SCRIPT fills the {@code <select>} client-side and
+     * pre-selects the zone the page was AUTHORED in: {@code body[data-tz]} where the page emits one
+     * (the owner's stored zone, on /me), otherwise the browser-detected zone (the invitee pages,
+     * which emit none). The viewer can still change it; the selection is an override, not a second
+     * disagreeing default (calit-mhgs).
+     */
     public static String tzBar(AppMessages m) {
         return """
                 <div class="tz-bar">

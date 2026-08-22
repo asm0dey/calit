@@ -404,24 +404,30 @@ public class SharedMeetingsResource {
         if (type == null) {
             throw new NotFoundException("No meeting type " + typeId);
         }
+        // The override lives in the type's own columns for the Creator -- an accepted CREATOR host
+        // row can reach this page too -- otherwise on this Co-host's own meeting_type_host row.
+        var creator = Objects.equals(currentOwner.id(), type.ownerId);
+        var before = creator
+                ? new CalendarRef(type.googleCredentialId, type.googleCalendarId)
+                : new CalendarRef(h.googleCredentialId, h.googleCalendarId);
+        var after =
+                new CalendarRef(ref == null ? null : ref.credentialId(), ref == null ? null : ref.googleCalendarId());
+        if (creator) {
+            type.googleCredentialId = after.credentialId();
+            type.googleCalendarId = after.googleCalendarId();
+        } else {
+            h.googleCredentialId = after.credentialId();
+            h.googleCalendarId = after.googleCalendarId();
+        }
+        if (before.equals(after)) {
+            return 0L; // no-op save -- nothing moved, so nothing "stays behind" (calit-jk8y)
+        }
         // Clearing falls back to this Host's write target -- compare against that, not null.
         // The count is for the whole shared type, not just this Co-host's own rows: a group
         // booking has one Google event, on the organizer's calendar, so "bookings that stay
         // behind" is a property of the type, not of the Host reading this page.
-        long staying = AdminResource.bookingsStayingBehind(
+        return AdminResource.bookingsStayingBehind(
                 type, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id()));
-        // Write the override to whichever storage writeOverride() reads it from (see the
-        // comment above in availabilityInstance()): the type's own columns for the Creator --
-        // an accepted CREATOR host row can reach this page too -- otherwise this Co-host's own
-        // meeting_type_host row.
-        if (Objects.equals(currentOwner.id(), type.ownerId)) {
-            type.googleCredentialId = ref == null ? null : ref.credentialId();
-            type.googleCalendarId = ref == null ? null : ref.googleCalendarId();
-        } else {
-            h.googleCredentialId = ref == null ? null : ref.credentialId();
-            h.googleCalendarId = ref == null ? null : ref.googleCalendarId();
-        }
-        return staying;
     }
 
     /**

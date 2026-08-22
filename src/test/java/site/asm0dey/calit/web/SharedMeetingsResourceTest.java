@@ -391,7 +391,9 @@ class SharedMeetingsResourceTest {
                 .post("/me/shared/" + seeded.type().id + "/revoke")
                 .then()
                 .statusCode(200)
-                .body(containsString("1"))
+                // the count-agnostic wording, asserted in full: a bare containsString("1") stayed
+                // green through the rewording and would stay green through the next one too.
+                .body(containsString("Upcoming bookings for this shared meeting type: 1"))
                 .body(containsString("choice=keep"))
                 .body(containsString("choice=cancel"));
 

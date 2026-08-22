@@ -82,7 +82,8 @@ public class PublicResource {
                 String titleValue,
                 String descriptionValue,
                 String titlePlaceholder,
-                String descPlaceholder);
+                String descPlaceholder,
+                boolean hostInactive);
 
         public static native TemplateInstance guestDeclineConfirm(
                 String title,
@@ -421,7 +422,9 @@ public class PublicResource {
         if (settings == null) {
             return Templates.notReady(m.pub_not_ready_title());
         }
-        ZoneId zone = ZoneId.of(settings.timezone);
+        // coerceZone, not a bare ZoneId.of: a row written before the save-time guard existed can
+        // still hold an unparseable zone, which would 500 this page (calit-4whp).
+        ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(settings.timezone));
         List<DaySlots> byDate;
         try {
             byDate = daySlots(type);
@@ -447,7 +450,25 @@ public class PublicResource {
                 booking.title == null ? "" : booking.title, // raw override
                 booking.description == null ? "" : booking.description,
                 type.name,
-                type.description == null ? "" : type.description);
+                type.description == null ? "" : type.description,
+                hostInactive(booking));
+    }
+
+    /**
+     * True when the host whose calendar this booking lives on has been disabled. The token routes
+     * are keyed by an unguessable manage token, not by username, so {@link #resolveOwner}'s
+     * {@code enabled} guard never sees them — an invitee holding a pre-existing link could still
+     * put a NEW time on a departed owner's calendar and mail them (calit-jyck).
+     *
+     * <p>Scoped to {@code booking.ownerId}, the row the invitee is managing, rather than the type's
+     * creator: on a group booking that is whose calendar carries the event.
+     *
+     * <p>Cancelling stays available whatever this returns — an invitee must always be able to get
+     * out of a meeting, and cancelling a departed host's booking is exactly what you'd want.
+     */
+    private static boolean hostInactive(Booking booking) {
+        AppUser host = AppUser.findById(booking.ownerId);
+        return host == null || !host.enabled;
     }
 
     @POST
@@ -465,6 +486,17 @@ public class PublicResource {
             @RestForm String description,
             MultivaluedMap<String, String> form) {
         // Authenticated solely by the unguessable manage token. Re-renders the Manage hub with fresh values.
+        Booking existing = Booking.findByManageToken(manageToken);
+        if (existing == null) {
+            throw new NotFoundException("No booking for token " + manageToken);
+        }
+        if (hostInactive(existing)) {
+            // The rendered page hides this form for a disabled host, so reaching here means a stale
+            // tab or a crafted POST. Re-render rather than 404: the token is legitimate and the
+            // booking exists, so the honest answer is the hub with its "no longer taking changes"
+            // notice and the cancel button still live (calit-jyck).
+            return renderManage(existing);
+        }
         bookingService.updateDetails(manageToken, title, description, parseGuests(form), false);
         Booking booking = Booking.findByManageToken(manageToken);
         return renderManage(booking);
@@ -475,6 +507,15 @@ public class PublicResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance rescheduleBooking(@PathParam("manageToken") String manageToken, @RestForm String startUtc) {
+        Booking existing = Booking.findByManageToken(manageToken);
+        if (existing == null) {
+            throw new NotFoundException("No booking for token " + manageToken);
+        }
+        if (hostInactive(existing)) {
+            // Same guard as edit-details: refuse to put a NEW time on a departed host's calendar.
+            // Re-render the hub (notice shown, cancel still available) rather than 404 (calit-jyck).
+            return renderManage(existing);
+        }
         // Time only -- guests are managed separately via /booking/{token}/edit-details. Passing the 2-arg
         // overload leaves the guest set untouched (guestEmails=null).
         Booking booking = bookingService.reschedule(manageToken, Instant.parse(startUtc));
@@ -538,10 +579,16 @@ public class PublicResource {
         return Templates.guestDeclined(m.pub_guest_declined_title());
     }
 
-    /** Resolve the {user} segment to an owner, 404 if unknown, and bind CurrentOwner for the request. */
+    /**
+     * Resolve the {user} segment to an owner, 404 if unknown OR DISABLED, and bind CurrentOwner for
+     * the request. A disabled account is 404 rather than a rendered "not accepting bookings" page:
+     * the route already 404s an unknown username, so this needs no template and no three-locale
+     * message, and it does not tell a stranger probing usernames which accounts exist but are
+     * switched off (calit-h8mb).
+     */
     private AppUser resolveOwner(String user) {
         AppUser owner = AppUser.findByUsername(Usernames.normalize(user));
-        if (owner == null) {
+        if (owner == null || !owner.enabled) {
             throw new NotFoundException("No user " + user);
         }
         currentOwner.set(owner);

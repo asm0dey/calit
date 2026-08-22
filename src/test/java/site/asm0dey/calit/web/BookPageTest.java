@@ -222,6 +222,18 @@ class BookPageTest {
     }
 
     @Test
+    void inviteePagesEmitNoStoredZoneSoThePickerStillDetects() {
+        // The shared TZ_SCRIPT now prefers body[data-tz]; only adminBase.html emits it. If an
+        // invitee page ever grew a data-tz attribute, its picker would silently stop defaulting to
+        // the viewer's own zone -- which is the whole point of the invitee picker.
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+
+        given().when().get("/bob/book-page").then().statusCode(200).body(not(containsString("data-tz=")));
+    }
+
+    @Test
     void bookPageRendersCalendarPickerAndDaySections() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());

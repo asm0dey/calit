@@ -65,15 +65,8 @@ public class GoogleSignInService {
         AppUser u = AppUser.createGoogleUser(username, identity.sub());
         u.persist();
 
-        // Pre-create the settings row so the first-login wizard (/me/setup) can pre-fill the email.
-        // ownerName/timezone are NOT NULL; seed placeholders the user finishes in the wizard.
-        OwnerSettings s = new OwnerSettings();
-        s.ownerId = u.id;
-        s.ownerName = "";
-        // ownerEmail "" only when Google returns no email; satisfies NOT NULL until the wizard sets a real one.
-        s.ownerEmail = identity.email() == null ? "" : identity.email();
-        s.timezone = "UTC";
-        s.persist();
+        // Seed the row so the first-login wizard (/me/setup) can pre-fill the email.
+        OwnerSettings.seed(u.id, identity.email());
         return u;
     }
 }

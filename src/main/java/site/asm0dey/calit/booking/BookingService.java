@@ -1179,8 +1179,17 @@ public class BookingService {
 
     private void cancelSingle(Booking booking, boolean byOwner) {
         booking.status = BookingStatus.CANCELLED;
-        if (calendarPort.isConnected(booking.ownerId) && booking.googleEventId != null) {
-            calendarPort.deleteEvent(booking.ownerId, booking.calendarRef(), booking.googleEventId);
+        if (booking.googleEventId != null) {
+            if (calendarPort.isConnected(booking.ownerId)) {
+                calendarPort.deleteEvent(booking.ownerId, booking.calendarRef(), booking.googleEventId);
+            }
+            // Clear the refs whether or not the remote call could be made -- same rule, and same
+            // reason, as deleteGroupGoogleEvent: a cancelled row must not keep pointing at an event
+            // that is gone (calit-ek26).
+            booking.googleEventId = null;
+            booking.meetLink = null;
+            booking.googleCalendarId = null;
+            booking.googleCredentialId = null;
         }
         bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner));
     }
@@ -1189,9 +1198,9 @@ public class BookingService {
      * Deletes the one Google event shared by a group (only the organizer's row carries it — see
      * {@link #createGroupGoogleEvent}) and clears it from that row. A no-op when the group never had a
      * Google event (degraded mode, or no host was connected at confirm time). If the organizer has
-     * since disconnected Google, the remote delete is skipped (mirrors {@link #cancelSingle}'s
-     * {@code isConnected} guard) but the local event refs are still cleared — the calit-side state
-     * must not be left dangling just because the remote call can't be made.
+     * since disconnected Google, the remote delete is skipped but the local event refs are still
+     * cleared — the calit-side state must not be left dangling just because the remote call can't be
+     * made. {@link #cancelSingle} follows the same rule.
      */
     private void deleteGroupGoogleEvent(UUID groupId) {
         for (Booking r : Booking.<Booking>group(groupId)) {

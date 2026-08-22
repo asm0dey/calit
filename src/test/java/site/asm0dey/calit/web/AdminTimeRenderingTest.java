@@ -21,10 +21,14 @@ import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
 
 /**
- * /me pages have no #tz-picker, so TZ_SCRIPT used to bail at "if (!picker) return" and leave the
- * raw ISO instant on screen. The script must now format without a picker, using the owner's
- * STORED timezone (not the browser-detected one — a travelling host must not silently read their
- * bookings in the trip's zone).
+ * Every /me surface shows times in the owner's STORED timezone, not the browser-detected one — a
+ * travelling host must not silently read their bookings in the trip's zone.
+ *
+ * <p>Two shapes are covered. The dashboard and /me/pending have no {@code #tz-picker}: TZ_SCRIPT
+ * used to bail at {@code if (!picker) return} and leave the raw ISO instant on screen, and must now
+ * format without one. The manage page DOES have a picker, which used to pre-select the detected
+ * zone — so the same booking read two different clock times one click apart (calit-mhgs); the
+ * picker now starts on the stored zone and is an explicit override.</p>
  *
  * <p>RestAssured cannot execute JS, so these assert on the served HTML and the script text.</p>
  */
@@ -71,12 +75,59 @@ class AdminTimeRenderingTest {
                 .body(not(containsString("if (!picker) { return; }")))
                 // and the no-picker path reads the server-supplied zone
                 .body(containsString("document.body.dataset.tz"))
+                // The no-picker branch reads the shared `initial`, which is where the fallback now
+                // lives -- it used to repeat the whole expression here. The ORDER is still pinned,
+                // by thePickerDefaultsToTheZoneThePageWasAuthoredIn below, which asserts on
+                // `initial`'s definition character-for-character: RestAssured can't execute the
+                // script, so without that a silent inversion to "(detected || dataset.tz)" would
+                // reintroduce the original bug (a travelling host reading their bookings in the
+                // trip's timezone instead of their configured one).
+                .body(containsString("picker ? picker.value : initial"));
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void thePickerDefaultsToTheZoneThePageWasAuthoredIn() {
+        // Asserted against the page the bug was actually on: /me/bookings/{id}/manage is the /me
+        // page that HAS a #tz-picker, and the script used to pre-select the browser-detected zone
+        // in it -- so the same booking read 15:00 on the dashboard and 22:00 one click away. The
+        // picker now defaults to body[data-tz] (the owner's stored zone on /me) and only falls back
+        // to detection where there is none, i.e. on the invitee pages.
+        saveTimezone("Europe/Amsterdam");
+        var bookingId = seedConfirmedBooking(
+                LocalDate.now(ZoneOffset.UTC).plusYears(1).atTime(13, 0).toInstant(ZoneOffset.UTC));
+
+        given().when()
+                .get("/me/bookings/" + bookingId + "/manage")
+                .then()
+                .statusCode(200)
+                // this page really does render a picker, so the assertions below are about it
+                .body(containsString("id=\"tz-picker\""))
                 // pin the fallback ORDER, not just that both operands appear somewhere: RestAssured
-                // can't execute the script, so a bare "dataset.tz" check would still pass if the
-                // ternary were silently inverted to "(detected || document.body.dataset.tz)" — which
-                // would reintroduce the original bug (a travelling host reading their bookings in
-                // the trip's timezone instead of their configured one).
-                .body(containsString("picker ? picker.value : (document.body.dataset.tz || detected)"));
+                // can't execute the script, so a bare "dataset.tz" check would still pass if this
+                // were silently inverted to "(detected || document.body.dataset.tz)" -- which would
+                // reintroduce the original bug. scriptNoLongerBailsWhenThereIsNoPicker's no-picker
+                // branch now reads `initial`, so this is the one place that order is pinned.
+                .body(containsString("var initial = document.body.dataset.tz || detected;"))
+                .body(containsString("if (z === initial) { o.selected = true; }"))
+                // the detected-zone pre-selection is gone
+                .body(not(containsString("if (z === detected) { o.selected = true; }")));
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void dashboardAndPendingNameTheZoneOnScreen() {
+        // Whichever zone is displayed must be named: the stored zone is no more self-evident than
+        // the detected one, and manageBooking's zone label is the pattern being copied here.
+        saveTimezone("Europe/Amsterdam");
+
+        given().when().get("/me").then().statusCode(200).body(containsString("Times shown in Europe/Amsterdam"));
+
+        given().when()
+                .get("/me/pending")
+                .then()
+                .statusCode(200)
+                .body(containsString("Times shown in Europe/Amsterdam"));
     }
 
     /** An explicit host preference reaches the /me pages... */

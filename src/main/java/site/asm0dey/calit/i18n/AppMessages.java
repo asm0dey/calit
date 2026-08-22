@@ -422,6 +422,9 @@ public interface AppMessages {
     @Message("Cancel")
     String pub_manage_h2_cancel();
 
+    @Message("This host is no longer taking changes to bookings. You can still cancel below.")
+    String pub_manage_host_inactive();
+
     @Message("Cancel this booking")
     String pub_manage_btn_cancel();
 

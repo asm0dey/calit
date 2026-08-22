@@ -120,6 +120,9 @@ public interface AdminMessages {
     @Message("No upcoming bookings.")
     String adm_dashboard_no_upcoming();
 
+    @Message("Times shown in {zone}")
+    String adm_times_shown_in(String zone);
+
     @Message("Manage")
     String adm_dashboard_btn_manage();
 
@@ -344,7 +347,7 @@ public interface AdminMessages {
     @Message("Stop co-hosting?")
     String adm_shared_revokeConfirm_title();
 
-    @Message("You have {count} upcoming booking(s) for this shared meeting type. What should happen to them?")
+    @Message("Upcoming bookings for this shared meeting type: {count}. What should happen to them?")
     String adm_shared_revokeConfirm_count(long count);
 
     @Message("Keep bookings, just stop co-hosting")
@@ -411,11 +414,15 @@ public interface AdminMessages {
     String adm_detail_write_calendar_dangling();
 
     @Message(
-            "{count} upcoming bookings stay on the calendar they were created on. Only new bookings use the new calendar.")
+            "Upcoming bookings that stay on the calendar they were created on: {count}. Only new bookings use the new calendar.")
     String adm_detail_write_calendar_moved(long count);
 
     @Message("That calendar is not one of your selected Google calendars.")
     String adm_detail_error_write_calendar_unknown();
+
+    @Message(
+            "The calendar this meeting type writes on can't create Google Meet links. Pick another location, or another calendar.")
+    String adm_detail_error_location_meet_unsupported();
 
     @Message("Secret (hidden from public landing)")
     String adm_detail_label_secret();
@@ -564,7 +571,7 @@ public interface AdminMessages {
     @Message("Remove co-host?")
     String adm_hosts_removeConfirm_title();
 
-    @Message("{username} has {count} upcoming booking(s) on this meeting type. What should happen to them?")
+    @Message("{username}'s upcoming bookings on this meeting type: {count}. What should happen to them?")
     String adm_hosts_removeConfirm_count(String username, long count);
 
     @Message("Keep bookings, just remove co-host")

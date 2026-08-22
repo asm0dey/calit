@@ -1,11 +1,11 @@
 ---
 # calit-mhgs
 title: /me pages disagree on which timezone they display
-status: todo
+status: completed
 type: bug
 priority: low
 created_at: 2026-08-16T06:39:08Z
-updated_at: 2026-08-17T10:52:02Z
+updated_at: 2026-08-22T13:52:34Z
 ---
 
 Two `/me` pages render bookings in the owner's STORED zone; a third renders them in the BROWSER-DETECTED zone. One click apart, the same booking shows two different clock times.
@@ -26,8 +26,8 @@ NEEDS A DECISION BEFORE CODE: should `/me` standardise on the stored zone (picke
 
 ## Todo
 - [x] Decide which zone /me standardises on — **STORED** (decided 2026-08-17)
-- [ ] Implement, keeping the picker as an explicit override
-- [ ] Ensure whichever zone is shown is always named on screen
+- [x] Implement, keeping the picker as an explicit override
+- [x] Ensure whichever zone is shown is always named on screen — adm_times_shown_in on the dashboard and /me/pending, server-rendered (no picker on those pages, so nothing can change it client-side)
 
 ## Decision (2026-08-17)
 
@@ -44,3 +44,7 @@ the 15:00-vs-22:00 confusion this bean reports.
 Whichever zone is on screen stays NAMED on screen (second todo) — the stored zone is no
 more self-evident than the detected one, and `manageBooking`'s existing zone label is
 the pattern to copy onto the dashboard and /me/pending.
+
+## Summary of Changes
+
+TZ_SCRIPT's picker now defaults to `document.body.dataset.tz || detected` (the owner's stored zone on /me, since only adminBase.html emits body[data-tz]; the invitee pages emit none and keep detecting). The dashboard and /me/pending now name the zone on screen via the new adm_times_shown_in message key (server-rendered, no id, since those pages have no picker to change it client-side). The pinned render() ternary was left untouched.

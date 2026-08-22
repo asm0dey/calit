@@ -8,6 +8,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 
@@ -84,7 +85,13 @@ class AdminMeetGatingTest {
                 .when()
                 .post("/me/meeting-types")
                 .then()
-                .statusCode(400);
+                .statusCode(200)
+                // Qute HTML-escapes the apostrophe in "can't" (renders as "can&#39;t"); assert on
+                // the unescaped tail of the message instead of fighting the entity encoding.
+                .body(containsString("create Google Meet links"));
+
+        org.junit.jupiter.api.Assertions.assertNull(
+                MeetingType.find("slug like ?1", "blocked-meet-%").firstResult());
     }
 
     @Test

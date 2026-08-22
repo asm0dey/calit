@@ -87,7 +87,10 @@ class HostRemovalInterstitialTest {
                 .post("/me/meeting-types/" + seeded.type().id + "/hosts/" + seeded.cohostId() + "/remove")
                 .then()
                 .statusCode(200)
-                .body(containsString("1"))
+                // the count-agnostic wording, asserted in full: a bare containsString("1") stayed
+                // green through the rewording and would stay green through the next one too. The
+                // leading "{username}'s" is dropped -- Qute HTML-escapes the apostrophe.
+                .body(containsString("upcoming bookings on this meeting type: 1"))
                 .body(containsString("choice=keep"))
                 .body(containsString("choice=cancel"));
 

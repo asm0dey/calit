@@ -73,15 +73,7 @@ public class SetupResource {
         u.mustChangePassword = false;
         u.settingsComplete = false;
         u.persist();
-        // Seed the settings row (mirrors UsersResource invite + Google/OIDC sign-in): ownerName/
-        // ownerEmail/timezone are NOT NULL, so seed placeholders the first-login wizard overwrites.
-        // Without it the public booking path NPEs on OwnerSettings.forOwner(...).timezone (issue #99).
-        OwnerSettings s = new OwnerSettings();
-        s.ownerId = u.id;
-        s.ownerName = "";
-        s.ownerEmail = "";
-        s.timezone = "UTC";
-        s.persist();
+        OwnerSettings.seed(u.id, null);
         return Response.status(Response.Status.FOUND)
                 .location(URI.create("/login"))
                 .build();
