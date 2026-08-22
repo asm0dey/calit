@@ -50,6 +50,22 @@ Merged but not yet in a tagged release.
   edit, extend, or clear like any other. Clearing them sticks — the defaults are
   set once, when you first complete the wizard, not restored afterwards.
   ([#145](https://github.com/asm0dey/calit/pull/145))
+- **The meeting-type create form now uses the same working-hours grid as
+  the edit page.** Creating a type only allowed one time frame per weekday;
+  it now supports several frames per day plus the copy-to-all-days and
+  copy-to-weekdays buttons.
+  ([#147](https://github.com/asm0dey/calit/pull/147))
+- **A malformed date on the meeting-type create form no longer rejects the
+  whole submission.** Submitting a date override with an unparseable date, or
+  a time window with an unparseable time, rejected the entire request — since
+  the date override was saved together with the rest of the form, the new
+  meeting type and its working hours were not created either. The bad value
+  is now skipped and everything else on the form is saved. The same
+  window-time guard now covers time windows added from the date-override
+  pages. Relatedly, adding a date override with a malformed meeting-type id
+  now returns a plain bad-request error instead of a server error; only a
+  hand-crafted request could reach that, never the pages themselves.
+  ([#147](https://github.com/asm0dey/calit/pull/147))
 
 Nothing to configure. The migrations run themselves. Disconnecting a Google
 account still clears the stored calendar for its bookings, which fall back to
