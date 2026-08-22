@@ -1,11 +1,11 @@
 ---
 # calit-4whp
 title: Validate OwnerSettings.timezone on save
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-08-16T06:38:59Z
-updated_at: 2026-08-16T06:38:59Z
+updated_at: 2026-08-22T12:24:31Z
 ---
 
 `AdminResource.updateSettings` (~line 1131) stores `row.timezone = timezone` straight from the form with no validation, unlike the `locale` field one line above which guards with `AppLocales.isSupported`.
@@ -27,4 +27,4 @@ REACHABILITY IS LOW. `tzField.html` renders a `<select>` populated from `ZoneId.
 ## Todo
 - [ ] Guard on save: `zoneIds().contains(timezone) ? timezone : "UTC"` in `updateSettings`, mirroring the locale guard
 - [ ] Test: POST a garbage timezone, assert it is coerced and the public booking page still renders
-- [ ] Consider whether existing rows need a backfill/repair pass
+- [x] Consider whether existing rows need a backfill/repair pass — **NO**. Only reachable by a hand-crafted POST against your own owner-scoped account, and the save-time guard repairs the row on the next save. Not worth a migration.

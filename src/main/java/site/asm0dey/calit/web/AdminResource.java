@@ -1254,7 +1254,10 @@ public class AdminResource {
             }
             row.ownerName = ownerName;
             row.ownerEmail = ownerEmail;
-            row.timezone = timezone;
+            // Mirror the locale guard below: the <select> can only submit a real zone id, but a
+            // crafted POST must not park a value that DateTimeException-500s the owner's public
+            // booking page and every booking on it (calit-4whp).
+            row.timezone = zoneIds().contains(timezone) ? timezone : "UTC";
             row.locale = AppLocales.isSupported(locale) ? locale : "en";
             row.timeFormat = timeFormat != null && OwnerSettings.HOUR_CYCLES.contains(timeFormat) ? timeFormat : "auto";
             // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
