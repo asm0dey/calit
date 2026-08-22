@@ -238,18 +238,6 @@ public interface AdminMessages {
     @Message("to")
     String adm_meetingTypes_to();
 
-    @Message("+ Frame")
-    String adm_meetingTypes_frame_add();
-
-    @Message("Copy to all days")
-    String adm_meetingTypes_copy_all();
-
-    @Message("Copy to weekdays")
-    String adm_meetingTypes_copy_weekdays();
-
-    @Message("Remove frame")
-    String adm_meetingTypes_remove_frame_aria();
-
     @Message("Date override")
     String adm_meetingTypes_section_date_override();
 
@@ -476,17 +464,24 @@ public interface AdminMessages {
     @Message("Remove availability")
     String adm_workplan_clear_day();
 
-    @Message("to")
-    String adm_detail_to();
-
+    /** Shared by every workplan grid (availability, per-type detail, shared, and the create form). */
     @Message("+ Frame")
-    String adm_detail_frame_add();
+    String adm_workplan_frame_add();
 
     @Message("Copy to all days")
-    String adm_detail_copy_all();
+    String adm_workplan_copy_all();
 
     @Message("Copy to weekdays")
-    String adm_detail_copy_weekdays();
+    String adm_workplan_copy_weekdays();
+
+    @Message("Remove frame")
+    String adm_workplan_remove_frame_aria();
+
+    @Message("to")
+    String adm_workplan_to();
+
+    @Message("to")
+    String adm_detail_to();
 
     @Message("Save working hours")
     String adm_detail_btn_save_hours();
@@ -521,9 +516,6 @@ public interface AdminMessages {
 
     @Message("Delete")
     String adm_detail_btn_delete();
-
-    @Message("Remove frame")
-    String adm_detail_remove_frame_aria();
 
     // ---- Meeting type detail: hosts (Task 17) ----
 
@@ -592,21 +584,6 @@ public interface AdminMessages {
     @Message(
             "Your default weekly schedule. Each day can hold several time frames. Use the copy buttons to mirror one day across the week, then Save.")
     String adm_availability_hint();
-
-    @Message("+ Frame")
-    String adm_availability_frame_add();
-
-    @Message("Copy to all days")
-    String adm_availability_copy_all();
-
-    @Message("Copy to weekdays")
-    String adm_availability_copy_weekdays();
-
-    @Message("to")
-    String adm_availability_to();
-
-    @Message("Remove frame")
-    String adm_availability_remove_frame_aria();
 
     @Message("Save schedule")
     String adm_availability_btn_save();

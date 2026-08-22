@@ -1,0 +1,43 @@
+{@java.util.List<site.asm0dey.calit.web.WeekRow> week}
+{@java.lang.String cardClass}
+{! Shared workplan working-hours grid: day cards + the frame-row <template>, reused by
+   availability.html, meetingTypeDetail.html, sharedAvailability.html and meetingTypes.html
+   (the create form). The including page owns the <form> (data-workplan, action, CSRF) — this
+   fragment only renders what's inside it. workplan.js binds to the data-* markers below;
+   changing them here changes the contract for every including page at once. !}
+{#for row in week}
+<div data-day="{row.day}" class="card {cardClass} border border-base-300">
+  <div class="card-body py-3 gap-2">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <strong class="w-24">{display:of(row.day)}</strong>
+      <div class="flex flex-wrap gap-1">
+        <button type="button" class="btn btn-ghost btn-xs" data-add-frame="{row.day}">{adm:adm_workplan_frame_add}</button>
+        <button type="button" class="btn btn-ghost btn-xs" data-copy-all="{row.day}">{adm:adm_workplan_copy_all}</button>
+        <button type="button" class="btn btn-ghost btn-xs" data-copy-weekdays="{row.day}">{adm:adm_workplan_copy_weekdays}</button>
+        <button type="button" class="btn btn-ghost btn-xs text-error" data-clear-day="{row.day}">{adm:adm_workplan_clear_day}</button>
+      </div>
+    </div>
+    <div data-frames class="space-y-1">
+      {#for fr in row.frames}
+      <div data-frame class="flex items-center gap-2">
+        <input type="hidden" name="frameDay" value="{row.day}">
+        <input class="input input-sm" type="time" name="frameStart" value="{#if fr.startTime}{fr.startTime}{/if}">
+        <span class="text-base-content/60">{adm:adm_workplan_to}</span>
+        <input class="input input-sm" type="time" name="frameEnd" value="{#if fr.endTime}{fr.endTime}{/if}">
+        <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="{adm:adm_workplan_remove_frame_aria}">&times;</button>
+      </div>
+      {/for}
+    </div>
+  </div>
+</div>
+{/for}
+
+<template data-frame-template>
+  <div data-frame class="flex items-center gap-2">
+    <input type="hidden" name="frameDay" value="">
+    <input class="input input-sm" type="time" name="frameStart">
+    <span class="text-base-content/60">{adm:adm_workplan_to}</span>
+    <input class="input input-sm" type="time" name="frameEnd">
+    <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="{adm:adm_workplan_remove_frame_aria}">&times;</button>
+  </div>
+</template>

@@ -2,6 +2,7 @@
 {@java.util.List<site.asm0dey.calit.google.GoogleCalendar> writeCalendars}
 {@site.asm0dey.calit.domain.MeetingType.LocationType[] locationTypes}
 {@java.time.DayOfWeek[] daysOfWeek}
+{@java.util.List<site.asm0dey.calit.web.WeekRow> week}
 {@java.lang.Long pendingCount}
 {@java.lang.Boolean isAdmin}
 {@java.lang.String username}
@@ -119,43 +120,13 @@
       <div class="collapse-title font-semibold">{adm:adm_meetingTypes_section_working_hours}</div>
       <div class="collapse-content">
         <p class="text-sm text-base-content/60 mb-2">{adm:adm_meetingTypes_working_hours_hint}</p>
+        {! One blank frame per day seeded server-side (WeekRow.blank()): without JS these seven
+           rows ARE the editor. The wrapping div matches the other pages' spacing, which they get
+           for free from their own <form>'s space-y-2 (their cards are direct form children; here
+           the grid sits inside collapse-content, one level further nested). !}
         <div class="space-y-2">
-        {#for d in daysOfWeek}
-          <div data-day="{d}" class="card bg-base-200 border border-base-300">
-            <div class="card-body py-3 gap-2">
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <strong class="w-24">{display:of(d)}</strong>
-                <div class="flex flex-wrap gap-1">
-                  <button type="button" class="btn btn-ghost btn-xs" data-add-frame="{d}">{adm:adm_meetingTypes_frame_add}</button>
-                  <button type="button" class="btn btn-ghost btn-xs" data-copy-all="{d}">{adm:adm_meetingTypes_copy_all}</button>
-                  <button type="button" class="btn btn-ghost btn-xs" data-copy-weekdays="{d}">{adm:adm_meetingTypes_copy_weekdays}</button>
-                  <button type="button" class="btn btn-ghost btn-xs text-error" data-clear-day="{d}">{adm:adm_workplan_clear_day}</button>
-                </div>
-              </div>
-              <div data-frames class="space-y-1">
-                <!-- One blank frame seeded server-side: without JS this row IS the editor. -->
-                <div data-frame class="flex items-center gap-2">
-                  <input type="hidden" name="frameDay" value="{d}">
-                  <input class="input input-sm" type="time" name="frameStart">
-                  <span class="text-base-content/60">{adm:adm_meetingTypes_to}</span>
-                  <input class="input input-sm" type="time" name="frameEnd">
-                  <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="{adm:adm_meetingTypes_remove_frame_aria}">&times;</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        {/for}
+          {#include AdminResource/_workplanGrid week=week cardClass="bg-base-200" /}
         </div>
-
-        <template data-frame-template>
-          <div data-frame class="flex items-center gap-2">
-            <input type="hidden" name="frameDay" value="">
-            <input class="input input-sm" type="time" name="frameStart">
-            <span class="text-base-content/60">{adm:adm_meetingTypes_to}</span>
-            <input class="input input-sm" type="time" name="frameEnd">
-            <button type="button" class="btn btn-ghost btn-xs text-error" data-remove-frame aria-label="{adm:adm_meetingTypes_remove_frame_aria}">&times;</button>
-          </div>
-        </template>
       </div>
     </div>
 
