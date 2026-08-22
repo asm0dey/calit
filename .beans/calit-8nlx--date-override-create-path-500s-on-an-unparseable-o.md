@@ -1,11 +1,11 @@
 ---
 # calit-8nlx
-title: Date-override create path 500s on an unparseable overrideDate
+title: Date-override create path rejected the whole form on an unparseable overrideDate
 status: completed
 type: bug
 priority: normal
 created_at: 2026-08-22T10:21:53Z
-updated_at: 2026-08-22T10:29:30Z
+updated_at: 2026-08-22T10:47:03Z
 ---
 
 `AdminResource.createInitialDateOverride` calls `LocalDate.parse(date)` with no guard, so a crafted `overrideDate=x` on `POST /me/meeting-types` throws `DateTimeParseException` out of the transaction and returns 500 instead of dropping the value.
