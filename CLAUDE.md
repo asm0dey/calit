@@ -14,6 +14,14 @@ Need a dependency's API or source? Prefer the **`javadocs` MCP** (configured in 
 
 Skills live in `.agents/skills/`; `.claude/skills/` and `.crush/skills/` are symlinks into it. Nothing under either is tracked — restore after cloning with `bunx skills experimental_install`, which reads `skills-lock.json` and recreates the per-harness symlinks. The `quarkus` skill is not in the lock: it is written by the `quarkus-agent` MCP (`quarkus_skills` / `quarkus_saveSkill`, configured in `.mcp.json`), or comes from a global install.
 
+### Issue tracker
+
+Issues are beans in `.beans/` (agentic-first tracker, `beans` CLI). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
 ## Build & run
 
 ```bash
