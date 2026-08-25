@@ -634,6 +634,7 @@ A pre-existing bug, fixed on the line Task 3 just touched. Multi-host slots are 
 **Files:**
 - Modify: `src/main/java/site/asm0dey/calit/availability/SlotService.java`
 - Modify: `src/main/java/site/asm0dey/calit/booking/BookingService.java:129-152` (`availableSlots`), `:164-194` (`hostFreeSlots`)
+- Modify: `src/test/java/site/asm0dey/calit/availability/SlotServiceDurationTest.java` — Task 3 wrote it against the `boolean` parameter; every `false` argument becomes `null`
 - Test: `src/test/java/site/asm0dey/calit/availability/SlotServiceLatticeTest.java` (create)
 
 **Interfaces:**
@@ -841,7 +842,15 @@ for (TimeSlot slot : slotService.generateRawSlots(type, hostId, from, to, gridAn
 
 (`durationMinutes` arrives in Task 6; until then pass `type.durationMinutes`.)
 
-- [ ] **Step 6: Run the lattice test**
+- [ ] **Step 6: Update Task 3's test for the new parameter**
+
+`SlotServiceDurationTest` was written against the `boolean` this task just removed. Replace every `false` argument to `generateRawSlots` with `null` — single-host is window-anchored either way, so the assertions are unchanged:
+
+```bash
+grep -n 'generateRawSlots' src/test/java/site/asm0dey/calit/availability/SlotServiceDurationTest.java
+```
+
+- [ ] **Step 7: Run the lattice test**
 
 ```bash
 ./mvnw test -Dtest=SlotServiceLatticeTest
@@ -849,7 +858,7 @@ for (TimeSlot slot : slotService.generateRawSlots(type, hostId, from, to, gridAn
 
 Expected: PASS, 4 tests.
 
-- [ ] **Step 7: Run the full suite — this task changes shared behaviour**
+- [ ] **Step 8: Run the full suite — this task changes shared behaviour**
 
 ```bash
 ./mvnw test
@@ -857,11 +866,12 @@ Expected: PASS, 4 tests.
 
 Expected: `BUILD SUCCESS`. A multi-host test whose hosts share a timezone must produce the same slots as before; if one fails, the anchor phase is wrong, not the test.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add src/main/java/site/asm0dey/calit/availability/SlotService.java \
         src/main/java/site/asm0dey/calit/booking/BookingService.java \
+        src/test/java/site/asm0dey/calit/availability/SlotServiceDurationTest.java \
         src/test/java/site/asm0dey/calit/availability/SlotServiceLatticeTest.java
 git commit -m "fix(availability): one slot lattice per type, not one per host
 
@@ -1138,9 +1148,11 @@ class BookingDurationTest {
                 .availableSlots(t, java.time.LocalDate.now(), java.time.LocalDate.now().plusDays(7), java.util.Set.of(), 120)
                 .getFirst();
 
+        // 12-arg order: ownerId, slug, startUtc, name, email, answers, turnstileToken,
+        // altchaSolution, honeypot, locale, guestEmails, durationMinutes.
         Booking b = bookingService.book(
                 OWNER, t.slug, slot.start().toInstant(), "Ada", "ada@example.test",
-                Map.of(), null, null, "en", List.of(), 120);
+                Map.of(), null, null, null, "en", List.of(), 120);
 
         assertEquals(120, Duration.between(b.startUtc, b.endUtc).toMinutes());
     }
@@ -1157,7 +1169,7 @@ class BookingDurationTest {
                 BookingConflictException.class,
                 () -> bookingService.book(
                         OWNER, t.slug, slot.start().toInstant(), "Ada", "ada@example.test",
-                        Map.of(), null, null, "en", List.of(), 45));
+                        Map.of(), null, null, null, "en", List.of(), 45));
         assertEquals(before, Booking.count(), "a rejected duration must write no row");
     }
 
@@ -1170,7 +1182,7 @@ class BookingDurationTest {
 
         Booking b = bookingService.book(
                 OWNER, t.slug, slot.start().toInstant(), "Ada", "ada@example.test",
-                Map.of(), null, null, "en", List.of());
+                Map.of(), null, null, null, "en", List.of());
 
         assertEquals(30, Duration.between(b.startUtc, b.endUtc).toMinutes());
     }
@@ -1288,7 +1300,7 @@ Independent of whether anyone configures a second duration, `reschedule` and `re
 
 **Interfaces:**
 - Consumes: Task 6's duration-bearing `availableSlots` / `assertSlotAvailable`
-- Produces: `static int lengthOf(Booking booking)` on `BookingService`
+- Produces: `public static int lengthOf(Booking booking)` on `BookingService` — public, not package-private: Task 8 consumes it from `site.asm0dey.calit.email`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1352,7 +1364,7 @@ class RescheduleLengthTest {
 
         Booking b = bookingService.book(
                 OWNER, t.slug, slots.getFirst().start().toInstant(), "Ada", "ada@example.test",
-                Map.of(), null, null, "en", List.of(), 120);
+                Map.of(), null, null, null, "en", List.of(), 120);
         assertEquals(120, Duration.between(b.startUtc, b.endUtc).toMinutes());
 
         var target = slots.stream()
@@ -1385,8 +1397,12 @@ Expected: FAIL — `expected: <120> but was: <30>`.
 Add to `BookingService`:
 
 ```java
-/** A booking carries its own length; reschedule moves it, never resizes it. */
-static int lengthOf(Booking booking) {
+/**
+ * A booking carries its own length; reschedule moves it, never resizes it.
+ *
+ * <p>Public because {@code EmailService} — a different package — displays it.
+ */
+public static int lengthOf(Booking booking) {
     return (int) Duration.between(booking.startUtc, booking.endUtc).toMinutes();
 }
 ```
@@ -2109,4 +2125,4 @@ State in the body that the full suite is green, and link `calit-p5xm`, `calit-io
 
 **Type consistency.** `allowedDurations` / `shortestAllowed` / `isAllowed` / `findRow` / `rowsFor` are used under those names in Tasks 3, 5, 6, 9 and 10. `lengthOf` is defined in Task 7 and used in Task 8. `DurationChoice` / `Chrome` / `Captcha` / `DurationRow` are each defined once and consumed under the same names. `gridAnchorFor` is defined in Task 4 and used only there and in `BookingService`.
 
-**Known ordering hazard.** Task 4 replaces `generateRawSlots`'s `boolean dayAnchoredGrid` with `Instant gridAnchor` while Task 6 adds `int durationMinutes` to the same signature. Task 4 must land first; its Step 5 passes `type.durationMinutes` as a placeholder value that Task 6 replaces with the real parameter. Executing them out of order produces a compile error, not silent breakage.
+**Known ordering hazard.** Task 4 replaces `generateRawSlots`'s `boolean dayAnchoredGrid` with `Instant gridAnchor` while Task 6 adds `int durationMinutes` to the same signature. Task 4 must land first; its Step 5 passes `type.durationMinutes` as a placeholder value that Task 6 replaces with the real parameter. Executing them out of order produces a compile error, not silent breakage. Task 4 also owns updating Task 3's `SlotServiceDurationTest`, which was written against the parameter it removes.
