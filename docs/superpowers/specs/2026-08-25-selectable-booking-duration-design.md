@@ -11,6 +11,9 @@ Upstream: [#119](https://github.com/asm0dey/calit/issues/119). Tracked as `calit
 - [ADR-0002](../../adr/0002-buffers-are-constraints-not-settings.md) — buffers are constraints, so
   the strictest applicable one governs. **Amended** while designing this: the maximum is taken over
   the overrides actually set, never over a `NULL` fallen back to the type's buffer (see Buffers).
+- [ADR-0008](../../adr/0008-the-slot-lattice-is-anchored-to-the-creators-clock.md) — every Host of
+  a meeting type shares one lattice, anchored to the Creator's clock. **New**, written for the
+  multi-host misalignment bug fixed alongside this feature (`calit-io9y`).
 - [ADR-0003](../../adr/0003-a-meeting-types-duration-doubles-as-its-default.md) —
   `meeting_type.duration_minutes` is the default of the allowed set. **Amended**: the default
   is an *implicit* member rather than a row the save refuses to delete (see Owner UI).
@@ -79,6 +82,35 @@ so its output is byte-identical to today.
 
 Nothing caches slots across durations: a different length can mean a different buffer and therefore
 a different slot set.
+
+### The shared lattice (`calit-io9y`)
+
+The same line carries a pre-existing bug, fixed here rather than in a second pass over the same
+code. Multi-host slots are anchored to 00:00 in **each host's own** timezone, and
+`BookingService:145` intersects the per-host free sets by exact start instant. Host-local midnight
+is a different instant per host, so the combs coincide only when the hosts' UTC offsets differ by a
+whole number of `step`. London and Berlin on a 45-minute cadence differ by 60, which is not a
+multiple of 45 — the intersection is empty every day, forever, and the page renders the ordinary
+"no times available" state. `step` falls back to the meeting length, so that is simply a 45-minute
+type shared between two neighbouring countries.
+
+Per ADR-0008 there is one lattice per type, anchored to the Creator's clock at a constant date:
+
+```java
+Instant anchor = LocalDate.EPOCH.atStartOfDay(creatorZone).toInstant();
+```
+
+The Creator's zone supplies the phase — round start times on the clock of whoever defined the type,
+and a shared type whose hosts are all in one timezone keeps exactly the start times it has today.
+The constant date supplies request-independence: anchoring to the request's own `from` would put
+the booking page (`from = today`) and `assertSlotAvailable` (`from = the chosen day`) a whole number
+of days apart, and a cadence that does not divide 1440 — 25 or 50 minutes — makes those two
+lattices disagree, so a slot the page has just rendered is rejected on submit.
+
+`generateRawSlots` therefore takes a nullable `Instant gridAnchor` in place of the `boolean
+dayAnchoredGrid` flag, and aligns in absolute time rather than host-local minute-of-day. Null keeps
+window-anchoring, so single-host is untouched — including the rule that each window of a
+multi-window day anchors itself.
 
 ## Buffers
 
@@ -247,6 +279,7 @@ names identical across locales.
 | `MeetingHostsTest` | the five-row buffer table above |
 | `BookingServiceTest` | chosen duration sets `endUtc`; `duration=45` on a 30/60/120 type → 409, no row written; reschedule of a 120-min booking stays 120 when the default is 30 |
 | multi-host | 120 not offered when one host cannot fit it while 30 still is; the 11:20 case above as a regression test |
+| lattice (`calit-io9y`) | London + Berlin on a 45-minute cadence, both free 09:00–17:00 local → non-empty intersection; Berlin + Kathmandu on 30 → non-empty; an all-one-timezone shared type → start times unchanged from today; a slot the booking page rendered validates in `assertSlotAvailable` at a 50-minute cadence |
 | `PublicResource` | `?duration=120` renders 120-min slots; `?duration=45` and `?duration=abc` fall back without erroring; no picker on a single-duration type; picker still rendered when the grid is empty; hidden field survives the error re-render |
 | `AdminResource` | the spare row creates a duration; clearing one removes it; clearing the default's row keeps the duration and drops its buffers; per-duration buffers persist |
 | email | a 120-min booking's confirmation prints 120, not the type's 30 |
@@ -267,6 +300,9 @@ is a plain POST.
 ## Docs
 
 `docs-site` branch: the meeting-type usage page gains the allowed-durations section and the
-per-duration buffer semantics. Changelog bullet under `## Unreleased` at merge, naming both the
-feature and the reschedule-length fix, with an upgrade note that no configuration or migration
-action is required and existing single-duration types are unaffected.
+per-duration buffer semantics. Changelog bullets under `## Unreleased` at merge — the feature, the
+reschedule-length fix, and the cross-timezone lattice fix as its own bug entry — with an upgrade
+note that no configuration or migration action is required and existing single-duration types are
+unaffected. The lattice entry carries the caveat that a shared type whose hosts span timezones may
+now offer start times at unround local minutes for some hosts, which is the point: previously it
+offered none.

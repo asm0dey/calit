@@ -1,11 +1,11 @@
 ---
 # calit-p5xm
 title: Selectable booking duration per meeting type
-status: todo
+status: in-progress
 type: feature
 priority: normal
 created_at: 2026-08-15T22:57:11Z
-updated_at: 2026-08-17T12:29:44Z
+updated_at: 2026-08-25T19:43:54Z
 ---
 
 Upstream: https://github.com/asm0dey/calit/issues/119 (reporter h200101)
@@ -39,7 +39,7 @@ Both unresolved upstream -> design work needed before implementation.
 ## Todo
 
 - [x] Resolve buffer semantics per duration — per-duration nullable override, strictest wins (ADR-0002)
-- [ ] Resolve multi-host interaction — asked on GH #119: may a co-host restrict which durations they host?
+- [x] Resolve multi-host interaction — NO per-host duration limits (reporter, 2026-08-17): duration is part of the normal availability intersection; a host who won't run a length is a different meeting type
 - [ ] Data model + migration
 - [ ] SlotService duration parameterisation
 - [ ] Public page duration picker — `?duration=` query param on the existing GET (no-JS)
@@ -115,3 +115,30 @@ Not asked upstream, decided here: per-duration buffers ship WITH the feature, no
 the reporter needs them. They are the reason the flat buffer cannot serve a multi-length type at
 all (10/30 vs 45/120), so a version without them would not remove the near-duplicate meeting types
 this feature exists to remove.
+
+## Upstream answers (2026-08-17, reporter h200101)
+
+Both gating questions are settled — https://github.com/asm0dey/calit/issues/119#issuecomment-5316044376
+
+1. **Fixed lattice.** Candidate starts don't move when the length changes; a longer pick just drops
+   the starts that no longer fit. Reporter: it makes better use of available time, and the buffers
+   are the right tool for protecting time around a long meeting.
+2. **No per-host duration limits.** Length list belongs to the type. Host-requirement modes
+   (all / any one / named hosts) noted as a possible future feature, explicitly out of scope here.
+
+## Design
+
+Spec: `docs/superpowers/specs/2026-08-25-selectable-booking-duration-design.md`
+
+Corrections to the notes above:
+
+- Migration is **V29**, not V26 — latest applied is V28.
+- ADR-0002's formula is amended: the max is over overrides actually SET. A NULL falling back to the
+  type's buffer inside the max would raise a host's deliberate 5 back to the type's 10.
+- ADR-0003 to be amended: the default is an IMPLICIT member of the set (union at read time), not a
+  row the save refuses to delete. No rejection path, no error message, no way for the two forms to
+  disagree.
+- Reschedule freezes the booked length (no picker). This also fixes a latent bug: today
+  `BookingService:792/890` recompute the end from `type.durationMinutes`.
+- `Templates.book` is at 14 positional args; DurationChoice / Chrome / Captcha records land first
+  as a mechanical no-behaviour-change commit.

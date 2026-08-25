@@ -57,7 +57,8 @@ The spacing between consecutive slot starts, independent of how long the meeting
 the shortest length a meeting type allows, so the start times on offer do not move when an Invitee
 changes the length. A property of the meeting type, never of a Host: co-hosts differ in timezone,
 hours, overrides and buffers, but every host of a type shares its cadence, which is what lets their
-slots intersect at all.
+slots intersect at all. The lattice it defines is anchored to the Creator's clock
+(`docs/adr/0008-the-slot-lattice-is-anchored-to-the-creators-clock.md`).
 _Avoid_: interval, step, granularity, lattice
 
 **Allowed durations**:
