@@ -84,7 +84,14 @@ Both unresolved upstream -> design work needed before implementation.
   default in its own confirmation/reminder/reschedule/cancel emails. Replaced every one with
   `BookingService.lengthOf(l.booking)`. ICS (`IcsEvent.end(l.booking.endUtc)`) and the Google
   Calendar event were already built from `booking.startUtc`/`endUtc` and needed no change.)
-- [ ] i18n de + he
+- [x] i18n de + he
+  (Task 11: added German + Hebrew for the 8 keys Tasks 9-10 left English-only —
+  `pub_book_duration_label`/`pub_book_minutes_short` in `msg_{de,he}.properties`,
+  `adm_meetingTypeDetail_{section_durations,durations_hint,duration_col,duration_default,
+  btn_save_durations,durations_saved}` in `adm_{de,he}.properties`. Matched existing
+  terminology: `Puffer`/`חיץ` for buffer, `Dauer`/`משך` for duration, `Min.`/`דק'` for the
+  minutes abbreviation (same as `adm_meetingTypes_min`). `MultiHostMessageParityTest` now
+  passes; full suite green at 971 tests.)
 - [ ] Tests
 - [ ] docs-site update
 
