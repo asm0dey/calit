@@ -5,7 +5,7 @@ status: in-progress
 type: feature
 priority: normal
 created_at: 2026-08-15T22:57:11Z
-updated_at: 2026-08-25T22:03:46Z
+updated_at: 2026-08-25T22:20:53Z
 ---
 
 Upstream: https://github.com/asm0dey/calit/issues/119 (reporter h200101)
@@ -46,7 +46,13 @@ Both unresolved upstream -> design work needed before implementation.
 - [x] SlotService duration parameterisation
 - [ ] Public page duration picker — `?duration=` query param on the existing GET (no-JS)
 - [ ] Reject saving an allowed set that omits `duration_minutes` (ADR-0003)
-- [ ] Server-side validation of submitted duration (no new Booking column needed — startUtc/endUtc carry it)
+- [x] Server-side validation of submitted duration (no new Booking column needed — startUtc/endUtc carry it)
+  (Task 6: `BookingService.book` gains a 12-arg overload carrying `durationMinutes`;
+  `assertDurationAllowed` checks it against `MeetingTypeDuration.isAllowed` before any other
+  work and throws `BookingConflictException` (409) on a value outside the type's allowed set.
+  `availableSlots`/`hostFreeSlots`/`assertSlotAvailable` all gained duration-carrying overloads
+  so the end time and buffers follow the chosen length. The 11-arg `book` overload resolves the
+  type itself and delegates with `type.durationMinutes` so every existing caller is unchanged.)
 - [ ] Email / ICS / Google sync use chosen duration
 - [ ] i18n de + he
 - [ ] Tests
