@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -726,6 +727,15 @@ public class BookingService {
     }
 
     /**
+     * A booking carries its own length; reschedule moves it, never resizes it.
+     *
+     * <p>Public because {@code EmailService} — a different package — displays it.
+     */
+    public static int lengthOf(Booking booking) {
+        return (int) Duration.between(booking.startUtc, booking.endUtc).toMinutes();
+    }
+
+    /**
      * Throws BookingConflictException unless an available slot starts exactly at {@code startUtc}.
      */
     private void assertSlotAvailable(MeetingType type, Instant startUtc, Long excludeBookingId) {
@@ -866,10 +876,12 @@ public class BookingService {
         }
 
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        Instant newEnd = newStartUtc.plusSeconds(60L * type.durationMinutes);
+        int bookedLength = lengthOf(booking);
+        var newEnd = newStartUtc.plus(bookedLength, ChronoUnit.MINUTES);
 
-        // Exclude this booking so it may move freely within its own window.
-        assertSlotAvailable(type, newStartUtc, booking.id);
+        // Exclude this booking so it may move freely within its own window. Re-check at the booking's
+        // own length, not the type's default -- a type's default may differ from what was actually booked.
+        assertSlotAvailable(type, newStartUtc, Set.of(booking.id), bookedLength);
 
         Instant oldStart = booking.startUtc;
         booking.startUtc = newStartUtc;
@@ -964,7 +976,8 @@ public class BookingService {
     private Booking rescheduleGroup(
             Booking row, Instant newStartUtc, List<String> guestEmails, boolean byOwner, Long initiatorOwnerId) {
         MeetingType type = MeetingType.findById(row.meetingTypeId);
-        Instant newEnd = newStartUtc.plusSeconds(60L * type.durationMinutes);
+        int bookedLength = lengthOf(row);
+        var newEnd = newStartUtc.plus(bookedLength, ChronoUnit.MINUTES);
 
         // Re-check the intersection across all hosts at the new time (fail-closed inside availableSlots).
         // Exclude EVERY row of the group, not just `row` -- a group has one row per host, all still at
@@ -972,11 +985,12 @@ public class BookingService {
         // own sibling row counted as busy against itself (Task 11 review fix: falsely rejected a small
         // shift / adjacent-slot reschedule whenever a buffer made the new slot's buffered interval
         // overlap the group's own old occupied interval).
+        // Re-check at the group's own booked length, not the type's default.
         Set<Long> groupRowIds = new HashSet<>();
         for (Booking r : Booking.<Booking>group(row.groupId)) {
             groupRowIds.add(r.id);
         }
-        assertSlotAvailable(type, newStartUtc, groupRowIds);
+        assertSlotAvailable(type, newStartUtc, groupRowIds, bookedLength);
 
         boolean reApproval = type.requiresApproval;
         var initiator = byOwner ? initiatorOwnerId : null;

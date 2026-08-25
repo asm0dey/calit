@@ -53,6 +53,14 @@ Both unresolved upstream -> design work needed before implementation.
   `availableSlots`/`hostFreeSlots`/`assertSlotAvailable` all gained duration-carrying overloads
   so the end time and buffers follow the chosen length. The 11-arg `book` overload resolves the
   type itself and delegates with `type.durationMinutes` so every existing caller is unchanged.)
+- [x] Reschedule preserves the booked length, not the type's default
+  (Task 7: both `BookingService.reschedule` and `rescheduleGroup` recomputed `newEnd` from
+  `type.durationMinutes`, so moving a non-default-length booking silently resized it — a latent
+  bug that could not fire before this feature made a second length possible. Added
+  `public static int lengthOf(Booking)` (public: `EmailService`, a different package, will read it
+  in Task 8) and used it for both the new end time and the `assertSlotAvailable` re-check in each
+  reschedule path, so the re-check validates a slot of the booking's own length, not the type's
+  default.)
 - [ ] Email / ICS / Google sync use chosen duration
 - [ ] i18n de + he
 - [ ] Tests
