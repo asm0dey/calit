@@ -701,15 +701,21 @@ class SlotServiceLatticeTest {
         t.durationMinutes = minutes;
         t.persist();
         for (Long owner : hostOwnerIds) {
-            AvailabilityRule r = new AvailabilityRule();
-            r.ownerId = owner;
-            r.meetingTypeId = t.id;
-            r.dayOfWeek = DayOfWeek.MONDAY;
-            r.startTime = LocalTime.of(9, 0);
-            r.endTime = LocalTime.of(17, 0);
-            r.persist();
+            seedRule(t.id, owner, LocalTime.of(9, 0), LocalTime.of(17, 0));
         }
         return t;
+    }
+
+    /** One host's Monday window, in that host's OWN local time. */
+    @Transactional
+    void seedRule(Long meetingTypeId, Long hostOwnerId, LocalTime from, LocalTime to) {
+        AvailabilityRule r = new AvailabilityRule();
+        r.ownerId = hostOwnerId;
+        r.meetingTypeId = meetingTypeId;
+        r.dayOfWeek = DayOfWeek.MONDAY;
+        r.startTime = from;
+        r.endTime = to;
+        r.persist();
     }
 
     private Set<Instant> starts(MeetingType t, Long hostOwnerId, Instant anchor) {
@@ -742,6 +748,57 @@ class SlotServiceLatticeTest {
         both.retainAll(starts(t, kathmandu, anchor));
 
         assertFalse(both.isEmpty(), "Berlin and Kathmandu must share start instants");
+    }
+
+    /**
+     * The hostile case: a 4h45 offset against a cadence that divides neither 60 nor 1440, with the
+     * two hosts opening at different local hours so the windows only partly overlap.
+     *
+     * <p>Under the old per-host-midnight anchoring the two combs were 285 minutes apart and
+     * 285 mod 29 = 24, so they shared no instant at all and this type offered zero slots forever.
+     * With one anchor per type both hosts sit on the same comb by construction, and what survives
+     * is exactly the comb restricted to the overlap of the two windows.
+     */
+    @Test
+    void aTwentyNineMinuteCadenceStillIntersectsAcrossAFourHourFortyFiveOffset() {
+        Long berlin = seedHost("lattice-berlin-29", "Europe/Berlin");
+        Long kathmandu = seedHost("lattice-kathmandu-29", "Asia/Kathmandu");
+
+        MeetingType t = seedType("lattice-29", 29); // no extra lengths -> step falls back to 29
+        seedRule(t.id, berlin, LocalTime.of(9, 0), LocalTime.of(17, 0));
+        seedRule(t.id, kathmandu, LocalTime.of(11, 0), LocalTime.of(19, 0));
+        Instant anchor = slotService.gridAnchorFor(t);
+
+        Set<Instant> both = starts(t, berlin, anchor);
+        both.retainAll(starts(t, kathmandu, anchor));
+        List<Instant> shared = both.stream().sorted().toList();
+
+        assertFalse(shared.isEmpty(), "one comb per type must survive a 285-minute offset at a 29-minute cadence");
+
+        // Every surviving start sits on ONE comb: consecutive shared starts are exactly one step apart.
+        for (int i = 1; i < shared.size(); i++) {
+            assertEquals(
+                    29 * 60L,
+                    shared.get(i).getEpochSecond() - shared.get(i - 1).getEpochSecond(),
+                    "shared starts must be consecutive points of a single 29-minute comb");
+        }
+
+        // 2027-03-01 is winter: Berlin is +01:00, Kathmandu +05:45 (no DST there).
+        // Berlin's window is 08:00Z-16:00Z, Kathmandu's is 05:15Z-13:15Z, so a slot is bookable by
+        // BOTH only from 08:00Z until its 29-minute body ends by 13:15Z.
+        Instant berlinOpen =
+                MONDAY.atTime(9, 0).atZone(java.time.ZoneId.of("Europe/Berlin")).toInstant();
+        Instant kathmanduClose =
+                MONDAY.atTime(19, 0).atZone(java.time.ZoneId.of("Asia/Kathmandu")).toInstant();
+        for (Instant s : shared) {
+            assertFalse(s.isBefore(berlinOpen), "a shared slot cannot start before Berlin opens");
+            assertFalse(
+                    s.plusSeconds(29 * 60L).isAfter(kathmanduClose),
+                    "a shared slot cannot run past Kathmandu's close");
+        }
+
+        // The comb is dense over that overlap: 08:00Z-12:46Z holds at least nine 29-minute starts.
+        assertTrue(shared.size() >= 9, "expected the comb to be dense over the ~4h45 overlap, got " + shared.size());
     }
 
     @Test
