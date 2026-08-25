@@ -171,15 +171,6 @@ class SlotServiceTest {
         assertEquals(LocalTime.of(10, 30), slots.get(1).start().toLocalTime());
     }
 
-    @Test
-    void effectiveSlotIntervalFallsBackToDurationWhenUnset() {
-        MeetingType t = new MeetingType();
-        t.durationMinutes = 60;
-        assertEquals(60, t.effectiveSlotIntervalMinutes());
-        t.slotIntervalMinutes = 30;
-        assertEquals(30, t.effectiveSlotIntervalMinutes());
-    }
-
     // --- helpers ---
 
     private void seedSettings(String zone) {

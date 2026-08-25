@@ -5,7 +5,7 @@ status: in-progress
 type: feature
 priority: normal
 created_at: 2026-08-15T22:57:11Z
-updated_at: 2026-08-25T20:23:58Z
+updated_at: 2026-08-25T20:33:47Z
 ---
 
 Upstream: https://github.com/asm0dey/calit/issues/119 (reporter h200101)
@@ -41,7 +41,7 @@ Both unresolved upstream -> design work needed before implementation.
 - [x] Resolve buffer semantics per duration — per-duration nullable override, strictest wins (ADR-0002)
 - [x] Resolve multi-host interaction — NO per-host duration limits (reporter, 2026-08-17): duration is part of the normal availability intersection; a host who won't run a length is a different meeting type
 - [x] Data model + migration (Task 2: `V29__meeting_type_duration.sql` + `MeetingTypeDuration` entity)
-- [ ] SlotService duration parameterisation
+- [x] SlotService duration parameterisation
 - [ ] Public page duration picker — `?duration=` query param on the existing GET (no-JS)
 - [ ] Reject saving an allowed set that omits `duration_minutes` (ADR-0003)
 - [ ] Server-side validation of submitted duration (no new Booking column needed — startUtc/endUtc carry it)

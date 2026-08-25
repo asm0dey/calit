@@ -83,11 +83,6 @@ public class MeetingType extends PanacheEntityBase {
     @Column(name = "google_credential_id")
     public Long googleCredentialId;
 
-    /** Cadence (minutes) between consecutive slot starts; falls back to the duration when unset/non-positive. */
-    public int effectiveSlotIntervalMinutes() {
-        return (slotIntervalMinutes != null && slotIntervalMinutes > 0) ? slotIntervalMinutes : durationMinutes;
-    }
-
     public static MeetingType findBySlug(Long ownerId, String slug) {
         return find("ownerId = ?1 and slug = ?2", ownerId, slug).firstResult();
     }

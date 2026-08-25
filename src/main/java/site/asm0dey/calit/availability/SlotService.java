@@ -51,6 +51,22 @@ public class SlotService {
      */
     public List<TimeSlot> generateRawSlots(
             MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to, boolean dayAnchoredGrid) {
+        return generateRawSlots(type, hostOwnerId, from, to, dayAnchoredGrid, type.durationMinutes);
+    }
+
+    /**
+     * Same as {@link #generateRawSlots(MeetingType, Long, LocalDate, LocalDate, boolean)} for a chosen
+     * length. The grid STEP comes from the type's shortest allowed length, not from
+     * {@code durationMinutes}: the lattice of candidate starts must not move when an Invitee switches
+     * length (ADR-0003). Only the slot BODY varies.
+     */
+    public List<TimeSlot> generateRawSlots(
+            MeetingType type,
+            Long hostOwnerId,
+            LocalDate from,
+            LocalDate to,
+            boolean dayAnchoredGrid,
+            int durationMinutes) {
         OwnerSettings settings = OwnerSettings.forOwner(hostOwnerId);
         if (settings == null) {
             throw new IllegalStateException("Owner settings not configured for owner " + hostOwnerId
@@ -60,10 +76,15 @@ public class SlotService {
         Availability availability = loadAvailability(type, hostOwnerId, from, to);
         List<TimeSlot> slots = new ArrayList<>();
 
+        // Cadence: an explicit interval wins; otherwise the SHORTEST allowed length, so the lattice
+        // stays put when the Invitee switches. Not the chosen length, and not the default.
+        int step = (type.slotIntervalMinutes != null && type.slotIntervalMinutes > 0)
+                ? type.slotIntervalMinutes
+                : MeetingTypeDuration.shortestAllowed(type);
+        var duration = durationMinutes;
+
         for (var date = from; !date.isAfter(to); date = date.plusDays(1)) {
             for (Window window : availability.windowsFor(date)) {
-                int step = type.effectiveSlotIntervalMinutes();
-                int duration = type.durationMinutes;
                 // Work in minute-of-day to avoid LocalTime.plusMinutes() wrapping past midnight,
                 // which (e.g. a window ending 23:30 with a 30-min duration) would loop forever.
                 var startMin = window.start().toSecondOfDay() / 60;
