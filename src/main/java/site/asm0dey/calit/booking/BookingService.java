@@ -128,15 +128,15 @@ public class BookingService {
         // "unavailable" for just one host out of several bookable ones.
         var singleHost = hostIds.size() == 1;
         // Single-host stays window-anchored (null). Multi-host shares one lattice (ADR-0008).
-        Instant gridAnchor = singleHost ? null : slotService.gridAnchorFor(type);
+        ZoneId latticeZone = singleHost ? null : slotService.latticeZoneFor(type);
         Map<Instant, TimeSlot> candidate = null;
         for (Long hostId : hostIds) {
             Map<Instant, TimeSlot> hostFree;
             if (singleHost) {
-                hostFree = hostFreeSlots(type, hostId, from, to, excludeBookingIds, earliest, latest, gridAnchor);
+                hostFree = hostFreeSlots(type, hostId, from, to, excludeBookingIds, earliest, latest, latticeZone);
             } else {
                 try {
-                    hostFree = hostFreeSlots(type, hostId, from, to, excludeBookingIds, earliest, latest, gridAnchor);
+                    hostFree = hostFreeSlots(type, hostId, from, to, excludeBookingIds, earliest, latest, latticeZone);
                 } catch (CalendarUnavailableException _) {
                     return List.of(); // any host's calendar unverifiable (multi-host) -> offer nothing
                 }
@@ -172,7 +172,7 @@ public class BookingService {
             Set<Long> excludeBookingIds,
             Instant earliest,
             Instant latest,
-            Instant gridAnchor) {
+            ZoneId latticeZone) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(hostId).timezone);
         var fromInstant = from.atStartOfDay(zone).toInstant();
         var toInstant = to.plusDays(1).atStartOfDay(zone).toInstant();
@@ -180,7 +180,7 @@ public class BookingService {
         int bufBefore = meetingHosts.effectiveBufferBefore(type, hostId);
         int bufAfter = meetingHosts.effectiveBufferAfter(type, hostId);
         Map<Instant, TimeSlot> hostFree = new LinkedHashMap<>();
-        for (TimeSlot slot : slotService.generateRawSlots(type, hostId, from, to, gridAnchor, type.durationMinutes)) {
+        for (TimeSlot slot : slotService.generateRawSlots(type, hostId, from, to, latticeZone, type.durationMinutes)) {
             Instant slotStart = slot.start().toInstant();
             // Feature 11: drop too-soon (before now+minNotice) and too-far (after now+horizon) slots.
             if (slotStart.isBefore(earliest) || slotStart.isAfter(latest)) {

@@ -171,6 +171,29 @@ class SlotServiceTest {
         assertEquals(LocalTime.of(10, 30), slots.get(1).start().toLocalTime());
     }
 
+    /**
+     * The null-anchor (single-host) path walks candidate starts as INSTANTS
+     * ({@code s.plusSeconds(...)}), not host-local minute-of-day. For a window straddling a DST
+     * fall-back this matters: 2026-10-25 is Europe/Berlin's fall-back day (clocks go 03:00 CEST ->
+     * 02:00 CET at 01:00 UTC), so a 01:00-05:00 local window spans only 4 hours of WALL clock but 5
+     * hours of ELAPSED real time, because the 02:00-03:00 hour is walked twice. This is deliberate
+     * (ADR-0008): a host who says they are available 01:00-05:00 on a fall-back day genuinely has
+     * five hours, and offering only 4 back-to-back slots would under-count real availability.
+     */
+    @Test
+    @TestTransaction
+    void aWindowStraddlingAFallBackTransitionCoversTheFullElapsedTime() {
+        var fallBackDay = LocalDate.of(2026, 10, 25);
+        seedSettings("Europe/Berlin");
+        MeetingType t = meetingType("fall-back-60", 60);
+        globalRule(fallBackDay.getDayOfWeek(), "01:00", "05:00");
+
+        List<TimeSlot> slots = slotService.generateRawSlots(t, fallBackDay, fallBackDay);
+
+        assertEquals(
+                5, slots.size(), "5 back-to-back 60-min slots -- the elapsed real time, not the 4h wall-clock span");
+    }
+
     // --- helpers ---
 
     private void seedSettings(String zone) {

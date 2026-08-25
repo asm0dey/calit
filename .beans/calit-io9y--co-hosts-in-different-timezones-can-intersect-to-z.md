@@ -1,11 +1,11 @@
 ---
 # calit-io9y
 title: Co-hosts in different timezones can intersect to zero slots
-status: todo
+status: in-progress
 type: bug
 priority: high
 created_at: 2026-08-25T20:00:13Z
-updated_at: 2026-08-25T22:50:00Z
+updated_at: 2026-08-25T21:29:07Z
 parent: calit-p5xm
 ---
 
@@ -26,17 +26,19 @@ They coincide only when `(offsetB - offsetA) mod step == 0`.
 
 Silent. The public page renders the ordinary 'no times available' state, as though both hosts were booked solid. An Owner would reasonably conclude their availability rules are wrong.
 
-## Fix (decided 2026-08-25, ADR-0008)
+## Fix (decided 2026-08-25, ADR-0008; corrected 2026-08-25)
 
-One lattice for the whole type, anchored to the CREATOR's clock at a request-independent instant:
+A first attempt anchored the lattice to a fixed origin instant (`LocalDate.EPOCH.atStartOfDay(creatorZone)` plus multiples of the step) and landed as commit `2a59d0f`. It fixed host agreement and request-independence, but froze the Creator zone's 1970 UTC offset — `Asia/Kathmandu` was `+05:30` until 1986 and `+05:45` since, so an all-Kathmandu team (no cross-timezone problem at all) shifted from `09:00`/`09:30` to `09:15`/`09:45`. Superseded.
 
-```java
-Instant anchor = LocalDate.EPOCH.atStartOfDay(creatorZone).toInstant();
+The lattice is now a PREDICATE with no origin, evaluated at each candidate instant:
+
+```
+onLattice(t)  <=>  minuteOfDay(t, creatorZone) mod step == 0
 ```
 
-Creator's zone for the phase (round times on the clock of whoever defined the type; an all-one-timezone shared type keeps exactly today's start times), a constant date so every request computes the same comb.
+Candidate starts are walked in LOCAL time and re-resolved to an instant each step (`local = local.plusMinutes(step)`, then `local.atZone(creatorZone)`) — never by adding to a `ZonedDateTime`, which drifts off round local time across a DST fall-back.
 
-The constant matters: anchoring to the request's `from` date would make the booking page (`from = today`) and `assertSlotAvailable` (`from = the chosen day`) disagree whenever the cadence does not divide 1440 — 25 or 50 — so a slot the page just rendered would 409 on submit.
+Creator's zone still supplies the phase (round times on the clock of whoever defined the type; an all-one-timezone shared type keeps exactly today's start times), but the zone's rules are read at `t` rather than frozen at an origin date, so a zone whose offset has changed historically (Kathmandu, Lisbon, ...) is unaffected. Request-independence falls out of the predicate having no origin at all: whether the request's range is `D` or `D-3..D+3`, the candidate starts on day `D` are identical.
 
 Single-host stays window-anchored, byte-identical.
 
@@ -46,11 +48,15 @@ Being fixed inside [[calit-p5xm]], which rewrites the same grid line (step stops
 
 ## Todo
 
-- [x] ADR-0008: the slot lattice is anchored to the Creator's clock
-- [x] Replace the `boolean dayAnchoredGrid` parameter with a nullable `Instant gridAnchor` (null = window-anchored, single-host)
-- [x] Align in absolute time rather than host-local minute-of-day
-- [x] Regression test: London + Berlin, 45-minute cadence, both free 09:00-17:00 local -> non-empty intersection
-- [x] Regression test: Berlin + Kathmandu, 30-minute cadence -> non-empty intersection
-- [x] Regression test: all-hosts-one-timezone shared type -> start times unchanged from today (covered by the existing `AvailableSlotsIntersectionTest` suite, all-Amsterdam, which the full-suite run confirms is byte-identical after this change)
-- [ ] Regression test: a slot rendered by the booking page validates in assertSlotAvailable at a 50-minute cadence (not exercised yet — needs a per-type selectable duration/cadence to set up, deferred to a later task in the selectable-booking-duration plan)
+- [x] ADR-0008: the slot lattice is anchored to the Creator's clock (revised to a no-origin predicate, superseding the epoch-anchored `2a59d0f` attempt)
+- [x] Replace the `boolean dayAnchoredGrid` parameter, then the epoch-anchored `Instant gridAnchor`, with a nullable `ZoneId latticeZone` (null = window-anchored, single-host); `gridAnchorFor` replaced by `SlotService.latticeZoneFor`
+- [x] Walk candidate starts in LOCAL time in the Creator's zone, re-resolving to an instant each step (never `ZonedDateTime.plusMinutes`, which drifts off round local time across a DST fall-back)
+- [x] Regression test: London + Berlin, 45-minute cadence, both free 09:00-17:00 local -> non-empty intersection (`SlotServiceLatticeTest#hostsAnHourApartShareALatticeOnAFortyFiveMinuteCadence`)
+- [x] Regression test: Berlin + Kathmandu, 30-minute cadence -> non-empty intersection (`#aQuarterHourOffsetZoneStillShares`)
+- [x] Regression test: all-hosts-one-timezone shared type -> start times unchanged from today (`AvailableSlotsIntersectionTest`, all-Amsterdam, byte-identical; plus the new `#anAllKathmanduTeamKeepsRoundLocalTimes`, which is what the epoch-anchored `2a59d0f` attempt actually failed -- it produced `09:15` instead of `09:00`)
+- [x] Regression test: the lattice does not move with the requested date range, which is what a 50-minute-cadence booking-page-vs-submit-time disagreement would need (`#theLatticeDoesNotMoveWithTheRequestedRange`) -- a 50-minute cadence is settable today via `slotIntervalMinutes`, so this was never blocked on a later task; the earlier note claiming otherwise was wrong
+- [x] Regression test: the lattice's phase is the CREATOR's zone, not the Host's and not UTC (`#theLatticeIsRoundInTheCreatorsZoneNotTheHosts`)
+- [x] Regression test: the hostile 29-minute / 4h45-offset case, dense comb over the overlap (`#aTwentyNineMinuteCadenceStillIntersectsAcrossAFourHourFortyFiveOffset`)
+- [x] Regression test: null-zone single-host path stays window-anchored (`#aNullLatticeZoneKeepsWindowAnchoringForSingleHost`)
+- [x] Regression test: pin the single-host DST fall-back behaviour on the null-anchor Instant walk (`SlotServiceTest#aWindowStraddlingAFallBackTransitionCoversTheFullElapsedTime`)
 - [ ] Changelog entry under ## Unreleased on docs-site (deferred to branch integration/finish, not part of this intermediate task commit)
