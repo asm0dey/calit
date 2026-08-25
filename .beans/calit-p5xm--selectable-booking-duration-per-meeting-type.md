@@ -61,7 +61,12 @@ Both unresolved upstream -> design work needed before implementation.
   in Task 8) and used it for both the new end time and the `assertSlotAvailable` re-check in each
   reschedule path, so the re-check validates a slot of the booking's own length, not the type's
   default.)
-- [ ] Email / ICS / Google sync use chosen duration
+- [x] Email / ICS / Google sync use chosen duration
+  (Task 8: only `EmailService` needed a change — all 9 call sites into the `Templates.*` methods
+  passed `l.meetingType.durationMinutes`, so a non-default-length booking announced the type's
+  default in its own confirmation/reminder/reschedule/cancel emails. Replaced every one with
+  `BookingService.lengthOf(l.booking)`. ICS (`IcsEvent.end(l.booking.endUtc)`) and the Google
+  Calendar event were already built from `booking.startUtc`/`endUtc` and needed no change.)
 - [ ] i18n de + he
 - [ ] Tests
 - [ ] docs-site update
