@@ -1,11 +1,11 @@
 ---
 # calit-64hy
 title: Disconnecting an account leaves a half-address that 500s on reschedule
-status: todo
+status: scrapped
 type: bug
 priority: normal
 created_at: 2026-08-17T08:28:32Z
-updated_at: 2026-08-17T10:53:09Z
+updated_at: 2026-08-23T16:34:02Z
 blocked_by:
     - calit-o69e
 ---
@@ -56,3 +56,25 @@ to the default write target, as today.
 reschedule / edit-details into a tolerate-or-recreate. That was the whole reason this bean
 was worth opening, so once o69e lands there is nothing left here but the 'don't do it'
 record above.
+
+## Reasons for Scrapping
+
+Nothing left to build here. Both open questions were settled in the 2026-08-17
+decision recorded above, and neither settled in favour of code:
+
+- Q1/Q2 — `writeAddress` does NOT gain a `findByGoogleId` fallback. The lookup is
+  non-unique since `V9__google_multi_account.sql` dropped
+  `UNIQUE (owner_id, google_calendar_id)`, `findByGoogleId` hides that
+  multiplicity behind `firstResult()` with no `ORDER BY`, and the row is usually
+  cascaded away by the disconnect anyway. Narrow reconnect-only payoff against a
+  real 403 risk. Verdict: keep falling through to the default write target, as
+  today.
+- Q3 — the user-visible symptom (hard 500 on reschedule / edit-details) is fixed
+  by [[calit-o69e]], which turns it into tolerate-or-recreate. That symptom was
+  the whole reason this bean was opened.
+
+The "don't re-resolve" reasoning is preserved in the Decision section above, which
+is the record worth keeping. Scrapped rather than completed: no change ships from
+this bean.
+
+Recorded as `docs/adr/0006-a-disconnected-accounts-calendar-id-is-not-re-resolved.md` (2026-08-23), so the "don't re-resolve" reasoning outlives this scrapped bean.
