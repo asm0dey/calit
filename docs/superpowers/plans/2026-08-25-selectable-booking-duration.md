@@ -632,293 +632,141 @@ Single-duration types are unaffected: shortest == duration."
 
 ---
 
-### Task 4: One shared lattice per type, anchored to the Creator's clock (`calit-io9y`)
+### Task 4: One shared lattice per type, defined in the Creator's clock (`calit-io9y`)
 
 A pre-existing bug, fixed on the line Task 3 just touched. Multi-host slots are anchored to 00:00 in **each host's own** timezone, and `BookingService:145` intersects the per-host free sets by exact start instant. Host-local midnight is a different instant per host, so two hosts' grids coincide only when their UTC offsets differ by a whole number of `step`. London and Berlin on a 45-minute cadence differ by 60, which is not a multiple of 45 — the intersection is empty every day, forever, and the page renders the ordinary "no times available" state.
 
+**A first attempt at this task landed as `2a59d0f` and is superseded.** It used a fixed origin instant (`LocalDate.EPOCH.atStartOfDay(creatorZone)`) plus multiples of the step. That is correct about host agreement but freezes the zone's 1970 rules, so it shifted the start times of teams that never had the bug — `Asia/Kathmandu` was `+05:30` until 1986 and `+05:45` since, putting an all-Kathmandu team on `09:15`/`09:45` where they see `09:00`/`09:30` today. Read [ADR-0008](../../adr/0008-the-slot-lattice-is-anchored-to-the-creators-clock.md) before starting; it records both the rejected shape and the current one.
+
 **Files:**
-- Modify: `src/main/java/site/asm0dey/calit/availability/SlotService.java`
+- Modify: `src/main/java/site/asm0dey/calit/availability/SlotService.java` — replace the `Instant gridAnchor` parameter and `gridAnchorFor` introduced by `2a59d0f`
 - Modify: `src/main/java/site/asm0dey/calit/booking/BookingService.java:129-152` (`availableSlots`), `:164-194` (`hostFreeSlots`)
-- Modify: `src/test/java/site/asm0dey/calit/availability/SlotServiceDurationTest.java` — Task 3 wrote it against the `boolean` parameter; every `false` argument becomes `null`
-- Test: `src/test/java/site/asm0dey/calit/availability/SlotServiceLatticeTest.java` (create)
+- Modify: `src/test/java/site/asm0dey/calit/availability/SlotServiceDurationTest.java` — Task 3 wrote it against the `boolean`; `2a59d0f` changed those to `null`, which stays valid
+- Modify: `src/test/java/site/asm0dey/calit/availability/SlotServiceLatticeTest.java` — rewritten by `2a59d0f`; this task replaces its anchor-shaped assertions
+- Modify: `src/test/java/site/asm0dey/calit/availability/SlotServiceTest.java` — add the DST-window case below
 
 **Interfaces:**
-- Consumes: `generateRawSlots(..., boolean dayAnchoredGrid, int durationMinutes)` from Task 3
-- Produces: `generateRawSlots(MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to, Instant gridAnchor, int durationMinutes)` — the `boolean` is **replaced** by a nullable `Instant`. Null means window-anchored (single-host, historical behaviour). Also `SlotService.gridAnchorFor(MeetingType type)` returning the type's anchor instant.
+- Consumes: `generateRawSlots(..., Instant gridAnchor, int durationMinutes)` as `2a59d0f` left it
+- Produces: `generateRawSlots(MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to, ZoneId latticeZone, int durationMinutes)` — nullable `ZoneId` replaces the `Instant`. Null means window-anchored (single-host, historical behaviour). Also `SlotService.latticeZoneFor(MeetingType type)` returning the Creator's zone; `gridAnchorFor` is deleted.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Rewrite the lattice test class**
 
-Create `src/test/java/site/asm0dey/calit/availability/SlotServiceLatticeTest.java`:
+Replace `SlotServiceLatticeTest`'s anchor-shaped helpers and assertions. Keep the seeding fixes `2a59d0f` made (they were real: `AppUser` has no `email` field, `roles`/`createdAt`/`ownerEmail` are NOT NULL, and the Creator's `OwnerSettings` row must exist even when the Creator is not a Host). The class must contain exactly these cases:
 
-```java
-package site.asm0dey.calit.availability;
+1. `hostsAnHourApartShareALatticeOnAFortyFiveMinuteCadence` — London + Berlin, cadence 45, both 09:00–17:00 local. The intersection must be non-empty.
+2. `aQuarterHourOffsetZoneStillShares` — Berlin + Kathmandu, cadence 30. Non-empty.
+3. `aTwentyNineMinuteCadenceStillIntersectsAcrossAFourHourFortyFiveOffset` — Berlin 09:00–17:00 against Kathmandu 11:00–19:00, cadence 29, on `2027-03-01` (a Monday, before EU DST starts on the 28th). Assert the intersection is non-empty; that consecutive shared starts are **exactly** 29 minutes apart, which is what proves a single comb rather than two that happen to touch; that no shared start precedes Berlin's open and none has a body running past Kathmandu's close; and the exact count the arithmetic determines.
+4. `anAllKathmanduTeamKeepsRoundLocalTimes` — **the case the previous design failed.** Creator and both hosts in `Asia/Kathmandu`, window 09:00–17:00 local, cadence 30. Every start's local time must be `:00` or `:30` — assert the first start is exactly 09:00 local. A fixed-epoch-origin implementation yields 09:15 here and must fail this test.
+5. `theLatticeIsRoundInTheCreatorsZoneNotTheHosts` — Creator in `Asia/Kolkata` (`+05:30`, a half-hour zone), single Host in `Europe/Berlin`, cadence 30. Every start must be `:00`/`:30` in **Kolkata** and therefore `:00`/`:30` in Berlin too (their offsets differ by a multiple of 30); then repeat with the Host in `Asia/Kathmandu` and assert the Host's local minutes are `:15`/`:45` while Kolkata's remain `:00`/`:30`. This is what fails if the implementation uses the Host's zone or plain UTC.
+6. `theLatticeDoesNotMoveWithTheRequestedRange` — cadence 50 (which does not divide 1440), one host. The starts produced for day `D` when the requested range is `D-3 … D+3` must equal those produced when the range is `D … D`. This is what fails if the lattice is derived from the request's own start date.
+7. `aNullLatticeZoneKeepsWindowAnchoringForSingleHost` — the first slot IS the window start.
 
-import static org.junit.jupiter.api.Assertions.*;
+Cases 4, 5 and 6 are the point of this rewrite: the previous attempt's tests passed even for a plain-UTC implementation and even for one anchored to `LocalDate.now()`, because every one of them compared a lattice only against itself.
 
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.domain.AvailabilityRule;
-import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.user.AppUser;
-
-@QuarkusTest
-class SlotServiceLatticeTest {
-
-    private static final Long CREATOR = 1L;
-    private static final LocalDate MONDAY = LocalDate.of(2027, 3, 1);
-
-    @Inject
-    SlotService slotService;
-
-    @Transactional
-    Long seedHost(String username, String timezone) {
-        AppUser u = new AppUser();
-        u.username = username;
-        u.email = username + "@example.test";
-        u.passwordHash = "x";
-        u.enabled = true;
-        u.settingsComplete = true;
-        u.persist();
-        OwnerSettings s = new OwnerSettings();
-        s.ownerId = u.id;
-        s.timezone = timezone;
-        s.ownerName = username;
-        s.persist();
-        return u.id;
-    }
-
-    @Transactional
-    MeetingType seedType(String slug, int minutes, Long... hostOwnerIds) {
-        MeetingType t = new MeetingType();
-        t.ownerId = CREATOR;
-        t.name = slug;
-        t.slug = slug;
-        t.durationMinutes = minutes;
-        t.persist();
-        for (Long owner : hostOwnerIds) {
-            seedRule(t.id, owner, LocalTime.of(9, 0), LocalTime.of(17, 0));
-        }
-        return t;
-    }
-
-    /** One host's Monday window, in that host's OWN local time. */
-    @Transactional
-    void seedRule(Long meetingTypeId, Long hostOwnerId, LocalTime from, LocalTime to) {
-        AvailabilityRule r = new AvailabilityRule();
-        r.ownerId = hostOwnerId;
-        r.meetingTypeId = meetingTypeId;
-        r.dayOfWeek = DayOfWeek.MONDAY;
-        r.startTime = from;
-        r.endTime = to;
-        r.persist();
-    }
-
-    private Set<Instant> starts(MeetingType t, Long hostOwnerId, Instant anchor) {
-        return slotService.generateRawSlots(t, hostOwnerId, MONDAY, MONDAY, anchor, t.durationMinutes).stream()
-                .map(s -> s.start().toInstant())
-                .collect(Collectors.toSet());
-    }
-
-    @Test
-    void hostsAnHourApartShareALatticeOnAFortyFiveMinuteCadence() {
-        Long london = seedHost("lattice-london", "Europe/London");
-        Long berlin = seedHost("lattice-berlin", "Europe/Berlin");
-        MeetingType t = seedType("lattice-45", 45, london, berlin);
-        Instant anchor = slotService.gridAnchorFor(t);
-
-        Set<Instant> both = starts(t, london, anchor);
-        both.retainAll(starts(t, berlin, anchor));
-
-        assertFalse(both.isEmpty(), "London and Berlin must share start instants on a 45-minute cadence");
-    }
-
-    @Test
-    void aQuarterHourOffsetZoneStillShares() {
-        Long berlin = seedHost("lattice-berlin-2", "Europe/Berlin");
-        Long kathmandu = seedHost("lattice-kathmandu", "Asia/Kathmandu");
-        MeetingType t = seedType("lattice-30", 30, berlin, kathmandu);
-        Instant anchor = slotService.gridAnchorFor(t);
-
-        Set<Instant> both = starts(t, berlin, anchor);
-        both.retainAll(starts(t, kathmandu, anchor));
-
-        assertFalse(both.isEmpty(), "Berlin and Kathmandu must share start instants");
-    }
-
-    /**
-     * The hostile case: a 4h45 offset against a cadence that divides neither 60 nor 1440, with the
-     * two hosts opening at different local hours so the windows only partly overlap.
-     *
-     * <p>Under the old per-host-midnight anchoring the two combs were 285 minutes apart and
-     * 285 mod 29 = 24, so they shared no instant at all and this type offered zero slots forever.
-     * With one anchor per type both hosts sit on the same comb by construction, and what survives
-     * is exactly the comb restricted to the overlap of the two windows.
-     */
-    @Test
-    void aTwentyNineMinuteCadenceStillIntersectsAcrossAFourHourFortyFiveOffset() {
-        Long berlin = seedHost("lattice-berlin-29", "Europe/Berlin");
-        Long kathmandu = seedHost("lattice-kathmandu-29", "Asia/Kathmandu");
-
-        MeetingType t = seedType("lattice-29", 29); // no extra lengths -> step falls back to 29
-        seedRule(t.id, berlin, LocalTime.of(9, 0), LocalTime.of(17, 0));
-        seedRule(t.id, kathmandu, LocalTime.of(11, 0), LocalTime.of(19, 0));
-        Instant anchor = slotService.gridAnchorFor(t);
-
-        Set<Instant> both = starts(t, berlin, anchor);
-        both.retainAll(starts(t, kathmandu, anchor));
-        List<Instant> shared = both.stream().sorted().toList();
-
-        assertFalse(shared.isEmpty(), "one comb per type must survive a 285-minute offset at a 29-minute cadence");
-
-        // Every surviving start sits on ONE comb: consecutive shared starts are exactly one step apart.
-        for (int i = 1; i < shared.size(); i++) {
-            assertEquals(
-                    29 * 60L,
-                    shared.get(i).getEpochSecond() - shared.get(i - 1).getEpochSecond(),
-                    "shared starts must be consecutive points of a single 29-minute comb");
-        }
-
-        // 2027-03-01 is winter: Berlin is +01:00, Kathmandu +05:45 (no DST there).
-        // Berlin's window is 08:00Z-16:00Z, Kathmandu's is 05:15Z-13:15Z, so a slot is bookable by
-        // BOTH only from 08:00Z until its 29-minute body ends by 13:15Z.
-        Instant berlinOpen =
-                MONDAY.atTime(9, 0).atZone(java.time.ZoneId.of("Europe/Berlin")).toInstant();
-        Instant kathmanduClose =
-                MONDAY.atTime(19, 0).atZone(java.time.ZoneId.of("Asia/Kathmandu")).toInstant();
-        for (Instant s : shared) {
-            assertFalse(s.isBefore(berlinOpen), "a shared slot cannot start before Berlin opens");
-            assertFalse(
-                    s.plusSeconds(29 * 60L).isAfter(kathmanduClose),
-                    "a shared slot cannot run past Kathmandu's close");
-        }
-
-        // The comb is dense over that overlap: 08:00Z-12:46Z holds at least nine 29-minute starts.
-        assertTrue(shared.size() >= 9, "expected the comb to be dense over the ~4h45 overlap, got " + shared.size());
-    }
-
-    @Test
-    void theAnchorSitsOnTheCreatorsLocalMidnight() {
-        MeetingType t = seedType("lattice-anchor", 30);
-        Instant anchor = slotService.gridAnchorFor(t);
-        String creatorZone = OwnerSettings.forOwner(CREATOR).timezone;
-        assertEquals(LocalTime.MIDNIGHT, anchor.atZone(java.time.ZoneId.of(creatorZone)).toLocalTime());
-    }
-
-    @Test
-    void aNullAnchorKeepsWindowAnchoringForSingleHost() {
-        MeetingType t = seedType("lattice-window", 45, CREATOR);
-        List<LocalTime> local =
-                slotService.generateRawSlots(t, CREATOR, MONDAY, MONDAY, null, 45).stream()
-                        .map(s -> s.start().toLocalTime())
-                        .toList();
-        assertEquals(LocalTime.of(9, 0), local.getFirst(), "window-anchored: the first slot IS the window start");
-    }
-}
-```
-
-- [ ] **Step 2: Run it and watch it fail**
+- [ ] **Step 2: Run them and watch them fail**
 
 ```bash
+export JAVA_HOME=~/.sdkman/candidates/java/26.0.1-librca
 ./mvnw test -Dtest=SlotServiceLatticeTest
 ```
 
-Expected: compile failure — no `gridAnchorFor`, and `generateRawSlots` still takes a `boolean`.
+Expected: compile failure (no `latticeZoneFor`), and once that is stubbed, cases 4 and 5 fail against the `2a59d0f` implementation. Confirm case 4 fails with 09:15 before you change the production code — that failure is the whole justification for this task.
 
-- [ ] **Step 3: Add the anchor factory**
-
-In `SlotService.java`:
+- [ ] **Step 3: Replace `gridAnchorFor` with `latticeZoneFor`**
 
 ```java
 /**
- * The instant every Host of {@code type} aligns their grid to: local midnight in the CREATOR's
- * timezone on a fixed reference date (ADR-0008).
+ * The zone whose clock defines this type's lattice of candidate start times: the CREATOR's
+ * (ADR-0008). Start times come out round on the clock of whoever defined the meeting type, and
+ * every Host tests the same predicate against the same instants, so Hosts cannot disagree about
+ * which instants are candidates.
  *
- * <p>The Creator's zone supplies the PHASE, so start times come out round on the clock of whoever
- * defined the meeting type, and a shared type whose Hosts all sit in one timezone keeps exactly the
- * start times it had before. The constant date supplies REQUEST-INDEPENDENCE: anchoring to a
- * request's own {@code from} would put the booking page ({@code from = today}) and
- * {@code assertSlotAvailable} ({@code from = the chosen day}) a whole number of days apart, and a
- * cadence that does not divide 1440 — 25 or 50 minutes — makes those two lattices disagree, so a
- * slot the page has just rendered would be rejected on submit.
+ * <p>The zone's rules are consulted at each candidate instant rather than frozen at some origin
+ * date. That is deliberate: {@code Asia/Kathmandu} was {@code +05:30} until 1986 and {@code +05:45}
+ * since, so an origin-based lattice would move an all-Kathmandu team off the round local times they
+ * have today, to fix a cross-timezone problem they do not have.
  */
-public Instant gridAnchorFor(MeetingType type) {
+public ZoneId latticeZoneFor(MeetingType type) {
     OwnerSettings creator = OwnerSettings.forOwner(type.ownerId);
-    ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(creator.timezone));
-    return LocalDate.EPOCH.atStartOfDay(zone).toInstant();
+    if (creator == null) {
+        throw new IllegalStateException("Owner settings not configured for owner " + type.ownerId
+                + "; set them via /me/settings before generating slots.");
+    }
+    return ZoneId.of(OwnerSettings.coerceZone(creator.timezone));
 }
 ```
 
-- [ ] **Step 4: Replace the boolean with the anchor and align in absolute time**
+The null guard matches the one `generateRawSlots` already applies to the host's settings twenty lines below; without it a multi-host type whose Creator is not among the accepted hosts NPEs before any host is touched, instead of producing that actionable message. Use `coerceZone` here **and** make the neighbouring `generateRawSlots` read of `settings.timezone` use it too — a row written before the save-time guard existed can hold an unparseable zone.
 
-Change both overloads' signatures from `boolean dayAnchoredGrid` to `Instant gridAnchor`, and replace the per-window loop body with:
+- [ ] **Step 4: Walk candidate starts in local time**
+
+Replace the per-window loop body:
 
 ```java
 for (var date = from; !date.isAfter(to); date = date.plusDays(1)) {
     for (Window window : availability.windowsFor(date)) {
         Instant windowStart = date.atTime(window.start()).atZone(zone).toInstant();
         Instant windowEnd = date.atTime(window.end()).atZone(zone).toInstant();
-        long stepSeconds = step * 60L;
         long bodySeconds = duration * 60L;
-        // Window-anchored (null anchor, single-host): the first slot IS the window start,
-        // byte-identical to the historical behaviour, including per-window anchoring on a
-        // multi-window day. Lattice-anchored (multi-host): round UP to the type's shared comb.
-        Instant first = gridAnchor == null
-                ? windowStart
-                : gridAnchor.plusSeconds(
-                        Math.ceilDiv(windowStart.getEpochSecond() - gridAnchor.getEpochSecond(), stepSeconds)
-                                * stepSeconds);
-        for (Instant s = first; !s.plusSeconds(bodySeconds).isAfter(windowEnd); s = s.plusSeconds(stepSeconds)) {
-            slots.add(new TimeSlot(s.atZone(zone), s.plusSeconds(bodySeconds).atZone(zone)));
+        if (latticeZone == null) {
+            // Window-anchored (single-host): the first slot IS the window start, byte-identical to
+            // the historical behaviour, including per-window anchoring on a multi-window day.
+            for (Instant s = windowStart;
+                    !s.plusSeconds(bodySeconds).isAfter(windowEnd);
+                    s = s.plusSeconds(step * 60L)) {
+                slots.add(new TimeSlot(s.atZone(zone), s.plusSeconds(bodySeconds).atZone(zone)));
+            }
+        } else {
+            // Lattice-anchored (multi-host): candidate starts are the instants whose local
+            // time-of-day in the CREATOR's zone is a whole number of steps past midnight.
+            LocalDateTime local = windowStart.atZone(latticeZone).toLocalDateTime().withSecond(0).withNano(0);
+            int intoDay = local.getHour() * 60 + local.getMinute();
+            int over = intoDay % step;
+            if (over != 0) {
+                local = local.plusMinutes(step - (long) over);
+            }
+            while (true) {
+                // Step in LOCAL terms and re-resolve. ZonedDateTime.plusMinutes works on the
+                // instant time-line, so it would drift an hour off round after a fall-back.
+                Instant s = local.atZone(latticeZone).toInstant();
+                if (s.plusSeconds(bodySeconds).isAfter(windowEnd)) {
+                    break;
+                }
+                if (!s.isBefore(windowStart)) {
+                    slots.add(new TimeSlot(s.atZone(zone), s.plusSeconds(bodySeconds).atZone(zone)));
+                }
+                local = local.plusMinutes(step);
+            }
         }
     }
 }
 ```
 
-Working in instants also retires the minute-of-day workaround the old code needed to avoid `LocalTime.plusMinutes()` wrapping past midnight — delete that comment with the code it explained. A window ending at 00:00 still yields no slots, exactly as before, because `windowEnd` then precedes `windowStart`.
+The window end stays **inclusive** — a slot whose body ends exactly at the window end is offered, as `SlotServiceTest#generatesBackToBackSlotsWithinGlobalWindow` has always asserted. A window ending at 00:00 still yields nothing, because `windowEnd` then precedes `windowStart`.
 
-- [ ] **Step 5: Pass the anchor from `BookingService`**
-
-In `availableSlots`, next to the existing `singleHost` computation:
+- [ ] **Step 5: Pass the zone from `BookingService`**
 
 ```java
 var singleHost = hostIds.size() == 1;
 // Single-host stays window-anchored (null). Multi-host shares one lattice (ADR-0008).
-Instant gridAnchor = singleHost ? null : slotService.gridAnchorFor(type);
+ZoneId latticeZone = singleHost ? null : slotService.latticeZoneFor(type);
 ```
 
-Thread `gridAnchor` through `hostFreeSlots`'s parameter list in place of `boolean singleHost`'s use at the `generateRawSlots` call — keep `singleHost` itself, since it also selects the exception-handling contract:
+Thread `latticeZone` through `hostFreeSlots` in place of the anchor. Keep the `singleHost` boolean itself — it also selects the exception-handling contract. `hostFreeSlots` does not yet take a duration; pass `type.durationMinutes` until Task 6 replaces it.
 
-```java
-for (TimeSlot slot : slotService.generateRawSlots(type, hostId, from, to, gridAnchor, durationMinutes)) {
-```
+- [ ] **Step 6: Pin the DST-in-window behaviour**
 
-(`durationMinutes` arrives in Task 6; until then pass `type.durationMinutes`.)
+The old code walked host-local minute-of-day; this one walks instants on the null-anchor path. For a window straddling a DST transition they differ: on fall-back the instant walk covers the full elapsed time, including both passes of the ambiguous hour, where minute-of-day walked wall time once. The new behaviour is the correct one — a host available 01:00–05:00 local on a fall-back day genuinely has five hours — but it is a single-host production change, so pin it. Add to `SlotServiceTest`:
 
-- [ ] **Step 6: Update Task 3's test for the new parameter**
+`aWindowStraddlingAFallBackTransitionCoversTheFullElapsedTime` — a `Europe/Berlin` host, a window containing the October fall-back, a cadence that divides the window, asserting the slot count matches the elapsed real time rather than the wall-clock span, with a comment saying this is deliberate and why.
 
-`SlotServiceDurationTest` was written against the `boolean` this task just removed. Replace every `false` argument to `generateRawSlots` with `null` — single-host is window-anchored either way, so the assertions are unchanged:
+- [ ] **Step 7: Run the lattice and duration tests**
 
 ```bash
-grep -n 'generateRawSlots' src/test/java/site/asm0dey/calit/availability/SlotServiceDurationTest.java
+./mvnw test -Dtest='SlotService*Test'
 ```
 
-- [ ] **Step 7: Run the lattice test**
-
-```bash
-./mvnw test -Dtest=SlotServiceLatticeTest
-```
-
-Expected: PASS, 4 tests.
+Expected: PASS, including cases 4, 5 and 6 which failed in Step 2.
 
 - [ ] **Step 8: Run the full suite — this task changes shared behaviour**
 
@@ -926,31 +774,39 @@ Expected: PASS, 4 tests.
 ./mvnw test
 ```
 
-Expected: `BUILD SUCCESS`. A multi-host test whose hosts share a timezone must produce the same slots as before; if one fails, the anchor phase is wrong, not the test.
+Expected: `BUILD SUCCESS`. A multi-host test whose hosts share a timezone must produce the same slots as before; if one fails, the lattice's phase is wrong, not the test.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Update the bean and commit**
+
+Check off `calit-io9y`'s items. The 50-minute `assertSlotAvailable` item is satisfied by case 6 — a 50-minute cadence is settable today via `slotIntervalMinutes`, so that item was never blocked on a later task; correct the note if it says otherwise. Leave only the docs-site changelog item open, and set the bean's status accordingly.
 
 ```bash
 git add src/main/java/site/asm0dey/calit/availability/SlotService.java \
         src/main/java/site/asm0dey/calit/booking/BookingService.java \
-        src/test/java/site/asm0dey/calit/availability/SlotServiceDurationTest.java \
-        src/test/java/site/asm0dey/calit/availability/SlotServiceLatticeTest.java
-git commit -m "fix(availability): one slot lattice per type, not one per host
+        src/test/java/site/asm0dey/calit/availability/ \
+        docs/adr/0008-the-slot-lattice-is-anchored-to-the-creators-clock.md \
+        .beans/
+git commit -m "fix(availability): define the slot lattice in the creator's clock
 
-Multi-host slots were anchored to midnight in each host's own
-timezone and then intersected by exact instant, so two hosts' grids
-coincided only when their UTC offsets differed by a whole number of
-the cadence. London and Berlin on a 45-minute cadence never did: the
-intersection was empty every day and the page rendered the ordinary
-'no times available' state.
+Multi-host slots were anchored to midnight in each host's own timezone
+and then intersected by exact instant, so two hosts' grids coincided
+only when their UTC offsets differed by a whole number of the cadence.
+London and Berlin on a 45-minute cadence never did: the intersection
+was empty every day and the page rendered the ordinary 'no times
+available' state.
 
-Every host now aligns to one anchor at the creator's local midnight on
-a fixed reference date (ADR-0008). Single-host stays window-anchored.
+The lattice is now the instants whose local time-of-day in the
+creator's zone is a whole number of steps past midnight (ADR-0008).
+One definition, one zone, so hosts agree by construction, and the
+zone's rules are read at each instant rather than frozen at an origin
+date -- an all-Kathmandu team keeps the round times it has today,
+which a fixed epoch origin would have moved by 15 minutes because
+Kathmandu shifted +05:30 to +05:45 in 1986.
+
+Supersedes the origin-based lattice in 2a59d0f.
 
 Fixes calit-io9y."
 ```
-
----
 
 ### Task 5: Duration-aware buffers
 
@@ -2187,4 +2043,4 @@ State in the body that the full suite is green, and link `calit-p5xm`, `calit-io
 
 **Type consistency.** `allowedDurations` / `shortestAllowed` / `isAllowed` / `findRow` / `rowsFor` are used under those names in Tasks 3, 5, 6, 9 and 10. `lengthOf` is defined in Task 7 and used in Task 8. `DurationChoice` / `Chrome` / `Captcha` / `DurationRow` are each defined once and consumed under the same names. `gridAnchorFor` is defined in Task 4 and used only there and in `BookingService`.
 
-**Known ordering hazard.** Task 4 replaces `generateRawSlots`'s `boolean dayAnchoredGrid` with `Instant gridAnchor` while Task 6 adds `int durationMinutes` to the same signature. Task 4 must land first; its Step 5 passes `type.durationMinutes` as a placeholder value that Task 6 replaces with the real parameter. Executing them out of order produces a compile error, not silent breakage. Task 4 also owns updating Task 3's `SlotServiceDurationTest`, which was written against the parameter it removes.
+**Known ordering hazard.** Task 4 replaces `generateRawSlots`'s `boolean dayAnchoredGrid` with a nullable `ZoneId latticeZone` while Task 6 adds `int durationMinutes` to the same signature. Task 4 must land first; its Step 5 passes `type.durationMinutes` as a placeholder value that Task 6 replaces with the real parameter. Executing them out of order produces a compile error, not silent breakage. Task 4 also owns updating Task 3's `SlotServiceDurationTest`, which was written against the parameter it removes.

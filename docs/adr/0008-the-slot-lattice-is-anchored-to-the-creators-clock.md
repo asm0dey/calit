@@ -1,10 +1,10 @@
 # The slot lattice is anchored to the Creator's clock
 
-Every Host of a meeting type shares one lattice of candidate start times, anchored to local
-midnight in the **Creator's** timezone on a fixed reference date:
+Every Host of a meeting type shares one lattice of candidate start times, defined by the local
+time-of-day in the **Creator's** timezone:
 
-```java
-Instant anchor = LocalDate.EPOCH.atStartOfDay(creatorZone).toInstant();
+```
+onLattice(t)  ⟺  minuteOfDay(t, creatorZone) mod step == 0
 ```
 
 A Host never has a lattice of their own. What a Host owns is their timezone, working hours, date
@@ -18,18 +18,28 @@ often do not: London and Berlin on a 45-minute cadence differ by 60 minutes, whi
 multiple of 45, and the intersection is empty on every day forever while the page renders the
 ordinary "no times available" state.
 
-Two properties of the anchor do the work, and they are separate:
+The rule above removes that by construction. There is one definition, in one zone, and every Host
+tests the same predicate against the same instants, so Hosts cannot disagree about which instants
+are candidates.
 
-- **The Creator's zone** supplies the phase. Start times come out round on the clock of whoever
-  defined the meeting type, and a shared type whose Hosts are all in one timezone keeps exactly the
-  start times it had before. A Host in a zone offset by a non-multiple of the cadence sees unround
-  local times — genuinely the only instants everyone can share.
-- **A fixed date** supplies request-independence. The booking page asks for slots from today; the
-  submit-time re-check asks for a single chosen day. Anchoring to the request's own start date
-  would put those anchors a whole number of days apart, and a cadence that does not divide 1440 —
-  25 or 50 minutes — makes the two lattices disagree, so a slot the page has just rendered is
-  rejected as unavailable when the Invitee submits it. Any constant date removes this; the epoch is
-  the obvious one.
+## Why a predicate rather than an origin plus a step
+
+The lattice is not "some origin instant, plus multiples of the step". It has no origin. Membership
+depends only on `t` and on the Creator's zone rules *as they apply at `t`*.
+
+That matters twice:
+
+- **Request-independence.** The booking page asks for slots from today across the horizon; the
+  submit-time re-check asks for one chosen day. An origin derived from a request's own start date
+  puts those two computations a whole number of days apart, and a cadence that does not divide 1440
+  — 25 or 50 minutes — then makes them compute different lattices, so a slot the page has just
+  rendered is rejected as unavailable when the Invitee submits it. A predicate on `t` cannot
+  develop that disagreement.
+- **The zone's rules are read at `t`, not frozen.** A fixed origin bakes in whatever offset the
+  Creator's zone had on the origin's date. `Asia/Kathmandu` was `+05:30` until 1986 and `+05:45`
+  after; `Europe/Lisbon` was `+01:00` and is now `+00:00`. An origin at the epoch would put an
+  all-Kathmandu team — who have no cross-timezone problem at all — on `09:15`/`09:45` where they
+  see `09:00`/`09:30` today. Consulting the zone at `t` keeps them where they are.
 
 ## Considered options
 
@@ -37,10 +47,17 @@ Two properties of the anchor do the work, and they are separate:
 exists that both runs continuously and restarts at every Host's local midnight, because the Hosts'
 midnights are different instants.
 
-**Anchor to the UTC epoch, unrotated** — correct, and a slightly smaller change. Rejected because
-the phase is free: rotating by the Creator's offset costs one `ZoneId` lookup and keeps round local
-times wherever the arithmetic allows, while leaving UTC unrotated moves an all-Adelaide or
-all-India shared type from `:00` to `:30` local for no benefit.
+**A fixed origin instant, rotated by the Creator's offset** — `LocalDate.EPOCH.atStartOfDay(
+creatorZone)`, plus multiples of the step. Implemented first, then rejected. It is correct about
+Host agreement and about request-independence, but it freezes the zone's 1970 rules, so it shifts
+the start times of teams that never had the bug: every team in a zone whose standard offset has
+changed since 1970, and every team on a cadence that does not divide 60, whose times then also move
+across each DST boundary. Charging an unaffected team a fifteen-minute shift to fix someone else's
+problem is the wrong trade.
+
+**Anchor to the UTC epoch, unrotated** — a smaller change again. Rejected for the same reason plus
+one more: it drops the Creator's phase entirely, so an all-Adelaide or all-India shared type moves
+from `:00` to `:30` local immediately, with no benefit to anyone.
 
 **Anchor to the earliest participating Host's window start** — appealing because it generalises the
 single-host rule, where the window start *is* the anchor. Rejected on three counts: it requires
@@ -51,13 +68,18 @@ override shifts every start time that day for everyone, including on a type they
 
 ## Consequences
 
-- `generateRawSlots` takes a nullable `Instant gridAnchor` in place of the `boolean
+- `generateRawSlots` takes a nullable `ZoneId latticeZone` in place of the `boolean
   dayAnchoredGrid` flag. Null means window-anchored: single-host keeps its historical behaviour
   byte-identical, including the rule that each window of a multi-window day anchors itself.
-- Alignment happens in absolute time rather than in host-local minute-of-day.
-- A cadence that does not divide 1440 (25, 50) produces a comb that drifts off local midnight on
-  later days. It stays consistent, which is what correctness requires; it is merely not round. This
-  is arithmetic, not a choice — no continuous lattice can hit midnight on consecutive days when the
-  step does not divide the day.
+- Candidate starts are walked in **local** time and re-resolved to an instant each step
+  (`local = local.plusMinutes(step)`, then `local.atZone(zone)`), never by adding to a
+  `ZonedDateTime` — Java defines `ZonedDateTime.plusMinutes` on the instant time-line, which drifts
+  an hour off round after a fall-back and reintroduces the problem this decision removes.
+- A Host whose zone is offset from the Creator's by a non-multiple of the cadence sees unround
+  local start times — a Kathmandu Host on a Berlin Creator's 30-minute type reads `:15`/`:45`.
+  Those are the only instants everyone can share; the alternative is the none they are offered now.
+- The lattice has a deliberate discontinuity at a DST transition in the Creator's zone, and when
+  the cadence does not divide 1440 the final interval of each Creator-local day is short. Both are
+  identical for every Host, which is what correctness requires.
 - Changing a Creator's timezone moves the lattice for every type they own. Changing a Co-host's
   does not.

@@ -94,22 +94,25 @@ multiple of 45 — the intersection is empty every day, forever, and the page re
 "no times available" state. `step` falls back to the meeting length, so that is simply a 45-minute
 type shared between two neighbouring countries.
 
-Per ADR-0008 there is one lattice per type, anchored to the Creator's clock at a constant date:
+Per ADR-0008 there is one lattice per type, defined by the local time-of-day in the Creator's zone:
 
-```java
-Instant anchor = LocalDate.EPOCH.atStartOfDay(creatorZone).toInstant();
+```
+onLattice(t)  ⟺  minuteOfDay(t, creatorZone) mod step == 0
 ```
 
-The Creator's zone supplies the phase — round start times on the clock of whoever defined the type,
-and a shared type whose hosts are all in one timezone keeps exactly the start times it has today.
-The constant date supplies request-independence: anchoring to the request's own `from` would put
-the booking page (`from = today`) and `assertSlotAvailable` (`from = the chosen day`) a whole number
-of days apart, and a cadence that does not divide 1440 — 25 or 50 minutes — makes those two
-lattices disagree, so a slot the page has just rendered is rejected on submit.
+It has no origin instant. One definition, in one zone, tested by every host against the same
+instants, so hosts cannot disagree about which instants are candidates. Membership depends only on
+`t`, so the booking page (`from = today`) and `assertSlotAvailable` (`from = the chosen day`) cannot
+compute different lattices — a real hazard for any origin-based scheme at a cadence that does not
+divide 1440, where a slot the page had just rendered would be rejected on submit.
 
-`generateRawSlots` therefore takes a nullable `Instant gridAnchor` in place of the `boolean
-dayAnchoredGrid` flag, and aligns in absolute time rather than host-local minute-of-day. Null keeps
-window-anchoring, so single-host is untouched — including the rule that each window of a
+Reading the zone's rules *at* `t` rather than freezing them is what keeps teams that never had the
+bug where they are. `Asia/Kathmandu` was `+05:30` until 1986 and `+05:45` since, so a fixed epoch
+origin would move an all-Kathmandu team from `09:00`/`09:30` to `09:15`/`09:45` for no benefit.
+
+`generateRawSlots` therefore takes a nullable `ZoneId latticeZone` in place of the `boolean
+dayAnchoredGrid` flag, and walks candidate starts in local time, re-resolving each to an instant.
+Null keeps window-anchoring, so single-host is untouched — including the rule that each window of a
 multi-window day anchors itself.
 
 ## Buffers
