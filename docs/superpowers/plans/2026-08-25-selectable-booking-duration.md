@@ -37,7 +37,7 @@
 **Files:**
 - Modify: `src/main/java/site/asm0dey/calit/web/PublicResource.java:38-58` (`Templates.book` declaration), `:219-244` (GET `book`), `:355-370` (POST error re-render)
 - Modify: `src/main/resources/templates/PublicResource/book.html`
-- Test: `src/test/java/site/asm0dey/calit/web/PublicBookingPageTest.java` (existing — must still pass unchanged)
+- Test: no new test. The proof of no-behaviour-change is that the existing renderers of `book.html` still pass untouched — `BookPageTest`, `BookPageTurnstileEnabledTest`, `BookPageAltchaEnabledTest`, `BookingPostTest`, `GuestBookingFlowTest`, `CsrfEnforcementTest`. Do not edit any of them.
 
 **Interfaces:**
 - Consumes: nothing
