@@ -12,7 +12,7 @@ Upstream: [#119](https://github.com/asm0dey/calit/issues/119). Tracked as `calit
   the strictest applicable one governs. **Amended** while designing this: the maximum is taken over
   the overrides actually set, never over a `NULL` fallen back to the type's buffer (see Buffers).
 - [ADR-0003](../../adr/0003-a-meeting-types-duration-doubles-as-its-default.md) —
-  `meeting_type.duration_minutes` is the default of the allowed set. **To be amended**: the default
+  `meeting_type.duration_minutes` is the default of the allowed set. **Amended**: the default
   is an *implicit* member rather than a row the save refuses to delete (see Owner UI).
 
 Two questions were open upstream and are now answered by the reporter
@@ -190,11 +190,11 @@ a duration to remove it" fall out for free.
 
 ### ADR-0003 amendment
 
-ADR-0003 says removing the default from the set is rejected at save. Implicit membership replaces
-that: the default is always in the set by construction, so there is no rejection path, no error
+ADR-0003 originally had removing the default from the set rejected at save. Implicit membership
+replaced that: the default is always in the set by construction, so there is no rejection path, no error
 message, no i18n for it, and no way for the main edit form (which owns `durationMinutes`) and the
 durations form to disagree when the Owner moves the default. Clearing the default's duration field
-is a no-op rather than an error. ADR-0003 is amended to say so.
+is a no-op rather than an error. ADR-0003 says so.
 
 ## Booking write path
 
