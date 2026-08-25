@@ -2,6 +2,7 @@ package site.asm0dey.calit.availability;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -34,39 +35,34 @@ public class SlotService {
      * hostOwnerId} — lets a co-host's own hours/timezone drive their raw slots for a shared type.
      */
     public List<TimeSlot> generateRawSlots(MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to) {
-        return generateRawSlots(type, hostOwnerId, from, to, false);
+        return generateRawSlots(type, hostOwnerId, from, to, null);
     }
 
     /**
-     * Same as {@link #generateRawSlots(MeetingType, Long, LocalDate, LocalDate)}, plus a
-     * {@code dayAnchoredGrid} switch used only by the multi-host intersection path (Task 8b).
+     * Same as {@link #generateRawSlots(MeetingType, Long, LocalDate, LocalDate)}, plus a nullable
+     * {@code gridAnchor} used only by the multi-host intersection path (ADR-0008).
      *
-     * <p>Single-host callers must keep {@code dayAnchoredGrid=false} (window-anchored — the grid's
-     * first point is the window start, byte-identical to the historical behavior). Multi-host
-     * callers pass {@code true}: two hosts whose window starts differ by a non-multiple of the
-     * slot step (e.g. 09:00 vs 09:15 with a 30-min step) would otherwise generate grids that never
+     * <p>Single-host callers must keep {@code gridAnchor=null} (window-anchored — the grid's first
+     * point is the window start, byte-identical to the historical behavior). Multi-host callers pass
+     * {@link #gridAnchorFor(MeetingType)}: two hosts whose window starts differ by a non-multiple of
+     * the slot step (e.g. 09:00 vs 09:15 with a 30-min step) would otherwise generate grids that never
      * share a start instant, making the intersection spuriously empty even though the hosts' free
-     * time genuinely overlaps. Anchoring the grid to day-start (00:00 host-local) instead puts
+     * time genuinely overlaps. Anchoring every host's grid to the same absolute instant instead puts
      * every host's slots on the same {@code step}-minute lattice so they can actually intersect.
      */
     public List<TimeSlot> generateRawSlots(
-            MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to, boolean dayAnchoredGrid) {
-        return generateRawSlots(type, hostOwnerId, from, to, dayAnchoredGrid, type.durationMinutes);
+            MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to, Instant gridAnchor) {
+        return generateRawSlots(type, hostOwnerId, from, to, gridAnchor, type.durationMinutes);
     }
 
     /**
-     * Same as {@link #generateRawSlots(MeetingType, Long, LocalDate, LocalDate, boolean)} for a chosen
+     * Same as {@link #generateRawSlots(MeetingType, Long, LocalDate, LocalDate, Instant)} for a chosen
      * length. The grid STEP comes from the type's shortest allowed length, not from
      * {@code durationMinutes}: the lattice of candidate starts must not move when an Invitee switches
      * length (ADR-0003). Only the slot BODY varies.
      */
     public List<TimeSlot> generateRawSlots(
-            MeetingType type,
-            Long hostOwnerId,
-            LocalDate from,
-            LocalDate to,
-            boolean dayAnchoredGrid,
-            int durationMinutes) {
+            MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to, Instant gridAnchor, int durationMinutes) {
         OwnerSettings settings = OwnerSettings.forOwner(hostOwnerId);
         if (settings == null) {
             throw new IllegalStateException("Owner settings not configured for owner " + hostOwnerId
@@ -85,22 +81,43 @@ public class SlotService {
 
         for (var date = from; !date.isAfter(to); date = date.plusDays(1)) {
             for (Window window : availability.windowsFor(date)) {
-                // Work in minute-of-day to avoid LocalTime.plusMinutes() wrapping past midnight,
-                // which (e.g. a window ending 23:30 with a 30-min duration) would loop forever.
-                var startMin = window.start().toSecondOfDay() / 60;
-                var endMin = window.end().toSecondOfDay() / 60;
-                // window-anchored (default, single-host): first = startMin, unchanged.
-                // day-anchored (multi-host): first grid multiple of `step` from 00:00 that is >= startMin.
-                var first = dayAnchoredGrid ? ((startMin + step - 1) / step) * step : startMin;
-                for (var s = first; s + duration <= endMin; s += step) {
-                    var start = LocalTime.ofSecondOfDay(s * 60L);
-                    var end = LocalTime.ofSecondOfDay((s + duration) * 60L);
+                var windowStart = date.atTime(window.start()).atZone(zone).toInstant();
+                var windowEnd = date.atTime(window.end()).atZone(zone).toInstant();
+                var stepSeconds = step * 60L;
+                var bodySeconds = duration * 60L;
+                // Window-anchored (null anchor, single-host): the first slot IS the window start,
+                // byte-identical to the historical behaviour, including per-window anchoring on a
+                // multi-window day. Lattice-anchored (multi-host): round UP to the type's shared comb.
+                var first = gridAnchor == null
+                        ? windowStart
+                        : gridAnchor.plusSeconds(
+                                Math.ceilDiv(windowStart.getEpochSecond() - gridAnchor.getEpochSecond(), stepSeconds)
+                                        * stepSeconds);
+                for (var s = first; !s.plusSeconds(bodySeconds).isAfter(windowEnd); s = s.plusSeconds(stepSeconds)) {
                     slots.add(new TimeSlot(
-                            date.atTime(start).atZone(zone), date.atTime(end).atZone(zone)));
+                            s.atZone(zone), s.plusSeconds(bodySeconds).atZone(zone)));
                 }
             }
         }
         return slots;
+    }
+
+    /**
+     * The instant every Host of {@code type} aligns their grid to: local midnight in the CREATOR's
+     * timezone on a fixed reference date (ADR-0008).
+     *
+     * <p>The Creator's zone supplies the PHASE, so start times come out round on the clock of whoever
+     * defined the meeting type, and a shared type whose Hosts all sit in one timezone keeps exactly the
+     * start times it had before. The constant date supplies REQUEST-INDEPENDENCE: anchoring to a
+     * request's own {@code from} would put the booking page ({@code from = today}) and
+     * {@code assertSlotAvailable} ({@code from = the chosen day}) a whole number of days apart, and a
+     * cadence that does not divide 1440 — 25 or 50 minutes — makes those two lattices disagree, so a
+     * slot the page has just rendered would be rejected on submit.
+     */
+    public Instant gridAnchorFor(MeetingType type) {
+        OwnerSettings creator = OwnerSettings.forOwner(type.ownerId);
+        ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(creator.timezone));
+        return LocalDate.EPOCH.atStartOfDay(zone).toInstant();
     }
 
     /** A bookable [start, end) time-of-day window for one day, from either an override or a weekly rule. */

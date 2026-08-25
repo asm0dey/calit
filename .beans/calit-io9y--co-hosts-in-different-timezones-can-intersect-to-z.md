@@ -5,7 +5,7 @@ status: todo
 type: bug
 priority: high
 created_at: 2026-08-25T20:00:13Z
-updated_at: 2026-08-25T20:00:38Z
+updated_at: 2026-08-25T22:50:00Z
 parent: calit-p5xm
 ---
 
@@ -46,11 +46,11 @@ Being fixed inside [[calit-p5xm]], which rewrites the same grid line (step stops
 
 ## Todo
 
-- [ ] ADR-0008: the slot lattice is anchored to the Creator's clock
-- [ ] Replace the `boolean dayAnchoredGrid` parameter with a nullable `Instant gridAnchor` (null = window-anchored, single-host)
-- [ ] Align in absolute time rather than host-local minute-of-day
-- [ ] Regression test: London + Berlin, 45-minute cadence, both free 09:00-17:00 local -> non-empty intersection
-- [ ] Regression test: Berlin + Kathmandu, 30-minute cadence -> non-empty intersection
-- [ ] Regression test: all-hosts-one-timezone shared type -> start times unchanged from today
-- [ ] Regression test: a slot rendered by the booking page validates in assertSlotAvailable at a 50-minute cadence
-- [ ] Changelog entry under ## Unreleased on docs-site
+- [x] ADR-0008: the slot lattice is anchored to the Creator's clock
+- [x] Replace the `boolean dayAnchoredGrid` parameter with a nullable `Instant gridAnchor` (null = window-anchored, single-host)
+- [x] Align in absolute time rather than host-local minute-of-day
+- [x] Regression test: London + Berlin, 45-minute cadence, both free 09:00-17:00 local -> non-empty intersection
+- [x] Regression test: Berlin + Kathmandu, 30-minute cadence -> non-empty intersection
+- [x] Regression test: all-hosts-one-timezone shared type -> start times unchanged from today (covered by the existing `AvailableSlotsIntersectionTest` suite, all-Amsterdam, which the full-suite run confirms is byte-identical after this change)
+- [ ] Regression test: a slot rendered by the booking page validates in assertSlotAvailable at a 50-minute cadence (not exercised yet — needs a per-type selectable duration/cadence to set up, deferred to a later task in the selectable-booking-duration plan)
+- [ ] Changelog entry under ## Unreleased on docs-site (deferred to branch integration/finish, not part of this intermediate task commit)

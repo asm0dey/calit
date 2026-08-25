@@ -69,7 +69,7 @@ class SlotServiceDurationTest {
     }
 
     private List<LocalTime> startsFor(MeetingType t, int duration) {
-        return slotService.generateRawSlots(t, OWNER, MONDAY, MONDAY, false, duration).stream()
+        return slotService.generateRawSlots(t, OWNER, MONDAY, MONDAY, null, duration).stream()
                 .map(s -> s.start().toLocalTime())
                 .toList();
     }
@@ -106,7 +106,7 @@ class SlotServiceDurationTest {
         // and the old overload agrees with the explicit one
         assertEquals(
                 startsFor(t, 45),
-                slotService.generateRawSlots(t, OWNER, MONDAY, MONDAY, false).stream()
+                slotService.generateRawSlots(t, OWNER, MONDAY, MONDAY, null).stream()
                         .map(s -> s.start().toLocalTime())
                         .toList());
     }
