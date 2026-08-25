@@ -21,7 +21,8 @@ _Avoid_: guest (an extra attendee added to a booking), booker, attendee, custome
 **Host**:
 An Owner who participates in a meeting type and whose calendar a booking must fit — the Creator
 or an accepted Co-host. The unit availability and buffers are resolved per.
-_Avoid_: participant, organizer (that is the one host whose Google account the event is created on)
+_Avoid_: participant, organizer (there is no such role — every Google event is written on the
+Creator's connected account, see `docs/adr/0007-the-creator-is-always-the-organizer.md`)
 
 **Creator**:
 The Host who owns the meeting type: it lives in their namespace and they invite the Co-hosts.
@@ -65,6 +66,12 @@ An agreement between an Owner and an Invitee to meet at a specific time. calit's
 truth about whether a meeting exists.
 _Avoid_: appointment, meeting (the real-world encounter), reservation, event (a Google event)
 
+**Location**:
+Where a meeting happens: a phone number, an address, custom text, or a Google Meet link. A property
+of the meeting type its Creator published, never of a Booking or of a Host
+(`docs/adr/0005-the-location-belongs-to-the-meeting-type.md`).
+_Avoid_: place, venue, meeting place, room
+
 ### Google Calendar
 
 **Google event**:
@@ -82,18 +89,19 @@ created by default.
 _Avoid_: primary calendar, default calendar, target
 
 **Write override**:
-A Host's choice of a different calendar for one meeting type's Google events, instead of their
-write target. Unset — the normal case — means the write target. Each Host of a shared meeting type
-has their own; the one that counts is the organizer's. That is true of where the event is *written*.
-Whether a type may offer a Google Meet link is a separate question, answered once against the
-Creator's resolved calendar — a Co-host's override never changes what the type offers.
+The Creator's choice of a different calendar for one meeting type's Google events, instead of their
+write target. Unset — the normal case — means the write target. Only the Creator has one: every
+Google event is written on the Creator's connected account
+(`docs/adr/0007-the-creator-is-always-the-organizer.md`). Where an event is written never changes
+what a meeting type offers, because the location belongs to the type
+(`docs/adr/0005-the-location-belongs-to-the-meeting-type.md`).
 _Avoid_: per-type calendar, type calendar, default write target (the write target already is the
 default)
 
 **Dangling override**:
-A write override naming a calendar the Host no longer has selected — unticked, or its connected
-account disconnected. Never fails a Booking: the write falls back to the write target, and the Host
-is told their choice is no longer in effect.
+A write override naming a calendar the Creator no longer has selected — unticked, or its connected
+account disconnected. Never fails a Booking: the write falls back to the write target, and the
+Creator is told their choice is no longer in effect.
 _Avoid_: broken override, stale calendar, orphaned override (that is a Google event left behind on
 the calendar it was created on)
 
