@@ -448,6 +448,7 @@ class SlotServiceDurationTest {
         return seed(slug, defaultMinutes, extraLengths, null);
     }
 
+    /** Seeds OwnerSettings too — generateRawSlots reads the host's timezone and throws without it. */
     @Transactional
     MeetingType seed(String slug, int defaultMinutes, List<Integer> extraLengths, Integer cadence) {
         MeetingType t = new MeetingType();
@@ -498,7 +499,11 @@ class SlotServiceDurationTest {
     void aSingleDurationTypeIsUnchangedByTheNewParameter() {
         MeetingType t = seed("single", 45, List.of());
         // Cadence falls back to the shortest allowed, which for a single-duration type IS the duration.
-        assertEquals(List.of(LocalTime.of(9, 0), LocalTime.of(9, 45), LocalTime.of(10, 30)), startsFor(t, 45));
+        // 11:15 belongs: its body ends exactly at 12:00, and the window end is inclusive
+        // (`s + duration <= endMin`), as SlotServiceTest#generatesBackToBackSlotsWithinGlobalWindow shows.
+        assertEquals(
+                List.of(LocalTime.of(9, 0), LocalTime.of(9, 45), LocalTime.of(10, 30), LocalTime.of(11, 15)),
+                startsFor(t, 45));
         // and the old overload agrees with the explicit one
         assertEquals(
                 startsFor(t, 45),
