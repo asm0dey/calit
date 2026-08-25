@@ -466,9 +466,10 @@ public class PublicResource {
         ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(settings.timezone));
         List<DaySlots> byDate;
         try {
-            // Reschedule slot listing is out of Task 9's scope; unchanged from before — always the
-            // type's own default length, not the specific booking's chosen length.
-            byDate = daySlots(type, type.durationMinutes);
+            // Reschedule freezes the booked length — no picker on this page (design spec ":175").
+            // Task 7 already re-checks a reschedule submission at lengthOf(booking); rendering the
+            // grid at the type's default here would offer slots that length's own re-check rejects.
+            byDate = daySlots(type, BookingService.lengthOf(booking));
         } catch (CalendarUnavailableException e) {
             return Templates.unavailable(m.pub_unavailable_title());
         }
