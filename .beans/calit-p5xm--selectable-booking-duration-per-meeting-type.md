@@ -44,7 +44,16 @@ Both unresolved upstream -> design work needed before implementation.
 - [x] Resolve multi-host interaction — NO per-host duration limits (reporter, 2026-08-17): duration is part of the normal availability intersection; a host who won't run a length is a different meeting type
 - [x] Data model + migration (Task 2: `V29__meeting_type_duration.sql` + `MeetingTypeDuration` entity)
 - [x] SlotService duration parameterisation
-- [ ] Public page duration picker — `?duration=` query param on the existing GET (no-JS)
+- [x] Public page duration picker — `?duration=` query param on the existing GET (no-JS)
+  (Task 9: `PublicResource.DurationChoice(chosen, allowed)` + `resolveDuration` — absent, malformed,
+  or not-allowed all fall back to the type's default rather than 404ing. Picker is a plain
+  `<a href="?duration=N">` list (join/btn), rendered above `{#if days.isEmpty()}` so a dead-end
+  duration still lets the invitee switch back. `daySlots` now takes `durationMinutes`. The
+  hidden `durationMinutes` form field carries the choice through the POST; `submitBooking` resolves
+  a missing/zero value to the type's default before calling the 12-arg `book(...)`, and the error
+  re-render preserves the submitted length instead of resetting it. Landing page shows the full
+  allowed set per type via `LandingType.durations`. Single-duration types render byte-identical —
+  verified against the pre-existing `BookPageTest` "60 min" assertion.)
 - [ ] Reject saving an allowed set that omits `duration_minutes` (ADR-0003)
 - [x] Server-side validation of submitted duration (no new Booking column needed — startUtc/endUtc carry it)
   (Task 6: `BookingService.book` gains a 12-arg overload carrying `durationMinutes`;

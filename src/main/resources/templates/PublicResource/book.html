@@ -3,6 +3,7 @@
 {@java.lang.String user}
 {@java.util.List<site.asm0dey.calit.web.PublicResource$DaySlots> days}
 {@java.util.List<site.asm0dey.calit.domain.BookingField> fields}
+{@site.asm0dey.calit.web.PublicResource$DurationChoice duration}
 {@java.lang.String error}
 {@site.asm0dey.calit.web.PublicResource$Chrome chrome}
 {@site.asm0dey.calit.web.PublicResource$Captcha captcha}
@@ -32,7 +33,7 @@
           <h1 class="text-2xl font-bold mb-3">{type.name}</h1>
           <p class="flex items-center gap-2 font-semibold mb-3">
             <svg class="h-5 w-5 text-base-content/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-            {type.durationMinutes} min
+            {duration.chosen} {msg:pub_book_minutes_short}
           </p>
           {#if type.description}<p class="text-sm text-base-content/70 mb-3">{type.description}</p>{/if}
           {#if type.locationType.name == 'GOOGLE_MEET'}
@@ -52,6 +53,15 @@
 
         <div>
           <h2 class="text-lg font-semibold mb-4">{msg:pub_book_select_datetime}</h2>
+          {#if duration.multiple}
+            <p class="label mb-2">{msg:pub_book_duration_label}</p>
+            <nav class="join mb-4">
+              {#for d in duration.allowed}
+                <a class="join-item btn btn-sm {#if d == duration.chosen}btn-active{/if}"
+                   href="/{user}/{type.slug}?duration={d}">{d} {msg:pub_book_minutes_short}</a>
+              {/for}
+            </nav>
+          {/if}
           {#if error}<div role="alert" class="alert alert-error mb-4">{error}</div>{/if}
           {#if days.isEmpty()}
             <p>{msg:pub_book_no_times}</p>
@@ -59,6 +69,7 @@
             {chrome.tzBar.raw}
             <form method="post" action="/{user}/{type.slug}" class="space-y-4">
               <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+              <input type="hidden" name="durationMinutes" value="{duration.chosen}">
               <div class="booking-grid">
                 <div id="calendar" class="calendar"></div>
                 <div class="time-column">

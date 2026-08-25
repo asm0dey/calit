@@ -17,7 +17,7 @@
           <div class="card bg-base-100 border border-base-300 transition-shadow hover:shadow-lg">
             <div class="card-body">
               <h2 class="card-title">{lt.type.name}</h2>
-              <p class="text-sm text-base-content/70">{lt.type.durationMinutes} min &middot; {lt.type.locationType.display}</p>
+              <p class="text-sm text-base-content/70">{#for d in lt.durations}{#if !d_isFirst} / {/if}{d}{/for} {msg:pub_book_minutes_short} &middot; {lt.type.locationType.display}</p>
               {#if lt.type.description}<p class="text-sm text-base-content/70">{lt.type.description}</p>{/if}
               <div class="card-actions mt-2">
                 <a class="btn btn-primary btn-block" href="{lt.bookUrl}">{msg:pub_user_choose_time} &rarr;</a>

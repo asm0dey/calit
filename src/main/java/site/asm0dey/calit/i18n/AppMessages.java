@@ -287,6 +287,12 @@ public interface AppMessages {
     @Message("Select a Date & Time")
     String pub_book_select_datetime();
 
+    @Message("Meeting length")
+    String pub_book_duration_label();
+
+    @Message("min")
+    String pub_book_minutes_short();
+
     @Message("No available times right now. Please check back later.")
     String pub_book_no_times();
 
