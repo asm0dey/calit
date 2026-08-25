@@ -4,6 +4,7 @@
 {@java.util.List<site.asm0dey.calit.web.WeekRow> week}
 {@java.util.List<site.asm0dey.calit.domain.DateOverride> overrides}
 {@java.util.List<site.asm0dey.calit.web.AdminResource$HostRow> hosts}
+{@java.util.List<site.asm0dey.calit.web.AdminResource$DurationRow> durations}
 {@java.util.List<site.asm0dey.calit.google.GoogleCalendar> writeCalendars}
 {@java.lang.String writeCalendarValue}
 {@java.lang.Boolean writeCalendarDangling}
@@ -92,6 +93,44 @@
           })();
           </script>
           <button type="submit" class="btn btn-primary mt-2">{adm:adm_detail_btn_save}</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300 mb-4">
+      <input type="checkbox">
+      <div class="collapse-title font-semibold">{adm:adm_meetingTypeDetail_section_durations}</div>
+      <div class="collapse-content">
+        <p class="text-sm text-base-content/70 mb-2">{adm:adm_meetingTypeDetail_durations_hint}</p>
+        <form method="post" action="/me/meeting-types/{type.id}/durations" class="fieldset">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>{adm:adm_meetingTypeDetail_duration_col}</th>
+                <th>{adm:adm_shared_availability_buffer_before_label}</th>
+                <th>{adm:adm_shared_availability_buffer_after_label}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#for row in durations}
+                <tr>
+                  <td>
+                    <input class="input input-sm" type="number" min="1" name="d.duration" value="{row.minutes}">
+                    {#if row.isDefault}<span class="badge badge-ghost badge-sm ms-1">{adm:adm_meetingTypeDetail_duration_default}</span>{/if}
+                  </td>
+                  <td><input class="input input-sm" type="number" min="0" name="d.before" value="{#if row.before}{row.before}{/if}"></td>
+                  <td><input class="input input-sm" type="number" min="0" name="d.after" value="{#if row.after}{row.after}{/if}"></td>
+                </tr>
+              {/for}
+              <tr>
+                <td><input class="input input-sm" type="number" min="1" name="d.duration" value=""></td>
+                <td><input class="input input-sm" type="number" min="0" name="d.before" value=""></td>
+                <td><input class="input input-sm" type="number" min="0" name="d.after" value=""></td>
+              </tr>
+            </tbody>
+          </table>
+          <button type="submit" class="btn btn-primary mt-2">{adm:adm_meetingTypeDetail_btn_save_durations}</button>
         </form>
       </div>
     </div>

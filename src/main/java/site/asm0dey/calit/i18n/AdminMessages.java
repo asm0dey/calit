@@ -433,6 +433,25 @@ public interface AdminMessages {
     @Message("Save changes")
     String adm_detail_btn_save();
 
+    @Message("Allowed durations")
+    String adm_meetingTypeDetail_section_durations();
+
+    @Message(
+            "Every length this meeting type may be booked at. Leave a buffer blank to use the meeting type's own; clear a duration to remove that length. The default cannot be removed — change it in Duration above.")
+    String adm_meetingTypeDetail_durations_hint();
+
+    @Message("Duration (minutes)")
+    String adm_meetingTypeDetail_duration_col();
+
+    @Message("default")
+    String adm_meetingTypeDetail_duration_default();
+
+    @Message("Save durations")
+    String adm_meetingTypeDetail_btn_save_durations();
+
+    @Message("Allowed durations saved.")
+    String adm_meetingTypeDetail_durations_saved();
+
     @Message("Booking fields")
     String adm_detail_section_fields();
 

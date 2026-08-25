@@ -54,7 +54,15 @@ Both unresolved upstream -> design work needed before implementation.
   re-render preserves the submitted length instead of resetting it. Landing page shows the full
   allowed set per type via `LandingType.durations`. Single-duration types render byte-identical —
   verified against the pre-existing `BookPageTest` "60 min" assertion.)
-- [ ] Reject saving an allowed set that omits `duration_minutes` (ADR-0003)
+- [x] Owner editor for the allowed-durations set (ADR-0003, amended: no reject-at-save path)
+  (Task 10: `AdminResource.saveDurations` (`POST /me/meeting-types/{id}/durations`) is a delete-all-
+  then-reinsert over `MeetingTypeDuration` rows for the type, from parallel `d.duration`/`d.before`/
+  `d.after` form fields zipped by document order. `detailInstance` renders one `DurationRow` per
+  member of `MeetingTypeDuration.allowedDurations(t)` — so the default always has a row even when
+  the table is empty — plus one blank spare row. Clearing the default's duration field is a no-op on
+  the set (it only drops that row's buffer overrides): the default's membership comes from the union
+  at read time, not from a row the save could refuse to delete, so there is no reject-at-save path,
+  no error message, and no `position`/`is_default` column, per ADR-0003.)
 - [x] Server-side validation of submitted duration (no new Booking column needed — startUtc/endUtc carry it)
   (Task 6: `BookingService.book` gains a 12-arg overload carrying `durationMinutes`;
   `assertDurationAllowed` checks it against `MeetingTypeDuration.isAllowed` before any other

@@ -65,6 +65,7 @@ public class AdminResource {
                 List<WeekRow> week,
                 List<DateOverride> overrides,
                 List<HostRow> hosts,
+                List<DurationRow> durations,
                 List<GoogleCalendar> writeCalendars,
                 String writeCalendarValue,
                 boolean writeCalendarDangling,
@@ -155,6 +156,9 @@ public class AdminResource {
      * so the template never has to look either up.
      */
     public record HostRow(Long ownerId, String username, String role, String status, boolean needsReconnect) {}
+
+    /** One editable row of the allowed-durations table; {@code isDefault} marks the type's own length. */
+    public record DurationRow(int minutes, Integer before, Integer after, boolean isDefault) {}
 
     final BookingService bookingService;
 
@@ -718,6 +722,7 @@ public class AdminResource {
                 weekRows(rules.isEmpty() ? globalRules() : rules),
                 overrides,
                 hostRows(t),
+                durationRows(t),
                 writeCalendars,
                 writeCalendarValue,
                 writeCalendarDangling,
@@ -730,6 +735,24 @@ public class AdminResource {
                 notice,
                 Layout.HOST_TYPEAHEAD_SCRIPT,
                 title);
+    }
+
+    /**
+     * This type's allowed-durations rows, one per member of the union (Task 2's {@link
+     * MeetingTypeDuration#allowedDurations}) so the default always appears even when the table
+     * itself is empty. See {@code docs/adr/0003-a-meeting-types-duration-doubles-as-its-default.md}.
+     */
+    private List<DurationRow> durationRows(MeetingType t) {
+        List<DurationRow> rows = new ArrayList<>();
+        for (int minutes : MeetingTypeDuration.allowedDurations(t)) {
+            MeetingTypeDuration row = MeetingTypeDuration.findRow(t.id, minutes);
+            rows.add(new DurationRow(
+                    minutes,
+                    row == null ? null : row.bufferBeforeMinutes,
+                    row == null ? null : row.bufferAfterMinutes,
+                    minutes == t.durationMinutes));
+        }
+        return rows;
     }
 
     /**
@@ -826,6 +849,65 @@ public class AdminResource {
         return staying.get() > 0
                 ? detailInstance(id, null, m().adm_detail_write_calendar_moved(staying.get()))
                 : detailInstance(id);
+    }
+
+    /**
+     * Replace-all save for a type's allowed-durations table (Task 10). Rows arrive as parallel
+     * {@code d.duration}/{@code d.before}/{@code d.after} fields in document order, so index {@code
+     * i} pairs across the three lists (see {@link MultivaluedMap}'s ordering guarantee). Delete-then-
+     * reinsert is deliberate: the set is tiny, and it is what makes "clear a duration to remove that
+     * length" fall out for free with no diffing path. A row for the type's own default is persisted
+     * like any other and carries only its buffer overrides — the default's set membership comes from
+     * {@link MeetingTypeDuration#allowedDurations}'s union, so clearing this row can never remove the
+     * length (ADR-0003).
+     */
+    @POST
+    @Path("/meeting-types/{id}/durations")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance saveDurations(@PathParam("id") Long id, MultivaluedMap<String, String> form) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = requireType(id); // owner-scoped; 404s for another owner's type
+            List<String> minutes = form.getOrDefault("d.duration", List.of());
+            List<String> before = form.getOrDefault("d.before", List.of());
+            List<String> after = form.getOrDefault("d.after", List.of());
+            MeetingTypeDuration.delete("meetingTypeId = ?1", t.id);
+            for (var i = 0; i < minutes.size(); i++) {
+                var value = parsePositive(minutes.get(i));
+                if (value == null) {
+                    continue; // a blank/invalid duration removes the row; that is how deletion is expressed
+                }
+                MeetingTypeDuration d = new MeetingTypeDuration();
+                d.meetingTypeId = t.id;
+                d.durationMinutes = value;
+                d.bufferBeforeMinutes = parseNonNegative(at(before, i));
+                d.bufferAfterMinutes = parseNonNegative(at(after, i));
+                d.persist();
+            }
+        });
+        return detailInstance(id, null, m().adm_meetingTypeDetail_durations_saved());
+    }
+
+    private static String at(List<String> values, int i) {
+        return i < values.size() ? values.get(i) : null;
+    }
+
+    /** Null for blank or unparseable input, so a stray value never becomes a silent 0-minute meeting. */
+    private static Integer parsePositive(String raw) {
+        var v = parseNonNegative(raw);
+        return (v == null || v <= 0) ? null : v;
+    }
+
+    private static Integer parseNonNegative(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            var v = Integer.parseInt(raw.trim());
+            return v < 0 ? null : v;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**
