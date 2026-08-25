@@ -5,7 +5,7 @@ status: in-progress
 type: feature
 priority: normal
 created_at: 2026-08-15T22:57:11Z
-updated_at: 2026-08-25T20:33:47Z
+updated_at: 2026-08-25T22:03:46Z
 ---
 
 Upstream: https://github.com/asm0dey/calit/issues/119 (reporter h200101)
@@ -39,6 +39,8 @@ Both unresolved upstream -> design work needed before implementation.
 ## Todo
 
 - [x] Resolve buffer semantics per duration — per-duration nullable override, strictest wins (ADR-0002)
+  (Task 5: `MeetingHosts.effectiveBufferBefore/After` gain a `durationMinutes` param; `strictest` maxes
+  only the overrides actually SET, never a null falling back to the type default)
 - [x] Resolve multi-host interaction — NO per-host duration limits (reporter, 2026-08-17): duration is part of the normal availability intersection; a host who won't run a length is a different meeting type
 - [x] Data model + migration (Task 2: `V29__meeting_type_duration.sql` + `MeetingTypeDuration` entity)
 - [x] SlotService duration parameterisation
