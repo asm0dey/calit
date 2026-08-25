@@ -48,11 +48,8 @@ public class PublicResource {
                 List<DaySlots> days,
                 List<BookingField> fields,
                 String error,
-                String tzBar,
-                String tzScript,
-                String calScript,
-                String captchaProvider,
-                String turnstileSiteKey,
+                Chrome chrome,
+                Captcha captcha,
                 boolean googleConnected,
                 String ownerName,
                 String initialGuests);
@@ -162,6 +159,12 @@ public class PublicResource {
      */
     public record LandingType(MeetingType type, String bookUrl) {}
 
+    /** The page furniture every booking-page render passes identically: timezone bar + its scripts. */
+    public record Chrome(String tzBar, String tzScript, String calScript) {}
+
+    /** Captcha wiring for the booking form; siteKey is public and rendered into the page. */
+    public record Captcha(String provider, String siteKey) {}
+
     @GET
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance index() {
@@ -234,11 +237,8 @@ public class PublicResource {
                 byDate,
                 fields,
                 null,
-                Layout.tzBar(m),
-                Layout.TZ_SCRIPT,
-                Layout.CALENDAR_SCRIPT,
-                captchaProviderConfig.provider(),
-                turnstileSiteKey(),
+                new Chrome(Layout.tzBar(m), Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT),
+                new Captcha(captchaProviderConfig.provider(), turnstileSiteKey()),
                 calendarPort.isConnected(type.ownerId),
                 settings.ownerName,
                 "");
@@ -362,11 +362,8 @@ public class PublicResource {
                     daySlots(type),
                     BookingField.formFor(type.ownerId, type.id),
                     be.getMessage(),
-                    Layout.tzBar(m),
-                    Layout.TZ_SCRIPT,
-                    Layout.CALENDAR_SCRIPT,
-                    captchaProviderConfig.provider(),
-                    turnstileSiteKey(),
+                    new Chrome(Layout.tzBar(m), Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT),
+                    new Captcha(captchaProviderConfig.provider(), turnstileSiteKey()),
                     calendarPort.isConnected(type.ownerId),
                     settings.ownerName,
                     "");
