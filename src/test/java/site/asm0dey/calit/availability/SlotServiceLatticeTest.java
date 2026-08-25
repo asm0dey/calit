@@ -81,10 +81,16 @@ class SlotServiceLatticeTest {
     /** One host's Monday window, in that host's OWN local time. */
     @Transactional
     void seedRule(Long meetingTypeId, Long hostOwnerId, LocalTime from, LocalTime to) {
+        seedRule(meetingTypeId, hostOwnerId, DayOfWeek.MONDAY, from, to);
+    }
+
+    /** Same as above for an arbitrary day-of-week (needed to land a window on a specific DST date). */
+    @Transactional
+    void seedRule(Long meetingTypeId, Long hostOwnerId, DayOfWeek dow, LocalTime from, LocalTime to) {
         AvailabilityRule r = new AvailabilityRule();
         r.ownerId = hostOwnerId;
         r.meetingTypeId = meetingTypeId;
-        r.dayOfWeek = DayOfWeek.MONDAY;
+        r.dayOfWeek = dow;
         r.startTime = from;
         r.endTime = to;
         r.persist();
@@ -171,8 +177,10 @@ class SlotServiceLatticeTest {
                     s.plusSeconds(29 * 60L).isAfter(kathmanduClose), "a shared slot cannot run past Kathmandu's close");
         }
 
-        // The comb is dense over that overlap: 08:00Z-12:46Z holds at least nine 29-minute starts.
-        assertTrue(shared.size() >= 9, "expected the comb to be dense over the ~4h45 overlap, got " + shared.size());
+        // The comb over that overlap is exact: on the 29-minute-from-UTC-midnight comb, the first
+        // point >= Berlin's 08:00Z open is 08:13Z (k=17) and the last point <= Kathmandu's
+        // 12:46Z close-minus-body is 12:34Z (k=26) -- 26-17+1 = 10 points.
+        assertEquals(10, shared.size(), "expected exactly 10 shared starts over the ~4h45 overlap");
     }
 
     /**
@@ -202,45 +210,32 @@ class SlotServiceLatticeTest {
     }
 
     /**
-     * The lattice's phase comes from the CREATOR's zone, not the Host's and not UTC. A Kolkata
-     * Creator (a half-hour zone) with a Berlin Host keeps :00/:30 in BOTH zones, because their
-     * offsets differ by a multiple of the 30-minute cadence. Swap the Host to Kathmandu (whose
-     * offset from Kolkata is only 15 minutes) and the Host sees :15/:45 while Kolkata stays
-     * :00/:30 -- proving the predicate is evaluated in the Creator's zone, not the Host's.
+     * The lattice's phase comes from the CREATOR's zone, not the Host's and not plain UTC. Kathmandu
+     * (Creator) is +05:45 -- NOT a multiple of the 30-minute cadence -- so a UTC-anchored bug and a
+     * Host-anchored bug are both distinguishable here: a UTC-round instant, viewed in Kathmandu, sits
+     * at :15/:45 (345 mod 30 = 15), and so does a Berlin-round instant (Berlin/Kathmandu differ by
+     * 4h45 = 285 min, 285 mod 30 = 15) -- neither would satisfy "Kathmandu-local minute is :00/:30"
+     * below. (A Kolkata Creator, +05:30, would NOT distinguish the UTC case: 5:30 is itself a multiple
+     * of 30, so UTC-round and Kolkata-round coincide -- that is why Kathmandu is used here instead.)
      */
     @Test
     void theLatticeIsRoundInTheCreatorsZoneNotTheHosts() {
         var berlin = seedHost("lattice-round-berlin", "Europe/Berlin");
-        MeetingType berlinType = seedType("lattice-round-kolkata-berlin", 30, "Asia/Kolkata", berlin);
-        ZoneId berlinLatticeZone = slotService.latticeZoneFor(berlinType);
+        MeetingType t = seedType("lattice-round-kathmandu-berlin", 30, "Asia/Kathmandu", berlin);
+        ZoneId latticeZone = slotService.latticeZoneFor(t);
 
-        Set<Instant> berlinStarts = starts(berlinType, berlin, berlinLatticeZone);
-        assertFalse(berlinStarts.isEmpty());
-        for (Instant s : berlinStarts) {
-            assertEquals(
-                    0, s.atZone(ZoneId.of("Asia/Kolkata")).getMinute() % 30, "Kolkata-local minute must be :00 or :30");
+        Set<Instant> berlinHostStarts = starts(t, berlin, latticeZone);
+        assertFalse(berlinHostStarts.isEmpty());
+        for (Instant s : berlinHostStarts) {
             assertEquals(
                     0,
-                    s.atZone(ZoneId.of("Europe/Berlin")).getMinute() % 30,
-                    "Berlin-local minute must also be :00 or :30 -- Kolkata/Berlin differ by a multiple of 30");
-        }
-
-        var kathmandu = seedHost("lattice-round-kathmandu-solo", "Asia/Kathmandu");
-        MeetingType kathmanduType = seedType("lattice-round-kolkata-kathmandu", 30, "Asia/Kolkata", kathmandu);
-        ZoneId kathmanduLatticeZone = slotService.latticeZoneFor(kathmanduType);
-
-        Set<Instant> kathmanduStarts = starts(kathmanduType, kathmandu, kathmanduLatticeZone);
-        assertFalse(kathmanduStarts.isEmpty());
-        for (Instant s : kathmanduStarts) {
-            assertEquals(
-                    0,
-                    s.atZone(ZoneId.of("Asia/Kolkata")).getMinute() % 30,
-                    "Kolkata-local minute must stay :00 or :30");
-            var kathmanduMinute = s.atZone(ZoneId.of("Asia/Kathmandu")).getMinute();
+                    s.atZone(ZoneId.of("Asia/Kathmandu")).getMinute() % 30,
+                    "Kathmandu(Creator)-local minute must be :00 or :30");
+            var berlinMinute = s.atZone(ZoneId.of("Europe/Berlin")).getMinute();
             assertTrue(
-                    kathmanduMinute == 15 || kathmanduMinute == 45,
-                    "Kathmandu-local minute must be :15 or :45 (15-minute offset from Kolkata), got "
-                            + kathmanduMinute);
+                    berlinMinute == 15 || berlinMinute == 45,
+                    "Berlin(Host)-local minute must be off-lattice (:15/:45), proving the phase is"
+                            + " neither Berlin's zone nor plain UTC, got " + berlinMinute);
         }
     }
 
@@ -273,5 +268,58 @@ class SlotServiceLatticeTest {
                 .map(s -> s.start().toLocalTime())
                 .toList();
         assertEquals(LocalTime.of(9, 0), local.getFirst(), "window-anchored: the first slot IS the window start");
+    }
+
+    /**
+     * RULING on the fall-back overlap: an ambiguous local hour (walked once per Creator-local day,
+     * per ADR-0008) satisfies the predicate at BOTH offsets -- they are two real, distinct instants
+     * sharing the same Creator-local time-of-day, so both are emitted. This keeps the lattice
+     * (multi-host) path's slot count across a fall-back consistent with the window-anchored
+     * (single-host) path's count, pinned by {@code
+     * SlotServiceTest#aWindowStraddlingAFallBackTransitionCoversTheFullElapsedTime} -- a shared
+     * meeting type must not gain or lose an hour purely because it has a co-host.
+     */
+    @Test
+    void aFallBackHourYieldsBothInstantsOnTheLatticePath() {
+        var berlin1 = seedHost("lattice-fallback-berlin-1", "Europe/Berlin");
+        var berlin2 = seedHost("lattice-fallback-berlin-2", "Europe/Berlin");
+        // 2026-10-25 is Europe/Berlin's fall-back day (a Sunday); seedType's default Monday rule is
+        // irrelevant here, so seed a rule directly on that day-of-week instead.
+        var fallBackDay = LocalDate.of(2026, 10, 25);
+        MeetingType t = seedType("lattice-fallback", 60, "Europe/Berlin");
+        seedRule(t.id, berlin1, fallBackDay.getDayOfWeek(), LocalTime.of(1, 0), LocalTime.of(5, 0));
+        seedRule(t.id, berlin2, fallBackDay.getDayOfWeek(), LocalTime.of(1, 0), LocalTime.of(5, 0));
+        ZoneId latticeZone = slotService.latticeZoneFor(t);
+
+        List<Instant> host1Starts =
+                slotService.generateRawSlots(t, berlin1, fallBackDay, fallBackDay, latticeZone, 60).stream()
+                        .map(s -> s.start().toInstant())
+                        .sorted()
+                        .toList();
+
+        assertEquals(
+                5,
+                host1Starts.size(),
+                "the lattice path must emit 5 starts across the fall-back (the elapsed real time), "
+                        + "matching the single-host window-anchored path's count, not 4");
+
+        // The repeated local hour (02:00 Berlin, walked once as a Creator-local minute) resolves to
+        // two distinct, one-hour-apart instants: 00:00Z is 02:00 CEST (before the transition), 01:00Z
+        // is 02:00 CET (after it). Both must be present.
+        assertTrue(
+                host1Starts.contains(Instant.parse("2026-10-25T00:00:00Z")),
+                "must include the first (CEST) occurrence of the repeated 02:00 hour");
+        assertTrue(
+                host1Starts.contains(Instant.parse("2026-10-25T01:00:00Z")),
+                "must include the second (CET) occurrence of the repeated 02:00 hour");
+
+        // Every Host of the shared type sees the identical start set, so the multi-host intersection
+        // (BookingService.availableSlots) does not lose the extra hour to a host mismatch either.
+        List<Instant> host2Starts =
+                slotService.generateRawSlots(t, berlin2, fallBackDay, fallBackDay, latticeZone, 60).stream()
+                        .map(s -> s.start().toInstant())
+                        .sorted()
+                        .toList();
+        assertEquals(host1Starts, host2Starts);
     }
 }

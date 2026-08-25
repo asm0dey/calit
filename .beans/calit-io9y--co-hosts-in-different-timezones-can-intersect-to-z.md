@@ -5,7 +5,7 @@ status: in-progress
 type: bug
 priority: high
 created_at: 2026-08-25T20:00:13Z
-updated_at: 2026-08-25T21:29:07Z
+updated_at: 2026-08-25T21:52:42Z
 parent: calit-p5xm
 ---
 
@@ -36,7 +36,7 @@ The lattice is now a PREDICATE with no origin, evaluated at each candidate insta
 onLattice(t)  <=>  minuteOfDay(t, creatorZone) mod step == 0
 ```
 
-Candidate starts are walked in LOCAL time and re-resolved to an instant each step (`local = local.plusMinutes(step)`, then `local.atZone(creatorZone)`) — never by adding to a `ZonedDateTime`, which drifts off round local time across a DST fall-back.
+Candidate starts are enumerated per Creator-local DAY: every `step`-minute mark of the day is re-derived from that day's own midnight via `ZoneRules.getValidOffsets(localTime)` — never carried forward across a Creator-local midnight by `plusMinutes` on a running local value (a first cut of this fix did that and was caught by review: it re-derives the phase once per window and then walks it forward, so a window whose Creator-local start falls late the previous day, or a step that does not divide 1440, drifts onto a different comb -- two combs again, verified against the reviewer's LA/Berlin cadence-50 repro, which the buggy version intersected to 0 and the corrected per-day version intersects to 7, matching the ADR predicate). `getValidOffsets` also resolves DST correctly: zero offsets for a spring-forward gap (skip), two for a fall-back's repeated hour (emit BOTH -- both are real, distinct instants satisfying the predicate, which keeps single-host and multi-host slot counts consistent across the same transition).
 
 Creator's zone still supplies the phase (round times on the clock of whoever defined the type; an all-one-timezone shared type keeps exactly today's start times), but the zone's rules are read at `t` rather than frozen at an origin date, so a zone whose offset has changed historically (Kathmandu, Lisbon, ...) is unaffected. Request-independence falls out of the predicate having no origin at all: whether the request's range is `D` or `D-3..D+3`, the candidate starts on day `D` are identical.
 
@@ -50,7 +50,9 @@ Being fixed inside [[calit-p5xm]], which rewrites the same grid line (step stops
 
 - [x] ADR-0008: the slot lattice is anchored to the Creator's clock (revised to a no-origin predicate, superseding the epoch-anchored `2a59d0f` attempt)
 - [x] Replace the `boolean dayAnchoredGrid` parameter, then the epoch-anchored `Instant gridAnchor`, with a nullable `ZoneId latticeZone` (null = window-anchored, single-host); `gridAnchorFor` replaced by `SlotService.latticeZoneFor`
-- [x] Walk candidate starts in LOCAL time in the Creator's zone, re-resolving to an instant each step (never `ZonedDateTime.plusMinutes`, which drifts off round local time across a DST fall-back)
+- [x] Enumerate candidate starts per Creator-local DAY via `ZoneRules.getValidOffsets` (never carry the phase forward across a Creator-local midnight by `plusMinutes` on a running local value -- that shape shipped once, was caught by review, and is fixed)
+- [x] Handle DST correctly: skip a spring-forward gap (zero valid offsets); emit BOTH instants of a fall-back's repeated hour; `continue` (not `break`) on the window-end test since the resolved-instant sequence is not monotone once candidates can be skipped/doubled; sort the returned list by start instant so callers never see out-of-order slots
+- [x] Regression test: multi-host fall-back emits 5 starts (both instants of the repeated hour), matching the single-host count (`SlotServiceLatticeTest#aFallBackHourYieldsBothInstantsOnTheLatticePath`)
 - [x] Regression test: London + Berlin, 45-minute cadence, both free 09:00-17:00 local -> non-empty intersection (`SlotServiceLatticeTest#hostsAnHourApartShareALatticeOnAFortyFiveMinuteCadence`)
 - [x] Regression test: Berlin + Kathmandu, 30-minute cadence -> non-empty intersection (`#aQuarterHourOffsetZoneStillShares`)
 - [x] Regression test: all-hosts-one-timezone shared type -> start times unchanged from today (`AvailableSlotsIntersectionTest`, all-Amsterdam, byte-identical; plus the new `#anAllKathmanduTeamKeepsRoundLocalTimes`, which is what the epoch-anchored `2a59d0f` attempt actually failed -- it produced `09:15` instead of `09:00`)

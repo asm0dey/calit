@@ -173,7 +173,7 @@ public class BookingService {
             Instant earliest,
             Instant latest,
             ZoneId latticeZone) {
-        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(hostId).timezone);
+        ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(OwnerSettings.forOwner(hostId).timezone));
         var fromInstant = from.atStartOfDay(zone).toInstant();
         var toInstant = to.plusDays(1).atStartOfDay(zone).toInstant();
         List<Interval> busy = busyIntervals(hostId, fromInstant, toInstant, excludeBookingIds);

@@ -71,15 +71,30 @@ override shifts every start time that day for everyone, including on a type they
 - `generateRawSlots` takes a nullable `ZoneId latticeZone` in place of the `boolean
   dayAnchoredGrid` flag. Null means window-anchored: single-host keeps its historical behaviour
   byte-identical, including the rule that each window of a multi-window day anchors itself.
-- Candidate starts are walked in **local** time and re-resolved to an instant each step
-  (`local = local.plusMinutes(step)`, then `local.atZone(zone)`), never by adding to a
-  `ZonedDateTime` — Java defines `ZonedDateTime.plusMinutes` on the instant time-line, which drifts
-  an hour off round after a fall-back and reintroduces the problem this decision removes.
+- Candidate starts are enumerated per Creator-local **day**: every `step`-minute mark of the day
+  (`00:00`, `00:step`, … ) is re-derived from that day's own midnight, never carried forward across
+  a Creator-local midnight by adding `step` to a running local time. A step that does not divide
+  1440 (25, 29, 50, …) would otherwise phase-shift a window whose Creator-local start falls on a
+  different day than its own midnight computation assumes — the same two-combs defect this decision
+  exists to remove, just moved from "per Host" to "per window".
+- Each candidate local time is resolved with `ZoneRules.getValidOffsets`, never a single-valued
+  `ZonedDateTime.atZone`/`plusMinutes` walk: a local time inside a spring-forward gap has **zero**
+  valid offsets (it is skipped, not silently pushed forward across the gap), and a local time inside
+  a fall-back's repeated hour has **two** — both real, distinct instants — so both are emitted (see
+  the next bullet). Because a local minute can resolve to zero, one, or two instants, the candidate
+  sequence is not monotone in the instant time-line, so a caller may not `break` out of the per-day
+  loop on the first out-of-window candidate; it must skip (`continue`) instead, and the method sorts
+  its output by start instant before returning so callers still see chronological order.
 - A Host whose zone is offset from the Creator's by a non-multiple of the cadence sees unround
   local start times — a Kathmandu Host on a Berlin Creator's 30-minute type reads `:15`/`:45`.
   Those are the only instants everyone can share; the alternative is the none they are offered now.
 - The lattice has a deliberate discontinuity at a DST transition in the Creator's zone, and when
   the cadence does not divide 1440 the final interval of each Creator-local day is short. Both are
   identical for every Host, which is what correctness requires.
+- Across a fall-back in the Creator's zone, the repeated local hour yields **two** candidate
+  instants, one per offset, because both satisfy the predicate — the Creator-local time-of-day is
+  identical and both are real, distinct moments. This keeps the multi-host (lattice) path's slot
+  count consistent with the single-host (window-anchored) path's count across the same transition,
+  rather than one silently offering an hour the other does not.
 - Changing a Creator's timezone moves the lattice for every type they own. Changing a Co-host's
   does not.
