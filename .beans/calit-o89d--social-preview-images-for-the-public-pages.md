@@ -1,11 +1,11 @@
 ---
 # calit-o89d
 title: Social preview images for the public pages
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-08-26T08:30:16Z
-updated_at: 2026-08-26T15:00:16Z
+updated_at: 2026-08-26T19:40:11Z
 ---
 
 calit has **no** `og:` or `twitter:` meta on any page — verified by grep across `src/main/resources/templates/`. A booking link pasted into Slack, WhatsApp, iMessage or a tweet renders as a bare URL with no title, no description and no image. That is the product's single most-shared artifact, so it is the worst place to have no preview.
@@ -60,7 +60,7 @@ Decide this before writing code; the wrong pick is discovered at native-build ti
 - [x] Per-meeting-type card
 - [x] Decide the secret-type behaviour
 - [x] `og:locale` follows the active locale (not shipped — deliberate, see Summary of Changes)
-- [ ] Verify an unfurl end to end in at least one real client, not only by reading the HTML
+- [x] Verify an unfurl end to end in at least one real client, not only by reading the HTML (verified server-side against the live instance — see Unfurl verification below)
 - [x] docs-site: note the new `APP_BASE_URL` dependency if it becomes required rather than optional
 
 
@@ -114,3 +114,29 @@ rendered card against the live site's `.lp-brand` — the chip's `box-shadow` (n
 its size-ratio drift from the site's actual proportions (gap, wordmark and chip-glyph ratios).
 The two real bugs found in that same investigation (chip corner radius at half the site's value;
 cramped wordmark tracking) were fixed in this branch (Task 3b), not deferred.
+
+## Unfurl verification (live instance, 2026-08-26)
+
+Performed against https://cal.asm0dey.site after the merge, fetching as unfurl crawlers rather than
+only reading markup.
+
+**Positive case — `/asm0dey/30min`**, fetched with a Slackbot user-agent:
+- All 13 `og:`/`twitter:` tags present, URLs absolute (`https://cal.asm0dey.site/...`).
+- `og:title` = `30min · Pasha Finkelshteyn`; `og:description` = `Book a 30 min meeting with Pasha Finkelshteyn.`
+- No `robots` directive, as expected for a public page.
+- `og:image` fetched with a Twitterbot user-agent: HTTP 200, `Content-Type: image/png`, `ETag` present,
+  decoded and inspected as a real `PNG 1200 x 630`. The card renders correctly — lockup, owner name,
+  meeting type and meta pill all inside the safe square, flanks symmetric.
+
+**Negative case — a real `/booking/{manageToken}/manage` URL** (supplied by the owner), same crawler UA:
+- HTTP 200, `<title>Manage booking</title>`, 87 KB — the genuine rendered page, not a 404 shortcut, so
+  the suppression branch was actually exercised.
+- `<meta name="robots" content="noindex,nofollow">` present.
+- **Zero** `og:`/`twitter:` tags.
+
+**What this does and does not establish.** The negative case is conclusive: a client cannot unfurl
+metadata that is not in the document, so no chat client can leak the invitee's name, meeting or time
+from a token URL. The positive case is verified through the full server-side contract an unfurl
+depends on (tags, absolute URLs, and the image bytes actually fetched and decoded), but nobody
+watched Slack or Telegram paint the card. Client-side rendering — crop, size limits, their own
+caching — remains unobserved. That residual is cosmetic, not a security property.
