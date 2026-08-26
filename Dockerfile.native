@@ -35,17 +35,39 @@ RUN printf 'git.build.version=%s\ngit.commit.id.abbrev=%s\n' "$APP_VERSION" "$GI
 # classes. They are (de)serialized reflectively (no-arg ctor + @Key fields) but ship NO native
 # metadata in their jars (google-api-client / google-oauth-client / google-api-services-calendar),
 # so without this the OAuth token + freeBusy JSON parsing crashes at runtime in the native image.
-# Each "-H:Preserve=..." is a separate comma item (Quarkus splits additional-build-args on commas).
+# --initialize-at-build-time=java.awt.Color: discovered by this change (calit-o89d), NOT one of the
+# three request-time failures this file's other comments describe -- this one fails the BUILD
+# itself. CardRenderer's static final Color constants (BG/INK/INDIGO/...) get folded into the image
+# heap because CardRenderer is a CDI bean whose class is initialized at build time; java.awt.Color
+# is run-time-initialized by GraalVM's default policy, and native-image refuses to embed a
+# run-time-initialized type's instances in the heap. Color's static state is just RGB int fields --
+# no native/platform/sensitive state -- so build-time init is exactly what GraalVM's own error
+# message recommends here. Fixing this in CardRenderer.java instead (e.g. building Color values
+# lazily) would touch the rendering code Task 4's determinism tests depend on; this flag does not.
+# Each of these is a separate comma item (Quarkus splits additional-build-args on commas).
 RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw -B -DskipTests package -Dquarkus.native.enabled=true \
-    "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken,--initialize-at-run-time=org.altcha.altcha.v1.Altcha"
+    "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken,--initialize-at-run-time=org.altcha.altcha.v1.Altcha,--initialize-at-build-time=java.awt.Color"
 
 # --- Runtime stage: Alpaquita musl base (~3.9MB) — no JDK, just the native binary ---
 FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:d0bf46cb446f36eccacad2604d858537e4455ee2b663729c1f588ca6bb5eca33 AS runtime
 WORKDIR /app
 # ca-certificates: outbound TLS to Google API + SMTP. zlib: the binary links libz.so.1.
-RUN apk add --no-cache ca-certificates zlib && update-ca-certificates
+# freetype + fontconfig: required by quarkus-awt for native mode, per its own guide. The font
+# package goes beyond what that guide lists and is NOT decorative: with no font file anywhere the
+# JDK font manager fails to initialise ("Fontconfig head is null"), and that breaks Font.createFont
+# even for a TTF embedded in the binary. Moving to a hardened/distroless base (calit-gabg) requires
+# switching this to a copy-from-builder stack instead: libfreetype.so.6, libfontconfig.so.1,
+# libexpat, libbz2, libpng16, libbrotlidec, libbrotlicommon, /etc/fonts, the font files, and
+# /var/cache/fontconfig with fc-cache run in the builder stage. Font.createFont(InputStream) also
+# spills to a temp file, so a read-only root filesystem needs a tmpfs mount at /tmp or card
+# rendering fails at request time regardless of the font stack.
+RUN apk add --no-cache ca-certificates zlib freetype fontconfig font-dejavu-core && update-ca-certificates
 COPY --chown=1001:1001 --from=build /build/target/*-runner /app/application
+# AWT in a native image dlopen()s these JDK libraries at runtime; native-image emits them beside the
+# binary instead of linking them in, so they must ship with it.
+COPY --chown=1001:1001 --from=build /build/target/*-native-image-source-jar/*.so /app/lib/
+ENV LD_LIBRARY_PATH=/app/lib
 USER 1001
 EXPOSE 8080
 ENV QUARKUS_HTTP_HOST=0.0.0.0 \

@@ -231,6 +231,47 @@
         </configuration>
       </plugin>
       <plugin>
+        <!-- Runs @QuarkusIntegrationTest classes: Quarkus packages the app (quarkus:build already
+             ran in an earlier phase) and this plugin boots the packaged quarkus-app/quarkus-run.jar
+             as a SEPARATE process, then runs *IT.java against it over real HTTP. This is the
+             packaging check for calit-o89d: it proves the runtime AWT/font stack works against the
+             actual build artifact, not just the in-JVM @QuarkusTest classpath. Standard Quarkus
+             wiring (integration-test + verify goals bound to their default phases). -->
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>${surefire-plugin.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+            <configuration>
+              <systemPropertyVariables>
+                <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
+                <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                <maven.home>${maven.home}</maven.home>
+              </systemPropertyVariables>
+              <!-- The launched quarkus-run.jar boots as %prod (the packaged default), which requires
+                   the same env vars .github/workflows/ci.yml's smoke test supplies to a real prod
+                   container. MAIL_FROM/USERNAME/PASSWORD stay unset on purpose, same as that smoke
+                   test: QUARKUS_MAILER_MOCK=true short-circuits the real SMTP client before those are
+                   read. DB_* is not needed here: Quarkus keeps the Dev Services Postgres from the test
+                   phase alive and injects its JDBC URL/credentials as system properties automatically. -->
+              <environmentVariables>
+                <SESSION_ENCRYPTION_KEY>it-session-key-0123456789-abcdef</SESSION_ENCRYPTION_KEY>
+                <TOKEN_ENCRYPTION_KEY>1111111111111111111111111111111111111111111111111111111111111111</TOKEN_ENCRYPTION_KEY>
+                <APP_BASE_URL>http://localhost:8081</APP_BASE_URL>
+                <MAIL_HOST>localhost</MAIL_HOST>
+                <QUARKUS_MAILER_MOCK>true</QUARKUS_MAILER_MOCK>
+                <GOOGLE_OAUTH_CLIENT_ID>dummy</GOOGLE_OAUTH_CLIENT_ID>
+                <GOOGLE_OAUTH_CLIENT_SECRET>dummy</GOOGLE_OAUTH_CLIENT_SECRET>
+                <GOOGLE_OAUTH_STATE_SECRET>it-state-secret-0123456789-abcdef</GOOGLE_OAUTH_STATE_SECRET>
+              </environmentVariables>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>io.github.git-commit-id</groupId>
         <artifactId>git-commit-id-maven-plugin</artifactId>
         <version>10.0.0</version>

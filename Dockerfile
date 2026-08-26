@@ -52,6 +52,17 @@ COPY --chown=1001:1001 --from=build /build/target/quarkus-app/*.jar ./
 COPY --chown=1001:1001 --from=build /build/target/quarkus-app/app/ app/
 COPY --chown=1001:1001 --from=build /build/target/quarkus-app/quarkus/ quarkus/
 
+# The JRE image ships libfontmanager.so but not the libfreetype.so.6 it links against, and no font
+# at all -- so AWT card rendering fails at request time without these. See Dockerfile.native for
+# why the font package is required, not decorative. Moving to a hardened/distroless base
+# (calit-gabg) requires switching this to a copy-from-builder stack instead: libfreetype.so.6,
+# libfontconfig.so.1, libexpat, libbz2, libpng16, libbrotlidec, libbrotlicommon, /etc/fonts, the
+# font files, and /var/cache/fontconfig with fc-cache run in the builder stage.
+# Font.createFont(InputStream) also spills to a temp file, so a read-only root filesystem needs a
+# tmpfs mount at /tmp or card rendering fails at request time regardless of the font stack.
+USER root
+RUN apk add --no-cache freetype fontconfig font-dejavu-core
+
 # Run as a non-root numeric UID (SEC-DEP-05). A numeric UID needs no /etc/passwd entry.
 USER 1001
 

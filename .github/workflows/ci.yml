@@ -229,13 +229,14 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
 
-      # Native-only: boot the just-built image and exercise the paths that fail in native but
-      # pass on the JVM (build-heap RNG, BouncyCastle argon2id, Hibernate, Qute render, JSON
-      # reflection). Catches reflection/init regressions BEFORE the push. The Google freeBusy
-      # path can't be smoked here (needs real OAuth tokens) — it relies on -H:Preserve in
+      # Boot the just-built image and exercise the paths that fail at request time even though the
+      # build was green (build-heap RNG, BouncyCastle argon2id, Hibernate, Qute render, JSON
+      # reflection, AWT card rendering). Runs for BOTH variants: the font/AWT failure mode this
+      # step's card checks guard against hits the JVM image exactly as it hits native (calit-o89d)
+      # -- only the reflection/init log check below is native-specific in practice. The Google
+      # freeBusy path can't be smoked here (needs real OAuth tokens) — it relies on -H:Preserve in
       # Dockerfile.native, which covers those packages by construction.
-      - name: Smoke test native image
-        if: matrix.variant == 'native'
+      - name: Smoke test image
         run: |
           set -euo pipefail
           IMG=calit:scan-${{ matrix.arch }}${{ matrix.suffix }}
@@ -257,7 +258,7 @@ jobs:
             docker ps -q -f name=app -f status=running | grep -q . || { echo "::error::app container exited during boot"; break; }
             sleep 1
           done
-          if [ -z "$ready" ]; then echo "::error::native image did not become ready"; docker logs app; exit 1; fi
+          if [ -z "$ready" ]; then echo "::error::image did not become ready"; docker logs app; exit 1; fi
           # /setup render (Qute) + create admin (argon2id / BouncyCastle native path) with CSRF.
           csrf=$(curl -s -c /tmp/cj http://localhost:8080/setup | grep -oP 'name="csrf-token"[^>]*value="\K[^"]+' | head -1)
           code=$(curl -s -b /tmp/cj -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/setup \
@@ -265,11 +266,21 @@ jobs:
             --data-urlencode "password=hunter2hunter2" --data-urlencode "csrf-token=$csrf")
           echo "/setup POST -> $code"
           [ "$code" = "302" ] || { echo "::error::/setup (argon2id) returned $code, expected 302"; docker logs app; exit 1; }
+          # The card endpoint is the one path that is build-green and request-red when the runtime
+          # image lacks AWT's .so files or any font at all. Assert real PNG bytes, not just a 200.
+          # /og.png is the constant product card (proves AWT works at all); /og/admin.png resolves
+          # the real admin user through AppUser -> OwnerSettings -> CardRenderer and draws real text
+          # through the font chain, so it is the stronger probe of the two.
+          curl -fs http://localhost:8080/og.png -o /tmp/og.png
+          head -c 4 /tmp/og.png | grep -q 'PNG' || { echo "::error::/og.png is not a PNG"; docker logs app; exit 1; }
+          curl -fs http://localhost:8080/og/admin.png -o /tmp/og-admin.png
+          head -c 4 /tmp/og-admin.png | grep -q 'PNG' || { echo "::error::/og/admin.png is not a PNG"; docker logs app; exit 1; }
+          echo "og card smoke test passed"
           # Fail on reflection/init errors even if a request happened to return non-fatally.
           if docker logs app 2>&1 | grep -iE 'NoSuchMethodException|InstantiationException|no accessible default constructor|UnsupportedFeatureException'; then
             echo "::error::native reflection/init error in logs"; exit 1
           fi
-          echo "native smoke test passed"
+          echo "image smoke test passed"
           docker rm -f app pg >/dev/null 2>&1 || true
 
       - name: Build and push by digest
