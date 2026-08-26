@@ -20,15 +20,23 @@ Merged but not yet in a tagged release.
   preview and are marked `noindex` — an unfurl there would paint the
   invitee's name and meeting time into whatever chat the link was pasted
   into. Secret meeting types show the generic calit card rather than naming
-  the meeting. Make sure `APP_BASE_URL` is set to the public URL of your
-  instance: preview image and page URLs are absolute and are built from it,
-  so a wrong value has a visible failure mode. Card rendering also needs
-  `/tmp` to stay writable — `Font.createFont` spills the embedded font to a
-  temporary file, so a container run with a read-only root filesystem needs
-  a tmpfs mount at `/tmp` or card generation fails at request time. The JVM
-  image grows by about 6 MB (214 MB → 220 MB) for the added font-rendering
-  libraries and bundled font; the native image is about 161 MB. No database
-  changes. ([#N](https://github.com/asm0dey/calit/pull/N))
+  the meeting.
+  ([#N](https://github.com/asm0dey/calit/pull/N))
+- **The production JVM image is now hardened and distroless.** It moved to a
+  distroless BellSoft base with no shell and no package manager, so
+  `docker exec -it <container> sh` (or any other shell-based debugging) no
+  longer works against it. The base swap also brings the font stack this
+  release needs for card rendering, and despite that it makes the image
+  **smaller**: 214 MB → 211 MB. The native image is unaffected by the base
+  swap and is about 161 MB.
+
+Two things to check before you rely on this: set `APP_BASE_URL` to the
+public URL of your instance — preview image and page URLs are absolute and
+are built from it, so a wrong value has a visible failure mode. And keep
+`/tmp` writable — `Font.createFont` spills the embedded font to a temporary
+file, so a container run with a read-only root filesystem needs a tmpfs
+mount at `/tmp` or card generation fails at request time. No database
+changes.
 
 ## 1.22.0
 
