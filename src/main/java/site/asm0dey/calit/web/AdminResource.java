@@ -241,13 +241,21 @@ public class AdminResource {
     private static final DateTimeFormatter MANAGE_TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final String PENDING_BY_OWNER_QUERY = "ownerId = ?1 and status = ?2 order by startUtc";
 
-    /** Available slots for a meeting type as an ordered per-day list (reuses the public view records). */
-    private List<PublicResource.DaySlots> daySlots(MeetingType type) {
+    /**
+     * Available slots for a meeting type as an ordered per-day list (reuses the public view
+     * records), at a caller-chosen {@code durationMinutes} rather than the type's own default —
+     * mirrors {@link PublicResource#daySlots(MeetingType, int)}. The owner-side reschedule grid
+     * (see {@link #renderManage}) must be drawn at the BOOKING's own length, not the type's
+     * default: {@code POST /me/bookings/{id}/reschedule} re-checks at
+     * {@link BookingService#lengthOf}, so a grid drawn at any other length can offer a slot that
+     * re-check then rejects (a bare 409 on a slot the page just drew).
+     */
+    private List<PublicResource.DaySlots> daySlots(MeetingType type, int durationMinutes) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         var from = LocalDate.now(zone);
         LocalDate to = from.plusDays(type.horizonDays);
         Map<String, PublicResource.DaySlots> byIso = new LinkedHashMap<>();
-        for (TimeSlot slot : bookingService.availableSlots(type, from, to)) {
+        for (TimeSlot slot : bookingService.availableSlots(type, from, to, Set.of(), durationMinutes)) {
             String isoDate = slot.start().toLocalDate().toString();
             var day = byIso.computeIfAbsent(
                     isoDate,
@@ -872,10 +880,19 @@ public class AdminResource {
             List<String> before = form.getOrDefault("d.before", List.of());
             List<String> after = form.getOrDefault("d.after", List.of());
             MeetingTypeDuration.delete("meetingTypeId = ?1", t.id);
+            // The form renders one row per allowed length PLUS a blank spare (see durationRows/the
+            // durations table), so typing an already-present length into the spare is an ordinary
+            // user mistake, not a crafted request. Two rows sharing a duration would otherwise share
+            // an @IdClass key and 500 the whole save on the Hibernate insert (calit-mjof twin). Skip a
+            // repeat rather than persist it twice; the first occurrence wins, later ones are dropped.
+            Set<Integer> seen = new HashSet<>();
             for (var i = 0; i < minutes.size(); i++) {
                 var value = parsePositive(minutes.get(i));
                 if (value == null) {
                     continue; // a blank/invalid duration removes the row; that is how deletion is expressed
+                }
+                if (!seen.add(value)) {
+                    continue; // duplicate duration -- keep the first occurrence, drop the rest
                 }
                 MeetingTypeDuration d = new MeetingTypeDuration();
                 d.meetingTypeId = t.id;
@@ -1525,7 +1542,10 @@ public class AdminResource {
                 b,
                 current,
                 b.startUtc.toString(),
-                daySlots(type),
+                // Reschedule freezes the booked length (no picker on this page): the re-check at
+                // POST /me/bookings/{id}/reschedule runs at BookingService.lengthOf(b), so the grid
+                // must be drawn at that same length, not the type's default (calit-mjof).
+                daySlots(type, BookingService.lengthOf(b)),
                 guestsCsv,
                 pendingCount(),
                 isAdmin(),

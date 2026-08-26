@@ -209,10 +209,14 @@ public class PublicResource {
         // Batch the multi-host bookability check: one host query + one user query for the whole
         // set, instead of isMultiHost() + bookable() (forType + findById per host) per type.
         Set<Long> bookableIds = meetingHosts.bookableTypeIds(candidates);
-        List<LandingType> types = candidates.stream()
-                .filter(t -> bookableIds.contains(t.id))
-                .map(t -> new LandingType(
-                        t, "/" + bookUsernameFor(t, owner) + "/" + t.slug, MeetingTypeDuration.allowedDurations(t)))
+        List<MeetingType> bookableTypes =
+                candidates.stream().filter(t -> bookableIds.contains(t.id)).toList();
+        // Batch allowedDurations the same way: one query for every bookable type's configured rows
+        // instead of one SELECT per type inside the map below (this is the exact per-type fan-out
+        // bookableTypeIds above exists to collapse -- see its javadoc).
+        Map<Long, List<Integer>> durationsByType = allowedDurationsByType(bookableTypes);
+        List<LandingType> types = bookableTypes.stream()
+                .map(t -> new LandingType(t, "/" + bookUsernameFor(t, owner) + "/" + t.slug, durationsByType.get(t.id)))
                 .toList();
         return Templates.landing(m.pub_user_title(), types, owner.username, settings.ownerName);
     }
@@ -310,6 +314,36 @@ public class PublicResource {
             return new BookingTarget(type, settings, urlUser, Templates.hostPending(m.pub_host_pending_title()));
         }
         return new BookingTarget(type, settings, urlUser, null);
+    }
+
+    /**
+     * Batches {@link MeetingTypeDuration#allowedDurations} over a whole type set: one query for
+     * every type's configured duration rows (grouped by {@code meetingTypeId}), instead of one
+     * SELECT per type. Mirrors {@code allowedDurations}'s own union logic per type -- the type's
+     * own {@code durationMinutes} is always an implicit member of its set, even when it has no
+     * configured rows at all.
+     */
+    private static Map<Long, List<Integer>> allowedDurationsByType(List<MeetingType> types) {
+        if (types.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = types.stream().map(t -> t.id).toList();
+        Map<Long, List<MeetingTypeDuration>> rowsByType =
+                MeetingTypeDuration.<MeetingTypeDuration>list("meetingTypeId in ?1", ids).stream()
+                        .collect(Collectors.groupingBy(d -> d.meetingTypeId));
+        Map<Long, List<Integer>> result = new HashMap<>();
+        for (MeetingType t : types) {
+            List<Integer> all = new ArrayList<>();
+            all.add(t.durationMinutes);
+            for (MeetingTypeDuration d : rowsByType.getOrDefault(t.id, List.of())) {
+                if (d.durationMinutes != t.durationMinutes) {
+                    all.add(d.durationMinutes);
+                }
+            }
+            all.sort(Integer::compareTo);
+            result.put(t.id, all);
+        }
+        return result;
     }
 
     /** The username a landing entry should book at: the owner's own for their types, else the creator's. */

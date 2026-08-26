@@ -720,7 +720,7 @@ public class BookingService {
      * carrying an arbitrary duration builds a self-consistent lattice of its own that passes every
      * downstream check. Rejected as the same 409 an unavailable slot produces.
      */
-    void assertDurationAllowed(MeetingType type, int durationMinutes) {
+    private void assertDurationAllowed(MeetingType type, int durationMinutes) {
         if (!MeetingTypeDuration.isAllowed(type, durationMinutes)) {
             throw new BookingConflictException("Duration " + durationMinutes + " is not offered by " + type.slug);
         }
@@ -736,24 +736,10 @@ public class BookingService {
     }
 
     /**
-     * Throws BookingConflictException unless an available slot starts exactly at {@code startUtc}.
-     */
-    private void assertSlotAvailable(MeetingType type, Instant startUtc, Long excludeBookingId) {
-        assertSlotAvailable(type, startUtc, excludeBookingId == null ? Set.of() : Set.of(excludeBookingId));
-    }
-
-    /**
-     * Same as {@link #assertSlotAvailable(MeetingType, Instant, Long)} but excludes every id in
-     * {@code excludeBookingIds} — used by the group reschedule re-check.
-     */
-    private void assertSlotAvailable(MeetingType type, Instant startUtc, Set<Long> excludeBookingIds) {
-        assertSlotAvailable(type, startUtc, excludeBookingIds, type.durationMinutes);
-    }
-
-    /**
-     * Same as {@link #assertSlotAvailable(MeetingType, Instant, Set)} but for a caller-chosen
-     * {@code durationMinutes} — used by {@link #book} once the submitted length has already passed
-     * {@link #assertDurationAllowed}.
+     * Throws BookingConflictException unless an available slot starts exactly at {@code startUtc},
+     * for a caller-chosen {@code durationMinutes} — used by {@link #book} once the submitted
+     * length has already passed {@link #assertDurationAllowed}, and by the reschedule paths at the
+     * booking's own {@link #lengthOf} length.
      */
     private void assertSlotAvailable(
             MeetingType type, Instant startUtc, Set<Long> excludeBookingIds, int durationMinutes) {

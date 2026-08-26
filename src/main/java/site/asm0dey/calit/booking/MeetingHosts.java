@@ -122,14 +122,6 @@ public class MeetingHosts {
         return chosen;
     }
 
-    public int effectiveBufferBefore(MeetingType type, Long hostOwnerId) {
-        return effectiveBufferBefore(type, hostOwnerId, type.durationMinutes);
-    }
-
-    public int effectiveBufferAfter(MeetingType type, Long hostOwnerId) {
-        return effectiveBufferAfter(type, hostOwnerId, type.durationMinutes);
-    }
-
     public int effectiveBufferBefore(MeetingType type, Long hostOwnerId, int durationMinutes) {
         MeetingTypeHost h = MeetingTypeHost.find(type.id, hostOwnerId);
         MeetingTypeDuration d = MeetingTypeDuration.findRow(type.id, durationMinutes);

@@ -217,7 +217,9 @@ public class SlotService {
     private Availability loadAvailability(MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to) {
         // 1) Rules: this owner's per-type + global, grouped by day-of-week.
         List<AvailabilityRule> rules = AvailabilityRule.list(
-                "ownerId = ?1 and (meetingTypeId = ?2 or meetingTypeId is null)", hostOwnerId, type.id);
+                "ownerId = ?1 and (meetingTypeId = ?2 or meetingTypeId is null) order by startTime",
+                hostOwnerId,
+                type.id);
         Map<DayOfWeek, List<AvailabilityRule>> typedRules = rules.stream()
                 .filter(r -> type.id.equals(r.meetingTypeId))
                 .collect(Collectors.groupingBy(r -> r.dayOfWeek));

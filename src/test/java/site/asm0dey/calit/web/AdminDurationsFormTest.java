@@ -114,6 +114,88 @@ class AdminDurationsFormTest {
     }
 
     @Test
+    void duplicateDurationRowsDoNotFailTheSave() {
+        // Two rows sharing a duration -- the ordinary user mistake of typing an already-present
+        // length into the trailing blank spare row (calit-mjof twin: without de-dup this used to
+        // 500 on the Hibernate insert, since both rows share the same @IdClass key).
+        var id = seedType("durations-dup-" + System.nanoTime(), 60);
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("d.duration", "30", "30")
+                .formParam("d.before", "5", "45")
+                .formParam("d.after", "5", "45")
+                .when()
+                .post("/me/meeting-types/" + id + "/durations")
+                .then()
+                .statusCode(200);
+
+        MeetingType t = MeetingType.findById(id);
+        assertEquals(List.of(30, 60), MeetingTypeDuration.allowedDurations(t));
+        // First occurrence wins; the second (duplicate) row is dropped rather than persisted.
+        MeetingTypeDuration saved = MeetingTypeDuration.findRow(id, 30);
+        assertEquals(5, saved.bufferBeforeMinutes);
+        assertEquals(5, saved.bufferAfterMinutes);
+    }
+
+    @Test
+    void aZeroBufferSurvivesASaveRenderSaveRoundTrip() {
+        // Qute's falsy rule treats a zero Integer as false, so `{#if row.before}` used to render a
+        // stored 0 as an empty box; the next save would then read that blank back as null and
+        // silently revert the deliberate "no buffer at all" setting (calit-mjof twin).
+        var id = seedType("durations-zero-buffer-" + System.nanoTime(), 60);
+        String cred = FormAuth.login();
+
+        given().cookie("quarkus-credential", cred)
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("d.duration", "30")
+                .formParam("d.before", "0")
+                .formParam("d.after", "0")
+                .when()
+                .post("/me/meeting-types/" + id + "/durations")
+                .then()
+                .statusCode(200);
+
+        MeetingTypeDuration savedRow = MeetingTypeDuration.findRow(id, 30);
+        assertEquals(0, savedRow.bufferBeforeMinutes);
+        assertEquals(0, savedRow.bufferAfterMinutes);
+
+        // Render the detail page: the 0 must show up as an explicit "0" in the input's value
+        // attribute, not an empty box.
+        String body = given().cookie("quarkus-credential", cred)
+                .when()
+                .get("/me/meeting-types/" + id)
+                .then()
+                .statusCode(200)
+                .extract()
+                .body()
+                .asString();
+        assertEquals(
+                1,
+                body.split("name=\"d\\.before\" value=\"0\"", -1).length - 1,
+                "the stored 0 buffer must render as an explicit 0, not a blank box");
+        assertEquals(
+                1,
+                body.split("name=\"d\\.after\" value=\"0\"", -1).length - 1,
+                "the stored 0 buffer must render as an explicit 0, not a blank box");
+
+        // Re-submitting the rendered (non-blank) value must persist 0 again, not revert to null.
+        given().cookie("quarkus-credential", cred)
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("d.duration", "30")
+                .formParam("d.before", "0")
+                .formParam("d.after", "0")
+                .when()
+                .post("/me/meeting-types/" + id + "/durations")
+                .then()
+                .statusCode(200);
+
+        MeetingTypeDuration resaved = MeetingTypeDuration.findRow(id, 30);
+        assertEquals(0, resaved.bufferBeforeMinutes, "the 0 buffer must survive the round trip");
+        assertEquals(0, resaved.bufferAfterMinutes, "the 0 buffer must survive the round trip");
+    }
+
+    @Test
     void detailPageRendersOneFilledRowPerMemberOfTheUnionPlusOneSpare() {
         var id = seedType("durations-render-" + System.nanoTime(), 60);
         String cred = FormAuth.login();

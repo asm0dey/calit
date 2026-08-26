@@ -143,6 +143,23 @@ class CrossOwnerIsolationTest {
     }
 
     @Test
+    void ownerACannotSaveDurationsOnOwnerBType() {
+        var typeId = seedOwnerB()[0];
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("d.duration", "45")
+                .formParam("d.before", "5")
+                .formParam("d.after", "5")
+                .when()
+                .post("/me/meeting-types/" + typeId + "/durations")
+                .then()
+                .statusCode(404);
+        // Owner B's own type must be untouched by the rejected cross-owner attempt.
+        MeetingType t = MeetingType.findById(typeId);
+        assertEquals(java.util.List.of(30), site.asm0dey.calit.domain.MeetingTypeDuration.allowedDurations(t));
+    }
+
+    @Test
     void ownerACannotDeleteOwnerBType() {
         var typeId = seedOwnerB()[0];
         given().cookie("quarkus-credential", FormAuth.login())

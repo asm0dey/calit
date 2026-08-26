@@ -108,8 +108,8 @@
             <thead>
               <tr>
                 <th>{adm:adm_meetingTypeDetail_duration_col}</th>
-                <th>{adm:adm_shared_availability_buffer_before_label}</th>
-                <th>{adm:adm_shared_availability_buffer_after_label}</th>
+                <th>{adm:adm_detail_label_buffer_before}</th>
+                <th>{adm:adm_detail_label_buffer_after}</th>
               </tr>
             </thead>
             <tbody>
@@ -119,8 +119,8 @@
                     <input class="input input-sm" type="number" min="1" name="d.duration" value="{row.minutes}">
                     {#if row.isDefault}<span class="badge badge-ghost badge-sm ms-1">{adm:adm_meetingTypeDetail_duration_default}</span>{/if}
                   </td>
-                  <td><input class="input input-sm" type="number" min="0" name="d.before" value="{#if row.before}{row.before}{/if}"></td>
-                  <td><input class="input input-sm" type="number" min="0" name="d.after" value="{#if row.after}{row.after}{/if}"></td>
+                  <td><input class="input input-sm" type="number" min="0" name="d.before" value="{#if row.before != null}{row.before}{/if}"></td>
+                  <td><input class="input input-sm" type="number" min="0" name="d.after" value="{#if row.after != null}{row.after}{/if}"></td>
                 </tr>
               {/for}
               <tr>
