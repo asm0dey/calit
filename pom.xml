@@ -92,6 +92,9 @@
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-qute</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-rest-qute</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-reactive-routes</artifactId></dependency>
+    <!-- java.awt in the native image: renders the social-preview card. Needs runtime .so files and
+         a font on disk in the container - see Dockerfile.native. -->
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-awt</artifactId></dependency>
     <!-- Core security runtime: provides the IdentityProvider SPI + QuarkusSecurityIdentity
          for our custom AppUserIdentityProvider. security-jpa was dropped (its generated
          Elytron provider raced ours and intermittently rejected valid logins). -->
