@@ -4,6 +4,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
@@ -221,7 +222,11 @@ class AdminDurationsFormTest {
                 .asString();
 
         // One filled row per allowed length (30, 60) plus one blank spare row -> 3 duration inputs.
-        var occurrences = body.split("name=\"d\\.duration\"", -1).length - 1;
+        // Counted over the rows container only: the <template> durations.js clones also holds a
+        // d.duration input, but it is inert -- never rendered, never submitted -- so counting it
+        // would assert about markup the owner can neither see nor post.
+        var renderedRows = body.substring(body.indexOf("data-duration-list"), body.indexOf("data-duration-template"));
+        var occurrences = renderedRows.split("name=\"d\\.duration\"", -1).length - 1;
         assertEquals(3, occurrences, "one row per union member (30, 60) plus one empty spare");
         assertEquals(
                 1,
@@ -231,5 +236,147 @@ class AdminDurationsFormTest {
                 1,
                 body.split("name=\"d\\.duration\" value=\"60\"", -1).length - 1,
                 "a filled row for the implicit default 60");
+    }
+
+    /**
+     * The add/remove buttons are a JavaScript enhancement, and RestAssured cannot run JavaScript —
+     * so this pins the CONTRACT the script binds to. If a marker is renamed here without renaming it
+     * in {@code durations.js}, the button silently stops working in the browser and every other test
+     * still passes.
+     */
+    @Test
+    void theEditorCarriesTheMarkersDurationsJsBindsTo() {
+        var id = seedType("durations-markers-" + System.nanoTime(), 60);
+
+        String html = given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/meeting-types/" + id)
+                .then()
+                .statusCode(200)
+                .extract()
+                .body()
+                .asString();
+
+        assertTrue(html.contains("data-durations"), "form must be the script's scope root");
+        assertTrue(html.contains("data-duration-list"), "rows container must be findable");
+        assertTrue(html.contains("data-duration-template"), "template to clone must be present");
+        assertTrue(html.contains("data-add-duration"), "add button must be present");
+        assertTrue(html.contains("/durations.js"), "the script must actually be loaded");
+    }
+
+    /**
+     * Progressive enhancement: the trailing blank row is the no-JS path. Without it an owner with
+     * JavaScript disabled could never add a second length, because the add button does nothing for
+     * them. It is deliberately NOT redundant with the button.
+     */
+    @Test
+    void aBlankRowIsRenderedSoTheNoJsPathCanStillAddALength() {
+        var id = seedType("durations-nojs-" + System.nanoTime(), 60);
+
+        String html = given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/meeting-types/" + id)
+                .then()
+                .statusCode(200)
+                .extract()
+                .body()
+                .asString();
+
+        // One row per allowed length (just the default here) plus the blank spare, and the
+        // template's own row must not be counted as one of them.
+        var rows = html.substring(html.indexOf("data-duration-list"), html.indexOf("data-duration-template"));
+        assertEquals(2, countOccurrences(rows, "data-duration-row"), "default row + one blank spare");
+        assertTrue(rows.contains("name=\"d.duration\" value=\"\""), "the spare row's duration must be empty");
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        var n = 0;
+        for (var i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + needle.length())) {
+            n++;
+        }
+        return n;
+    }
+
+    /**
+     * Moving the default is an edit to the meeting type, not to a row — the default length lives on
+     * {@code meeting_type.duration_minutes} (ADR-0003) and is an implicit member of the set. The old
+     * default keeps its row, so moving it never drops a length.
+     */
+    @Test
+    void selectingARowAsDefaultMovesTheTypesOwnDuration() {
+        var id = seedType("durations-default-" + System.nanoTime(), 60);
+
+        // Rows submit as [30, 60, 120]; index 2 is the 120 row.
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("d.duration", "30", "60", "120")
+                .formParam("d.before", "", "", "")
+                .formParam("d.after", "", "", "")
+                .formParam("defaultRow", "2")
+                .when()
+                .post("/me/meeting-types/" + id + "/durations")
+                .then()
+                .statusCode(200);
+
+        MeetingType t = MeetingType.findById(id);
+        assertEquals(120, t.durationMinutes, "the chosen row becomes the type's default");
+        assertEquals(List.of(30, 60, 120), MeetingTypeDuration.allowedDurations(t), "the old default is still offered");
+    }
+
+    /**
+     * The radio carries a row INDEX rather than a duration precisely so a length typed into the
+     * blank spare can be made default in the SAME save — at render time that row has no value for
+     * the server to match on.
+     */
+    @Test
+    void aLengthAddedInThisSaveCanBeMadeDefaultInTheSameSave() {
+        var id = seedType("durations-newdefault-" + System.nanoTime(), 60);
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("d.duration", "60", "90")
+                .formParam("d.before", "", "")
+                .formParam("d.after", "", "")
+                .formParam("defaultRow", "1")
+                .when()
+                .post("/me/meeting-types/" + id + "/durations")
+                .then()
+                .statusCode(200);
+
+        MeetingType t = MeetingType.findById(id);
+        assertEquals(90, t.durationMinutes, "a length added in this save can be the default");
+        assertEquals(List.of(60, 90), MeetingTypeDuration.allowedDurations(t));
+    }
+
+    /** A default pointing at a blank or out-of-range row leaves the default where it was. */
+    @Test
+    void anEmptyOrOutOfRangeDefaultRowLeavesTheDefaultAlone() {
+        var id = seedType("durations-baddefault-" + System.nanoTime(), 60);
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("d.duration", "30", "")
+                .formParam("d.before", "", "")
+                .formParam("d.after", "", "")
+                .formParam("defaultRow", "1") // the blank spare
+                .when()
+                .post("/me/meeting-types/" + id + "/durations")
+                .then()
+                .statusCode(200);
+
+        assertEquals(60, ((MeetingType) MeetingType.findById(id)).durationMinutes);
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("d.duration", "30")
+                .formParam("d.before", "")
+                .formParam("d.after", "")
+                .formParam("defaultRow", "99") // past the end
+                .when()
+                .post("/me/meeting-types/" + id + "/durations")
+                .then()
+                .statusCode(200);
+
+        assertEquals(60, ((MeetingType) MeetingType.findById(id)).durationMinutes);
     }
 }

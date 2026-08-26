@@ -1,11 +1,11 @@
 ---
 # calit-he09
 title: Add duration rows dynamically, like the working-hours grid
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-08-26T05:34:00Z
-updated_at: 2026-08-26T05:34:00Z
+updated_at: 2026-08-26T05:54:35Z
 ---
 
 The allowed-durations editor grows one row per save: it renders one row per allowed length plus a single blank spare, so adding a second length means saving and coming back. The working-hours grid already solves this with an **+ Add frame** button that clones a row client-side, and durations should match that idiom.
@@ -54,3 +54,20 @@ Worth noting the working-hours grid is arguably WEAKER here: a day with no frame
 - [ ] i18n for the new button labels, with `de` + `he`
 - [ ] Test that the no-JS path still works (RestAssured cannot run JS, so this is the default assertion)
 - [ ] Check whether the working-hours no-JS gap is real, and file it separately if so
+
+## Summary of Changes
+
+Implemented on the `selectable-booking-duration` branch rather than deferred — an editor where adding a second length means save-and-come-back is a draft, not a feature.
+
+- `durations.js`, modelled on `workplan.js`: delegated click handler scoped to `[data-durations]`, cloning `[data-duration-template]` on `[data-add-duration]` and dropping a row on `[data-remove-duration]`.
+- The trailing blank row **stays** — it is the no-JS path, so an owner without JavaScript still adds one length per save.
+- Removing the last remaining row blanks it instead of deleting it, so the owner is never left with no way to add a length.
+- **A Default radio column**, which was not in the original scope: the default previously lived only in the Basics Duration field, so choosing which length an invitee sees first meant editing a different section.
+
+The radio carries the row **index**, not a duration. That is what lets a length typed into the blank spare be made default in the *same* save — at render time that row has no value for the server to match on. `durations.js` renumbers after every add and remove, or the radio would point at a shifted or deleted row.
+
+Server-side this is one edit to `meeting_type.duration_minutes` (ADR-0003 unchanged: the default is still an implicit member of the set), so the previous default keeps its row and moving the default never drops a length.
+
+Verified in a browser, not only by tests: two lengths added in one save; a brand-new 90 made default in that same save, with 60 surviving as an ordinary length; an explicit `0` buffer round-tripping as zero rather than null.
+
+Full suite 980/980.

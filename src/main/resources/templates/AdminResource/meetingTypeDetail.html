@@ -102,7 +102,10 @@
       <div class="collapse-title font-semibold">{adm:adm_meetingTypeDetail_section_durations}</div>
       <div class="collapse-content">
         <p class="text-sm text-base-content/70 mb-2">{adm:adm_meetingTypeDetail_durations_hint}</p>
-        <form method="post" action="/me/meeting-types/{type.id}/durations" class="fieldset">
+        {! durations.js clones [data-duration-template] on [data-add-duration]; the markers here are
+           its contract. The trailing blank row is NOT redundant with the button -- it is the no-JS
+           path, so an owner without JavaScript still adds one length per save. !}
+        <form method="post" action="/me/meeting-types/{type.id}/durations" class="fieldset" data-durations>
           <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
           <table class="table table-sm">
             <thead>
@@ -110,26 +113,50 @@
                 <th>{adm:adm_meetingTypeDetail_duration_col}</th>
                 <th>{adm:adm_detail_label_buffer_before}</th>
                 <th>{adm:adm_detail_label_buffer_after}</th>
+                <th>{adm:adm_meetingTypeDetail_duration_default_col}</th>
+                <th></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody data-duration-list>
               {#for row in durations}
-                <tr>
+                <tr data-duration-row>
                   <td>
                     <input class="input input-sm" type="number" min="1" name="d.duration" value="{row.minutes}">
-                    {#if row.isDefault}<span class="badge badge-ghost badge-sm ms-1">{adm:adm_meetingTypeDetail_duration_default}</span>{/if}
                   </td>
                   <td><input class="input input-sm" type="number" min="0" name="d.before" value="{#if row.before != null}{row.before}{/if}"></td>
                   <td><input class="input input-sm" type="number" min="0" name="d.after" value="{#if row.after != null}{row.after}{/if}"></td>
+                  {! The radio carries the row INDEX, not a duration: that is what lets a length typed
+                     into the blank spare be made default in the same save, before its value exists. !}
+                  <td><input type="radio" class="radio radio-sm" name="defaultRow" value="{row_index}"
+                             aria-label="{adm:adm_meetingTypeDetail_make_default_aria}"{#if row.isDefault} checked{/if}></td>
+                  {! No remove button on the default: the set always contains it, so removing the row
+                     would only drop its buffers and the row would return on the next render. Move the
+                     default to another row first, then remove this one. !}
+                  <td>{#if !row.isDefault}<button type="button" class="btn btn-ghost btn-xs text-error" data-remove-duration aria-label="{adm:adm_meetingTypeDetail_remove_duration_aria}">&times;</button>{/if}</td>
                 </tr>
               {/for}
-              <tr>
+              <tr data-duration-row>
                 <td><input class="input input-sm" type="number" min="1" name="d.duration" value=""></td>
                 <td><input class="input input-sm" type="number" min="0" name="d.before" value=""></td>
                 <td><input class="input input-sm" type="number" min="0" name="d.after" value=""></td>
+                <td><input type="radio" class="radio radio-sm" name="defaultRow" value="{durations.size}"
+                           aria-label="{adm:adm_meetingTypeDetail_make_default_aria}"></td>
+                <td><button type="button" class="btn btn-ghost btn-xs text-error" data-remove-duration aria-label="{adm:adm_meetingTypeDetail_remove_duration_aria}">&times;</button></td>
               </tr>
             </tbody>
           </table>
+          <template data-duration-template>
+            <tr data-duration-row>
+              <td><input class="input input-sm" type="number" min="1" name="d.duration" value=""></td>
+              <td><input class="input input-sm" type="number" min="0" name="d.before" value=""></td>
+              <td><input class="input input-sm" type="number" min="0" name="d.after" value=""></td>
+              <td><input type="radio" class="radio radio-sm" name="defaultRow" value="" aria-label="{adm:adm_meetingTypeDetail_make_default_aria}"></td>
+              <td><button type="button" class="btn btn-ghost btn-xs text-error" data-remove-duration aria-label="{adm:adm_meetingTypeDetail_remove_duration_aria}">&times;</button></td>
+            </tr>
+          </template>
+          <div class="flex flex-wrap items-center gap-2 mt-2">
+            <button type="button" class="btn btn-ghost btn-xs" data-add-duration>{adm:adm_meetingTypeDetail_btn_add_duration}</button>
+          </div>
           <button type="submit" class="btn btn-primary mt-2">{adm:adm_meetingTypeDetail_btn_save_durations}</button>
         </form>
       </div>
@@ -214,4 +241,5 @@
   </div>
   {#include AdminResource/_hostlist hosts=hosts type=type hostTypeaheadScript=hostTypeaheadScript /}
   <script src="/workplan.js"></script>
+  <script src="/durations.js"></script>
 {/include}

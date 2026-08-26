@@ -901,6 +901,19 @@ public class AdminResource {
                 d.bufferAfterMinutes = parseNonNegative(at(after, i));
                 d.persist();
             }
+            // The default length lives on the meeting type itself (ADR-0003) and is an implicit
+            // member of the set, so moving it is an edit to `t`, not to a row. The radio carries the
+            // row INDEX rather than a duration, which is what lets a length typed into the blank
+            // spare be made default in the SAME save -- its value does not exist until this parse.
+            var chosenRow = parseNonNegative(form.getFirst("defaultRow"));
+            if (chosenRow != null && chosenRow < minutes.size()) {
+                var chosen = parsePositive(minutes.get(chosenRow));
+                if (chosen != null) {
+                    // The previous default keeps its row, so moving the default never drops a length:
+                    // it just stops being the one an invitee sees first.
+                    t.durationMinutes = chosen;
+                }
+            }
         });
         return detailInstance(id, null, m().adm_meetingTypeDetail_durations_saved());
     }

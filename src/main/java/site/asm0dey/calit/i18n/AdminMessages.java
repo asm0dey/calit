@@ -437,7 +437,7 @@ public interface AdminMessages {
     String adm_meetingTypeDetail_section_durations();
 
     @Message(
-            "Every length this meeting type may be booked at. Leave a buffer blank to use the meeting type's own; clear a duration to remove that length. The default cannot be removed — change it in Duration above.")
+            "Every length this meeting type may be booked at. Add a row with + Length, drop one with ×, or clear a duration to remove that length. Leave a buffer blank to use the meeting type's own. Default is the length an invitee sees before choosing; it is always offered, so the one you move it away from stays on the list.")
     String adm_meetingTypeDetail_durations_hint();
 
     @Message("Duration (minutes)")
@@ -445,6 +445,18 @@ public interface AdminMessages {
 
     @Message("default")
     String adm_meetingTypeDetail_duration_default();
+
+    @Message("Default")
+    String adm_meetingTypeDetail_duration_default_col();
+
+    @Message("Make this the default length")
+    String adm_meetingTypeDetail_make_default_aria();
+
+    @Message("+ Length")
+    String adm_meetingTypeDetail_btn_add_duration();
+
+    @Message("Remove this length")
+    String adm_meetingTypeDetail_remove_duration_aria();
 
     @Message("Save durations")
     String adm_meetingTypeDetail_btn_save_durations();
