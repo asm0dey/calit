@@ -35,15 +35,22 @@ RUN printf 'git.build.version=%s\ngit.commit.id.abbrev=%s\n' "$APP_VERSION" "$GI
 # classes. They are (de)serialized reflectively (no-arg ctor + @Key fields) but ship NO native
 # metadata in their jars (google-api-client / google-oauth-client / google-api-services-calendar),
 # so without this the OAuth token + freeBusy JSON parsing crashes at runtime in the native image.
-# --initialize-at-build-time=java.awt.Color: discovered by this change (calit-o89d), NOT one of the
-# three request-time failures this file's other comments describe -- this one fails the BUILD
-# itself. CardRenderer's static final Color constants (BG/INK/INDIGO/...) get folded into the image
-# heap because CardRenderer is a CDI bean whose class is initialized at build time; java.awt.Color
-# is run-time-initialized by GraalVM's default policy, and native-image refuses to embed a
-# run-time-initialized type's instances in the heap. Color's static state is just RGB int fields --
-# no native/platform/sensitive state -- so build-time init is exactly what GraalVM's own error
-# message recommends here. Fixing this in CardRenderer.java instead (e.g. building Color values
-# lazily) would touch the rendering code Task 4's determinism tests depend on; this flag does not.
+# --initialize-at-build-time=java.awt.Color: discovered by this change (calit-o89d) -- fails the
+# BUILD, not a request. CardRenderer's static final Color fields land in the image heap because
+# CardRenderer is a CDI bean initialized at build time; Color defaults to run-time init (its static
+# initializer calls Toolkit.loadLibraries() plus a conditional initIDs() when not headless), and
+# GraalVM refuses run-time-initialized types in a build-time heap.
+# Safe here: Color's frozen state is plain RGB ints, and build + run both happen in equally-headless
+# Linux containers -- proven empirically (JVM vs native /og.png and /og/admin.png output is
+# byte-for-byte SHA-256 identical).
+# Fragile: the flag names java.awt.Color specifically. Any future static final AWT-typed field on
+# CardRenderer (Font, GradientPaint, BasicStroke, ...) reproduces the identical fatal error,
+# discoverable only by a failed native build. The durable alternative is
+# --initialize-at-run-time=site.asm0dey.calit.web.og.CardRenderer, covering any future AWT field in
+# one stroke -- not taken: CardRenderer is a CDI bean and Quarkus initializes bean classes at build
+# time by design, so forcing run-time init fights that machinery (untested) to guard a field nobody
+# has written yet. The failure mode is loud (build fails outright), so this comment is the mitigation
+# until a new AWT-typed static field actually appears -- then reach for the class-level flag instead.
 # Each of these is a separate comma item (Quarkus splits additional-build-args on commas).
 RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw -B -DskipTests package -Dquarkus.native.enabled=true \
