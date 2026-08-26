@@ -17,6 +17,7 @@ import java.util.function.Function;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
+import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.MeetingHosts;
 import site.asm0dey.calit.booking.events.*;
 import site.asm0dey.calit.domain.BookingField;
@@ -341,7 +342,7 @@ public class EmailService {
                                 l.booking.inviteeName,
                                 label(l),
                                 format(l.booking.startUtc, zone, locale, hourCycle),
-                                l.meetingType.durationMinutes,
+                                BookingService.lengthOf(l.booking),
                                 location,
                                 isMeet(l),
                                 manageUrl(linkBooking),
@@ -372,7 +373,7 @@ public class EmailService {
                                 l.booking.inviteeName,
                                 label(l),
                                 format(l.booking.startUtc, zone, locale, hourCycle),
-                                l.meetingType.durationMinutes,
+                                BookingService.lengthOf(l.booking),
                                 location,
                                 isMeet(l),
                                 manageUrl(linkBooking),
@@ -404,7 +405,7 @@ public class EmailService {
                                 l.booking.inviteeName,
                                 label(l),
                                 format(l.booking.startUtc, zone, locale, hourCycle),
-                                l.meetingType.durationMinutes,
+                                BookingService.lengthOf(l.booking),
                                 location,
                                 isMeet(l),
                                 manageUrl(linkBooking),
@@ -444,7 +445,7 @@ public class EmailService {
                                 l.booking.inviteeName,
                                 label(l),
                                 format(l.booking.startUtc, zone, locale, hourCycle),
-                                l.meetingType.durationMinutes)
+                                BookingService.lengthOf(l.booking))
                         .setLocale(locale)
                         .render(),
                 sink,
@@ -477,7 +478,7 @@ public class EmailService {
                                 label(l),
                                 format(l.booking.startUtc, zone, locale, hourCycle),
                                 format(e.oldStartUtc(), zone, locale, hourCycle),
-                                l.meetingType.durationMinutes,
+                                BookingService.lengthOf(l.booking),
                                 location,
                                 isMeet(l),
                                 manageUrl(linkBooking),
@@ -510,7 +511,7 @@ public class EmailService {
                                 greetingName,
                                 label(l),
                                 format(l.booking.startUtc, zone, locale, hourCycle),
-                                l.meetingType.durationMinutes,
+                                BookingService.lengthOf(l.booking),
                                 location,
                                 isMeet(l),
                                 manageUrl(linkBooking),
@@ -542,7 +543,7 @@ public class EmailService {
                                 greetingName,
                                 label(l),
                                 format(l.booking.startUtc, zone, locale, hourCycle),
-                                l.meetingType.durationMinutes)
+                                BookingService.lengthOf(l.booking))
                         .setLocale(locale)
                         .render(),
                 false);
@@ -569,7 +570,7 @@ public class EmailService {
                                 l.booking.inviteeName,
                                 label(l),
                                 format(l.booking.startUtc, zone, locale, hourCycle),
-                                l.meetingType.durationMinutes,
+                                BookingService.lengthOf(l.booking),
                                 location,
                                 isMeet(l),
                                 manageUrl(linkBooking),
@@ -607,7 +608,7 @@ public class EmailService {
                             l.booking.inviteeName,
                             label(l),
                             start,
-                            l.meetingType.durationMinutes,
+                            BookingService.lengthOf(l.booking),
                             location,
                             isMeet(l),
                             declineGuestUrl(g))

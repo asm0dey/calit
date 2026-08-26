@@ -2,10 +2,14 @@ package site.asm0dey.calit.availability;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.DayOfWeek;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,52 +38,149 @@ public class SlotService {
      * hostOwnerId} — lets a co-host's own hours/timezone drive their raw slots for a shared type.
      */
     public List<TimeSlot> generateRawSlots(MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to) {
-        return generateRawSlots(type, hostOwnerId, from, to, false);
+        return generateRawSlots(type, hostOwnerId, from, to, null);
     }
 
     /**
-     * Same as {@link #generateRawSlots(MeetingType, Long, LocalDate, LocalDate)}, plus a
-     * {@code dayAnchoredGrid} switch used only by the multi-host intersection path (Task 8b).
+     * Same as {@link #generateRawSlots(MeetingType, Long, LocalDate, LocalDate)}, plus a nullable
+     * {@code latticeZone} used only by the multi-host intersection path (ADR-0008).
      *
-     * <p>Single-host callers must keep {@code dayAnchoredGrid=false} (window-anchored — the grid's
-     * first point is the window start, byte-identical to the historical behavior). Multi-host
-     * callers pass {@code true}: two hosts whose window starts differ by a non-multiple of the
-     * slot step (e.g. 09:00 vs 09:15 with a 30-min step) would otherwise generate grids that never
-     * share a start instant, making the intersection spuriously empty even though the hosts' free
-     * time genuinely overlaps. Anchoring the grid to day-start (00:00 host-local) instead puts
-     * every host's slots on the same {@code step}-minute lattice so they can actually intersect.
+     * <p>Null means window-anchored (single-host): the grid's first point is the window start,
+     * byte-identical to the historical behavior. A non-null zone (pass {@link
+     * #latticeZoneFor(MeetingType)}) means lattice-anchored (multi-host): candidate starts are the
+     * instants whose local time-of-day IN THAT ZONE is a whole number of steps past midnight. Two
+     * hosts whose window starts differ by a non-multiple of the slot step (e.g. 09:00 vs 09:15 with
+     * a 30-min step) would otherwise generate grids that never share a start instant, making the
+     * intersection spuriously empty even though the hosts' free time genuinely overlaps. Testing the
+     * same predicate against the same instants puts every host on the same {@code step}-minute
+     * lattice so they can actually intersect.
      */
     public List<TimeSlot> generateRawSlots(
-            MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to, boolean dayAnchoredGrid) {
+            MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to, ZoneId latticeZone) {
+        return generateRawSlots(type, hostOwnerId, from, to, latticeZone, type.durationMinutes);
+    }
+
+    /**
+     * Same as {@link #generateRawSlots(MeetingType, Long, LocalDate, LocalDate, ZoneId)} for a chosen
+     * length. The grid STEP comes from the type's shortest allowed length, not from
+     * {@code durationMinutes}: the lattice of candidate starts must not move when an Invitee switches
+     * length (ADR-0003). Only the slot BODY varies.
+     */
+    public List<TimeSlot> generateRawSlots(
+            MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to, ZoneId latticeZone, int durationMinutes) {
         OwnerSettings settings = OwnerSettings.forOwner(hostOwnerId);
         if (settings == null) {
             throw new IllegalStateException("Owner settings not configured for owner " + hostOwnerId
                     + "; set them via /me/settings before generating slots.");
         }
-        ZoneId zone = ZoneId.of(settings.timezone);
+        ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(settings.timezone));
         Availability availability = loadAvailability(type, hostOwnerId, from, to);
         List<TimeSlot> slots = new ArrayList<>();
 
+        // Cadence: an explicit interval wins; otherwise the SHORTEST allowed length, so the lattice
+        // stays put when the Invitee switches. Not the chosen length, and not the default.
+        // Math.max(1, ...) is deliberate belt-and-braces, not defensive noise: a zero step makes both
+        // loops below unable to advance, which is an unbounded ALLOCATION loop (a TimeSlot per
+        // iteration) that pins the request thread until the heap gives out -- see calit-xjrg. Saving a
+        // zero duration is refused now, but a row written before that guard existed still reaches
+        // here, and no slot set is worth taking the instance down for.
+        int step = Math.max(
+                1,
+                (type.slotIntervalMinutes != null && type.slotIntervalMinutes > 0)
+                        ? type.slotIntervalMinutes
+                        : MeetingTypeDuration.shortestAllowed(type));
+        // Instant has no plusMinutes, but it does take a TemporalAmount — so carry both spans as
+        // Durations rather than as bare second counts multiplied by 60 at each use.
+        var body = Duration.ofMinutes(durationMinutes);
+        var gap = Duration.ofMinutes(step);
         for (var date = from; !date.isAfter(to); date = date.plusDays(1)) {
             for (Window window : availability.windowsFor(date)) {
-                int step = type.effectiveSlotIntervalMinutes();
-                int duration = type.durationMinutes;
-                // Work in minute-of-day to avoid LocalTime.plusMinutes() wrapping past midnight,
-                // which (e.g. a window ending 23:30 with a 30-min duration) would loop forever.
-                var startMin = window.start().toSecondOfDay() / 60;
-                var endMin = window.end().toSecondOfDay() / 60;
-                // window-anchored (default, single-host): first = startMin, unchanged.
-                // day-anchored (multi-host): first grid multiple of `step` from 00:00 that is >= startMin.
-                var first = dayAnchoredGrid ? ((startMin + step - 1) / step) * step : startMin;
-                for (var s = first; s + duration <= endMin; s += step) {
-                    var start = LocalTime.ofSecondOfDay(s * 60L);
-                    var end = LocalTime.ofSecondOfDay((s + duration) * 60L);
-                    slots.add(new TimeSlot(
-                            date.atTime(start).atZone(zone), date.atTime(end).atZone(zone)));
+                var windowStart = date.atTime(window.start()).atZone(zone).toInstant();
+                var windowEnd = date.atTime(window.end()).atZone(zone).toInstant();
+                if (latticeZone == null) {
+                    addWindowAnchored(slots, zone, windowStart, windowEnd, gap, body);
+                } else {
+                    addLatticeAnchored(slots, zone, latticeZone, windowStart, windowEnd, step, body);
                 }
             }
         }
+        slots.sort(Comparator.comparing(s -> s.start().toInstant()));
         return slots;
+    }
+
+    /**
+     * Window-anchored starts (single-host): the first slot IS the window start, byte-identical to the
+     * historical behaviour, including per-window anchoring on a multi-window day.
+     */
+    private static void addWindowAnchored(
+            List<TimeSlot> slots, ZoneId zone, Instant windowStart, Instant windowEnd, Duration gap, Duration body) {
+        for (var s = windowStart; !s.plus(body).isAfter(windowEnd); s = s.plus(gap)) {
+            slots.add(new TimeSlot(s.atZone(zone), s.plus(body).atZone(zone)));
+        }
+    }
+
+    /**
+     * Lattice-anchored starts (multi-host): the instants whose local time-of-day in the CREATOR's zone
+     * is a whole number of steps past midnight (ADR-0008).
+     *
+     * <p>The phase is re-derived from midnight of EACH Creator-local day the window touches, never
+     * carried forward by adding {@code step} across a Creator-local midnight. Walking forward that way
+     * would freeze the phase computed from whichever day the window happened to start on, so a window
+     * whose Creator-local start falls late the previous day (or a step that does not divide 1440) would
+     * drift onto a DIFFERENT comb than a window starting fresh at that day's own midnight — two combs
+     * again, the defect this exists to remove.
+     */
+    private static void addLatticeAnchored(
+            List<TimeSlot> slots,
+            ZoneId zone,
+            ZoneId latticeZone,
+            Instant windowStart,
+            Instant windowEnd,
+            int step,
+            Duration body) {
+        var latticeRules = latticeZone.getRules();
+        for (var day = windowStart.atZone(latticeZone).toLocalDate();
+                !day.atStartOfDay(latticeZone).toInstant().isAfter(windowEnd);
+                day = day.plusDays(1)) {
+            for (var minute = 0; minute < 1440; minute += step) {
+                var local = day.atTime(minute / 60, minute % 60);
+                // A local time inside a DST gap (spring-forward) has no valid offset -- skip it. Inside
+                // a fall-back overlap it has two: both are real, distinct instants whose Creator-local
+                // time-of-day is identical, so both satisfy the predicate and both are emitted
+                // (ADR-0008) -- which is also what keeps single-host and multi-host slot counts
+                // consistent across a fall-back.
+                for (ZoneOffset offset : latticeRules.getValidOffsets(local)) {
+                    var s = local.toInstant(offset);
+                    // continue, not break: once a local minute can resolve to zero, one, or two
+                    // instants, the resulting instant sequence is no longer monotone in `minute`, so an
+                    // early `break` on the window-end test can skip a later, still-valid minute.
+                    if (s.isBefore(windowStart) || s.plus(body).isAfter(windowEnd)) {
+                        continue;
+                    }
+                    slots.add(new TimeSlot(s.atZone(zone), s.plus(body).atZone(zone)));
+                }
+            }
+        }
+    }
+
+    /**
+     * The zone whose clock defines this type's lattice of candidate start times: the CREATOR's
+     * (ADR-0008). Start times come out round on the clock of whoever defined the meeting type, and
+     * every Host tests the same predicate against the same instants, so Hosts cannot disagree about
+     * which instants are candidates.
+     *
+     * <p>The zone's rules are consulted at each candidate instant rather than frozen at some origin
+     * date. That is deliberate: {@code Asia/Kathmandu} was {@code +05:30} until 1986 and {@code
+     * +05:45} since, so an origin-based lattice would move an all-Kathmandu team off the round local
+     * times they have today, to fix a cross-timezone problem they do not have.
+     */
+    public ZoneId latticeZoneFor(MeetingType type) {
+        OwnerSettings creator = OwnerSettings.forOwner(type.ownerId);
+        if (creator == null) {
+            throw new IllegalStateException("Owner settings not configured for owner " + type.ownerId
+                    + "; set them via /me/settings before generating slots.");
+        }
+        return ZoneId.of(OwnerSettings.coerceZone(creator.timezone));
     }
 
     /** A bookable [start, end) time-of-day window for one day, from either an override or a weekly rule. */
@@ -132,7 +233,9 @@ public class SlotService {
     private Availability loadAvailability(MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to) {
         // 1) Rules: this owner's per-type + global, grouped by day-of-week.
         List<AvailabilityRule> rules = AvailabilityRule.list(
-                "ownerId = ?1 and (meetingTypeId = ?2 or meetingTypeId is null)", hostOwnerId, type.id);
+                "ownerId = ?1 and (meetingTypeId = ?2 or meetingTypeId is null) order by startTime",
+                hostOwnerId,
+                type.id);
         Map<DayOfWeek, List<AvailabilityRule>> typedRules = rules.stream()
                 .filter(r -> type.id.equals(r.meetingTypeId))
                 .collect(Collectors.groupingBy(r -> r.dayOfWeek));

@@ -15,10 +15,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.RestQuery;
 import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.booking.*;
 import site.asm0dey.calit.domain.BookingField;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.google.CalendarUnavailableException;
@@ -47,12 +49,10 @@ public class PublicResource {
                 MeetingType type,
                 List<DaySlots> days,
                 List<BookingField> fields,
+                DurationChoice duration,
                 String error,
-                String tzBar,
-                String tzScript,
-                String calScript,
-                String captchaProvider,
-                String turnstileSiteKey,
+                Chrome chrome,
+                Captcha captcha,
                 boolean googleConnected,
                 String ownerName,
                 String initialGuests);
@@ -160,7 +160,21 @@ public class PublicResource {
      * `/{user}/{slug}`; co-hosted types book at the CANONICAL `/{creatorUsername}/{slug}` so every
      * host's landing links to the same, single booking URL.
      */
-    public record LandingType(MeetingType type, String bookUrl) {}
+    public record LandingType(MeetingType type, String bookUrl, List<Integer> durations) {}
+
+    /** The page furniture every booking-page render passes identically: timezone bar + its scripts. */
+    public record Chrome(String tzBar, String tzScript, String calScript) {}
+
+    /** Captcha wiring for the booking form; siteKey is public and rendered into the page. */
+    public record Captcha(String provider, String siteKey) {}
+
+    /** The lengths this type offers and the one currently rendered. */
+    public record DurationChoice(int chosen, List<Integer> allowed) {
+        /** Only a type offering more than one length shows a picker. */
+        public boolean multiple() {
+            return allowed.size() > 1;
+        }
+    }
 
     @GET
     @Produces(MediaType.TEXT_HTML)
@@ -195,9 +209,14 @@ public class PublicResource {
         // Batch the multi-host bookability check: one host query + one user query for the whole
         // set, instead of isMultiHost() + bookable() (forType + findById per host) per type.
         Set<Long> bookableIds = meetingHosts.bookableTypeIds(candidates);
-        List<LandingType> types = candidates.stream()
-                .filter(t -> bookableIds.contains(t.id))
-                .map(t -> new LandingType(t, "/" + bookUsernameFor(t, owner) + "/" + t.slug))
+        List<MeetingType> bookableTypes =
+                candidates.stream().filter(t -> bookableIds.contains(t.id)).toList();
+        // Batch allowedDurations the same way: one query for every bookable type's configured rows
+        // instead of one SELECT per type inside the map below (this is the exact per-type fan-out
+        // bookableTypeIds above exists to collapse -- see its javadoc).
+        Map<Long, List<Integer>> durationsByType = allowedDurationsByType(bookableTypes);
+        List<LandingType> types = bookableTypes.stream()
+                .map(t -> new LandingType(t, "/" + bookUsernameFor(t, owner) + "/" + t.slug, durationsByType.get(t.id)))
                 .toList();
         return Templates.landing(m.pub_user_title(), types, owner.username, settings.ownerName);
     }
@@ -205,7 +224,8 @@ public class PublicResource {
     @GET
     @Path("/{user}/{slug}")
     @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance book(@PathParam("user") String user, @PathParam("slug") String slug) {
+    public TemplateInstance book(
+            @PathParam("user") String user, @PathParam("slug") String slug, @RestQuery String duration) {
         var m = messages.forLocale(activeLocale.current());
         BookingTarget target = resolveBookingTarget(user, slug, m);
         if (target.earlyExit() != null) {
@@ -214,9 +234,10 @@ public class PublicResource {
         AppUser urlUser = target.urlUser();
         MeetingType type = target.type();
         OwnerSettings settings = target.settings();
+        DurationChoice durationChoice = resolveDuration(type, duration);
         List<DaySlots> byDate;
         try {
-            byDate = daySlots(type);
+            byDate = daySlots(type, durationChoice.chosen());
         } catch (CalendarUnavailableException e) {
             // Fail-closed: the owner's Google calendar can't be read, so we cannot safely offer slots.
             return Templates.unavailable(m.pub_unavailable_title());
@@ -233,12 +254,10 @@ public class PublicResource {
                 type,
                 byDate,
                 fields,
+                durationChoice,
                 null,
-                Layout.tzBar(m),
-                Layout.TZ_SCRIPT,
-                Layout.CALENDAR_SCRIPT,
-                captchaProviderConfig.provider(),
-                turnstileSiteKey(),
+                new Chrome(Layout.tzBar(m), Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT),
+                new Captcha(captchaProviderConfig.provider(), turnstileSiteKey()),
                 calendarPort.isConnected(type.ownerId),
                 settings.ownerName,
                 "");
@@ -246,6 +265,25 @@ public class PublicResource {
 
     private String turnstileSiteKey() {
         return captchaProviderConfig.turnstileSiteKey().orElse("");
+    }
+
+    /**
+     * Resolve a raw {@code ?duration=} query value against the type's allowed set. Absent, malformed
+     * (non-numeric), or not-allowed all fall back to the type's own default rather than 404ing — a
+     * {@code ?duration=} in a URL is something a human may have shared or hand-edited.
+     */
+    private static DurationChoice resolveDuration(MeetingType type, String rawDuration) {
+        List<Integer> allowed = MeetingTypeDuration.allowedDurations(type);
+        Integer parsed = null;
+        if (rawDuration != null && !rawDuration.isBlank()) {
+            try {
+                parsed = Integer.parseInt(rawDuration.trim());
+            } catch (NumberFormatException _) {
+                // Falls through to the type's default below.
+            }
+        }
+        int chosen = (parsed != null && allowed.contains(parsed)) ? parsed : type.durationMinutes;
+        return new DurationChoice(chosen, allowed);
     }
 
     /** Resolved booking target; a non-null {@code earlyExit} page means "render it and stop". */
@@ -276,6 +314,36 @@ public class PublicResource {
             return new BookingTarget(type, settings, urlUser, Templates.hostPending(m.pub_host_pending_title()));
         }
         return new BookingTarget(type, settings, urlUser, null);
+    }
+
+    /**
+     * Batches {@link MeetingTypeDuration#allowedDurations} over a whole type set: one query for
+     * every type's configured duration rows (grouped by {@code meetingTypeId}), instead of one
+     * SELECT per type. Mirrors {@code allowedDurations}'s own union logic per type -- the type's
+     * own {@code durationMinutes} is always an implicit member of its set, even when it has no
+     * configured rows at all.
+     */
+    private static Map<Long, List<Integer>> allowedDurationsByType(List<MeetingType> types) {
+        if (types.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = types.stream().map(t -> t.id).toList();
+        Map<Long, List<MeetingTypeDuration>> rowsByType =
+                MeetingTypeDuration.<MeetingTypeDuration>list("meetingTypeId in ?1", ids).stream()
+                        .collect(Collectors.groupingBy(d -> d.meetingTypeId));
+        Map<Long, List<Integer>> result = new HashMap<>();
+        for (MeetingType t : types) {
+            List<Integer> all = new ArrayList<>();
+            all.add(t.durationMinutes);
+            for (MeetingTypeDuration d : rowsByType.getOrDefault(t.id, List.of())) {
+                if (d.durationMinutes != t.durationMinutes) {
+                    all.add(d.durationMinutes);
+                }
+            }
+            all.sort(Integer::compareTo);
+            result.put(t.id, all);
+        }
+        return result;
     }
 
     /** The username a landing entry should book at: the owner's own for their types, else the creator's. */
@@ -312,6 +380,7 @@ public class PublicResource {
             @RestForm String website, // honeypot
             @RestForm("cf-turnstile-response") String turnstileToken,
             @RestForm("altcha") String altchaSolution,
+            @RestForm @DefaultValue("0") int durationMinutes,
             MultivaluedMap<String, String> form) {
         var m = messages.forLocale(activeLocale.current());
         BookingTarget target = resolveBookingTarget(user, slug, m);
@@ -322,6 +391,9 @@ public class PublicResource {
         MeetingType type = target.type();
         OwnerSettings settings = target.settings();
         String bookTitle = m.pub_book_title_prefix() + " " + type.name;
+        // A missing/blank hidden field binds to 0 (@DefaultValue), which must resolve to the type's
+        // own default rather than reaching assertDurationAllowed with a bogus value.
+        int submittedDuration = durationMinutes > 0 ? durationMinutes : type.durationMinutes;
 
         // Collect every "answers.<fieldKey>" form param into the answers map (strip the prefix).
         Map<String, String> answers = new HashMap<>();
@@ -350,23 +422,24 @@ public class PublicResource {
                     altchaSolution,
                     website,
                     locale,
-                    parseGuests(form));
+                    parseGuests(form),
+                    submittedDuration);
         } catch (BookingValidationException | AbuseException | RateLimitException | BookingConflictException be) {
             // Required-field 422 OR an abuse-guard rejection (filled honeypot / failed Turnstile /
             // per-email cap) / slot conflict. Re-render the form inline with the message; do NOT
             // 500, NOT confirm. (Plan 3 has no common BookingException superclass, so catch each.)
+            // The invitee's chosen length is preserved on the bounce — not silently reset to default.
+            var durationChoice = new DurationChoice(submittedDuration, MeetingTypeDuration.allowedDurations(type));
             return Templates.book(
                     bookTitle,
                     urlUser.username,
                     type,
-                    daySlots(type),
+                    daySlots(type, submittedDuration),
                     BookingField.formFor(type.ownerId, type.id),
+                    durationChoice,
                     be.getMessage(),
-                    Layout.tzBar(m),
-                    Layout.TZ_SCRIPT,
-                    Layout.CALENDAR_SCRIPT,
-                    captchaProviderConfig.provider(),
-                    turnstileSiteKey(),
+                    new Chrome(Layout.tzBar(m), Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT),
+                    new Captcha(captchaProviderConfig.provider(), turnstileSiteKey()),
                     calendarPort.isConnected(type.ownerId),
                     settings.ownerName,
                     "");
@@ -427,7 +500,10 @@ public class PublicResource {
         ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(settings.timezone));
         List<DaySlots> byDate;
         try {
-            byDate = daySlots(type);
+            // Reschedule freezes the booked length — no picker on this page (design spec ":175").
+            // Task 7 already re-checks a reschedule submission at lengthOf(booking); rendering the
+            // grid at the type's default here would offer slots that length's own re-check rejects.
+            byDate = daySlots(type, BookingService.lengthOf(booking));
         } catch (CalendarUnavailableException e) {
             return Templates.unavailable(m.pub_unavailable_title());
         }
@@ -595,15 +671,15 @@ public class PublicResource {
         return owner;
     }
 
-    /** Available slots as an ordered per-day list (ISO date + label), chronological. */
-    private List<DaySlots> daySlots(MeetingType type) {
+    /** Available slots as an ordered per-day list (ISO date + label), chronological, at {@code durationMinutes}. */
+    private List<DaySlots> daySlots(MeetingType type, int durationMinutes) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         var from = LocalDate.now(zone);
         // Show the full configured booking horizon; availableSlots(...) also clamps to the same
         // horizon (now + horizonDays) and to min-notice, so this only sets the candidate range.
         LocalDate to = from.plusDays(type.horizonDays);
         Map<String, DaySlots> byIso = new LinkedHashMap<>();
-        for (TimeSlot slot : bookingService.availableSlots(type, from, to)) {
+        for (TimeSlot slot : bookingService.availableSlots(type, from, to, Set.of(), durationMinutes)) {
             String isoDate = slot.start().toLocalDate().toString();
             var day = byIso.computeIfAbsent(
                     isoDate,

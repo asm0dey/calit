@@ -34,9 +34,9 @@
         <form method="post" action="/me/shared/{type.id}/buffers" class="fieldset">
           <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
           <label class="label" for="sh-buffer-before">{adm:adm_shared_availability_buffer_before_label}</label>
-          <input id="sh-buffer-before" class="input w-full" type="number" name="bufferBeforeMinutes" min="0" value="{#if host.bufferBeforeMinutes}{host.bufferBeforeMinutes}{/if}">
+          <input id="sh-buffer-before" class="input w-full" type="number" name="bufferBeforeMinutes" min="0" value="{#if host.bufferBeforeMinutes != null}{host.bufferBeforeMinutes}{/if}">
           <label class="label" for="sh-buffer-after">{adm:adm_shared_availability_buffer_after_label}</label>
-          <input id="sh-buffer-after" class="input w-full" type="number" name="bufferAfterMinutes" min="0" value="{#if host.bufferAfterMinutes}{host.bufferAfterMinutes}{/if}">
+          <input id="sh-buffer-after" class="input w-full" type="number" name="bufferAfterMinutes" min="0" value="{#if host.bufferAfterMinutes != null}{host.bufferAfterMinutes}{/if}">
           {#if writeCalendars.size > 0}
           <label class="label" for="sh-write-calendar">{adm:adm_detail_label_write_calendar}</label>
           <select id="sh-write-calendar" class="select w-full" name="writeCalendar">

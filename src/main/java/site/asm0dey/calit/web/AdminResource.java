@@ -65,6 +65,7 @@ public class AdminResource {
                 List<WeekRow> week,
                 List<DateOverride> overrides,
                 List<HostRow> hosts,
+                List<DurationRow> durations,
                 List<GoogleCalendar> writeCalendars,
                 String writeCalendarValue,
                 boolean writeCalendarDangling,
@@ -156,6 +157,9 @@ public class AdminResource {
      */
     public record HostRow(Long ownerId, String username, String role, String status, boolean needsReconnect) {}
 
+    /** One editable row of the allowed-durations table; {@code isDefault} marks the type's own length. */
+    public record DurationRow(int minutes, Integer before, Integer after, boolean isDefault) {}
+
     final BookingService bookingService;
 
     final MeetingHosts meetingHosts;
@@ -223,6 +227,7 @@ public class AdminResource {
                 case "adm_hosts_error_slug_cohosts" ->
                     m().adm_hosts_error_slug_cohosts((String) hre.args[0], (String) hre.args[1]);
                 case "adm_hosts_error_slug_across" -> m().adm_hosts_error_slug_across((String) hre.args[0]);
+                case "adm_detail_error_duration_positive" -> m().adm_detail_error_duration_positive();
                 default -> e.getMessage();
             };
         }
@@ -237,13 +242,21 @@ public class AdminResource {
     private static final DateTimeFormatter MANAGE_TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final String PENDING_BY_OWNER_QUERY = "ownerId = ?1 and status = ?2 order by startUtc";
 
-    /** Available slots for a meeting type as an ordered per-day list (reuses the public view records). */
-    private List<PublicResource.DaySlots> daySlots(MeetingType type) {
+    /**
+     * Available slots for a meeting type as an ordered per-day list (reuses the public view
+     * records), at a caller-chosen {@code durationMinutes} rather than the type's own default —
+     * mirrors {@link PublicResource#daySlots(MeetingType, int)}. The owner-side reschedule grid
+     * (see {@link #renderManage}) must be drawn at the BOOKING's own length, not the type's
+     * default: {@code POST /me/bookings/{id}/reschedule} re-checks at
+     * {@link BookingService#lengthOf}, so a grid drawn at any other length can offer a slot that
+     * re-check then rejects (a bare 409 on a slot the page just drew).
+     */
+    private List<PublicResource.DaySlots> daySlots(MeetingType type, int durationMinutes) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         var from = LocalDate.now(zone);
         LocalDate to = from.plusDays(type.horizonDays);
         Map<String, PublicResource.DaySlots> byIso = new LinkedHashMap<>();
-        for (TimeSlot slot : bookingService.availableSlots(type, from, to)) {
+        for (TimeSlot slot : bookingService.availableSlots(type, from, to, Set.of(), durationMinutes)) {
             String isoDate = slot.start().toLocalDate().toString();
             var day = byIso.computeIfAbsent(
                     isoDate,
@@ -473,6 +486,13 @@ public class AdminResource {
             String locationDetail,
             String slotIntervalMinutes,
             String requiresApproval) {
+        // A zero or negative duration is not a cosmetic error: the slot cadence falls back to the
+        // shortest allowed length, so it makes the step zero and SlotService's loops never advance --
+        // an unbounded allocation loop that pins the request thread (calit-xjrg). Refuse it here; the
+        // input's min= attribute is a hint to a browser, not a guard against a POST.
+        if (durationMinutes <= 0) {
+            throw new HostRuleException("adm_detail_error_duration_positive");
+        }
         t.durationMinutes = durationMinutes;
         t.bufferBeforeMinutes = bufferBeforeMinutes;
         t.bufferAfterMinutes = bufferAfterMinutes;
@@ -718,6 +738,7 @@ public class AdminResource {
                 weekRows(rules.isEmpty() ? globalRules() : rules),
                 overrides,
                 hostRows(t),
+                durationRows(t),
                 writeCalendars,
                 writeCalendarValue,
                 writeCalendarDangling,
@@ -730,6 +751,24 @@ public class AdminResource {
                 notice,
                 Layout.HOST_TYPEAHEAD_SCRIPT,
                 title);
+    }
+
+    /**
+     * This type's allowed-durations rows, one per member of the union (Task 2's {@link
+     * MeetingTypeDuration#allowedDurations}) so the default always appears even when the table
+     * itself is empty. See {@code docs/adr/0003-a-meeting-types-duration-doubles-as-its-default.md}.
+     */
+    private List<DurationRow> durationRows(MeetingType t) {
+        List<DurationRow> rows = new ArrayList<>();
+        for (int minutes : MeetingTypeDuration.allowedDurations(t)) {
+            MeetingTypeDuration row = MeetingTypeDuration.findRow(t.id, minutes);
+            rows.add(new DurationRow(
+                    minutes,
+                    row == null ? null : row.bufferBeforeMinutes,
+                    row == null ? null : row.bufferAfterMinutes,
+                    minutes == t.durationMinutes));
+        }
+        return rows;
     }
 
     /**
@@ -826,6 +865,87 @@ public class AdminResource {
         return staying.get() > 0
                 ? detailInstance(id, null, m().adm_detail_write_calendar_moved(staying.get()))
                 : detailInstance(id);
+    }
+
+    /**
+     * Replace-all save for a type's allowed-durations table (Task 10). Rows arrive as parallel
+     * {@code d.duration}/{@code d.before}/{@code d.after} fields in document order, so index {@code
+     * i} pairs across the three lists (see {@link MultivaluedMap}'s ordering guarantee). Delete-then-
+     * reinsert is deliberate: the set is tiny, and it is what makes "clear a duration to remove that
+     * length" fall out for free with no diffing path. A row for the type's own default is persisted
+     * like any other and carries only its buffer overrides — the default's set membership comes from
+     * {@link MeetingTypeDuration#allowedDurations}'s union, so clearing this row can never remove the
+     * length (ADR-0003).
+     */
+    @POST
+    @Path("/meeting-types/{id}/durations")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance saveDurations(@PathParam("id") Long id, MultivaluedMap<String, String> form) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = requireType(id); // owner-scoped; 404s for another owner's type
+            List<String> minutes = form.getOrDefault("d.duration", List.of());
+            List<String> before = form.getOrDefault("d.before", List.of());
+            List<String> after = form.getOrDefault("d.after", List.of());
+            MeetingTypeDuration.delete("meetingTypeId = ?1", t.id);
+            // The form renders one row per allowed length PLUS a blank spare (see durationRows/the
+            // durations table), so typing an already-present length into the spare is an ordinary
+            // user mistake, not a crafted request. Two rows sharing a duration would otherwise share
+            // an @IdClass key and 500 the whole save on the Hibernate insert (calit-mjof twin). Skip a
+            // repeat rather than persist it twice; the first occurrence wins, later ones are dropped.
+            Set<Integer> seen = new HashSet<>();
+            for (var i = 0; i < minutes.size(); i++) {
+                var value = parsePositive(minutes.get(i));
+                if (value == null) {
+                    continue; // a blank/invalid duration removes the row; that is how deletion is expressed
+                }
+                if (!seen.add(value)) {
+                    continue; // duplicate duration -- keep the first occurrence, drop the rest
+                }
+                MeetingTypeDuration d = new MeetingTypeDuration();
+                d.meetingTypeId = t.id;
+                d.durationMinutes = value;
+                d.bufferBeforeMinutes = parseNonNegative(at(before, i));
+                d.bufferAfterMinutes = parseNonNegative(at(after, i));
+                d.persist();
+            }
+            // The default length lives on the meeting type itself (ADR-0003) and is an implicit
+            // member of the set, so moving it is an edit to `t`, not to a row. The radio carries the
+            // row INDEX rather than a duration, which is what lets a length typed into the blank
+            // spare be made default in the SAME save -- its value does not exist until this parse.
+            var chosenRow = parseNonNegative(form.getFirst("defaultRow"));
+            if (chosenRow != null && chosenRow < minutes.size()) {
+                var chosen = parsePositive(minutes.get(chosenRow));
+                if (chosen != null) {
+                    // The previous default keeps its row, so moving the default never drops a length:
+                    // it just stops being the one an invitee sees first.
+                    t.durationMinutes = chosen;
+                }
+            }
+        });
+        return detailInstance(id, null, m().adm_meetingTypeDetail_durations_saved());
+    }
+
+    private static String at(List<String> values, int i) {
+        return i < values.size() ? values.get(i) : null;
+    }
+
+    /** Null for blank or unparseable input, so a stray value never becomes a silent 0-minute meeting. */
+    private static Integer parsePositive(String raw) {
+        var v = parseNonNegative(raw);
+        return (v == null || v <= 0) ? null : v;
+    }
+
+    private static Integer parseNonNegative(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            var v = Integer.parseInt(raw.trim());
+            return v < 0 ? null : v;
+        } catch (NumberFormatException _) {
+            return null;
+        }
     }
 
     /**
@@ -1443,7 +1563,10 @@ public class AdminResource {
                 b,
                 current,
                 b.startUtc.toString(),
-                daySlots(type),
+                // Reschedule freezes the booked length (no picker on this page): the re-check at
+                // POST /me/bookings/{id}/reschedule runs at BookingService.lengthOf(b), so the grid
+                // must be drawn at that same length, not the type's default (calit-mjof).
+                daySlots(type, BookingService.lengthOf(b)),
                 guestsCsv,
                 pendingCount(),
                 isAdmin(),

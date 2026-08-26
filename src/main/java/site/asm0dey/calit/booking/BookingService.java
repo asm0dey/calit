@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -19,6 +20,7 @@ import site.asm0dey.calit.booking.events.*;
 import site.asm0dey.calit.domain.BookingField;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
+import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.BusyInterval;
@@ -113,6 +115,18 @@ public class BookingService {
      * left each OTHER host's own sibling row counted as busy against itself (Task 11 review fix).
      */
     public List<TimeSlot> availableSlots(MeetingType type, LocalDate from, LocalDate to, Set<Long> excludeBookingIds) {
+        return availableSlots(type, from, to, excludeBookingIds, type.durationMinutes);
+    }
+
+    /**
+     * Same as {@link #availableSlots(MeetingType, LocalDate, LocalDate, Set)} but for a caller-chosen
+     * {@code durationMinutes} rather than the type's own default length — see {@code MeetingTypeDuration}.
+     * The caller is responsible for checking {@code durationMinutes} against the type's allowed set
+     * ({@link #assertDurationAllowed}) before relying on the result for a booking decision; this method
+     * itself does not validate it, since it is also used to list slots for a not-yet-chosen length.
+     */
+    public List<TimeSlot> availableSlots(
+            MeetingType type, LocalDate from, LocalDate to, Set<Long> excludeBookingIds, int durationMinutes) {
         if (!meetingHosts.bookable(type)) {
             return List.of();
         }
@@ -127,14 +141,18 @@ public class BookingService {
         // multi-host case fails closed to an empty list, since a caller can't sensibly render
         // "unavailable" for just one host out of several bookable ones.
         var singleHost = hostIds.size() == 1;
+        // Single-host stays window-anchored (null). Multi-host shares one lattice (ADR-0008).
+        ZoneId latticeZone = singleHost ? null : slotService.latticeZoneFor(type);
         Map<Instant, TimeSlot> candidate = null;
         for (Long hostId : hostIds) {
             Map<Instant, TimeSlot> hostFree;
             if (singleHost) {
-                hostFree = hostFreeSlots(type, hostId, from, to, excludeBookingIds, earliest, latest, singleHost);
+                hostFree = hostFreeSlots(
+                        type, hostId, from, to, excludeBookingIds, earliest, latest, latticeZone, durationMinutes);
             } else {
                 try {
-                    hostFree = hostFreeSlots(type, hostId, from, to, excludeBookingIds, earliest, latest, singleHost);
+                    hostFree = hostFreeSlots(
+                            type, hostId, from, to, excludeBookingIds, earliest, latest, latticeZone, durationMinutes);
                 } catch (CalendarUnavailableException _) {
                     return List.of(); // any host's calendar unverifiable (multi-host) -> offer nothing
                 }
@@ -170,15 +188,16 @@ public class BookingService {
             Set<Long> excludeBookingIds,
             Instant earliest,
             Instant latest,
-            boolean singleHost) {
-        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(hostId).timezone);
+            ZoneId latticeZone,
+            int durationMinutes) {
+        ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(OwnerSettings.forOwner(hostId).timezone));
         var fromInstant = from.atStartOfDay(zone).toInstant();
         var toInstant = to.plusDays(1).atStartOfDay(zone).toInstant();
         List<Interval> busy = busyIntervals(hostId, fromInstant, toInstant, excludeBookingIds);
-        int bufBefore = meetingHosts.effectiveBufferBefore(type, hostId);
-        int bufAfter = meetingHosts.effectiveBufferAfter(type, hostId);
+        int bufBefore = meetingHosts.effectiveBufferBefore(type, hostId, durationMinutes);
+        int bufAfter = meetingHosts.effectiveBufferAfter(type, hostId, durationMinutes);
         Map<Instant, TimeSlot> hostFree = new LinkedHashMap<>();
-        for (TimeSlot slot : slotService.generateRawSlots(type, hostId, from, to, !singleHost)) {
+        for (TimeSlot slot : slotService.generateRawSlots(type, hostId, from, to, latticeZone, durationMinutes)) {
             Instant slotStart = slot.start().toInstant();
             // Feature 11: drop too-soon (before now+minNotice) and too-far (after now+horizon) slots.
             if (slotStart.isBefore(earliest) || slotStart.isAfter(latest)) {
@@ -251,7 +270,14 @@ public class BookingService {
                 guestEmails);
     }
 
-    // S107: one param per booking input; the 10-arg overload above preserves the pre-CAPTCHA arity.
+    /**
+     * Backward-compatible overload: books at the type's own default length. Resolves the type itself
+     * (rather than accepting the caller's) since the 12-arg body needs the type resolved before it can
+     * even know the default duration — a missing type falls through to {@code 0} here and the 12-arg
+     * body's own {@link NotFoundException} still fires first, before that {@code 0} is ever used.
+     */
+    // S107: one param per booking input, same as the 12-arg form below; this overload exists to keep
+    // the pre-duration arity working, so collapsing it into a record would defeat its only purpose.
     @SuppressWarnings("java:S107")
     @Transactional
     public Booking book(
@@ -266,12 +292,46 @@ public class BookingService {
             String honeypot,
             String locale,
             List<String> guestEmails) {
+        MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
+        int duration = type == null ? 0 : type.durationMinutes;
+        return book(
+                ownerId,
+                meetingTypeSlug,
+                startUtc,
+                inviteeName,
+                inviteeEmail,
+                answers,
+                turnstileToken,
+                altchaSolution,
+                honeypot,
+                locale,
+                guestEmails,
+                duration);
+    }
+
+    // S107: one param per booking input; the 11-arg overload above preserves the pre-duration-choice arity.
+    @SuppressWarnings("java:S107")
+    @Transactional
+    public Booking book(
+            Long ownerId,
+            String meetingTypeSlug,
+            Instant startUtc,
+            String inviteeName,
+            String inviteeEmail,
+            Map<String, String> answers,
+            String turnstileToken,
+            String altchaSolution,
+            String honeypot,
+            String locale,
+            List<String> guestEmails,
+            int durationMinutes) {
         validateInviteeEmail(inviteeEmail);
         validateInputBounds(inviteeName, answers);
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
         if (type == null) {
             throw new NotFoundException("No meeting type with slug " + meetingTypeSlug + " for owner " + ownerId);
         }
+        assertDurationAllowed(type, durationMinutes);
 
         // Feature 16: all three abuse guards run first, inside book(). The Plan 5 web layer
         // just forwards the cf-turnstile-response (turnstileToken) and website (honeypot) form values.
@@ -287,11 +347,11 @@ public class BookingService {
         // name/email are method params, not BookingField rows, so they are not in this loop.
         validateRequiredFields(type, submitted);
 
-        Instant endUtc = startUtc.plusSeconds(60L * type.durationMinutes);
+        var endUtc = startUtc.plus(durationMinutes, ChronoUnit.MINUTES);
 
         // App-level availability re-check: nice errors + buffer/min-notice/horizon enforcement
         // (the DB constraint only guards raw-time overlap, not buffers).
-        assertSlotAvailable(type, startUtc, (Long) null);
+        assertSlotAvailable(type, startUtc, Set.of(), durationMinutes);
 
         if (MeetingTypeHost.isMultiHost(type.id)) {
             return bookGroup(type, startUtc, endUtc, inviteeName, inviteeEmail, submitted, locale, guestEmails);
@@ -659,20 +719,36 @@ public class BookingService {
     }
 
     /**
-     * Throws BookingConflictException unless an available slot starts exactly at {@code startUtc}.
+     * The submitted length must be one the type actually offers. Not optional: without this a POST
+     * carrying an arbitrary duration builds a self-consistent lattice of its own that passes every
+     * downstream check. Rejected as the same 409 an unavailable slot produces.
      */
-    private void assertSlotAvailable(MeetingType type, Instant startUtc, Long excludeBookingId) {
-        assertSlotAvailable(type, startUtc, excludeBookingId == null ? Set.of() : Set.of(excludeBookingId));
+    private void assertDurationAllowed(MeetingType type, int durationMinutes) {
+        if (!MeetingTypeDuration.isAllowed(type, durationMinutes)) {
+            throw new BookingConflictException("Duration " + durationMinutes + " is not offered by " + type.slug);
+        }
     }
 
     /**
-     * Same as {@link #assertSlotAvailable(MeetingType, Instant, Long)} but excludes every id in
-     * {@code excludeBookingIds} — used by the group reschedule re-check.
+     * A booking carries its own length; reschedule moves it, never resizes it.
+     *
+     * <p>Public because {@code EmailService} — a different package — displays it.
      */
-    private void assertSlotAvailable(MeetingType type, Instant startUtc, Set<Long> excludeBookingIds) {
+    public static int lengthOf(Booking booking) {
+        return (int) Duration.between(booking.startUtc, booking.endUtc).toMinutes();
+    }
+
+    /**
+     * Throws BookingConflictException unless an available slot starts exactly at {@code startUtc},
+     * for a caller-chosen {@code durationMinutes} — used by {@link #book} once the submitted
+     * length has already passed {@link #assertDurationAllowed}, and by the reschedule paths at the
+     * booking's own {@link #lengthOf} length.
+     */
+    private void assertSlotAvailable(
+            MeetingType type, Instant startUtc, Set<Long> excludeBookingIds, int durationMinutes) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         var day = startUtc.atZone(zone).toLocalDate();
-        boolean ok = availableSlots(type, day, day, excludeBookingIds).stream()
+        boolean ok = availableSlots(type, day, day, excludeBookingIds, durationMinutes).stream()
                 .anyMatch(s -> s.start().toInstant().equals(startUtc));
         if (!ok) {
             throw new BookingConflictException("Slot " + startUtc + " is not available for " + type.slug);
@@ -789,10 +865,12 @@ public class BookingService {
         }
 
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        Instant newEnd = newStartUtc.plusSeconds(60L * type.durationMinutes);
+        int bookedLength = lengthOf(booking);
+        var newEnd = newStartUtc.plus(bookedLength, ChronoUnit.MINUTES);
 
-        // Exclude this booking so it may move freely within its own window.
-        assertSlotAvailable(type, newStartUtc, booking.id);
+        // Exclude this booking so it may move freely within its own window. Re-check at the booking's
+        // own length, not the type's default -- a type's default may differ from what was actually booked.
+        assertSlotAvailable(type, newStartUtc, Set.of(booking.id), bookedLength);
 
         Instant oldStart = booking.startUtc;
         booking.startUtc = newStartUtc;
@@ -887,7 +965,8 @@ public class BookingService {
     private Booking rescheduleGroup(
             Booking row, Instant newStartUtc, List<String> guestEmails, boolean byOwner, Long initiatorOwnerId) {
         MeetingType type = MeetingType.findById(row.meetingTypeId);
-        Instant newEnd = newStartUtc.plusSeconds(60L * type.durationMinutes);
+        int bookedLength = lengthOf(row);
+        var newEnd = newStartUtc.plus(bookedLength, ChronoUnit.MINUTES);
 
         // Re-check the intersection across all hosts at the new time (fail-closed inside availableSlots).
         // Exclude EVERY row of the group, not just `row` -- a group has one row per host, all still at
@@ -895,11 +974,12 @@ public class BookingService {
         // own sibling row counted as busy against itself (Task 11 review fix: falsely rejected a small
         // shift / adjacent-slot reschedule whenever a buffer made the new slot's buffered interval
         // overlap the group's own old occupied interval).
+        // Re-check at the group's own booked length, not the type's default.
         Set<Long> groupRowIds = new HashSet<>();
         for (Booking r : Booking.<Booking>group(row.groupId)) {
             groupRowIds.add(r.id);
         }
-        assertSlotAvailable(type, newStartUtc, groupRowIds);
+        assertSlotAvailable(type, newStartUtc, groupRowIds, bookedLength);
 
         boolean reApproval = type.requiresApproval;
         var initiator = byOwner ? initiatorOwnerId : null;

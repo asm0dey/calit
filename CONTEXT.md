@@ -34,14 +34,17 @@ requiring them to be free.
 _Avoid_: guest host, secondary host
 
 **Meeting type**:
-A bookable offering of an Owner: length, availability, location and questions. What an Invitee
-picks before choosing a slot.
+A bookable offering of an Owner: the lengths it may be booked at, availability, location and
+questions. What an Invitee picks before choosing a slot.
 _Avoid_: event type, service, offering
 
 **Buffer**:
 Protected time a host requires immediately before or after a meeting. A constraint, not a
 preference: a slot is offered only if it satisfies every participating host's buffer, so the
-strictest one governs — see `docs/adr/0002-buffers-are-constraints-not-settings.md`.
+strictest one governs. Two sources can require one for the same host — the host themselves and the
+chosen duration — and the larger of those actually set applies; an unset one is the absence of a
+requirement, never a requirement equal to the meeting type's own buffer. See
+`docs/adr/0002-buffers-are-constraints-not-settings.md`.
 _Avoid_: padding, gap, break, turnaround
 
 **Slot**:
@@ -52,18 +55,24 @@ _Avoid_: opening, availability (that is the rules a slot is derived from), times
 **Cadence**:
 The spacing between consecutive slot starts, independent of how long the meeting is. Anchored to
 the shortest length a meeting type allows, so the start times on offer do not move when an Invitee
-changes the length.
+changes the length. A property of the meeting type, never of a Host: co-hosts differ in timezone,
+hours, overrides and buffers, but every host of a type shares its cadence, which is what lets their
+slots intersect at all. The lattice it defines is anchored to the Creator's clock
+(`docs/adr/0008-the-slot-lattice-is-anchored-to-the-creators-clock.md`).
 _Avoid_: interval, step, granularity, lattice
 
 **Allowed durations**:
 The set of lengths a meeting type may be booked at. Its default — what an Invitee sees before
-choosing — is the meeting type's own duration, which the set always contains
-(`docs/adr/0003-a-meeting-types-duration-doubles-as-its-default.md`).
+choosing — is the meeting type's own duration, which is an implicit member: the set is read as the
+union of the configured lengths with the default, so it cannot omit it
+(`docs/adr/0003-a-meeting-types-duration-doubles-as-its-default.md`). Every meeting type has one;
+most contain a single length.
 _Avoid_: duration options, duration range, lengths
 
 **Booking**:
-An agreement between an Owner and an Invitee to meet at a specific time. calit's sole source of
-truth about whether a meeting exists.
+An agreement between an Owner and an Invitee to meet at a specific time, for a length it carries
+itself rather than re-reading from the meeting type. calit's sole source of truth about whether a
+meeting exists. Rescheduling moves it, never resizes it.
 _Avoid_: appointment, meeting (the real-world encounter), reservation, event (a Google event)
 
 **Location**:

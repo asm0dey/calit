@@ -382,6 +382,9 @@ public interface AdminMessages {
     @Message("Buffer before (minutes)")
     String adm_detail_label_buffer_before();
 
+    @Message("Duration must be at least 1 minute.")
+    String adm_detail_error_duration_positive();
+
     @Message("Buffer after (minutes)")
     String adm_detail_label_buffer_after();
 
@@ -432,6 +435,40 @@ public interface AdminMessages {
 
     @Message("Save changes")
     String adm_detail_btn_save();
+
+    @Message("Allowed durations")
+    String adm_meetingTypeDetail_section_durations();
+
+    @Message(
+            "Every duration this meeting type may be booked at, in minutes. Default is what an invitee sees before choosing.")
+    String adm_meetingTypeDetail_durations_hint();
+
+    @Message("Duration (minutes)")
+    String adm_meetingTypeDetail_duration_col();
+
+    @Message("default")
+    String adm_meetingTypeDetail_duration_default();
+
+    @Message("Default")
+    String adm_meetingTypeDetail_duration_default_col();
+
+    @Message("Make this the default duration")
+    String adm_meetingTypeDetail_make_default_aria();
+
+    @Message("The default is always offered — move it to another row first")
+    String adm_meetingTypeDetail_remove_default_blocked();
+
+    @Message("+ Duration")
+    String adm_meetingTypeDetail_btn_add_duration();
+
+    @Message("Remove this duration")
+    String adm_meetingTypeDetail_remove_duration_aria();
+
+    @Message("Save durations")
+    String adm_meetingTypeDetail_btn_save_durations();
+
+    @Message("Allowed durations saved.")
+    String adm_meetingTypeDetail_durations_saved();
 
     @Message("Booking fields")
     String adm_detail_section_fields();

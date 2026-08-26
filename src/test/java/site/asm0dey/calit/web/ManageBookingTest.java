@@ -3,6 +3,7 @@ package site.asm0dey.calit.web;
 import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
@@ -13,12 +14,14 @@ import jakarta.transaction.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
+import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.google.CreatedEvent;
@@ -78,6 +81,89 @@ class ManageBookingTest {
                 "en",
                 List.of());
         return b.manageToken;
+    }
+
+    /**
+     * Seeds a type whose DEFAULT length is 30 minutes with an extra allowed length of 120 minutes,
+     * books at 120, and returns the manageToken. Availability is 9:00-17:00 daily, so the last
+     * candidate start that still fits a 30-minute meeting is 16:30, but the last that fits a
+     * 120-minute meeting is 15:00 — the reschedule page must reflect the BOOKED length (120), not
+     * the type's default (30).
+     */
+    @Transactional
+    String seedMultiDurationBooking() {
+        Booking.delete("meetingTypeId in (select id from MeetingType where slug = ?1)", "manage-multi-duration");
+        MeetingTypeDuration.delete(
+                "meetingTypeId in (select id from MeetingType where slug = ?1)", "manage-multi-duration");
+        MeetingType.delete("slug", "manage-multi-duration");
+        OwnerSettings s = OwnerSettings.forOwner(1L);
+        if (s == null) {
+            s = new OwnerSettings();
+            s.ownerId = 1L;
+        }
+        s.ownerName = "Owner";
+        s.ownerEmail = "owner@example.com";
+        s.timezone = "Europe/Amsterdam";
+        s.persist();
+
+        MeetingType t = new MeetingType();
+        t.ownerId = 1L;
+        t.name = "Manage Multi Duration Type";
+        t.slug = "manage-multi-duration";
+        t.durationMinutes = 30;
+        t.locationType = LocationType.GOOGLE_MEET;
+        t.persist();
+
+        MeetingTypeDuration d = new MeetingTypeDuration();
+        d.meetingTypeId = t.id;
+        d.durationMinutes = 120;
+        d.persist();
+
+        for (DayOfWeek dow : DayOfWeek.values()) {
+            AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = 1L;
+            r.dayOfWeek = dow;
+            r.startTime = LocalTime.of(9, 0);
+            r.endTime = LocalTime.of(17, 0);
+            r.meetingTypeId = null;
+            r.persist();
+        }
+        var slot = bookingService
+                .availableSlots(t, now(), now().plusDays(30), Set.of(), 120)
+                .getFirst();
+        Booking b = bookingService.book(
+                1L,
+                "manage-multi-duration",
+                slot.start().toInstant(),
+                "Manage Me",
+                "manage@example.com",
+                java.util.Map.of(),
+                "",
+                "",
+                "",
+                "en",
+                List.of(),
+                120);
+        return b.manageToken;
+    }
+
+    @Test
+    void rescheduleOffersSlotsAtTheBookedLengthNotTheTypeDefault() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+                .thenReturn(new CreatedEvent("evt-m4", "https://meet.google.com/manage-link4", "h", null));
+        var token = seedMultiDurationBooking();
+
+        // "16:30" is a valid start ONLY at the type's 30-minute default, never at the booking's
+        // actual 120-minute length (last 120-min start in a 9:00-17:00 window is 15:00). Its
+        // presence anywhere in the page would mean the reschedule grid was computed at the wrong
+        // length.
+        given().when()
+                .get("/booking/" + token + "/manage")
+                .then()
+                .statusCode(200)
+                .body(not(containsString("16:30")));
     }
 
     @Test

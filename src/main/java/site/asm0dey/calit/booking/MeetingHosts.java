@@ -15,6 +15,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import site.asm0dey.calit.booking.events.HostConsentRequested;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.user.AppUser;
@@ -121,14 +122,41 @@ public class MeetingHosts {
         return chosen;
     }
 
-    public int effectiveBufferBefore(MeetingType type, Long hostOwnerId) {
+    public int effectiveBufferBefore(MeetingType type, Long hostOwnerId, int durationMinutes) {
         MeetingTypeHost h = MeetingTypeHost.find(type.id, hostOwnerId);
-        return (h != null && h.bufferBeforeMinutes != null) ? h.bufferBeforeMinutes : type.bufferBeforeMinutes;
+        MeetingTypeDuration d = MeetingTypeDuration.findRow(type.id, durationMinutes);
+        return strictest(
+                h == null ? null : h.bufferBeforeMinutes,
+                d == null ? null : d.bufferBeforeMinutes,
+                type.bufferBeforeMinutes);
     }
 
-    public int effectiveBufferAfter(MeetingType type, Long hostOwnerId) {
+    public int effectiveBufferAfter(MeetingType type, Long hostOwnerId, int durationMinutes) {
         MeetingTypeHost h = MeetingTypeHost.find(type.id, hostOwnerId);
-        return (h != null && h.bufferAfterMinutes != null) ? h.bufferAfterMinutes : type.bufferAfterMinutes;
+        MeetingTypeDuration d = MeetingTypeDuration.findRow(type.id, durationMinutes);
+        return strictest(
+                h == null ? null : h.bufferAfterMinutes,
+                d == null ? null : d.bufferAfterMinutes,
+                type.bufferAfterMinutes);
+    }
+
+    /**
+     * ADR-0002: a buffer is a constraint, so where several apply to one host the strictest governs.
+     * The maximum is taken over the overrides actually SET — a null is the ABSENCE of a requirement,
+     * not a requirement equal to {@code typeDefault}. Letting a null fall back inside the maximum would
+     * raise a host's deliberate 5 back to the type's 10.
+     */
+    private static int strictest(Integer hostOverride, Integer durationOverride, int typeDefault) {
+        if (hostOverride == null && durationOverride == null) {
+            return typeDefault;
+        }
+        if (hostOverride == null) {
+            return durationOverride;
+        }
+        if (durationOverride == null) {
+            return hostOverride;
+        }
+        return Math.max(hostOverride, durationOverride);
     }
 
     public boolean eligibleCohost(Long meetingTypeId, Long creatorOwnerId, AppUser candidate) {

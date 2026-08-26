@@ -123,4 +123,40 @@ class AvailableSlotsIntersectionTest {
                 LocalTime.of(9, 30),
                 slots.get(0).start().withZoneSameInstant(AMS).toLocalTime());
     }
+
+    /**
+     * End-to-end cross-timezone coverage for {@link BookingService#availableSlots}: a London host
+     * and a Berlin host (a real one-hour UTC offset apart, not just two zone ids on the same
+     * offset) on a 45-minute type. Every other test in this class calls
+     * {@link site.asm0dey.calit.availability.SlotService#generateRawSlots} per host and intersects
+     * by hand, so none of them would notice if {@code latticeZone} (BookingService.java:145) were
+     * reverted to {@code null} for the multi-host branch -- this test calls {@code availableSlots}
+     * itself, and the 1-hour offset against a 45-minute step (60 is not a multiple of 45) means the
+     * two hosts' WINDOW-anchored grids land 15 minutes out of phase, so a null lattice zone here
+     * would make the intersection empty (verified manually: temporarily forcing {@code latticeZone
+     * = null} at BookingService.java:145 turns this assertion red).
+     */
+    @Test
+    @TestTransaction
+    void crossTimezoneAvailableSlotsIsNonEmpty() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var london = ZoneId.of("Europe/London");
+        var berlin = ZoneId.of("Europe/Berlin");
+
+        AppUser creator = AppUser.findByUsername("admin");
+        settings(creator.id, "london-host").timezone = london.getId();
+        AppUser cohost = enabledUser("berlin-cohost");
+        settings(cohost.id, "berlin-host").timezone = berlin.getId();
+
+        var mon = DayOfWeek.MONDAY;
+        // Both hosts free 09:00-17:00 in their OWN local time -- a real two-hour offset apart.
+        rule(creator.id, mon, 9, 17);
+        rule(cohost.id, mon, 9, 17);
+
+        MeetingType t = acceptedTwoHostType(creator.id, cohost.id, "cross-tz-45", 45, false);
+        var monday = LocalDate.now(london).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+
+        List<TimeSlot> slots = bookingService.availableSlots(t, monday, monday);
+        assertFalse(slots.isEmpty(), "a London host and a Berlin host must share some overlapping availability");
+    }
 }

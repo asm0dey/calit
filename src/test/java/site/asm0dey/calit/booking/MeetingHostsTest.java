@@ -84,8 +84,8 @@ class MeetingHostsTest {
         MeetingTypeHost creator = MeetingTypeHost.find(t.id, 1L);
         creator.bufferBeforeMinutes = 20; // override
         em.flush();
-        assertEquals(20, meetingHosts.effectiveBufferBefore(t, 1L)); // overridden
-        assertEquals(10, meetingHosts.effectiveBufferAfter(t, 1L)); // inherits type
+        assertEquals(20, meetingHosts.effectiveBufferBefore(t, 1L, t.durationMinutes)); // overridden
+        assertEquals(10, meetingHosts.effectiveBufferAfter(t, 1L, t.durationMinutes)); // inherits type
     }
 
     @Test
