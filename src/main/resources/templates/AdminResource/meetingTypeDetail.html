@@ -43,7 +43,7 @@
           <label class="label" for="mt-slug">{adm:adm_detail_label_slug} <span class="text-base-content/60">{adm:adm_detail_slug_hint}</span></label>
           <input id="mt-slug" class="input w-full" type="text" name="slug" data-slug-autofill value="{type.slug}">
           <label class="label" for="mt-duration">{adm:adm_detail_label_duration}</label>
-          <input id="mt-duration" class="input w-full" type="number" name="durationMinutes" value="{type.durationMinutes}" required>
+          <input id="mt-duration" class="input w-full" type="number" min="1" name="durationMinutes" value="{type.durationMinutes}" required>
           <label class="label" for="mt-buffer-before">{adm:adm_detail_label_buffer_before}</label>
           <input id="mt-buffer-before" class="input w-full" type="number" name="bufferBeforeMinutes" value="{type.bufferBeforeMinutes}" min="0">
           <label class="label" for="mt-buffer-after">{adm:adm_detail_label_buffer_after}</label>

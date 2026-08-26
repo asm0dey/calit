@@ -79,9 +79,16 @@ public class SlotService {
 
         // Cadence: an explicit interval wins; otherwise the SHORTEST allowed length, so the lattice
         // stays put when the Invitee switches. Not the chosen length, and not the default.
-        int step = (type.slotIntervalMinutes != null && type.slotIntervalMinutes > 0)
-                ? type.slotIntervalMinutes
-                : MeetingTypeDuration.shortestAllowed(type);
+        // Math.max(1, ...) is deliberate belt-and-braces, not defensive noise: a zero step makes both
+        // loops below unable to advance, which is an unbounded ALLOCATION loop (a TimeSlot per
+        // iteration) that pins the request thread until the heap gives out -- see calit-xjrg. Saving a
+        // zero duration is refused now, but a row written before that guard existed still reaches
+        // here, and no slot set is worth taking the instance down for.
+        int step = Math.max(
+                1,
+                (type.slotIntervalMinutes != null && type.slotIntervalMinutes > 0)
+                        ? type.slotIntervalMinutes
+                        : MeetingTypeDuration.shortestAllowed(type));
         // Instant has no plusMinutes, but it does take a TemporalAmount — so carry both spans as
         // Durations rather than as bare second counts multiplied by 60 at each use.
         var body = Duration.ofMinutes(durationMinutes);

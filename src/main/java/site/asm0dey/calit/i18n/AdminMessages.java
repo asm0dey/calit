@@ -382,6 +382,9 @@ public interface AdminMessages {
     @Message("Buffer before (minutes)")
     String adm_detail_label_buffer_before();
 
+    @Message("Duration must be at least 1 minute.")
+    String adm_detail_error_duration_positive();
+
     @Message("Buffer after (minutes)")
     String adm_detail_label_buffer_after();
 

@@ -227,6 +227,7 @@ public class AdminResource {
                 case "adm_hosts_error_slug_cohosts" ->
                     m().adm_hosts_error_slug_cohosts((String) hre.args[0], (String) hre.args[1]);
                 case "adm_hosts_error_slug_across" -> m().adm_hosts_error_slug_across((String) hre.args[0]);
+                case "adm_detail_error_duration_positive" -> m().adm_detail_error_duration_positive();
                 default -> e.getMessage();
             };
         }
@@ -485,6 +486,13 @@ public class AdminResource {
             String locationDetail,
             String slotIntervalMinutes,
             String requiresApproval) {
+        // A zero or negative duration is not a cosmetic error: the slot cadence falls back to the
+        // shortest allowed length, so it makes the step zero and SlotService's loops never advance --
+        // an unbounded allocation loop that pins the request thread (calit-xjrg). Refuse it here; the
+        // input's min= attribute is a hint to a browser, not a guard against a POST.
+        if (durationMinutes <= 0) {
+            throw new HostRuleException("adm_detail_error_duration_positive");
+        }
         t.durationMinutes = durationMinutes;
         t.bufferBeforeMinutes = bufferBeforeMinutes;
         t.bufferAfterMinutes = bufferAfterMinutes;

@@ -1,11 +1,11 @@
 ---
 # calit-xjrg
 title: A zero meeting-type duration hangs slot generation
-status: todo
+status: completed
 type: bug
 priority: high
 created_at: 2026-08-26T08:43:38Z
-updated_at: 2026-08-26T08:43:38Z
+updated_at: 2026-08-26T08:53:39Z
 ---
 
 Setting a meeting type's **Duration** to `0` spins slot generation forever and pins the request thread. Reachable through the ordinary owner UI — no crafted request needed.
@@ -48,3 +48,22 @@ Before selectable durations the step already fell back to `durationMinutes` via 
 - [ ] Guard in SlotService
 - [ ] A test that a zero duration is refused at save
 - [ ] i18n for whatever the rejection tells the owner, with `de` + `he`
+
+## Summary of Changes
+
+Reproduced first, against a running instance, exactly as the first todo asked — and it was worse than the bean described. Saving `durationMinutes=0` through the real create form returned **HTTP 200** and persisted; loading the type's public page then hung, and `jstack` showed the request thread parked in `SlotService.addWindowAnchored` with GC threads at **93-98%**. It is not a quiet spin: the loop allocates a `TimeSlot` every iteration, so it races toward OOM while pinning the thread.
+
+Fixed in four layers, because each alone is bypassable:
+
+- `min="1"` on the duration input in BOTH forms — the detail page and the create page, which also lacked it.
+- Server-side rejection in `applyEditableFields`, throwing `HostRuleException("adm_detail_error_duration_positive")` so it renders localized like the slug rules. An HTML attribute is a hint to a browser, not a guard against a POST.
+- `V30__meeting_type_duration_positive.sql`: repair, then constrain. Rows with `duration_minutes <= 0` are moved to 30 (the create form's own default) before the CHECK is added — a CHECK that fails validation on someone's existing data would take the application down at boot, which is a worse failure than the one being fixed.
+- `Math.max(1, step)` in `SlotService`. Belt-and-braces for a row written before the guard existed; no slot set is worth taking the instance down for.
+
+The durations-table path needed nothing: `parsePositive` already rejected `<= 0`.
+
+Tests in `AdminDurationGuardTest`: create refused with the owner told why, edit refused with the stored value untouched, and negatives refused too. Full suite 983/983.
+
+## Correction on record
+
+The `calit-p5xm` final review flagged this and I filed it as a non-blocking minor, reasoning it was unreachable. It was reachable by typing — the Basics field had no `min`. The reviewer was right and I was wrong.
