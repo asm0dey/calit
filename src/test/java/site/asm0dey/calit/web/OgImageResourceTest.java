@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class OgImageResourceTest {
@@ -38,6 +39,50 @@ class OgImageResourceTest {
             t.locationType = LocationType.GOOGLE_MEET;
             t.secret = secret;
             t.persist();
+        });
+    }
+
+    private static void seedInactive(String slug) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            if (s == null) {
+                s = new OwnerSettings();
+                s.ownerId = 1L;
+            }
+            s.ownerName = "Ada Lovelace";
+            s.ownerEmail = "owner@example.com";
+            s.timezone = "UTC";
+            s.persist();
+            MeetingType t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "Coffee chat";
+            t.slug = slug;
+            t.durationMinutes = 30;
+            t.locationType = LocationType.GOOGLE_MEET;
+            t.active = false;
+            t.persist();
+        });
+    }
+
+    /** An owner who HAD a real name and a public type -- then was switched off (calit-h8mb). */
+    private static void seedDisabledOwner(String username, String slug) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            AppUser u = AppUser.create(username, "x", false);
+            u.persist();
+            OwnerSettings s = new OwnerSettings();
+            s.ownerId = u.id;
+            s.ownerName = "Gone Person";
+            s.ownerEmail = "gone@example.com";
+            s.timezone = "UTC";
+            s.persist();
+            MeetingType t = new MeetingType();
+            t.ownerId = u.id;
+            t.name = "Intro";
+            t.slug = slug;
+            t.durationMinutes = 30;
+            t.locationType = LocationType.GOOGLE_MEET;
+            t.persist();
+            u.enabled = false; // managed entity -> flushed on commit
         });
     }
 
@@ -131,6 +176,83 @@ class OgImageResourceTest {
                 .header("ETag");
         assertNotNull(after);
         assertNotEquals(before, after, "renaming the meeting type must change the ETag (no-invalidation design)");
+    }
+
+    @Test
+    void disabledOwnerCardsFallBackToTheProductCard() {
+        seedDisabledOwner("disabled-og-owner", "card-disabled");
+        byte[] product =
+                given().when().get("/og.png").then().statusCode(200).extract().asByteArray();
+
+        // Same enumeration-oracle guard as PublicResource.resolveOwner (calit-h8mb): the real
+        // booking page 404s a disabled account, so this endpoint must be just as blind to it --
+        // not render the real owner name via the /{user}.png card.
+        byte[] ownerCard = given().when()
+                .get("/og/disabled-og-owner.png")
+                .then()
+                .statusCode(200)
+                .extract()
+                .asByteArray();
+        assertArrayEquals(product, ownerCard, "a disabled owner's card must not reveal their name");
+
+        byte[] typeCard = given().when()
+                .get("/og/disabled-og-owner/card-disabled.png")
+                .then()
+                .statusCode(200)
+                .extract()
+                .asByteArray();
+        assertArrayEquals(product, typeCard, "a disabled owner's meeting-type card must not reveal name/type/duration");
+    }
+
+    @Test
+    void inactiveTypeServesTheProductCard() {
+        seedInactive("card-inactive");
+        byte[] inactive = given().when()
+                .get("/og/admin/card-inactive.png")
+                .then()
+                .statusCode(200)
+                .extract()
+                .asByteArray();
+        byte[] product = given().when().get("/og.png").then().extract().asByteArray();
+        assertArrayEquals(product, inactive, "an inactive type must not be named in its card");
+    }
+
+    @Test
+    void changingTheDurationOrLocationChangesTheEtag() {
+        seed("card-etag-axes", false);
+        String before = given().when()
+                .get("/og/admin/card-etag-axes.png")
+                .then()
+                .statusCode(200)
+                .extract()
+                .header("ETag");
+        assertNotNull(before);
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = MeetingType.findBySlug(1L, "card-etag-axes");
+            t.durationMinutes = 45;
+        });
+        String afterDuration = given().when()
+                .get("/og/admin/card-etag-axes.png")
+                .then()
+                .statusCode(200)
+                .extract()
+                .header("ETag");
+        assertNotNull(afterDuration);
+        assertNotEquals(before, afterDuration, "changing the allowed duration must change the ETag");
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = MeetingType.findBySlug(1L, "card-etag-axes");
+            t.locationType = LocationType.PHONE;
+        });
+        String afterLocation = given().when()
+                .get("/og/admin/card-etag-axes.png")
+                .then()
+                .statusCode(200)
+                .extract()
+                .header("ETag");
+        assertNotNull(afterLocation);
+        assertNotEquals(afterDuration, afterLocation, "changing the location kind must change the ETag");
     }
 
     @Test

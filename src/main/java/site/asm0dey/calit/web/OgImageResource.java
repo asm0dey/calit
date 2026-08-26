@@ -18,7 +18,6 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
-import site.asm0dey.calit.user.Usernames;
 import site.asm0dey.calit.web.og.CardRenderer;
 
 /**
@@ -55,8 +54,12 @@ public class OgImageResource {
     @Path("/og/{user}.png")
     @Produces("image/png")
     public Response owner(@Context Request request, @PathParam("user") String user) {
-        AppUser owner = findOwner(user);
-        if (owner == null) {
+        AppUser owner = AppUser.findByUsername(user);
+        // A disabled owner must be indistinguishable from an unknown one here, same as
+        // PublicResource.resolveOwner (calit-h8mb): otherwise this endpoint would render a real
+        // name/card for an account whose actual booking page already 404s, reopening the exact
+        // enumeration oracle that bug closed.
+        if (owner == null || !owner.enabled) {
             return product(request);
         }
         OwnerSettings settings = OwnerSettings.forOwner(owner.id);
@@ -75,8 +78,10 @@ public class OgImageResource {
     @Produces("image/png")
     public Response meetingType(
             @Context Request request, @PathParam("user") String user, @PathParam("slug") String slug) {
-        AppUser owner = findOwner(user);
-        if (owner == null) {
+        AppUser owner = AppUser.findByUsername(user);
+        // Same enumeration-oracle guard as owner() above (calit-h8mb): a disabled owner's type
+        // must fall back to the product card, not render their real name/type/duration/location.
+        if (owner == null || !owner.enabled) {
             return product(request);
         }
         MeetingType type = MeetingType.findBySlug(owner.id, slug);
@@ -113,11 +118,6 @@ public class OgImageResource {
             case IN_PERSON -> "In person";
             case CUSTOM -> "Online";
         };
-    }
-
-    static AppUser findOwner(String user) {
-        String normalized = Usernames.normalize(user);
-        return normalized == null ? null : AppUser.find("username", normalized).firstResult();
     }
 
     Response png(Request request, String cacheKey, byte[] body) {
