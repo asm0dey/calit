@@ -935,7 +935,7 @@ public class AdminResource {
         try {
             var v = Integer.parseInt(raw.trim());
             return v < 0 ? null : v;
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             return null;
         }
     }

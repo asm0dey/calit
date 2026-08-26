@@ -276,6 +276,9 @@ public class BookingService {
      * even know the default duration — a missing type falls through to {@code 0} here and the 12-arg
      * body's own {@link NotFoundException} still fires first, before that {@code 0} is ever used.
      */
+    // S107: one param per booking input, same as the 12-arg form below; this overload exists to keep
+    // the pre-duration arity working, so collapsing it into a record would defeat its only purpose.
+    @SuppressWarnings("java:S107")
     @Transactional
     public Booking book(
             Long ownerId,

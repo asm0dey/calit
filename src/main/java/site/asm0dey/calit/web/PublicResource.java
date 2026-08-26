@@ -278,7 +278,7 @@ public class PublicResource {
         if (rawDuration != null && !rawDuration.isBlank()) {
             try {
                 parsed = Integer.parseInt(rawDuration.trim());
-            } catch (NumberFormatException ignored) {
+            } catch (NumberFormatException _) {
                 // Falls through to the type's default below.
             }
         }

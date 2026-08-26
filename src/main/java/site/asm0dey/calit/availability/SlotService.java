@@ -2,6 +2,7 @@ package site.asm0dey.calit.availability;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -82,69 +83,76 @@ public class SlotService {
                 : MeetingTypeDuration.shortestAllowed(type);
         var duration = durationMinutes;
 
+        var bodySeconds = duration * 60L;
         for (var date = from; !date.isAfter(to); date = date.plusDays(1)) {
             for (Window window : availability.windowsFor(date)) {
                 var windowStart = date.atTime(window.start()).atZone(zone).toInstant();
                 var windowEnd = date.atTime(window.end()).atZone(zone).toInstant();
-                var bodySeconds = duration * 60L;
                 if (latticeZone == null) {
-                    // Window-anchored (single-host): the first slot IS the window start, byte-identical
-                    // to the historical behaviour, including per-window anchoring on a multi-window day.
-                    for (var s = windowStart;
-                            !s.plusSeconds(bodySeconds).isAfter(windowEnd);
-                            s = s.plusSeconds(step * 60L)) {
-                        slots.add(new TimeSlot(
-                                s.atZone(zone), s.plusSeconds(bodySeconds).atZone(zone)));
-                    }
+                    addWindowAnchored(slots, zone, windowStart, windowEnd, step, bodySeconds);
                 } else {
-                    // Lattice-anchored (multi-host): candidate starts are the instants whose local
-                    // time-of-day in the CREATOR's zone is a whole number of steps past midnight
-                    // (ADR-0008) -- re-derived from midnight of EACH Creator-local day the window
-                    // touches, never carried forward by adding `step` across a Creator-local
-                    // midnight. Walking forward that way would freeze the phase computed from
-                    // whichever day the window happened to start on, so a window whose Creator-local
-                    // start falls late the previous day (or a step that doesn't divide 1440) would
-                    // drift onto a DIFFERENT comb than a window starting fresh at that day's own
-                    // midnight -- two combs again, the defect this task exists to remove.
-                    var latticeRules = latticeZone.getRules();
-                    for (var day = windowStart.atZone(latticeZone).toLocalDate();
-                            !day.atStartOfDay(latticeZone).toInstant().isAfter(windowEnd);
-                            day = day.plusDays(1)) {
-                        for (var minute = 0; minute < 1440; minute += step) {
-                            var local = day.atTime(minute / 60, minute % 60);
-                            // A local time inside a DST gap (spring-forward) has no valid offset --
-                            // skip it. Inside a fall-back overlap it has two: both are real, distinct
-                            // instants whose Creator-local time-of-day is identical, so both satisfy
-                            // the predicate and both are emitted (ADR-0008) -- this is also what
-                            // keeps single-host and multi-host slot counts consistent across a
-                            // fall-back.
-                            for (ZoneOffset offset : latticeRules.getValidOffsets(local)) {
-                                var s = local.toInstant(offset);
-                                // continue, not break: once a local minute can resolve to zero, one,
-                                // or two instants, the resulting instant sequence is no longer
-                                // monotone in `minute`, so an early `break` on the window-end test
-                                // can skip a later, still-valid, minute.
-                                if (s.isBefore(windowStart)
-                                        || s.plusSeconds(bodySeconds).isAfter(windowEnd)) {
-                                    continue;
-                                }
-                                slots.add(new TimeSlot(
-                                        s.atZone(zone),
-                                        s.plusSeconds(bodySeconds).atZone(zone)));
-                            }
-                        }
-                    }
+                    addLatticeAnchored(slots, zone, latticeZone, windowStart, windowEnd, step, bodySeconds);
                 }
             }
         }
-        // The lattice branch's per-day/per-offset enumeration is not guaranteed monotone in
-        // insertion order (a DST gap/overlap can make `minute` and the resolved instant disagree on
-        // ordering, and the fall-back case can add two starts for one `minute` out of order relative
-        // to neighbouring minutes). Sort by start instant so callers (the public booking page) always
-        // see chronological order regardless of how DST resolution happened to enumerate. On the
-        // null-anchor branch this is a no-op: that branch already emits in start-instant order.
         slots.sort(Comparator.comparing(s -> s.start().toInstant()));
         return slots;
+    }
+
+    /**
+     * Window-anchored starts (single-host): the first slot IS the window start, byte-identical to the
+     * historical behaviour, including per-window anchoring on a multi-window day.
+     */
+    private static void addWindowAnchored(
+            List<TimeSlot> slots, ZoneId zone, Instant windowStart, Instant windowEnd, int step, long bodySeconds) {
+        for (var s = windowStart; !s.plusSeconds(bodySeconds).isAfter(windowEnd); s = s.plusSeconds(step * 60L)) {
+            slots.add(new TimeSlot(s.atZone(zone), s.plusSeconds(bodySeconds).atZone(zone)));
+        }
+    }
+
+    /**
+     * Lattice-anchored starts (multi-host): the instants whose local time-of-day in the CREATOR's zone
+     * is a whole number of steps past midnight (ADR-0008).
+     *
+     * <p>The phase is re-derived from midnight of EACH Creator-local day the window touches, never
+     * carried forward by adding {@code step} across a Creator-local midnight. Walking forward that way
+     * would freeze the phase computed from whichever day the window happened to start on, so a window
+     * whose Creator-local start falls late the previous day (or a step that does not divide 1440) would
+     * drift onto a DIFFERENT comb than a window starting fresh at that day's own midnight — two combs
+     * again, the defect this exists to remove.
+     */
+    private static void addLatticeAnchored(
+            List<TimeSlot> slots,
+            ZoneId zone,
+            ZoneId latticeZone,
+            Instant windowStart,
+            Instant windowEnd,
+            int step,
+            long bodySeconds) {
+        var latticeRules = latticeZone.getRules();
+        for (var day = windowStart.atZone(latticeZone).toLocalDate();
+                !day.atStartOfDay(latticeZone).toInstant().isAfter(windowEnd);
+                day = day.plusDays(1)) {
+            for (var minute = 0; minute < 1440; minute += step) {
+                var local = day.atTime(minute / 60, minute % 60);
+                // A local time inside a DST gap (spring-forward) has no valid offset -- skip it. Inside
+                // a fall-back overlap it has two: both are real, distinct instants whose Creator-local
+                // time-of-day is identical, so both satisfy the predicate and both are emitted
+                // (ADR-0008) -- which is also what keeps single-host and multi-host slot counts
+                // consistent across a fall-back.
+                for (ZoneOffset offset : latticeRules.getValidOffsets(local)) {
+                    var s = local.toInstant(offset);
+                    // continue, not break: once a local minute can resolve to zero, one, or two
+                    // instants, the resulting instant sequence is no longer monotone in `minute`, so an
+                    // early `break` on the window-end test can skip a later, still-valid minute.
+                    if (s.isBefore(windowStart) || s.plusSeconds(bodySeconds).isAfter(windowEnd)) {
+                        continue;
+                    }
+                    slots.add(new TimeSlot(
+                            s.atZone(zone), s.plusSeconds(bodySeconds).atZone(zone)));
+                }
+            }
+        }
     }
 
     /**

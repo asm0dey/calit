@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
@@ -102,12 +103,14 @@ class BookingDurationTest {
                 .getFirst();
 
         long before = Booking.count();
+        // Resolved outside the lambda so the only call inside it that can throw is book(...) itself.
+        Instant start = slot.start().toInstant();
         assertThrows(
                 BookingConflictException.class,
                 () -> bookingService.book(
                         OWNER,
                         t.slug,
-                        slot.start().toInstant(),
+                        start,
                         "Ada",
                         "ada@example.test",
                         Map.of(),
