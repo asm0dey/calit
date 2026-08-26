@@ -142,11 +142,13 @@ public class CardRenderer {
         var tile = 56;
         Font wordFont = fonts.wordmark().deriveFont(34f);
         var wordWidth = trackedWidth(g, "calit", wordFont);
-        // float end to end: lockWidth is frequently odd (tile + 14 are even, wordWidth is not), and
-        // integer division here truncated the centring offset by half a pixel — a real defect, not
-        // just an S2184 nit, because the whole card's crop-safety design leans on this lockup being
-        // exactly centred (see the class javadoc).
-        float lockWidth = tile + 14 + wordWidth;
+        // lockWidth is genuinely integral: KEY_FRACTIONALMETRICS is never set above, so it defaults to
+        // OFF and AWT rounds every glyph advance to whole pixels when drawing — meaning wordWidth's int
+        // (from FontMetrics.stringWidth) already equals the true drawn width. Only the halving below
+        // needs float: integer division there truncated the centring offset by up to half a pixel — a
+        // real defect, not just an S2184 nit, because the whole card's crop-safety design leans on this
+        // lockup being exactly centred (see the class javadoc).
+        var lockWidth = tile + 14 + wordWidth;
         var x = cx - lockWidth / 2f;
 
         g.setColor(INDIGO);
