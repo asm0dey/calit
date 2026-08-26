@@ -2,6 +2,7 @@ package site.asm0dey.calit.availability;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -81,17 +82,18 @@ public class SlotService {
         int step = (type.slotIntervalMinutes != null && type.slotIntervalMinutes > 0)
                 ? type.slotIntervalMinutes
                 : MeetingTypeDuration.shortestAllowed(type);
-        var duration = durationMinutes;
-
-        var bodySeconds = duration * 60L;
+        // Instant has no plusMinutes, but it does take a TemporalAmount — so carry both spans as
+        // Durations rather than as bare second counts multiplied by 60 at each use.
+        var body = Duration.ofMinutes(durationMinutes);
+        var gap = Duration.ofMinutes(step);
         for (var date = from; !date.isAfter(to); date = date.plusDays(1)) {
             for (Window window : availability.windowsFor(date)) {
                 var windowStart = date.atTime(window.start()).atZone(zone).toInstant();
                 var windowEnd = date.atTime(window.end()).atZone(zone).toInstant();
                 if (latticeZone == null) {
-                    addWindowAnchored(slots, zone, windowStart, windowEnd, step, bodySeconds);
+                    addWindowAnchored(slots, zone, windowStart, windowEnd, gap, body);
                 } else {
-                    addLatticeAnchored(slots, zone, latticeZone, windowStart, windowEnd, step, bodySeconds);
+                    addLatticeAnchored(slots, zone, latticeZone, windowStart, windowEnd, step, body);
                 }
             }
         }
@@ -104,9 +106,9 @@ public class SlotService {
      * historical behaviour, including per-window anchoring on a multi-window day.
      */
     private static void addWindowAnchored(
-            List<TimeSlot> slots, ZoneId zone, Instant windowStart, Instant windowEnd, int step, long bodySeconds) {
-        for (var s = windowStart; !s.plusSeconds(bodySeconds).isAfter(windowEnd); s = s.plusSeconds(step * 60L)) {
-            slots.add(new TimeSlot(s.atZone(zone), s.plusSeconds(bodySeconds).atZone(zone)));
+            List<TimeSlot> slots, ZoneId zone, Instant windowStart, Instant windowEnd, Duration gap, Duration body) {
+        for (var s = windowStart; !s.plus(body).isAfter(windowEnd); s = s.plus(gap)) {
+            slots.add(new TimeSlot(s.atZone(zone), s.plus(body).atZone(zone)));
         }
     }
 
@@ -128,7 +130,7 @@ public class SlotService {
             Instant windowStart,
             Instant windowEnd,
             int step,
-            long bodySeconds) {
+            Duration body) {
         var latticeRules = latticeZone.getRules();
         for (var day = windowStart.atZone(latticeZone).toLocalDate();
                 !day.atStartOfDay(latticeZone).toInstant().isAfter(windowEnd);
@@ -145,11 +147,10 @@ public class SlotService {
                     // continue, not break: once a local minute can resolve to zero, one, or two
                     // instants, the resulting instant sequence is no longer monotone in `minute`, so an
                     // early `break` on the window-end test can skip a later, still-valid minute.
-                    if (s.isBefore(windowStart) || s.plusSeconds(bodySeconds).isAfter(windowEnd)) {
+                    if (s.isBefore(windowStart) || s.plus(body).isAfter(windowEnd)) {
                         continue;
                     }
-                    slots.add(new TimeSlot(
-                            s.atZone(zone), s.plusSeconds(bodySeconds).atZone(zone)));
+                    slots.add(new TimeSlot(s.atZone(zone), s.plus(body).atZone(zone)));
                 }
             }
         }
