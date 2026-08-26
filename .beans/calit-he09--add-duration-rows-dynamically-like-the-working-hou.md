@@ -1,11 +1,11 @@
 ---
 # calit-he09
 title: Add duration rows dynamically, like the working-hours grid
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-08-26T05:34:00Z
-updated_at: 2026-08-26T08:43:59Z
+updated_at: 2026-08-26T09:16:59Z
 ---
 
 The allowed-durations editor grows one row per save: it renders one row per allowed length plus a single blank spare, so adding a second length means saving and coming back. The working-hours grid already solves this with an **+ Add frame** button that clones a row client-side, and durations should match that idiom.
@@ -53,7 +53,7 @@ Worth noting the working-hours grid is arguably WEAKER here: a day with no frame
 - [ ] Keep the blank spare row so the no-JS path still adds one per save
 - [ ] i18n for the new button labels, with `de` + `he`
 - [ ] Test that the no-JS path still works (RestAssured cannot run JS, so this is the default assertion)
-- [x] Check whether the working-hours no-JS gap is real, and file it separately if so — see the note below
+- [x] Check whether the working-hours no-JS gap is real, and file it separately if so — filed as its own bean; it is about the working-hours grid, not this editor
 
 ## Summary of Changes
 
@@ -79,3 +79,7 @@ I marked this bean completed with an unchecked item — checking whether the wor
 The observation stands and is untested: `_workplanGrid.html` renders frame inputs only for frames that exist, so a day with none shows buttons and no rows (visible in `multi-host-shared-availability.png`, where Saturday and Sunday have no inputs). If that is right, a no-JS owner cannot add hours to an empty day, which the durations editor deliberately avoided by always rendering a spare row.
 
 Verify it against a running instance with JavaScript disabled, then either file it or record here that it is not a gap. Everything else in this bean shipped.
+
+## Reclosed
+
+Reopening this was a bookkeeping error. The feature shipped in full — `+ Duration`, `×`, the Default radio, the spare row for the no-JS path — and the only open item was a question about the WORKING-HOURS grid, a different component. That is now its own bean, which is where it belonged.
