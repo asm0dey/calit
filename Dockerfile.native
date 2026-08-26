@@ -37,9 +37,12 @@ RUN printf 'git.build.version=%s\ngit.commit.id.abbrev=%s\n' "$APP_VERSION" "$GI
 # so without this the OAuth token + freeBusy JSON parsing crashes at runtime in the native image.
 # --initialize-at-build-time=java.awt.Color: discovered by this change (calit-o89d) -- fails the
 # BUILD, not a request. CardRenderer's static final Color fields land in the image heap because
-# CardRenderer is a CDI bean initialized at build time; Color defaults to run-time init (its static
-# initializer calls Toolkit.loadLibraries() plus a conditional initIDs() when not headless), and
-# GraalVM refuses run-time-initialized types in a build-time heap.
+# CardRenderer is a CDI bean initialized at build time. Color has no static initializer itself; it
+# defaults to run-time init because quarkus-awt's AwtProcessor build step classifies it into the ICC
+# colour-management surface (ColorSpace/ICC_Profile/ICC_ProfileGray/ICC_ProfileRGB/CMMException) --
+# Color qualifies solely for its private ColorSpace cs field (Color.java:255), the thing the native
+# CMM needs at runtime. Our constants use the plain-int sRGB ctor, so cs stays null. GraalVM refuses
+# run-time-initialized types in a build-time heap.
 # Safe here: Color's frozen state is plain RGB ints, and build + run both happen in equally-headless
 # Linux containers -- proven empirically (JVM vs native /og.png and /og/admin.png output is
 # byte-for-byte SHA-256 identical).
