@@ -41,13 +41,23 @@ When creating a new meeting type, **Min scheduling notice** defaults to 4× the 
 
 ## Allowed durations
 
-A meeting type does not have to offer just one length. In the type's **Allowed durations** section you can add extra lengths — say a 30-minute type that also offers 60 and 120 minutes — each with its own buffer before and after. Invitees pick a length above the slot grid on the public booking page before choosing a time; if you only ever offer one length, no picker appears at all.
+A meeting type does not have to offer just one length. In the type's **Allowed durations** section you can add extra lengths — say a 60-minute type that also offers 30 and 120 minutes — each with its own buffer before and after.
+
+![Allowed durations on a meeting type](/calit/img/meeting-type-durations.png)
+
+Invitees pick a length above the slot grid on the public booking page before choosing a time. If you only ever offer one length, no picker appears at all and the page looks exactly as it did before.
+
+![Choosing a meeting length on the booking page](/calit/img/product-booking-durations.png)
 
 To add a length, fill in a duration (in minutes) on a blank row and save. To remove one, clear its duration field and save — the row disappears from the allowed set. Leave a row's buffer fields blank to have that length use the meeting type's own **Buffer before / after** instead of a value of its own.
 
 The **Duration** field above is always the type's default — the length that renders before the invitee picks one, and the length a plain link to the type's URL books. It is always part of the allowed set; there is no separate control to remove it here, and changing it is done in the **Duration** field itself, not in this table.
 
-When a length has its own buffer and the meeting has more than one host, or the host's own buffer differs from the length's, the buffer actually applied is whichever is larger — buffers are a floor on how much padding surrounds a booking, never a setting that can be relaxed by mixing a wide host buffer with a narrow duration override, or the reverse.
+A buffer is a floor on how much padding surrounds a booking, never a setting that can be relaxed. So where two of them apply to the same host — the host's own override on a shared type, and the chosen length's override — the one actually applied is **whichever is larger**. Setting a narrow buffer on a length does not shorten a co-host's turnaround, and a wide host buffer does not override a wider one on the length.
+
+Leaving either blank means "no requirement from this source", not "zero": a blank falls through to the meeting type's own buffer rather than competing with the other override. A co-host who deliberately sets a *smaller* buffer than the type's default keeps it, as long as no length asks for more.
+
+On a shared type, a co-host sets their own buffer in **Buffers** on their shared-availability page — see [Shared meeting types](/calit/usage/multi-host-meetings/).
 
 Switching between lengths does not move the start times already on offer — a longer pick simply drops the starts that no longer leave enough room, since every length shares the same underlying lattice.
 
