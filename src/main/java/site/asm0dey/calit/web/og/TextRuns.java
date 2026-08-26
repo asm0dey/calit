@@ -23,6 +23,11 @@ public final class TextRuns {
         return text.codePoints().allMatch(cp -> chain.stream().anyMatch(f -> f.canDisplay(cp)));
     }
 
+    // S127 flags the loop counter being assigned in the body. That is deliberate here: i advances by
+    // Character.charCount(cp), which is 2 for a surrogate pair (e.g. an emoji) and 1 otherwise. Don't
+    // "simplify" it to i++ — that splits surrogate pairs in half and corrupts astral-plane text.
+    // Suppressed by rule id rather than // NOSONAR so any other finding on this method still surfaces.
+    @SuppressWarnings("java:S127")
     public static List<Run> split(String text, List<Font> chain, float size) {
         List<Run> out = new ArrayList<>();
         var current = new StringBuilder();
