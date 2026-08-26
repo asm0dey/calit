@@ -31,8 +31,12 @@ themselves, the list is unbounded, and a missed one leaks exactly the data this 
   needing to remember this rule — the safety comes from *not* opting in, not from a checklist item
   someone has to complete.
 - The rendered card endpoints (`/og.png`, `/og/{user}.png`, `/og/{user}/{slug}.png`) are separate
-  from the capability-URL pages this ADR governs, but they do return `Cache-Control: public`. With
-  Quarkus's proactive form auth, a logged-in browser could in principle receive a re-issued
-  `quarkus-credential` `Set-Cookie` on that response, which a shared cache must not store. Real
-  exposure is low — in practice only unfurl bots fetch `og:image`, and they carry no session — but
-  it is worth naming rather than assuming away.
+  from the capability-URL pages this ADR governs, but they do return `Cache-Control: public`, so a
+  `Set-Cookie` on those responses could be stored by a shared cache and served to another visitor.
+  This was first written as a theoretical note about `quarkus-credential`; verifying the feature
+  against a live instance showed it was actually happening, with a different cookie —
+  `quarkus-rest-csrf` issues a `csrf-token` on safe GETs regardless of content type, so *every* card
+  response carried one. Fixed in `calit-7hls` by a Vert.x route filter that removes that cookie on
+  the three card routes only; the booking form still receives its token, which is what keeps CSRF
+  protection intact. The general rule stands: a response this application marks `public` must not
+  carry a `Set-Cookie`, and any new cacheable endpoint should be checked against that.

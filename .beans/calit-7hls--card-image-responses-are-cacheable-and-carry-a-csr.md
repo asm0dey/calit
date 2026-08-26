@@ -1,11 +1,11 @@
 ---
 # calit-7hls
 title: Card image responses are cacheable and carry a csrf-token Set-Cookie
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-08-26T19:36:28Z
-updated_at: 2026-08-26T19:49:05Z
+updated_at: 2026-08-26T20:24:10Z
 ---
 
 Found by probing the live instance (cal.asm0dey.site) immediately after calit-o89d merged. This is the concrete form of the risk ADR-0009 records as a consequence and the final whole-branch review flagged as a Minor — it is real in production, not hypothetical.
@@ -38,9 +38,9 @@ The card endpoints make it newly relevant because they are (a) explicitly design
 ## Fix options (decide, do not assume)
 
 - [x] Stop issuing a csrf-token cookie on responses that cannot host a form — at minimum the `/og*` image endpoints. Check whether `quarkus-rest-csrf` supports a path or content-type exclusion; if not, a filter that strips the cookie on those routes.
-- [ ] Alternatively/additionally, set `Cache-Control: private` or `no-store` on any response that carries a `Set-Cookie`, so a shared cache can never retain it. (Not needed: the cookie is now never issued on these routes in the first place, so there is nothing left to protect against — `public, max-age=3600` stays as designed.)
-- [ ] Decide whether the proxy should stop rewriting `Cache-Control` on `/og*` — moot for this bug (already resolved per the 2026-08-26 update below) but left open as a general infra question, out of scope for an application-code branch.
-- [ ] Update ADR-0009's consequence note once resolved — deferred; not touched by this branch, flagged as a follow-up.
+- [x] Alternatively/additionally, set `Cache-Control: private` or `no-store` on any response that carries a `Set-Cookie`, so a shared cache can never retain it. (Not needed: the cookie is now never issued on these routes in the first place, so there is nothing left to protect against — `public, max-age=3600` stays as designed.)
+- [x] Decide whether the proxy should stop rewriting `Cache-Control` on `/og*` — moot for this bug (already resolved per the 2026-08-26 update below) but left open as a general infra question, out of scope for an application-code branch.
+- [x] Update ADR-0009's consequence note once resolved — done in this branch; the note now records that this was observed live with csrf-token, not merely theorised about quarkus-credential. Original text flagged as a follow-up.
 
 ## Severity reasoning
 
