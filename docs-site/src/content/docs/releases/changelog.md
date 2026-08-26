@@ -7,9 +7,11 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.22.0
 
-Merged but not yet in a tagged release.
+A meeting type can offer several booking lengths, each with its own buffers,
+and shared meeting types whose hosts sit in different timezones offer slots
+again.
 
 - **A meeting type can offer several lengths.** Running 30-, 60- and
   120-minute sessions used to mean three near-duplicate meeting types that
@@ -19,10 +21,7 @@ Merged but not yet in a tagged release.
   Start times sit on the same lattice whichever length is picked, so
   switching length only drops the starts that no longer fit; it never moves
   the times already on offer.
-- **Rescheduling no longer resizes a booking.** Moving a booking that was
-  made at a non-default length recomputed its end from the meeting type's
-  own duration, silently shrinking (or growing) it to that default. A
-  booking now keeps the length it was made at through every reschedule.
+  ([#153](https://github.com/asm0dey/calit/pull/153))
 - **Shared meeting types across timezones offer slots again.** Each host's
   slot grid was anchored to midnight in that host's own timezone and then
   intersected by exact start time, so two hosts whose UTC offsets differed
@@ -31,13 +30,11 @@ Merged but not yet in a tagged release.
   showed no available times at all. Every host's grid is now anchored to
   one clock, the meeting type creator's, so hosts sharing a type always
   share a lattice.
+  ([#153](https://github.com/asm0dey/calit/pull/153))
 
-Nothing to do on upgrade — no configuration or database action is required,
-and every existing meeting type keeps exactly the length and start times it
-has today. One caveat: a shared meeting type whose hosts span timezones may
-now show start times at unround local minutes for some of those hosts —
-that is the timezone fix working, since before it those hosts' pages showed
-no times at all.
+A shared meeting type whose hosts span timezones may now show start times at
+unround local minutes for some of those hosts — that is the timezone fix
+working, since before it those hosts' pages showed no times at all.
 
 ## 1.21.0
 
@@ -150,10 +147,8 @@ no slots today, so it was already effectively parked — but if you want it to
 stay that way, give it hours of its own or clear the global grid again after
 upgrading.
 
-Nothing to do for the disabled-account and timezone fixes — no configuration
-and no database changes. One caveat worth knowing: bookings that were taken on
-a disabled account's page **before** this upgrade are not cancelled
-retroactively. They stay on the books, and the invitee can still cancel them
+Bookings that were taken on a disabled account's page **before** this upgrade
+are not cancelled retroactively. They stay on the books, and the invitee can still cancel them
 from their existing link.
 
 ## 1.20.2
@@ -196,8 +191,6 @@ Cancelling a booking works again when the Google event was already deleted.
   aborts the cancel loudly, and rescheduling onto a deleted event still errors
   rather than silently reporting a move that never happened.
   ([#118](https://github.com/asm0dey/calit/issues/118))
-
-Nothing to do on upgrade — no configuration or database changes.
 
 ## 1.20.0
 
