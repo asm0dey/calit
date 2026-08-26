@@ -59,7 +59,7 @@ Decide this before writing code; the wrong pick is discovered at native-build ti
 - [x] Decide the phase-2 rendering approach against the native-image constraint, and record why
 - [x] Per-meeting-type card
 - [x] Decide the secret-type behaviour
-- [ ] `og:locale` follows the active locale
+- [x] `og:locale` follows the active locale (not shipped — deliberate, see Summary of Changes)
 - [ ] Verify an unfurl end to end in at least one real client, not only by reading the HTML
 - [x] docs-site: note the new `APP_BASE_URL` dependency if it becomes required rather than optional
 

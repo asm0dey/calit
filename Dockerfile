@@ -43,6 +43,15 @@ RUN --mount=type=cache,target=/root/.m2 \
 # them. Reuses the jdk-26-musl image the build stage already pulls, so no new image enters the
 # build (already pinned above, already layer-cached).
 FROM bellsoft/liberica-runtime-container:jdk-26-musl@sha256:1d425cce8dcb549d5691c3814b70c7924ff0819299bb0356b0f7c4e788732cd5 AS fontstack
+# Package versions deliberately UNPINNED here. Pinning the base image above by digest does NOT
+# pin these apk packages -- apk add resolves against the live Alpaquita repo at build time
+# regardless. Left floating on purpose: freetype/fontconfig are CVE-rich C font parsers, so
+# picking up the patched version on every rebuild is the safer default. Both failure modes this
+# could introduce are already gated in CI before any GHCR push -- Trivy (HIGH,CRITICAL,
+# exit-code 1, ignore-unfixed: true) catches a vulnerable-with-a-fix version, and the smoke test
+# (requests /og.png and /og/admin.png, checks PNG magic + non-identity) catches a functionally
+# broken font stack. Renovate also can't manage an apk pin here -- no native Dockerfile-apk
+# manager, and Alpaquita isn't a standard repology datasource -- so a pin would just rot.
 RUN apk add --no-cache freetype fontconfig font-dejavu-core \
     # Populate /var/cache/fontconfig at build time, as root, so it can be copied pre-warmed into
     # the runtime stage below (UID 1001 there can't run fc-cache itself -- no apk, no shell).
