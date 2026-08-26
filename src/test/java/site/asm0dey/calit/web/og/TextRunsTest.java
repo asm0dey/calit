@@ -17,7 +17,7 @@ class TextRunsTest {
         List<TextRuns.Run> runs = TextRuns.split("Coffee chat", FONTS.chain(false), 40f);
         assertEquals(1, runs.size());
         assertEquals("Coffee chat", runs.getFirst().text());
-        assertTrue(runs.getFirst().font().getFontName().startsWith("Rubik"));
+        assertEquals("Rubik Regular", runs.getFirst().font().getFontName());
     }
 
     @Test
@@ -30,7 +30,7 @@ class TextRunsTest {
     void greekFallsBackToNoto() {
         List<TextRuns.Run> runs = TextRuns.split("Συνάντηση", FONTS.chain(false), 40f);
         assertEquals(1, runs.size());
-        assertTrue(runs.getFirst().font().getFontName().contains("Noto"));
+        assertEquals("Noto Sans Regular", runs.getFirst().font().getFontName());
     }
 
     @Test
@@ -50,6 +50,9 @@ class TextRunsTest {
     @Test
     void semiboldChainUsesSemiboldFallback() {
         Font f = TextRuns.split("Συνάντηση", FONTS.chain(true), 40f).getFirst().font();
-        assertTrue(f.getFontName().contains("Noto"));
+        // "Noto Sans Regular" and "Noto Sans SemiBold" are both valid "Noto" matches, so the
+        // assertion has to name the SemiBold cut specifically: wiring notoRegular into
+        // chain(true) by mistake would still pass a bare contains("Noto") check.
+        assertEquals("Noto Sans SemiBold", f.getFontName());
     }
 }
