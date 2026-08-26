@@ -10,7 +10,8 @@
 {@java.lang.Boolean googleConnected}
 {@java.lang.String ownerName}
 {@java.lang.String initialGuests}
-{#include base title=title bodyClass="book-page"}
+{@site.asm0dey.calit.web.OgCard og}
+{#include base title=title og=og bodyClass="book-page"}
   {#head}
     {#if captcha.provider == 'turnstile'}
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>

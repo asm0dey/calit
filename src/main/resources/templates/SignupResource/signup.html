@@ -1,6 +1,7 @@
 {@java.lang.String title}
 {@java.lang.String error}
 {@java.lang.String lang}
+{@site.asm0dey.calit.web.OgCard og}
 <!DOCTYPE html>
 <html lang="{lang}" dir="{#if lang == 'he'}rtl{#else}ltr{/if}" data-theme="calit-light">
 <head>
@@ -8,6 +9,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{title}</title>
   <link rel="stylesheet" href="/calit.css">
+  {#if og??}
+  <meta property="og:site_name" content="calit">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:title" content="{og.title}">
+  <meta property="og:description" content="{og.description}">
+  <meta property="og:image" content="{og.imageUrl}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:url" content="{og.pageUrl}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{og.title}">
+  <meta name="twitter:description" content="{og.description}">
+  <meta name="twitter:image" content="{og.imageUrl}">
+  {#else}
+  <meta name="robots" content="noindex,nofollow">
+  {/if}
 </head>
 <body class="min-h-screen flex items-center justify-center bg-base-200">
   <form method="post" action="/signup" class="fieldset bg-base-100 border border-base-300 rounded-box p-6 w-full max-w-sm">
