@@ -41,6 +41,15 @@ Once a co-host accepts, they configure their **own** working hours and before/af
 ![A co-host's own working-hours and buffer editor for a shared meeting type](/calit/img/multi-host-shared-availability.png)
 *Each host manages their own hours and buffers for the shared type; calit intersects all of them when computing bookable slots.*
 
+### Buffers when the type offers several lengths
+
+A host's own buffer and the buffer on the [length being booked](/calit/usage/meeting-types/#allowed-durations) can both apply to the same booking. When they do, the one enforced is **whichever is larger** — a buffer is a floor on the padding around a meeting, not a value one source can talk the other down from.
+
+![A co-host setting their own before/after buffer on a shared meeting type](/calit/img/multi-host-cohost-buffers.png)
+*This co-host needs 90 minutes either side, whatever the length. On a type also offering a 120-minute option with its own 45-minute buffer, this host still gets 90 — while a host without an override gets the 45 the length asks for.*
+
+Leaving both fields blank is not the same as entering `0`. Blank means "no requirement of my own", so the meeting type's buffer applies; `0` is an explicit statement that this host needs no gap at all, and it competes with the length's buffer like any other value. That is also why a host who sets a buffer *smaller* than the meeting type's default keeps it — nothing else is asking for more.
+
 Everything else about the type — duration, minimum notice, booking horizon, required approval, custom booking fields — is controlled by the **creator** and applies the same way to every host.
 
 ## Booking URLs and aliases
