@@ -7,6 +7,29 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- **Booking links now unfurl with a preview card.** A calit link pasted into
+  Slack, WhatsApp, iMessage or a tweet used to render as a bare URL, with no
+  title, description or image. Public pages now carry `og:`/`twitter:`
+  metadata, and each meeting type gets a generated card image showing the
+  owner, the meeting name and its length. Pages reached through a
+  booking-management or guest-decline token deliberately carry **no**
+  preview and are marked `noindex` — an unfurl there would paint the
+  invitee's name and meeting time into whatever chat the link was pasted
+  into. Secret meeting types show the generic calit card rather than naming
+  the meeting. Make sure `APP_BASE_URL` is set to the public URL of your
+  instance: preview image and page URLs are absolute and are built from it,
+  so a wrong value has a visible failure mode. Card rendering also needs
+  `/tmp` to stay writable — `Font.createFont` spills the embedded font to a
+  temporary file, so a container run with a read-only root filesystem needs
+  a tmpfs mount at `/tmp` or card generation fails at request time. The JVM
+  image grows by about 6 MB (214 MB → 220 MB) for the added font-rendering
+  libraries and bundled font; the native image is about 161 MB. No database
+  changes. ([#N](https://github.com/asm0dey/calit/pull/N))
+
 ## 1.22.0
 
 A meeting type can offer several booking lengths, each with its own buffers,
