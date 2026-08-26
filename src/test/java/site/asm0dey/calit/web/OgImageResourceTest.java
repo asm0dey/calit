@@ -12,6 +12,7 @@ import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
+import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
 
@@ -305,6 +306,94 @@ class OgImageResourceTest {
                 .extract()
                 .asByteArray();
         assertArrayEquals(product, blank, "a blank meeting-type name must degrade to the product card, not crash");
+    }
+
+    @Test
+    void mixedScriptNameRendersInsteadOfFallingBackToTheProductCard() {
+        // "Coffee" (Rubik) and "Σ" (falls back to Noto Sans, per TextRunsTest.greekFallsBackToNoto)
+        // force TextRuns.split to flush more than one run for a single string -- the multi-run path
+        // only a few unit tests exercise directly. Routing it through the real HTTP endpoint proves
+        // the split survives end to end: a card is rendered, not a silent fallback to the product.
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            if (s == null) {
+                s = new OwnerSettings();
+                s.ownerId = 1L;
+            }
+            s.ownerName = "Ada Lovelace";
+            s.ownerEmail = "owner@example.com";
+            s.timezone = "UTC";
+            s.persist();
+            MeetingType t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "Coffee Σ";
+            t.slug = "card-mixed-script";
+            t.durationMinutes = 30;
+            t.locationType = LocationType.GOOGLE_MEET;
+            t.persist();
+        });
+        byte[] product = given().when().get("/og.png").then().extract().asByteArray();
+        byte[] mixed = given().when()
+                .get("/og/admin/card-mixed-script.png")
+                .then()
+                .statusCode(200)
+                .extract()
+                .asByteArray();
+        assertNotEquals(
+                Arrays.toString(product),
+                Arrays.toString(mixed),
+                "a mixed-script name must actually render, not silently fall back to the product card");
+    }
+
+    @Test
+    void locationRendersAllFourKinds() {
+        // Only GOOGLE_MEET (seed()) and PHONE (changingTheDurationOrLocationChangesTheEtag) were
+        // ever exercised before -- IN_PERSON and CUSTOM are real, reachable switch arms.
+        MeetingType t = new MeetingType();
+        t.locationType = LocationType.GOOGLE_MEET;
+        assertEquals("Google Meet", OgImageResource.location(t));
+        t.locationType = LocationType.PHONE;
+        assertEquals("Phone", OgImageResource.location(t));
+        t.locationType = LocationType.IN_PERSON;
+        assertEquals("In person", OgImageResource.location(t));
+        t.locationType = LocationType.CUSTOM;
+        assertEquals("Online", OgImageResource.location(t));
+    }
+
+    @Test
+    void metaListsMultipleDurationsSortedWithASeparator() {
+        MeetingType type = new MeetingType();
+        QuarkusTransaction.requiringNew().run(() -> {
+            type.ownerId = 1L;
+            type.name = "Consult";
+            type.slug = "card-meta-multi";
+            type.durationMinutes = 30;
+            type.locationType = LocationType.GOOGLE_MEET;
+            type.persist();
+            MeetingTypeDuration extra = new MeetingTypeDuration();
+            extra.meetingTypeId = type.id;
+            extra.durationMinutes = 60;
+            extra.persist();
+        });
+        assertEquals(
+                "30 · 60 min · Google Meet",
+                OgImageResource.meta(type),
+                "durations must be ascending with a separator");
+    }
+
+    @Test
+    void metaWithASingleDurationHasNoSeparator() {
+        MeetingType type = new MeetingType();
+        QuarkusTransaction.requiringNew().run(() -> {
+            type.ownerId = 1L;
+            type.name = "Consult";
+            type.slug = "card-meta-single";
+            type.durationMinutes = 45;
+            type.locationType = LocationType.PHONE;
+            type.persist();
+        });
+        assertEquals(
+                "45 min · Phone", OgImageResource.meta(type), "a single allowed duration must not carry a separator");
     }
 
     @Test
