@@ -72,10 +72,26 @@ public class CardRenderer {
     /** Owner name, meeting-type name, and the meta line ("30 min · Google Meet"). */
     public record Card(String owner, String type, String meta) {}
 
-    /** False when some shipped font cannot draw the text — the caller then serves the product card. */
+    /**
+     * False when some shipped font cannot draw the text, or the headline would be empty — the
+     * caller then serves the product card.
+     *
+     * <p>{@code fitHeadline} has no content to lay out for a blank {@code type}: {@link
+     * TextRuns#split} of an empty string returns an empty run list, and {@code render()} always
+     * indexes into the first run of the first line to read its font size. Rejecting a blank
+     * headline here — the same "can't render this, fall back" path every other unrenderable input
+     * already takes — is less special-casing than teaching {@code render()} to skip the headline
+     * block for one specific input shape.
+     *
+     * <p>Checked against {@code fonts.chain(false)} even though the headline itself draws with
+     * {@code chain(true)}: both chains pair the same three families (Rubik/Noto Sans/Noto Sans
+     * Hebrew) at different weights, and a weight variant of one family covers the same code points
+     * as its sibling, so coverage is identical either way.
+     */
     public boolean renderable(Card card) {
         List<Font> chain = fonts.chain(false);
-        return TextRuns.covered(nullToEmpty(card.owner()), chain)
+        return !nullToEmpty(card.type()).isBlank()
+                && TextRuns.covered(nullToEmpty(card.owner()), chain)
                 && TextRuns.covered(nullToEmpty(card.type()), chain)
                 && TextRuns.covered(nullToEmpty(card.meta()), chain);
     }

@@ -275,6 +275,10 @@ jobs:
           head -c 4 /tmp/og.png | grep -q 'PNG' || { echo "::error::/og.png is not a PNG"; docker logs app; exit 1; }
           curl -fs http://localhost:8080/og/admin.png -o /tmp/og-admin.png
           head -c 4 /tmp/og-admin.png | grep -q 'PNG' || { echo "::error::/og/admin.png is not a PNG"; docker logs app; exit 1; }
+          # A silent fallback to the product card would still pass the two PNG-magic checks above,
+          # so also assert the owner card actually differs from it -- that's the only way to know
+          # the DB-backed AppUser -> OwnerSettings -> CardRenderer path really rendered.
+          cmp -s /tmp/og.png /tmp/og-admin.png && { echo "::error::/og/admin.png is identical to the product card — DB-backed card did not render"; docker logs app; exit 1; }
           echo "og card smoke test passed"
           # Fail on reflection/init errors even if a request happened to return non-fatally.
           if docker logs app 2>&1 | grep -iE 'NoSuchMethodException|InstantiationException|no accessible default constructor|UnsupportedFeatureException'; then

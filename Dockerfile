@@ -44,14 +44,6 @@ RUN --mount=type=cache,target=/root/.m2 \
 FROM bellsoft/liberica-runtime-container:jre-26-musl@sha256:cee42ae83d98b0105dae0078150139e69cbc42b6b8ad647d14b4ed80d662a005 AS runtime
 WORKDIR /app
 
-# Quarkus fast-jar layout: copy the four pieces in cache-friendly order.
-# Files are owned by the non-root runtime user (SEC-DEP-05); the fast-jar is read-only at
-# runtime so the app needs no write access to /app.
-COPY --chown=1001:1001 --from=build /build/target/quarkus-app/lib/ lib/
-COPY --chown=1001:1001 --from=build /build/target/quarkus-app/*.jar ./
-COPY --chown=1001:1001 --from=build /build/target/quarkus-app/app/ app/
-COPY --chown=1001:1001 --from=build /build/target/quarkus-app/quarkus/ quarkus/
-
 # The JRE image ships libfontmanager.so but not the libfreetype.so.6 it links against, and no font
 # at all -- so AWT card rendering fails at request time without these. See Dockerfile.native for
 # why the font package is required, not decorative. Moving to a hardened/distroless base
@@ -60,8 +52,17 @@ COPY --chown=1001:1001 --from=build /build/target/quarkus-app/quarkus/ quarkus/
 # font files, and /var/cache/fontconfig with fc-cache run in the builder stage.
 # Font.createFont(InputStream) also spills to a temp file, so a read-only root filesystem needs a
 # tmpfs mount at /tmp or card rendering fails at request time regardless of the font stack.
-USER root
+# Installed before the app COPYs (still root by default here) so a source-only change doesn't
+# invalidate this layer and force a re-fetch of the apk packages on every build.
 RUN apk add --no-cache freetype fontconfig font-dejavu-core
+
+# Quarkus fast-jar layout: copy the four pieces in cache-friendly order.
+# Files are owned by the non-root runtime user (SEC-DEP-05); the fast-jar is read-only at
+# runtime so the app needs no write access to /app.
+COPY --chown=1001:1001 --from=build /build/target/quarkus-app/lib/ lib/
+COPY --chown=1001:1001 --from=build /build/target/quarkus-app/*.jar ./
+COPY --chown=1001:1001 --from=build /build/target/quarkus-app/app/ app/
+COPY --chown=1001:1001 --from=build /build/target/quarkus-app/quarkus/ quarkus/
 
 # Run as a non-root numeric UID (SEC-DEP-05). A numeric UID needs no /etc/passwd entry.
 USER 1001

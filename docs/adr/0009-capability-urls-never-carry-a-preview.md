@@ -30,3 +30,9 @@ themselves, the list is unbounded, and a missed one leaks exactly the data this 
 - Every future capability-URL route is safe by construction the moment it exists, without anyone
   needing to remember this rule — the safety comes from *not* opting in, not from a checklist item
   someone has to complete.
+- The rendered card endpoints (`/og.png`, `/og/{user}.png`, `/og/{user}/{slug}.png`) are separate
+  from the capability-URL pages this ADR governs, but they do return `Cache-Control: public`. With
+  Quarkus's proactive form auth, a logged-in browser could in principle receive a re-issued
+  `quarkus-credential` `Set-Cookie` on that response, which a shared cache must not store. Real
+  exposure is low — in practice only unfurl bots fetch `og:image`, and they carry no session — but
+  it is worth naming rather than assuming away.

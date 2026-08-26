@@ -65,6 +65,16 @@ class CardRendererTest {
     }
 
     @Test
+    void reportsABlankHeadlineAsUnrenderable() {
+        // TextRuns.split("", ...) returns an empty run list, so fitHeadline/render has nothing to
+        // index into (line.getFirst() throws NoSuchElementException) -- renderable() must reject a
+        // blank type name so the resource falls back to the product card instead of crashing.
+        assertFalse(RENDERER.renderable(new CardRenderer.Card("Ada", "", "30 min")));
+        assertFalse(RENDERER.renderable(new CardRenderer.Card("Ada", null, "30 min")));
+        assertFalse(RENDERER.renderable(new CardRenderer.Card("Ada", "   ", "30 min")));
+    }
+
+    @Test
     void productCardNeedsNoInput() throws Exception {
         assertEquals(1200, decode(RENDERER.product()).getWidth());
     }

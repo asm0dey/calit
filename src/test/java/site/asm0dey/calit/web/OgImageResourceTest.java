@@ -42,6 +42,28 @@ class OgImageResourceTest {
         });
     }
 
+    /** A row with a blank name -- reachable because AdminResource never rejects one server-side. */
+    private static void seedBlankName(String slug) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            if (s == null) {
+                s = new OwnerSettings();
+                s.ownerId = 1L;
+            }
+            s.ownerName = "Ada Lovelace";
+            s.ownerEmail = "owner@example.com";
+            s.timezone = "UTC";
+            s.persist();
+            MeetingType t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "";
+            t.slug = slug;
+            t.durationMinutes = 30;
+            t.locationType = LocationType.GOOGLE_MEET;
+            t.persist();
+        });
+    }
+
     private static void seedInactive(String slug) {
         QuarkusTransaction.requiringNew().run(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);
@@ -266,6 +288,23 @@ class OgImageResourceTest {
                 .asByteArray();
         byte[] product = given().when().get("/og.png").then().extract().asByteArray();
         assertArrayEquals(product, secret, "a secret type must not be named in its card");
+    }
+
+    @Test
+    void blankMeetingTypeNameServesTheProductCardNotA500() {
+        // AdminResource.createMeetingType has no server-side blank check (the HTML "required"
+        // attribute is client-side only), and Slugs.uniqueMeetingTypeSlug turns a blank base into
+        // "meeting", so this row is addressable. Before the fix, fitHeadline's empty run list made
+        // render() throw NoSuchElementException here -- a 500, not a graceful fallback.
+        seedBlankName("card-blank-name");
+        byte[] product = given().when().get("/og.png").then().extract().asByteArray();
+        byte[] blank = given().when()
+                .get("/og/admin/card-blank-name.png")
+                .then()
+                .statusCode(200)
+                .extract()
+                .asByteArray();
+        assertArrayEquals(product, blank, "a blank meeting-type name must degrade to the product card, not crash");
     }
 
     @Test
