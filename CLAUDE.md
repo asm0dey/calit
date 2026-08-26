@@ -55,6 +55,7 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
   — `DatabaseResetCallback`'s `TRUNCATE … RESTART IDENTITY CASCADE` already made concurrent runs unusable
   — but this failure mode is more confusing, so it's worth naming.)
 - `DatabaseResetCallback` (registered via `src/test/resources/META-INF/services/`) truncates + reseeds DB per test. Admin user **always id 1**. Write owner-scoped tests against that invariant.
+- `quarkus-jacoco` only instruments code reached through a booted `@QuarkusTest`. Plain-JUnit tests that construct objects directly (e.g. `new CardRenderer(new CardFonts())`) contribute nothing to coverage — running only those produces no `target/jacoco-report/` at all. A low coverage number on this repo can mean "the wrong kind of test", not "no test"; raising a Sonar coverage figure may require a `@QuarkusTest` even when a plain unit test is the better-designed test.
 - `*IT` classes (e.g. `OgImageResourceIT`) run under **`mvn verify`** via `maven-failsafe-plugin`, not under `mvn test` — `verify` therefore packages the app and boots it for real. Plain `mvn test` is unaffected and stays fast.
 - Mailer mocked in `%dev`/`%test`; Google + Turnstile disabled by default. Full booking flow runs zero external accounts.
 - RestAssured can't execute JS — tests assert on stable marker comments (e.g. `CALIT_TZ_REFORMAT`) instead of running scripts.
