@@ -1,7 +1,7 @@
 ---
 # calit-io9y
 title: Co-hosts in different timezones can intersect to zero slots
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-08-25T20:00:13Z
@@ -61,4 +61,50 @@ Being fixed inside [[calit-p5xm]], which rewrites the same grid line (step stops
 - [x] Regression test: the hostile 29-minute / 4h45-offset case, dense comb over the overlap (`#aTwentyNineMinuteCadenceStillIntersectsAcrossAFourHourFortyFiveOffset`)
 - [x] Regression test: null-zone single-host path stays window-anchored (`#aNullLatticeZoneKeepsWindowAnchoringForSingleHost`)
 - [x] Regression test: pin the single-host DST fall-back behaviour on the null-anchor Instant walk (`SlotServiceTest#aWindowStraddlingAFallBackTransitionCoversTheFullElapsedTime`)
-- [ ] Changelog entry under ## Unreleased on docs-site (deferred to branch integration/finish, not part of this intermediate task commit)
+- [x] Changelog entry under ## Unreleased on docs-site (Task 12 of the parent plan: `docs-site`
+  commit `b184539`, third bullet — "Shared meeting types across timezones offer slots again" —
+  with the upgrade-note caveat that a shared type spanning timezones may now show unround local
+  start times for some hosts, since that is the fix working rather than a regression)
+
+## Summary of Changes
+
+Fixed inside `selectable-booking-duration` (parent [[calit-p5xm]]), which was already rewriting
+the same `SlotService.generateRawSlots` line to stop defaulting the cadence to `durationMinutes`.
+Full suite green at 971 tests, 0 failures, 0 errors.
+
+The multi-host slot grid used to anchor each host's comb to midnight in that host's OWN timezone,
+then intersect the per-host free sets by exact start `Instant`. Two hosts whose UTC offsets
+differ by a value that is not a multiple of the slot cadence — London (+0) and Berlin (+1) on a
+45-minute cadence is the headline repro — rotate relative to each other and never land on the
+same instants, so the intersection is empty forever and the public page shows the ordinary "no
+times available" state with no error and no hint that anything is wrong.
+
+An origin-anchored fix (`2a59d0f`, superseded) tried anchoring the lattice to a fixed epoch
+instant plus multiples of the step. It fixed host agreement but froze whichever UTC offset the
+Creator's zone happened to have at `LocalDate.EPOCH` — `Asia/Kathmandu` was `+05:30` until 1986,
+so an all-Kathmandu team with no cross-timezone problem at all saw its round `09:00`/`09:30`
+starts drift to `09:15`/`09:45`.
+
+The shipped fix (ADR-0008) is a no-origin predicate re-evaluated at each candidate instant:
+`minuteOfDay(t, creatorZone) mod step == 0`. Candidate starts are enumerated per Creator-local
+day via `ZoneRules.getValidOffsets`, never carried forward across a Creator-local midnight by
+`plusMinutes` on a running local value — an intermediate version did that and a review round
+caught the drift it reintroduces once a step doesn't evenly divide 1440. `getValidOffsets` also
+resolves DST correctly: zero offsets skip a spring-forward gap; two offsets emit BOTH instants of
+a fall-back's repeated hour, since both are real bookable moments. The Creator's zone still
+supplies the phase (round times on the type-definer's own clock), but its rules are read at `t`
+rather than frozen at an origin date, so a zone with a historical offset change is unaffected.
+Single-host slot search is untouched — still window-anchored, byte-identical output.
+
+Ten regression tests in `SlotServiceLatticeTest` (plus one addition each to
+`AvailableSlotsIntersectionTest` and `SlotServiceTest`) pin: the London/Berlin 45-minute case: the
+Berlin/Kathmandu 30-minute quarter-hour-offset case; a hostile 29-minute cadence over a 4h45
+offset; a fall-back hour emitting both instants and matching the single-host count; an
+all-Kathmandu team keeping round local times (the case the epoch-anchored attempt actually
+failed); request-independence (the lattice for day D is identical regardless of the requested
+range); the lattice's phase being the Creator's zone and not a host's or UTC; and the null-zone
+single-host path staying window-anchored.
+
+Docs: `docs-site` commit `b184539` — third Unreleased bullet plus the caveat that a shared type
+spanning timezones may now show unround local start times for some hosts (the fix working, since
+before it those hosts' pages showed no times at all).
