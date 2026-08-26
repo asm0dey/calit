@@ -169,17 +169,40 @@ the *build* never warns about. Each of these was build-green and request-red:
 
 Cost: 142.0 → 152.5 MB. Output is pixel-identical to the JVM run.
 
-**The JVM image needs the same verification.** `Dockerfile`'s Liberica JRE 26 musl runtime may hit
-the identical fontconfig failure, and nothing in the build will say so. This is a plan step, not an
-assumption.
+**The JVM image fails too — verified, not suspected.** `bellsoft/liberica-runtime-container:jre-26-musl`,
+today's runtime, cannot render:
 
-Two consequences for the runtime image, tracked in `calit-gabg`:
+```
+UnsatisfiedLinkError: .../lib/libfontmanager.so:
+  Error loading shared library libfreetype.so.6: No such file or directory
+```
 
-- **This forecloses a `scratch`/distroless final layer.** AWT is `dlopen`-based (`libawt.so`,
-  `libfontmanager.so`), so a fully static binary (`--static --libc=musl`) cannot render at all.
-  Chainguard and Google distroless are glibc and will not run the musl-linked binary either.
-  Rendering in-process and a from-scratch final layer are mutually exclusive; this design picks
-  rendering.
+So both images need work, and neither build says so.
+
+The font stack can be **copied from a builder stage** rather than installed, which matters because
+the hardened images have no package manager (and `jre-distroless-musl` has no shell at all). Verified
+working: `libfreetype.so.6`, `libfontconfig.so.1`, plus `libexpat`, `libbz2`, `libpng16`,
+`libbrotlidec`, `libbrotlicommon`, `/etc/fonts`, the font files, and `/var/cache/fontconfig` with
+`fc-cache` run in the builder stage.
+
+Measured on `bellsoft/hardened-liberica-runtime-container:jre-distroless-musl`:
+
+| Base | Size | Renders |
+|---|---|---|
+| `liberica-runtime-container:jre-26-musl` (today) | 138.0 MB | no |
+| `hardened-…:jre-distroless-musl` | 130.8 MB | no |
+| hardened distroless + copied font stack | 134.2 MB | **yes** |
+
+The hardened base is musl, so it runs our binaries, and the fixed image is smaller than today's
+broken one. Choosing a base is `calit-gabg`'s call, not this design's — but this design must not
+assume `apk` exists at runtime, so the fonts-and-libraries-by-COPY approach is the one specified.
+
+Two further consequences, also tracked in `calit-gabg`:
+
+- **A fully static binary is foreclosed.** AWT is `dlopen`-based (`libawt.so`, `libfontmanager.so`),
+  so `--static --libc=musl` cannot render at all. Rendering in-process and a from-scratch final
+  layer are mutually exclusive; this design picks rendering. (A *distroless* layer is fine — that is
+  a different thing from static.)
 - **It widens the patch surface.** freetype and fontconfig are C font parsers with a long CVE
   history. They only ever parse the fonts we ship — user-supplied text is drawn, never parsed as a
   font — but they are now part of what has to be kept patched.

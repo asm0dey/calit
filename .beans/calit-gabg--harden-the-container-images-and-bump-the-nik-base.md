@@ -5,7 +5,7 @@ status: todo
 type: task
 priority: normal
 created_at: 2026-08-26T12:04:50Z
-updated_at: 2026-08-26T12:04:50Z
+updated_at: 2026-08-26T12:09:46Z
 ---
 
 Container-image hardening, independent of any feature. Surfaced while designing calit-o89d (social preview images).
@@ -30,3 +30,37 @@ Container-image hardening, independent of any feature. Surfaced while designing 
 - [ ] no-new-privileges, dropped capabilities, documented run flags
 - [ ] Decide whether the glibc + Chainguard/distroless migration is worth a spike, given it trades away AWT rendering unless the binary stays dynamic
 - [ ] Note that calit-o89d adds freetype + fontconfig (C font parsers, CVE-rich) to the runtime image; they only parse fonts we ship, but they widen the patch surface
+
+## Correction: hardened images DO exist
+
+The "Findings" section above searched only the three repos already referenced in the Dockerfiles and
+concluded no hardened image existed. Wrong. There are dedicated repos:
+
+- `bellsoft/hardened-liberica-runtime-container:jre-distroless-musl` — musl, JDK 26.0.2.1, 130.8 MB,
+  no shell, no apk. Also `jre-26-nonroot-musl`, likewise without apk.
+- `bellsoft/hardened-liberica-native-image-kit-container:jdk-25-nik-25.0.4-musl` — hardened builder,
+  with nonroot/distroless variants. Still JDK 25; no NIK for JDK 26 exists at all, so the Java 25/26
+  skew is upstream, not ours.
+- No hardened *bare* base. Every hardened tag carries a JRE/JDK, so `Dockerfile.native`'s 8.2 MB
+  Alpaquita final layer has no hardened equivalent — a native binary in a 130 MB JRE image would be a
+  large regression.
+
+### Measured, for the font rendering calit-o89d needs
+
+| Base | Size | Renders |
+|---|---|---|
+| `liberica-runtime-container:jre-26-musl` (today) | 138.0 MB | no — missing libfreetype.so.6 |
+| `hardened-...:jre-distroless-musl` | 130.8 MB | no — same |
+| hardened distroless + font stack copied from a builder stage | 134.2 MB | **yes, verified** |
+
+Moving the JVM image to hardened distroless *and* fixing font rendering lands 3.8 MB **smaller** than
+today's already-broken base. These images have no package manager, so the font stack must be COPYed
+from a builder stage: libfreetype.so.6, libfontconfig.so.1, libexpat, libbz2, libpng16, libbrotlidec,
+libbrotlicommon, /etc/fonts, the font files, and /var/cache/fontconfig with fc-cache run in the builder.
+
+## Revised todo
+
+- [ ] JVM image -> `hardened-liberica-runtime-container:jre-distroless-musl` + COPYed font stack
+- [ ] Native builder -> `hardened-liberica-native-image-kit-container:jdk-25-nik-25.0.4-musl`
+- [ ] Native final layer stays Alpaquita; revisit if BellSoft ever ships a hardened bare base
+- [ ] Distroless has no shell: any CI or debug step that execs into the container must probe from outside instead
