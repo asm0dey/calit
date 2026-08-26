@@ -8,6 +8,7 @@ import java.awt.FontMetrics;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.font.TextAttribute;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -16,6 +17,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import javax.imageio.ImageIO;
 
 /**
@@ -128,7 +130,9 @@ public class CardRenderer {
         var x = cx - lockWidth / 2;
 
         g.setColor(INDIGO);
-        g.fill(new RoundRectangle2D.Float(x, 74, tile, tile, tile * 0.3f, tile * 0.3f));
+        // RoundRectangle2D's arcw/arch are the full arc DIAMETER, but the spec's "30% corner radius"
+        // is a RADIUS (matching CSS border-radius) — so the diameter passed here is double that, 60%.
+        g.fill(new RoundRectangle2D.Float(x, 74, tile, tile, tile * 0.6f, tile * 0.6f));
         g.setColor(Color.WHITE);
         g.setFont(fonts.chip().deriveFont(tile * 0.6f));
         var chipMetrics = g.getFontMetrics();
@@ -141,20 +145,24 @@ public class CardRenderer {
         drawTracked(g, "calit", wordFont, x + tile + 14, 74 + tile / 2f + 12);
     }
 
-    /** The site tracks the wordmark at -0.02em; AWT has no letter-spacing, so step per character. */
+    /**
+     * The site tracks the wordmark at -0.02em. {@code TextAttribute.TRACKING} applies that natively
+     * in a single {@code drawString}, so kerning pairs are honoured — a per-character loop stepping by
+     * {@code fm.charWidth} both rounds each advance to an integer and ignores kerning entirely.
+     */
     void drawTracked(Graphics2D g, String text, Font font, float x, float baseline) {
-        g.setFont(font);
-        var fm = g.getFontMetrics();
-        var extra = -0.02f * font.getSize();
-        for (char c : text.toCharArray()) {
-            g.drawString(String.valueOf(c), x, baseline);
-            x += fm.charWidth(c) + extra;
-        }
+        g.setFont(trackedFont(font));
+        g.drawString(text, x, baseline);
     }
 
     int trackedWidth(Graphics2D g, String text, Font font) {
-        var fm = g.getFontMetrics(font);
-        return fm.stringWidth(text) + (int) (-0.02f * font.getSize() * (text.length() - 1));
+        var fm = g.getFontMetrics(trackedFont(font));
+        return fm.stringWidth(text);
+    }
+
+    /** Fixed-order attribute map — required so rendering stays byte-for-byte deterministic. */
+    static Font trackedFont(Font font) {
+        return font.deriveFont(Map.of(TextAttribute.TRACKING, -0.02f));
     }
 
     /** Shrink to fit the safe square, then wrap to two lines, then ellipsize. */
