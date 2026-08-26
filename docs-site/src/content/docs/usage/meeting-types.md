@@ -27,7 +27,7 @@ Your landing page at `/<username>` lists all of your **active, non-secret** meet
 | Setting | Description |
 |---|---|
 | **Slug** | URL-safe identifier; must be unique within your account. |
-| **Duration** | Length of the meeting in minutes. |
+| **Duration** | Length of the meeting in minutes. If the type offers [several lengths](#allowed-durations), this one is the default — what an invitee sees before choosing. |
 | **Buffer before / after** | Padding added before and after each booking so it does not count as free time. |
 | **Minimum notice** | How far in advance a booking must be made (e.g. 60 minutes means no same-hour bookings). |
 | **Booking horizon** | How many days into the future invitees can book (default 60 days). |
@@ -51,7 +51,11 @@ Invitees pick a length above the slot grid on the public booking page before cho
 
 To add a length, fill in a duration (in minutes) on a blank row and save. To remove one, clear its duration field and save — the row disappears from the allowed set. Leave a row's buffer fields blank to have that length use the meeting type's own **Buffer before / after** instead of a value of its own.
 
-The **Duration** field above is always the type's default — the length that renders before the invitee picks one, and the length a plain link to the type's URL books. It is always part of the allowed set; there is no separate control to remove it here, and changing it is done in the **Duration** field itself, not in this table.
+### Setting the default
+
+The default is the **Duration** field in **Basics** — the same field a single-length meeting type has always had, shown in the [meeting type editor screenshot](#owner-console) and described under [Per-type settings](#per-type-settings). There is no separate "default" control in the durations table.
+
+That length is the one that renders before the invitee picks anything, and the one a plain link to the type's URL books. It is always part of the allowed set: the table shows it with a **default** badge, and clearing its duration field only drops that row's buffer overrides — the length itself stays. To *change* the default, edit the **Duration** field in Basics and save; to stop offering the old one, clear its row in the durations table.
 
 A buffer is a floor on how much padding surrounds a booking, never a setting that can be relaxed. So where two of them apply to the same host — the host's own override on a shared type, and the chosen length's override — the one actually applied is **whichever is larger**. Setting a narrow buffer on a length does not shorten a co-host's turnaround, and a wide host buffer does not override a wider one on the length.
 
