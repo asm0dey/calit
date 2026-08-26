@@ -59,17 +59,19 @@ WORKDIR /app
 # no fontconfig, and no /etc/fonts at all -- so AWT card rendering fails at request time without
 # them. See Dockerfile.native for why the font package is required, not decorative. There is no
 # apk here, so the stack is COPYed from the fontstack donor stage above instead of installed.
-# Each shared lib is copied as both the versioned real file and its unversioned symlink, since
-# Docker COPY does not resolve a symlink into its target's content -- copying only the symlink
-# name would leave it dangling in this image.
+# Only the unversioned SONAME is copied for each lib (e.g. libfreetype.so.6, not
+# libfreetype.so.6.20.6): that SONAME is the only name libfontmanager.so's NEEDED entries
+# reference (per `readelf -d`), and BuildKit COPY dereferences a symlink source into a full
+# regular file at the destination -- it does not leave a dangling link. Copying the versioned
+# filename too would just be dead weight that an Alpine package bump in the donor could break.
 COPY --from=fontstack --chown=1001:1001 \
-    /usr/lib/libfreetype.so.6 /usr/lib/libfreetype.so.6.20.6 \
-    /usr/lib/libfontconfig.so.1 /usr/lib/libfontconfig.so.1.16.1 \
-    /usr/lib/libexpat.so.1 /usr/lib/libexpat.so.1.12.3 \
-    /usr/lib/libbz2.so.1 /usr/lib/libbz2.so.1.0.8 \
-    /usr/lib/libpng16.so.16 /usr/lib/libpng16.so.16.58.0 \
-    /usr/lib/libbrotlidec.so.1 /usr/lib/libbrotlidec.so.1.2.0 \
-    /usr/lib/libbrotlicommon.so.1 /usr/lib/libbrotlicommon.so.1.2.0 \
+    /usr/lib/libfreetype.so.6 \
+    /usr/lib/libfontconfig.so.1 \
+    /usr/lib/libexpat.so.1 \
+    /usr/lib/libbz2.so.1 \
+    /usr/lib/libpng16.so.16 \
+    /usr/lib/libbrotlidec.so.1 \
+    /usr/lib/libbrotlicommon.so.1 \
     /usr/lib/
 COPY --from=fontstack --chown=1001:1001 /etc/fonts/ /etc/fonts/
 COPY --from=fontstack --chown=1001:1001 /usr/share/fonts/ /usr/share/fonts/
