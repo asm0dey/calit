@@ -21,7 +21,7 @@ Merged but not yet in a tagged release.
   invitee's name and meeting time into whatever chat the link was pasted
   into. Secret meeting types show the generic calit card rather than naming
   the meeting.
-  ([#N](https://github.com/asm0dey/calit/pull/N))
+  ([#155](https://github.com/asm0dey/calit/pull/155))
 - **The production JVM image is now hardened and distroless.** It moved to a
   distroless BellSoft base with no shell and no package manager, so
   `docker exec -it <container> sh` (or any other shell-based debugging) no
