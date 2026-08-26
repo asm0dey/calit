@@ -38,23 +38,46 @@ RUN printf 'git.build.version=%s\ngit.commit.id.abbrev=%s\n' "$APP_VERSION" "$GI
 RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw -B -q -DskipTests clean package
 
-# --- Runtime stage: BellSoft minimal musl runtime container (production) ---
+# --- Font-stack donor stage: the hardened runtime base below has no shell and no apk, so the
+# freetype/fontconfig stack AWT card rendering needs must be COPYed in from an image that has
+# them. Reuses the jdk-26-musl image the build stage already pulls, so no new image enters the
+# build (already pinned above, already layer-cached).
+FROM bellsoft/liberica-runtime-container:jdk-26-musl@sha256:1d425cce8dcb549d5691c3814b70c7924ff0819299bb0356b0f7c4e788732cd5 AS fontstack
+RUN apk add --no-cache freetype fontconfig font-dejavu-core \
+    # Populate /var/cache/fontconfig at build time, as root, so it can be copied pre-warmed into
+    # the runtime stage below (UID 1001 there can't run fc-cache itself -- no apk, no shell).
+    && fc-cache -f
+
+# --- Runtime stage: BellSoft hardened distroless musl runtime container (production) ---
 # JRE 26 runs the JDK-25-compiled fast-jar fine (forward-compatible); pure-bytecode app, so the
-# musl libc is a non-issue. The runtime-container image is purpose-built minimal for production.
-FROM bellsoft/liberica-runtime-container:jre-26-musl@sha256:cee42ae83d98b0105dae0078150139e69cbc42b6b8ad647d14b4ed80d662a005 AS runtime
+# musl libc is a non-issue. This base has no shell, no package manager, and no CVE-fixing distro
+# packages beyond what BellSoft ships -- it is the hardened/distroless target from calit-gabg.
+FROM bellsoft/hardened-liberica-runtime-container:jre-distroless-musl@sha256:58bf9b381b5ebf80df8f50e3fa5eebff8f2b75cd4159f3190d91177d196bb6ef AS runtime
 WORKDIR /app
 
-# The JRE image ships libfontmanager.so but not the libfreetype.so.6 it links against, and no font
-# at all -- so AWT card rendering fails at request time without these. See Dockerfile.native for
-# why the font package is required, not decorative. Moving to a hardened/distroless base
-# (calit-gabg) requires switching this to a copy-from-builder stack instead: libfreetype.so.6,
-# libfontconfig.so.1, libexpat, libbz2, libpng16, libbrotlidec, libbrotlicommon, /etc/fonts, the
-# font files, and /var/cache/fontconfig with fc-cache run in the builder stage.
-# Font.createFont(InputStream) also spills to a temp file, so a read-only root filesystem needs a
+# This base ships libfontmanager.so but not the libfreetype.so.6 it links against, and no font,
+# no fontconfig, and no /etc/fonts at all -- so AWT card rendering fails at request time without
+# them. See Dockerfile.native for why the font package is required, not decorative. There is no
+# apk here, so the stack is COPYed from the fontstack donor stage above instead of installed.
+# Each shared lib is copied as both the versioned real file and its unversioned symlink, since
+# Docker COPY does not resolve a symlink into its target's content -- copying only the symlink
+# name would leave it dangling in this image.
+COPY --from=fontstack --chown=1001:1001 \
+    /usr/lib/libfreetype.so.6 /usr/lib/libfreetype.so.6.20.6 \
+    /usr/lib/libfontconfig.so.1 /usr/lib/libfontconfig.so.1.16.1 \
+    /usr/lib/libexpat.so.1 /usr/lib/libexpat.so.1.12.3 \
+    /usr/lib/libbz2.so.1 /usr/lib/libbz2.so.1.0.8 \
+    /usr/lib/libpng16.so.16 /usr/lib/libpng16.so.16.58.0 \
+    /usr/lib/libbrotlidec.so.1 /usr/lib/libbrotlidec.so.1.2.0 \
+    /usr/lib/libbrotlicommon.so.1 /usr/lib/libbrotlicommon.so.1.2.0 \
+    /usr/lib/
+COPY --from=fontstack --chown=1001:1001 /etc/fonts/ /etc/fonts/
+COPY --from=fontstack --chown=1001:1001 /usr/share/fonts/ /usr/share/fonts/
+# Pre-warmed by `fc-cache -f` in the donor stage: UID 1001 has no apk/shell here to build it
+# itself, and (per calit's own history) couldn't write a fresh one to this path anyway.
+COPY --from=fontstack --chown=1001:1001 /var/cache/fontconfig/ /var/cache/fontconfig/
+# Font.createFont(InputStream) spills to a temp file, so a read-only root filesystem needs a
 # tmpfs mount at /tmp or card rendering fails at request time regardless of the font stack.
-# Installed before the app COPYs (still root by default here) so a source-only change doesn't
-# invalidate this layer and force a re-fetch of the apk packages on every build.
-RUN apk add --no-cache freetype fontconfig font-dejavu-core
 
 # Quarkus fast-jar layout: copy the four pieces in cache-friendly order.
 # Files are owned by the non-root runtime user (SEC-DEP-05); the fast-jar is read-only at
