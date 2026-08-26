@@ -20,6 +20,26 @@
   {#if inject:site.googleVerification}
   <meta name="google-site-verification" content="{inject:site.googleVerification}">
   {/if}
+  {#if og??}
+  <meta property="og:site_name" content="calit">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:title" content="{og.title}">
+  <meta property="og:description" content="{og.description}">
+  <meta property="og:image" content="{og.imageUrl}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:url" content="{og.pageUrl}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{og.title}">
+  <meta name="twitter:description" content="{og.description}">
+  <meta name="twitter:image" content="{og.imageUrl}">
+  {#else}
+  {! No og for capability URLs (/booking/{manageToken}/*, /guest/{declineToken}/*): an unfurl would
+     paint the invitee's name, meeting and time into whatever chat the token was pasted into, and
+     some clients prefetch previews server-side. Absent `og` is the safe default on purpose. !}
+  <meta name="robots" content="noindex,nofollow">
+  {/if}
   {#insert head}{/insert}
 </head>
 <body class="canvas {bodyClass ?: ''} bg-base-200 text-base-content min-h-screen flex flex-col"{#if forceTheme??} data-theme="{forceTheme}"{/if}>

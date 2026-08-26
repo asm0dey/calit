@@ -22,7 +22,7 @@ public class LoginResource {
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance login(
-                String title, boolean error, boolean googleEnabled, boolean oidcEnabled, String notice);
+                String title, boolean error, boolean googleEnabled, boolean oidcEnabled, String notice, OgCard og);
     }
 
     final SecurityIdentity identity;
@@ -31,18 +31,22 @@ public class LoginResource {
 
     final ActiveLocale activeLocale;
 
+    final OgCards ogCards;
+
     @Inject
     public LoginResource(
             SecurityIdentity identity,
             AppMessageResolver messages,
             ActiveLocale activeLocale,
             @ConfigProperty(name = "google.oauth.client-id", defaultValue = "") String googleClientId,
-            @ConfigProperty(name = "calit.oidc.enabled", defaultValue = "false") boolean oidcEnabled) {
+            @ConfigProperty(name = "calit.oidc.enabled", defaultValue = "false") boolean oidcEnabled,
+            OgCards ogCards) {
         this.identity = identity;
         this.messages = messages;
         this.activeLocale = activeLocale;
         this.googleClientId = googleClientId;
         this.oidcEnabled = oidcEnabled;
+        this.ogCards = ogCards;
     }
 
     final String googleClientId;
@@ -60,7 +64,12 @@ public class LoginResource {
         var googleEnabled = googleClientId != null && !googleClientId.isBlank();
         AppMessages m = messages.forLocale(activeLocale.current());
         return Response.ok(Templates.login(
-                        m.auth_login_title(), error, googleEnabled, oidcEnabled, noticeMessage(m, notice)))
+                        m.auth_login_title(),
+                        error,
+                        googleEnabled,
+                        oidcEnabled,
+                        noticeMessage(m, notice),
+                        ogCards.product("/login")))
                 .build();
     }
 

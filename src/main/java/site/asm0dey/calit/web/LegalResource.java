@@ -2,6 +2,7 @@ package site.asm0dey.calit.web;
 
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -20,22 +21,29 @@ public class LegalResource {
     public static class Templates {
         private Templates() {}
 
-        public static native TemplateInstance privacy(String title);
+        public static native TemplateInstance privacy(String title, OgCard og);
 
-        public static native TemplateInstance terms(String title);
+        public static native TemplateInstance terms(String title, OgCard og);
+    }
+
+    final OgCards ogCards;
+
+    @Inject
+    public LegalResource(OgCards ogCards) {
+        this.ogCards = ogCards;
     }
 
     @GET
     @Path("/privacy")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance privacy() {
-        return Templates.privacy("Privacy Policy");
+        return Templates.privacy("Privacy Policy", ogCards.product("/privacy"));
     }
 
     @GET
     @Path("/terms")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance terms() {
-        return Templates.terms("Terms of Service");
+        return Templates.terms("Terms of Service", ogCards.product("/terms"));
     }
 }

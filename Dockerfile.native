@@ -35,17 +35,49 @@ RUN printf 'git.build.version=%s\ngit.commit.id.abbrev=%s\n' "$APP_VERSION" "$GI
 # classes. They are (de)serialized reflectively (no-arg ctor + @Key fields) but ship NO native
 # metadata in their jars (google-api-client / google-oauth-client / google-api-services-calendar),
 # so without this the OAuth token + freeBusy JSON parsing crashes at runtime in the native image.
-# Each "-H:Preserve=..." is a separate comma item (Quarkus splits additional-build-args on commas).
+# --initialize-at-build-time=java.awt.Color: discovered by this change (calit-o89d) -- fails the
+# BUILD, not a request. CardRenderer's static final Color fields land in the image heap because
+# CardRenderer is a CDI bean initialized at build time. Color has no static initializer itself; it
+# defaults to run-time init because quarkus-awt's AwtProcessor build step classifies it into the ICC
+# colour-management surface (ColorSpace/ICC_Profile/ICC_ProfileGray/ICC_ProfileRGB/CMMException) --
+# Color qualifies solely for its private ColorSpace cs field (Color.java:255), the thing the native
+# CMM needs at runtime. Our constants use the plain-int sRGB ctor, so cs stays null. GraalVM refuses
+# run-time-initialized types in a build-time heap.
+# Safe here: Color's frozen state is plain RGB ints, and build + run both happen in equally-headless
+# Linux containers -- proven empirically (JVM vs native /og.png and /og/admin.png output is
+# byte-for-byte SHA-256 identical).
+# Fragile: the flag names java.awt.Color specifically. Any future static final AWT-typed field on
+# CardRenderer (Font, GradientPaint, BasicStroke, ...) reproduces the identical fatal error,
+# discoverable only by a failed native build. The durable alternative is
+# --initialize-at-run-time=site.asm0dey.calit.web.og.CardRenderer, covering any future AWT field in
+# one stroke -- not taken: CardRenderer is a CDI bean and Quarkus initializes bean classes at build
+# time by design, so forcing run-time init fights that machinery (untested) to guard a field nobody
+# has written yet. The failure mode is loud (build fails outright), so this comment is the mitigation
+# until a new AWT-typed static field actually appears -- then reach for the class-level flag instead.
+# Each of these is a separate comma item (Quarkus splits additional-build-args on commas).
 RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw -B -DskipTests package -Dquarkus.native.enabled=true \
-    "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken,--initialize-at-run-time=org.altcha.altcha.v1.Altcha"
+    "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken,--initialize-at-run-time=org.altcha.altcha.v1.Altcha,--initialize-at-build-time=java.awt.Color"
 
 # --- Runtime stage: Alpaquita musl base (~3.9MB) — no JDK, just the native binary ---
 FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:d0bf46cb446f36eccacad2604d858537e4455ee2b663729c1f588ca6bb5eca33 AS runtime
 WORKDIR /app
 # ca-certificates: outbound TLS to Google API + SMTP. zlib: the binary links libz.so.1.
-RUN apk add --no-cache ca-certificates zlib && update-ca-certificates
+# freetype + fontconfig: required by quarkus-awt for native mode, per its own guide. The font
+# package goes beyond what that guide lists and is NOT decorative: with no font file anywhere the
+# JDK font manager fails to initialise ("Fontconfig head is null"), and that breaks Font.createFont
+# even for a TTF embedded in the binary. Moving to a hardened/distroless base (calit-gabg) requires
+# switching this to a copy-from-builder stack instead: libfreetype.so.6, libfontconfig.so.1,
+# libexpat, libbz2, libpng16, libbrotlidec, libbrotlicommon, /etc/fonts, the font files, and
+# /var/cache/fontconfig with fc-cache run in the builder stage. Font.createFont(InputStream) also
+# spills to a temp file, so a read-only root filesystem needs a tmpfs mount at /tmp or card
+# rendering fails at request time regardless of the font stack.
+RUN apk add --no-cache ca-certificates zlib freetype fontconfig font-dejavu-core && update-ca-certificates
 COPY --chown=1001:1001 --from=build /build/target/*-runner /app/application
+# AWT in a native image dlopen()s these JDK libraries at runtime; native-image emits them beside the
+# binary instead of linking them in, so they must ship with it.
+COPY --chown=1001:1001 --from=build /build/target/*-native-image-source-jar/*.so /app/lib/
+ENV LD_LIBRARY_PATH=/app/lib
 USER 1001
 EXPOSE 8080
 ENV QUARKUS_HTTP_HOST=0.0.0.0 \

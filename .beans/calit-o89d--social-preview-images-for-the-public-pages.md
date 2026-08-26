@@ -1,11 +1,11 @@
 ---
 # calit-o89d
 title: Social preview images for the public pages
-status: todo
+status: in-progress
 type: feature
 priority: normal
 created_at: 2026-08-26T08:30:16Z
-updated_at: 2026-08-26T08:30:16Z
+updated_at: 2026-08-26T15:00:16Z
 ---
 
 calit has **no** `og:` or `twitter:` meta on any page — verified by grep across `src/main/resources/templates/`. A booking link pasted into Slack, WhatsApp, iMessage or a tweet renders as a bare URL with no title, no description and no image. That is the product's single most-shared artifact, so it is the worst place to have no preview.
@@ -53,12 +53,64 @@ Decide this before writing code; the wrong pick is discovered at native-build ti
 
 ## Todo
 
-- [ ] `noindex,nofollow` and no `og:` on the `/booking/{manageToken}/*` and `/guest/{declineToken}/*` pages
-- [ ] Static card image + `og:`/`twitter:` tags in `base.html`, absolute URLs from `APP_BASE_URL`
-- [ ] Per-page title/description wired from the existing `title` param
-- [ ] Decide the phase-2 rendering approach against the native-image constraint, and record why
-- [ ] Per-meeting-type card
-- [ ] Decide the secret-type behaviour
-- [ ] `og:locale` follows the active locale
+- [x] `noindex,nofollow` and no `og:` on the `/booking/{manageToken}/*` and `/guest/{declineToken}/*` pages
+- [x] Static card image + `og:`/`twitter:` tags in `base.html`, absolute URLs from `APP_BASE_URL`
+- [x] Per-page title/description wired from the existing `title` param
+- [x] Decide the phase-2 rendering approach against the native-image constraint, and record why
+- [x] Per-meeting-type card
+- [x] Decide the secret-type behaviour
+- [x] `og:locale` follows the active locale (not shipped — deliberate, see Summary of Changes)
 - [ ] Verify an unfurl end to end in at least one real client, not only by reading the HTML
-- [ ] docs-site: note the new `APP_BASE_URL` dependency if it becomes required rather than optional
+- [x] docs-site: note the new `APP_BASE_URL` dependency if it becomes required rather than optional
+
+
+## Summary of Changes
+
+Shipped: absolute `og:`/`twitter:` metadata plus a static product card on every public page
+(`base.html`); `noindex,nofollow` and no `og:` tags at all on the capability-URL pages
+(`/booking/{manageToken}/*`, `/guest/{declineToken}/decline`); a generated per-meeting-type card
+(owner name, meeting name, duration(s)) served from `/og/{user}.png` and `/og/{user}/{slug}.png`
+with an ETag over the fields that affect the render and a `Cache-Control: public, max-age=3600`
+header; secret meeting types and disabled owners both degrade to the generic product card rather
+than a 404 or a leak; rendering runs on `java.awt`/`BufferedImage`, chosen over an SVG-rasterise or
+hand-rolled PNG-encoder path, and both the JVM and native container images now build and render it
+(byte-for-byte identical output, verified across runtimes); ADR-0009 records the capability-URL
+decision; the docs-site changelog carries the Unreleased entry (committed, unpushed).
+
+Deliberately did NOT ship:
+
+- **No per-locale card variants.** `og:locale` is always `en_US` — unfurl bots send no
+  `Accept-Language`, so there is nothing to key a per-locale render off of.
+- **No server-side cache.** A render is ~2 ms; `Cache-Control: public, max-age=3600` puts caching in
+  the proxy/CDN layer instead, where it belongs for a resource this cheap to regenerate.
+- **No CJK / Thai / Devanagari / emoji coverage.** The bundled font stack does not cover these
+  scripts; a headline containing them falls back to the generic product card rather than rendering
+  tofu boxes.
+- **No RTL mirroring.** The card's centred composition removes the need — Hebrew headlines render
+  correctly centred with no separate RTL layout branch.
+
+Two genuinely notable discoveries, neither in the original plan:
+
+1. **The native image could not compile at all before this branch's Task 5.** `CardRenderer`'s
+   `static final Color` constants (`BG`, `INK`, `INK_2`, `INDIGO`, `INDIGO_2`, `MIST`) get folded
+   into the native-image heap because `CardRenderer` is a CDI `@ApplicationScoped` bean and Quarkus
+   initializes bean classes at build time; GraalVM refuses to embed instances of `java.awt.Color`
+   there because `Color` defaults to run-time initialization. Confirmed pre-existing on bare `HEAD`
+   before any Task 5 change — the native build on this branch had never actually succeeded. Fixed
+   with `--initialize-at-build-time=java.awt.Color` in `Dockerfile.native`, not by restructuring
+   `CardRenderer`, so `render()`/`product()` stayed untouched and their determinism guarantee holds
+   (verified byte-for-byte identical SHA-256 across the JVM and native builds).
+2. **A disabled owner's card reopened `calit-h8mb`'s closed enumeration oracle.** The card routes
+   originally resolved the owner without checking `owner.enabled`, unlike `PublicResource`'s booking
+   path — so a disabled owner's real name, meeting-type name, duration and location still rendered
+   at HTTP 200 through `/og/{user}/{slug}.png` while the booking page 404'd the same account,
+   letting a prober tell "disabled" from "never existed." Found in Task 4 review, fixed in the same
+   task: a disabled owner now degrades to the generic product card at 200, matching the
+   already-decided secret-type behaviour, rather than a 404 (which would unfurl as a broken image
+   and itself be a distinguishing signal).
+
+Follow-up: `calit-fanm` holds the deferred brand-lockup work identified mid-plan while comparing the
+rendered card against the live site's `.lp-brand` — the chip's `box-shadow` (not drawn at all) and
+its size-ratio drift from the site's actual proportions (gap, wordmark and chip-glyph ratios).
+The two real bugs found in that same investigation (chip corner radius at half the site's value;
+cramped wordmark tracking) were fixed in this branch (Task 3b), not deferred.

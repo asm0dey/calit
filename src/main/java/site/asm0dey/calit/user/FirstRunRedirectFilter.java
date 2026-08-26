@@ -45,6 +45,14 @@ public class FirstRunRedirectFilter {
                 || path.equals("/setup")
                 || path.equals("/privacy") // public legal pages must be reachable pre-bootstrap
                 || path.equals("/terms") // (e.g. Google's verification crawler on a fresh instance)
+                // "/", "/privacy" and "/terms" above advertise an og:image pointing at these card
+                // endpoints, so an unfurl crawler hitting a fresh instance must get the PNG, not a
+                // 302 to /setup. Safe pre-bootstrap: with zero AppUsers there is no tenant data to
+                // leak, so every card degrades to the generic product card by construction (see
+                // OgImageResource.owner/meetingType's owner == null fallback). "og" is reserved in
+                // Usernames.RESERVED, so this prefix can never shadow a real user's page.
+                || path.equals("/og.png")
+                || path.startsWith("/og/")
                 || path.equals("/j_security_check")
                 || path.startsWith("/q/")
                 || path.equals("/calit.css")

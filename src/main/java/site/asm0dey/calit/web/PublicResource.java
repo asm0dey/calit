@@ -38,10 +38,10 @@ public class PublicResource {
     // S107: Qute @CheckedTemplate signatures pass one arg per template variable; param count is inherent.
     @SuppressWarnings("java:S107")
     public static class Templates {
-        public static native TemplateInstance index(String title, boolean authenticated, String username);
+        public static native TemplateInstance index(String title, boolean authenticated, String username, OgCard og);
 
         public static native TemplateInstance landing(
-                String title, List<LandingType> types, String user, String ownerName);
+                String title, List<LandingType> types, String user, String ownerName, OgCard og);
 
         public static native TemplateInstance book(
                 String title,
@@ -55,7 +55,8 @@ public class PublicResource {
                 Captcha captcha,
                 boolean googleConnected,
                 String ownerName,
-                String initialGuests);
+                String initialGuests,
+                OgCard og);
 
         public static native TemplateInstance confirmation(
                 String title,
@@ -126,6 +127,8 @@ public class PublicResource {
 
     final CaptchaProviderConfig captchaProviderConfig;
 
+    final OgCards ogCards;
+
     @Inject
     public PublicResource(
             BookingService bookingService,
@@ -135,7 +138,8 @@ public class PublicResource {
             AppMessageResolver messages,
             CalendarPort calendarPort,
             SecurityIdentity identity,
-            CaptchaProviderConfig captchaProviderConfig) {
+            CaptchaProviderConfig captchaProviderConfig,
+            OgCards ogCards) {
         this.bookingService = bookingService;
         this.meetingHosts = meetingHosts;
         this.currentOwner = currentOwner;
@@ -144,6 +148,7 @@ public class PublicResource {
         this.calendarPort = calendarPort;
         this.identity = identity;
         this.captchaProviderConfig = captchaProviderConfig;
+        this.ogCards = ogCards;
     }
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy");
@@ -184,7 +189,7 @@ public class PublicResource {
         var m = messages.forLocale(activeLocale.current());
         var authenticated = !identity.isAnonymous();
         String username = authenticated ? identity.getPrincipal().getName() : null;
-        return Templates.index(m.pub_index_title(), authenticated, username);
+        return Templates.index(m.pub_index_title(), authenticated, username, ogCards.product("/"));
     }
 
     @GET
@@ -218,7 +223,12 @@ public class PublicResource {
         List<LandingType> types = bookableTypes.stream()
                 .map(t -> new LandingType(t, "/" + bookUsernameFor(t, owner) + "/" + t.slug, durationsByType.get(t.id)))
                 .toList();
-        return Templates.landing(m.pub_user_title(), types, owner.username, settings.ownerName);
+        return Templates.landing(
+                m.pub_user_title(),
+                types,
+                owner.username,
+                settings.ownerName,
+                ogCards.owner(owner.username, settings.ownerName));
     }
 
     @GET
@@ -260,7 +270,8 @@ public class PublicResource {
                 new Captcha(captchaProviderConfig.provider(), turnstileSiteKey()),
                 calendarPort.isConnected(type.ownerId),
                 settings.ownerName,
-                "");
+                "",
+                ogCards.meetingType(user, type, settings.ownerName));
     }
 
     private String turnstileSiteKey() {
@@ -442,7 +453,8 @@ public class PublicResource {
                     new Captcha(captchaProviderConfig.provider(), turnstileSiteKey()),
                     calendarPort.isConnected(type.ownerId),
                     settings.ownerName,
-                    "");
+                    "",
+                    ogCards.meetingType(user, type, settings.ownerName));
         }
         return confirmationPage(booking, type);
     }
