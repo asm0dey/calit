@@ -7,6 +7,38 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- **A meeting type can offer several lengths.** Running 30-, 60- and
+  120-minute sessions used to mean three near-duplicate meeting types that
+  differed only in duration. A meeting type now carries a set of allowed
+  lengths, each with its own optional before/after buffers, and the invitee
+  picks one above the slot grid with a plain link — no JavaScript required.
+  Start times sit on the same lattice whichever length is picked, so
+  switching length only drops the starts that no longer fit; it never moves
+  the times already on offer.
+- **Rescheduling no longer resizes a booking.** Moving a booking that was
+  made at a non-default length recomputed its end from the meeting type's
+  own duration, silently shrinking (or growing) it to that default. A
+  booking now keeps the length it was made at through every reschedule.
+- **Shared meeting types across timezones offer slots again.** Each host's
+  slot grid was anchored to midnight in that host's own timezone and then
+  intersected by exact start time, so two hosts whose UTC offsets differed
+  by a non-multiple of the slot cadence — London and Berlin on a 45-minute
+  cadence, for instance — never matched on a single instant, and the page
+  showed no available times at all. Every host's grid is now anchored to
+  one clock, the meeting type creator's, so hosts sharing a type always
+  share a lattice.
+
+Nothing to do on upgrade — no configuration or database action is required,
+and every existing meeting type keeps exactly the length and start times it
+has today. One caveat: a shared meeting type whose hosts span timezones may
+now show start times at unround local minutes for some of those hosts —
+that is the timezone fix working, since before it those hosts' pages showed
+no times at all.
+
 ## 1.21.0
 
 Per-meeting-type Google calendars, working hours for brand-new accounts, a
