@@ -1,10 +1,11 @@
 ---
 # calit-nyg8
 title: 'Per-meeting-type note shown on the booking page (GH #128)'
-status: todo
+status: in-progress
 type: feature
+priority: normal
 created_at: 2026-08-22T16:37:23Z
-updated_at: 2026-08-22T16:37:23Z
+updated_at: 2026-09-05T09:51:22Z
 ---
 
 Upstream: https://github.com/asm0dey/calit/issues/128 (reporter @h200101)
@@ -36,10 +37,10 @@ Ask the reporter / owner before writing a migration.
 
 ## Todos
 
-- [ ] Decide reuse-`description` vs new `booking_note` column (ask on the issue)
-- [ ] If new column: `V29__meeting_type_booking_note.sql` (never edit an applied migration)
-- [ ] Render the note in the booking form column of `PublicResource/book.html`
-- [ ] Admin edit UI for it (`AdminResource` meeting-type form) if a new field
-- [ ] i18n: `@Message` default + de/he values for any new label
-- [ ] Test: public booking page shows the note for a type that has one, absent when blank
+- [x] Decide reuse-`description` vs new `booking_note` column — reuse: the column existed already and was simply unreachable from any form
+- [x] No migration needed — `description TEXT` is already in `V1__core_schema.sql:15`
+- [x] Render — left rail (`book.html:40`) + landing card (`landing.html:21`) already did this; kept as-is (owner picked left rail over the form column)
+- [x] Admin edit UI — textarea on both the create form (`meetingTypes.html`) and the detail basics form (`meetingTypeDetail.html`)
+- [x] i18n: `adm_meetingTypes_label_description` + de/he values
+- [x] Test: `MeetingTypeDescriptionTest` — 8 cases, admin form → column → public booking page + landing card
 - [ ] Docs: `docs-site` branch (usage page) + `## Unreleased` changelog bullet at merge

@@ -42,6 +42,8 @@
           <input id="mt-name" class="input w-full" type="text" name="name" data-slug-name value="{type.name}" required>
           <label class="label" for="mt-slug">{adm:adm_detail_label_slug} <span class="text-base-content/60">{adm:adm_detail_slug_hint}</span></label>
           <input id="mt-slug" class="input w-full" type="text" name="slug" data-slug-autofill value="{type.slug}">
+          <label class="label" for="mt-description">{adm:adm_meetingTypes_label_description}</label>
+          <textarea id="mt-description" class="textarea w-full" name="description" maxlength="2000">{#if type.description}{type.description}{/if}</textarea>
           <label class="label" for="mt-duration">{adm:adm_detail_label_duration}</label>
           <input id="mt-duration" class="input w-full" type="number" min="1" name="durationMinutes" value="{type.durationMinutes}" required>
           <label class="label" for="mt-buffer-before">{adm:adm_detail_label_buffer_before}</label>

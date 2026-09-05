@@ -417,6 +417,7 @@ public class AdminResource {
     public TemplateInstance createMeetingType(
             @RestForm String name,
             @RestForm String slug,
+            @RestForm String description,
             @RestForm int durationMinutes,
             @RestForm @DefaultValue("0") int bufferBeforeMinutes,
             @RestForm @DefaultValue("0") int bufferAfterMinutes,
@@ -450,6 +451,7 @@ public class AdminResource {
                 t.googleCalendarId = ref == null ? null : ref.googleCalendarId();
                 applyEditableFields(
                         t,
+                        description,
                         durationMinutes,
                         bufferBeforeMinutes,
                         bufferAfterMinutes,
@@ -476,6 +478,7 @@ public class AdminResource {
      */
     private void applyEditableFields(
             MeetingType t,
+            String description,
             int durationMinutes,
             int bufferBeforeMinutes,
             int bufferAfterMinutes,
@@ -501,6 +504,9 @@ public class AdminResource {
         t.horizonDays = horizonDays;
         t.locationType = parseLocationType(locationType, t);
         t.locationDetail = (locationDetail == null || locationDetail.isBlank()) ? null : locationDetail;
+        // The owner-authored note shown to bookers (GH #128). Blank clears it back to "no note",
+        // which is what both public renders test for.
+        t.description = (description == null || description.isBlank()) ? null : description;
         // Slot cadence: blank = back-to-back (null → falls back to durationMinutes).
         t.slotIntervalMinutes = (slotIntervalMinutes == null || slotIntervalMinutes.isBlank())
                 ? null
@@ -821,6 +827,7 @@ public class AdminResource {
             @PathParam("id") Long id,
             @RestForm String name,
             @RestForm String slug,
+            @RestForm String description,
             @RestForm int durationMinutes,
             @RestForm @DefaultValue("0") int bufferBeforeMinutes,
             @RestForm @DefaultValue("0") int bufferAfterMinutes,
@@ -848,6 +855,7 @@ public class AdminResource {
                 staying.set(applyWriteCalendar(t, writeCalendar));
                 applyEditableFields(
                         t,
+                        description,
                         durationMinutes,
                         bufferBeforeMinutes,
                         bufferAfterMinutes,
