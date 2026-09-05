@@ -100,7 +100,8 @@ public class AdminResource {
                 List<BookingField> fields, FieldType[] fieldTypes, Long pendingCount, boolean isAdmin, String title);
 
         public static native TemplateInstance dateOverrides(
-                List<DateOverride> overrides,
+                List<DateOverride> upcoming,
+                List<DateOverride> past,
                 List<MeetingType> types,
                 Long pendingCount,
                 boolean isAdmin,
@@ -288,6 +289,19 @@ public class AdminResource {
     private String ownerZone() {
         OwnerSettings s = OwnerSettings.forOwner(currentOwner.id());
         return (s == null || s.timezone == null) ? "UTC" : s.timezone;
+    }
+
+    /**
+     * {@link #ownerZone()} parsed, for "is this date in the past?" comparisons. A null, blank or
+     * unparseable stored timezone falls back to UTC rather than 500ing the page — the same
+     * defensive posture {@code DisplayExtensions.when} takes for the no-JS time fallback.
+     */
+    private ZoneId ownerZoneId() {
+        try {
+            return ZoneId.of(ownerZone());
+        } catch (DateTimeException _) {
+            return ZoneOffset.UTC;
+        }
     }
 
     @GET
@@ -1461,25 +1475,44 @@ public class AdminResource {
     }
 
     /**
-     * All overrides with their (transient) {@code windows} loaded for display.
-     * {@link DateOverride#windows} is @Transient (not cascade-mapped), so listAll()
-     * leaves it empty; we populate each from {@link DateOverrideWindow} by id.
+     * Renders /me/date-overrides for the current owner. Shared by the GET and by the create/delete
+     * POSTs, which all re-render the same page.
+     *
+     * <p>GH #168: a host with many overrides could not find the ones that still matter, because the
+     * page listed every override they had ever created in one flat list. Overrides are now split on
+     * "today" in the OWNER's timezone (an override for today is still upcoming — it can still be
+     * booked): upcoming soonest-first as normal cards, past most-recent-first inside a collapsed
+     * section. Nothing is deleted or hidden from the DOM; the past ones just start folded.
+     *
+     * <p>One query, split in memory: the row count here is per-owner and small, and a single
+     * ordered fetch also keeps {@link #withWindows} to one extra query for the whole page.
+     * {@link DateOverride#windows} is @Transient (not cascade-mapped), so the list query leaves it
+     * empty and {@link #withWindows} populates it.
      */
-    private List<DateOverride> overridesWithWindows() {
-        return withWindows(
-                DateOverride.list("ownerId = ?1 order by meetingTypeId nulls first, overrideDate", currentOwner.id()));
+    private TemplateInstance dateOverridesInstance() {
+        List<DateOverride> all =
+                withWindows(DateOverride.list("ownerId = ?1 order by overrideDate", currentOwner.id()));
+        var today = LocalDate.now(ownerZoneId());
+        List<DateOverride> upcoming =
+                all.stream().filter(o -> !o.overrideDate.isBefore(today)).toList();
+        List<DateOverride> past = all.stream()
+                .filter(o -> o.overrideDate.isBefore(today))
+                .sorted(Comparator.comparing((DateOverride o) -> o.overrideDate).reversed())
+                .toList();
+        return Templates.dateOverrides(
+                upcoming,
+                past,
+                MeetingType.listForOwner(currentOwner.id()),
+                pendingCount(),
+                isAdmin(),
+                m().adm_dateOverrides_title());
     }
 
     @GET
     @Path("/date-overrides")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance dateOverrides() {
-        return Templates.dateOverrides(
-                overridesWithWindows(),
-                MeetingType.listForOwner(currentOwner.id()),
-                pendingCount(),
-                isAdmin(),
-                m().adm_dateOverrides_title());
+        return dateOverridesInstance();
     }
 
     @POST
@@ -1507,12 +1540,7 @@ public class AdminResource {
             o.persist(); // need the generated id before persisting child windows
             persistWindows(o.id, form);
         });
-        return Templates.dateOverrides(
-                overridesWithWindows(),
-                MeetingType.listForOwner(currentOwner.id()),
-                pendingCount(),
-                isAdmin(),
-                m().adm_dateOverrides_title());
+        return dateOverridesInstance();
     }
 
     @POST
@@ -1527,12 +1555,7 @@ public class AdminResource {
                 DateOverride.deleteById(id);
             }
         });
-        return Templates.dateOverrides(
-                overridesWithWindows(),
-                MeetingType.listForOwner(currentOwner.id()),
-                pendingCount(),
-                isAdmin(),
-                m().adm_dateOverrides_title());
+        return dateOverridesInstance();
     }
 
     @GET
