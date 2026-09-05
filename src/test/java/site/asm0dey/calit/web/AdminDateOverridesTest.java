@@ -165,6 +165,7 @@ class AdminDateOverridesTest {
         assertTrue(beforeCollapse.contains(future.toString()), "upcoming override must render above the collapse");
         assertFalse(beforeCollapse.contains(history.toString()), "past override must not render above the collapse");
         assertTrue(insideCollapse.contains(history.toString()), "past override must render inside the collapse");
+        assertTrue(body.contains("Past overrides (1)"), "collapse summary must show the correct past count");
     }
 
     @Test

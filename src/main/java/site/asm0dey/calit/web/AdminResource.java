@@ -295,6 +295,14 @@ public class AdminResource {
      * {@link #ownerZone()} parsed, for "is this date in the past?" comparisons. A null, blank or
      * unparseable stored timezone falls back to UTC rather than 500ing the page — the same
      * defensive posture {@code DisplayExtensions.when} takes for the no-JS time fallback.
+     *
+     * <p>This deliberately does NOT reuse {@link OwnerSettings#coerceZone}: that allowlist gates
+     * every write path and flattens anything outside the JDK's named zone ids (including offset
+     * ids like {@code +03:00}) to UTC, so a stored value it wouldn't accept should be unreachable
+     * here anyway. This method is intentionally more permissive — it accepts any id
+     * {@link ZoneId#of} can parse, offset ids included — because a raw try/catch around the parse
+     * is a strictly weaker (and cheaper) requirement than re-deriving {@code coerceZone}'s
+     * allowlist just to fall back to the same UTC default.
      */
     private ZoneId ownerZoneId() {
         try {
@@ -1488,10 +1496,18 @@ public class AdminResource {
      * ordered fetch also keeps {@link #withWindows} to one extra query for the whole page.
      * {@link DateOverride#windows} is @Transient (not cascade-mapped), so the list query leaves it
      * empty and {@link #withWindows} populates it.
+     *
+     * <p>{@code meetingTypeId} is a secondary sort key, not decoration: the unique index is on
+     * {@code (owner_id, COALESCE(meeting_type_id,0), override_date)}, so a global override and a
+     * per-type override are explicitly allowed to share a date. Without a tiebreaker, same-date
+     * rows have no deterministic order and Postgres's sort is not stable, so those two cards could
+     * swap places between page loads. {@link java.util.stream.Stream#sorted} and
+     * {@link List#sort} are stable, so this order carries through the {@code past} list's
+     * descending re-sort below.
      */
     private TemplateInstance dateOverridesInstance() {
-        List<DateOverride> all =
-                withWindows(DateOverride.list("ownerId = ?1 order by overrideDate", currentOwner.id()));
+        List<DateOverride> all = withWindows(
+                DateOverride.list("ownerId = ?1 order by overrideDate, meetingTypeId nulls first", currentOwner.id()));
         var today = LocalDate.now(ownerZoneId());
         List<DateOverride> upcoming =
                 all.stream().filter(o -> !o.overrideDate.isBefore(today)).toList();
