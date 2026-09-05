@@ -11,6 +11,15 @@ asset downloads, are on
 
 Merged but not yet in a tagged release.
 
+- **Meeting types can carry a note for the person booking.** The booking page
+  and landing card have always had a slot for a per-type description, but no
+  form ever wrote it, so it was invisible in practice. Meeting types now have
+  a **Note** box in their Basics section; whatever you write there shows under
+  the meeting name and duration on the booking page and on the type's landing
+  card. Worth knowing: the note also becomes the calendar event description,
+  so it lands in the Google Calendar entry and the `.ics` invite for bookings
+  of that type.
+  ([#172](https://github.com/asm0dey/calit/pull/172))
 - **Booking links now unfurl with a preview card.** A calit link pasted into
   Slack, WhatsApp, iMessage or a tweet used to render as a bare URL, with no
   title, description or image. Public pages now carry `og:`/`twitter:`

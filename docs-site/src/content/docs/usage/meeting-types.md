@@ -32,11 +32,24 @@ Your landing page at `/<username>` lists all of your **active, non-secret** meet
 | **Minimum notice** | How far in advance a booking must be made (e.g. 60 minutes means no same-hour bookings). |
 | **Booking horizon** | How many days into the future invitees can book (default 60 days). |
 | **Requires approval** | When enabled, new bookings are held in a pending state until you approve them. See [Bookings & approvals](/calit/usage/bookings/). |
+| **Note** | Free text shown to whoever books this type — on the booking page and on your landing page card. See [Note](#note). |
 | **Custom booking fields** | Extra questions shown to the invitee on the booking form (name, company, notes, etc.). |
 | **Secret** | Hides the type from `/<username>` while keeping the direct link active. |
 
 :::tip[Minimum notice smart default]
 When creating a new meeting type, **Min scheduling notice** defaults to 4× the duration and updates automatically as you adjust the duration (e.g. a 45-minute meeting suggests 180 minutes' notice). Once you edit the notice field yourself it stops updating. You can set it to any value — including 0 for instant bookings — before saving.
+:::
+
+## Note
+
+Each meeting type can carry a short note for the person booking it — house rules, what to prepare, or a reassurance:
+
+> Please select the appropriate date and time for our therapy session. Don't worry if you are not on time; things happen.
+
+Write it in the **Note** box in the type's **Basics** section. It appears under the meeting name and duration on the booking page, and on the type's card on your landing page. Clear the box to remove it.
+
+:::caution
+The note also becomes the description of the calendar event: it is written into the Google Calendar entry and into the `.ics` invite for every booking of that type. Keep anything you would not want in an invitee's calendar out of it.
 :::
 
 ## Allowed durations
