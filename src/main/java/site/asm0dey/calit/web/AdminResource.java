@@ -439,7 +439,7 @@ public class AdminResource {
                 MeetingType t = new MeetingType();
                 t.ownerId = currentOwner.id();
                 t.name = name;
-                String slugBase = (slug == null || slug.isBlank()) ? Slugs.slugify(name) : Slugs.slugify(slug);
+                String slugBase = Slugs.slugify((slug == null || slug.isBlank()) ? name : slug);
                 t.slug = Slugs.uniqueMeetingTypeSlug(currentOwner.id(), slugBase, null);
                 // Task 17 slug guards -- validated on the transient (unpersisted) t.
                 // assertSlugFreeAcrossHosts is always a no-op here (a brand-new type has no host
@@ -846,7 +846,7 @@ public class AdminResource {
         try {
             QuarkusTransaction.requiringNew().run(() -> {
                 MeetingType t = requireType(id);
-                String slugBase = (slug == null || slug.isBlank()) ? Slugs.slugify(name) : Slugs.slugify(slug);
+                String slugBase = Slugs.slugify((slug == null || slug.isBlank()) ? name : slug);
                 String newSlug = Slugs.uniqueMeetingTypeSlug(currentOwner.id(), slugBase, id);
                 assertNoOwnerSlugCollision(newSlug);
                 meetingHosts.assertSlugFreeAcrossHosts(t, newSlug);
