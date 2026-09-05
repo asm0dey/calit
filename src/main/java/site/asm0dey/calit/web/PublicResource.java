@@ -541,7 +541,7 @@ public class PublicResource {
                 type.name,
                 type.description == null ? "" : type.description,
                 hostInactive(booking),
-                type != null && type.hideGuests);
+                type.hideGuests);
     }
 
     /**
