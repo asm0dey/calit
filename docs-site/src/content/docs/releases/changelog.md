@@ -19,7 +19,7 @@ Merged but not yet in a tagged release.
   newest first. Nothing is deleted — the old overrides are one click away, and
   the section only appears once you actually have some. "Today" is your own
   configured timezone, and an override dated today still counts as upcoming.
-  ([#PRNUM](https://github.com/asm0dey/calit/pull/PRNUM))
+  ([#176](https://github.com/asm0dey/calit/pull/176))
 - **Meeting types can carry a note for the person booking.** The booking page
   and landing card have always had a slot for a per-type description, but no
   form ever wrote it, so it was invisible in practice. Meeting types now have
