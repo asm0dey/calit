@@ -48,6 +48,8 @@ Each meeting type can carry a short note for the person booking it — house rul
 
 Write it in the **Note** box in the type's **Basics** section. It appears under the meeting name and duration on the booking page, and on the type's card on your landing page. Clear the box to remove it.
 
+![A meeting type's note on the public booking page](/calit/img/product-booking-note.png)
+
 :::caution
 The note also becomes the description of the calendar event: it is written into the Google Calendar entry and into the `.ics` invite for every booking of that type. Keep anything you would not want in an invitee's calendar out of it.
 :::
