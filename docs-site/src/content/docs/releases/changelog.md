@@ -7,9 +7,11 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.23.0
 
-Merged but not yet in a tagged release.
+Booking links now unfurl with a generated preview card, meeting types can carry
+a note for the person booking, and the overrides page folds past dates out of
+the way.
 
 - **Past date overrides no longer clutter the overrides page.** A host with a
   long history of date overrides saw every one of them, past and future, in a
