@@ -433,7 +433,7 @@ public class PublicResource {
                     altchaSolution,
                     website,
                     locale,
-                    parseGuests(form),
+                    type.hideGuests ? List.of() : parseGuests(form),
                     submittedDuration);
         } catch (BookingValidationException | AbuseException | RateLimitException | BookingConflictException be) {
             // Required-field 422 OR an abuse-guard rejection (filled honeypot / failed Turnstile /
@@ -522,9 +522,11 @@ public class PublicResource {
         String current =
                 booking.startUtc.atZone(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
         String currentUtcIso = booking.startUtc.toString(); // absolute instant for data-utc
-        String guestsCsv = BookingGuest.activeForBooking(booking.id).stream()
-                .map(g -> g.email)
-                .collect(Collectors.joining(","));
+        String guestsCsv = (type != null && type.hideGuests)
+                ? ""
+                : BookingGuest.activeForBooking(booking.id).stream()
+                        .map(g -> g.email)
+                        .collect(Collectors.joining(","));
         return Templates.manage(
                 m.pub_manage_title(),
                 booking,

@@ -200,6 +200,9 @@ public interface AdminMessages {
     @Message("Requires owner approval (hold as pending)")
     String adm_meetingTypes_label_approval();
 
+    @Message("Hide guests")
+    String adm_meetingTypes_label_hide_guests();
+
     @Message("Duration")
     String adm_meetingTypes_section_duration();
 
@@ -435,6 +438,9 @@ public interface AdminMessages {
 
     @Message("Requires owner approval")
     String adm_detail_label_approval();
+
+    @Message("Hide guests")
+    String adm_detail_label_hide_guests();
 
     @Message("Save changes")
     String adm_detail_btn_save();
