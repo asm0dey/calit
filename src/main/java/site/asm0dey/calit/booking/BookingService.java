@@ -333,6 +333,12 @@ public class BookingService {
         }
         assertDurationAllowed(type, durationMinutes);
 
+        // SEC-AUTHZ-02: enforce here so the JSON API and the web form share one guard.
+        // List.of() is correct on create — a new booking has nothing to destroy.
+        if (type.hideGuests) {
+            guestEmails = List.of();
+        }
+
         // Feature 16: all three abuse guards run first, inside book(). The Plan 5 web layer
         // just forwards the cf-turnstile-response (turnstileToken) and website (honeypot) form values.
         captchaVerifier.verify(turnstileToken, altchaSolution); // -> AbuseException (400) on invalid CAPTCHA
@@ -1038,10 +1044,11 @@ public class BookingService {
             throw new NotFoundException("No active booking for token " + manageToken);
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        if (type != null && type.hideGuests) {
-            // Policy enforcement: with hideGuests on, drop any submitted guests before
-            // group delegation, normalization or reconciliation.
-            guestEmails = List.of();
+        if (type != null && type.hideGuests && !byOwner) {
+            // Invitee-hidden ruling: drop what the invitee submitted, but leave existing
+            // guests alone. null is reconcileGuests' documented no-op; List.of() would be
+            // an authoritative "set to empty" and would remove and email every guest.
+            guestEmails = null;
         }
 
         if (booking.groupId != null) {
@@ -1054,9 +1061,11 @@ public class BookingService {
         List<String> wanted = normalizeGuestEmails(guestEmails, booking.inviteeEmail);
 
         // No-op guard: nothing changed → no notification storm, no SEQUENCE churn.
+        // A null guestEmails means "guests untouched", so it must not count as a change.
+        var guestsUnchanged = (guestEmails == null) || sameGuestSet(booking, wanted);
         if (java.util.Objects.equals(newTitle, booking.title)
                 && java.util.Objects.equals(newDescription, booking.description)
-                && sameGuestSet(booking, wanted)) {
+                && guestsUnchanged) {
             return booking;
         }
 

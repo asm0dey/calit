@@ -84,7 +84,8 @@ public class PublicResource {
                 String descriptionValue,
                 String titlePlaceholder,
                 String descPlaceholder,
-                boolean hostInactive);
+                boolean hostInactive,
+                boolean hideGuests);
 
         public static native TemplateInstance guestDeclineConfirm(
                 String title,
@@ -522,11 +523,9 @@ public class PublicResource {
         String current =
                 booking.startUtc.atZone(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
         String currentUtcIso = booking.startUtc.toString(); // absolute instant for data-utc
-        String guestsCsv = (type != null && type.hideGuests)
-                ? ""
-                : BookingGuest.activeForBooking(booking.id).stream()
-                        .map(g -> g.email)
-                        .collect(Collectors.joining(","));
+        String guestsCsv = BookingGuest.activeForBooking(booking.id).stream()
+                .map(g -> g.email)
+                .collect(Collectors.joining(","));
         return Templates.manage(
                 m.pub_manage_title(),
                 booking,
@@ -541,7 +540,8 @@ public class PublicResource {
                 booking.description == null ? "" : booking.description,
                 type.name,
                 type.description == null ? "" : type.description,
-                hostInactive(booking));
+                hostInactive(booking),
+                type != null && type.hideGuests);
     }
 
     /**

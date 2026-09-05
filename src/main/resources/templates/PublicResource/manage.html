@@ -12,6 +12,7 @@
 {@java.lang.String titlePlaceholder}
 {@java.lang.String descPlaceholder}
 {@java.lang.Boolean hostInactive}
+{@java.lang.Boolean hideGuests}
 {#include base title=title}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-2xl mx-auto">
     <div class="card-body">
@@ -67,7 +68,7 @@
           <textarea id="edit-desc" class="textarea w-full" name="description"
                     maxlength="2000" placeholder="{descPlaceholder}">{descriptionValue}</textarea>
         </div>
-        {#include PublicResource/_guestschips initial=initialGuests /}
+        {#if !hideGuests}{#include PublicResource/_guestschips initial=initialGuests /}{/if}
         <button type="submit" class="btn btn-primary">{msg:pub_edit_details_btn}</button>
       </form>
 

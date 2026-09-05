@@ -193,4 +193,193 @@ class GuestBookingFlowTest {
         assertEquals(GuestStatus.REMOVED, BookingGuest.findInBooking(b.id, "bob@example.com").status);
         assertEquals(2, BookingGuest.activeForBooking(b.id).size());
     }
+
+    @Inject
+    site.asm0dey.calit.booking.BookingService bookingService;
+
+    // --- Unit E (@antigravity-wanderer): hideGuests behaviour ---
+
+    // 1. Field absent from the markup when hideGuests = true
+    @Test
+    void bookingFormHidesGuestsFieldWhenHideGuestsOn() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = MeetingType.find("slug", "g-type").firstResult();
+            t.hideGuests = true;
+            t.persist();
+        });
+
+        given().when()
+                .get("/gob/g-type")
+                .then()
+                .statusCode(200)
+                .body(org.hamcrest.Matchers.not(containsString("name=\"guests\"")));
+    }
+
+    // 2. Crafted booking POST with guests attaches none when the flag is on
+    @Test
+    void craftedBookingPostWithGuestsAttachesZeroWhenHideGuestsOn() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = MeetingType.find("slug", "g-type").firstResult();
+            t.hideGuests = true;
+            t.persist();
+        });
+        mailbox.clear();
+
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("startUtc", firstSlot())
+                .formParam("inviteeName", "Eve")
+                .formParam("inviteeEmail", "eve@example.com")
+                .formParam("website", "")
+                .formParam("guests", "crafted1@example.com, crafted2@example.com")
+                .when()
+                .post("/gob/g-type")
+                .then()
+                .statusCode(200);
+
+        Booking b = Booking.find("inviteeEmail", "eve@example.com").firstResult();
+        assertNotNull(b);
+        assertEquals(0, BookingGuest.activeForBooking(b.id).size(), "Guard must drop guests on booking");
+        assertEquals(0, mailbox.getMailsSentTo("crafted1@example.com").size());
+        assertEquals(0, mailbox.getMailsSentTo("crafted2@example.com").size());
+    }
+
+    // 3. Crafted manage POST (/edit-details) ignores guests when the flag is on
+    @Test
+    void craftedManageEditDetailsWithGuestsAttachesZeroWhenHideGuestsOn() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = MeetingType.find("slug", "g-type").firstResult();
+            t.hideGuests = true;
+            t.persist();
+        });
+
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("startUtc", firstSlot())
+                .formParam("inviteeName", "Dave")
+                .formParam("inviteeEmail", "dave@example.com")
+                .formParam("website", "")
+                .formParam("guests", "")
+                .when()
+                .post("/gob/g-type")
+                .then()
+                .statusCode(200);
+
+        Booking b = Booking.find("inviteeEmail", "dave@example.com").firstResult();
+        assertNotNull(b);
+        String token = b.manageToken;
+
+        given().when()
+                .get("/booking/" + token + "/manage")
+                .then()
+                .statusCode(200)
+                .body(org.hamcrest.Matchers.not(containsString("name=\"guests\"")));
+
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("title", "Updated title")
+                .formParam("description", "Updated desc")
+                .formParam("guests", "sneakyguest@example.com")
+                .when()
+                .post("/booking/" + token + "/edit-details")
+                .then()
+                .statusCode(200);
+
+        Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findByManageToken(token));
+        assertEquals("Updated title", after.title);
+        assertEquals(0, BookingGuest.activeForBooking(after.id).size(), "Manage guard must drop guests");
+    }
+
+    // 4. Owner may add guests, and an invitee edit must not wipe them (Unit F)
+    @Test
+    void ownerCanAddGuestsOnHiddenGuestsBookingAndInviteeEditDoesNotWipeThem() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = MeetingType.find("slug", "g-type").firstResult();
+            t.hideGuests = true;
+            t.persist();
+        });
+
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("startUtc", firstSlot())
+                .formParam("inviteeName", "Alice")
+                .formParam("inviteeEmail", "alice@example.com")
+                .formParam("website", "")
+                .when()
+                .post("/gob/g-type")
+                .then()
+                .statusCode(200);
+
+        Booking b = Booking.find("inviteeEmail", "alice@example.com").firstResult();
+        assertNotNull(b);
+        assertEquals(0, BookingGuest.activeForBooking(b.id).size());
+
+        QuarkusTransaction.requiringNew()
+                .run(() -> bookingService.updateDetails(
+                        b.manageToken, "Owner Sync", "Notes", List.of("vip@example.com"), true));
+
+        List<BookingGuest> guestsAfterOwner = BookingGuest.activeForBooking(b.id);
+        assertEquals(1, guestsAfterOwner.size(), "Owner must be allowed to add guests");
+        assertEquals("vip@example.com", guestsAfterOwner.getFirst().email);
+
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("title", "Invitee New Title")
+                .formParam("description", "Invitee New Desc")
+                .when()
+                .post("/booking/" + b.manageToken + "/edit-details")
+                .then()
+                .statusCode(200);
+
+        List<BookingGuest> guestsAfterInviteeEdit = BookingGuest.activeForBooking(b.id);
+        assertEquals(1, guestsAfterInviteeEdit.size(), "Existing guest must NOT be wiped by invitee edit");
+        assertEquals("vip@example.com", guestsAfterInviteeEdit.getFirst().email);
+    }
+
+    // 5. Positive control (@glitchfox's rule): with the flag OFF, guests attach normally
+    @Test
+    void positiveControlGuestsAttachWhenHideGuestsOff() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed(); // hideGuests = false
+
+        given().when().get("/gob/g-type").then().statusCode(200).body(containsString("name=\"guests\""));
+
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("startUtc", firstSlot())
+                .formParam("inviteeName", "NormalUser")
+                .formParam("inviteeEmail", "normal@example.com")
+                .formParam("website", "")
+                .formParam("guests", "pos1@example.com, pos2@example.com")
+                .when()
+                .post("/gob/g-type")
+                .then()
+                .statusCode(200);
+
+        Booking b = Booking.find("inviteeEmail", "normal@example.com").firstResult();
+        assertNotNull(b);
+        assertEquals(2, BookingGuest.activeForBooking(b.id).size(), "Positive control: guests attach when flag off");
+
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("title", "Normal Edit")
+                .formParam("description", "Normal Desc")
+                .formParam("guests", "pos1@example.com, pos3@example.com")
+                .when()
+                .post("/booking/" + b.manageToken + "/edit-details")
+                .then()
+                .statusCode(200);
+
+        List<BookingGuest> active = BookingGuest.activeForBooking(b.id);
+        assertEquals(2, active.size());
+        var emails = active.stream().map(g -> g.email).collect(java.util.stream.Collectors.toSet());
+        org.junit.jupiter.api.Assertions.assertTrue(
+                emails.contains("pos1@example.com") && emails.contains("pos3@example.com"));
+    }
 }
