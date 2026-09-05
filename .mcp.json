@@ -3,14 +3,6 @@
     "javadocs": {
       "type": "http",
       "url": "https://www.javadocs.dev/mcp"
-    },
-    "jbcontext": {
-      "type": "stdio",
-      "command": "jbcontext",
-      "args": [
-        "mcp"
-      ],
-      "env": {}
     }
   }
 }

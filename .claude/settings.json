@@ -8,28 +8,6 @@
                         "command": "beans prime"
                     }
                 ]
-            },
-            {
-                "matcher": "",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "jbcontext index --silent",
-                        "async": true
-                    }
-                ]
-            }
-        ],
-        "SessionEnd": [
-            {
-                "matcher": "",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "jbcontext index --silent",
-                        "async": true
-                    }
-                ]
             }
         ]
     }
