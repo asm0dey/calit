@@ -1,4 +1,5 @@
-{@java.util.List<site.asm0dey.calit.domain.DateOverride> overrides}
+{@java.util.List<site.asm0dey.calit.domain.DateOverride> upcoming}
+{@java.util.List<site.asm0dey.calit.domain.DateOverride> past}
 {@java.util.List<site.asm0dey.calit.domain.MeetingType> types}
 {@java.lang.Long pendingCount}
 {@java.lang.Boolean isAdmin}
@@ -8,18 +9,25 @@
   <p class="text-sm text-base-content/70 mb-4">{adm:adm_dateOverrides_hint}</p>
 
   <div class="space-y-2 mb-6">
-  {#for o in overrides}
-    <div class="card bg-base-100 border border-base-300"><div class="card-body py-3 gap-1">
-      <p><strong>{o.overrideDate}</strong> &middot; {#if o.meetingTypeId}type #{o.meetingTypeId}{#else}{adm:adm_dateOverrides_global}{/if}</p>
-      {#if o.windows.isEmpty()}
-        <p><span class="badge badge-ghost badge-sm">{adm:adm_dateOverrides_badge_day_off}</span> ({adm:adm_common_blocked})</p>
-      {#else}
-        <ul class="list-disc ms-5">{#for w in o.windows}<li>{w.startTime} &ndash; {w.endTime}</li>{/for}</ul>
-      {/if}
-      <form method="post" action="/me/date-overrides/{o.id}/delete"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button type="submit" class="btn btn-error btn-outline btn-sm">{adm:adm_dateOverrides_btn_delete}</button></form>
-    </div></div>
+  {#for o in upcoming}
+    {#include AdminResource/_dateOverrideCard o=o /}
   {/for}
   </div>
+
+  {! GH #168: past overrides are kept, not deleted, but start folded so the upcoming ones are
+     what the page leads with. Native <details> — no JS, works with scripting off. !}
+  {#if !past.isEmpty()}
+  <details id="past-overrides" class="collapse collapse-arrow bg-base-100 border border-base-300 mb-6">
+    <summary class="collapse-title font-semibold">{adm:adm_dateOverrides_past_summary(past.size)}</summary>
+    <div class="collapse-content">
+      <div class="space-y-2">
+      {#for o in past}
+        {#include AdminResource/_dateOverrideCard o=o /}
+      {/for}
+      </div>
+    </div>
+  </details>
+  {/if}
 
   <h2 class="text-xl font-semibold mb-3">{adm:adm_dateOverrides_add_h2}</h2>
   <form method="post" action="/me/date-overrides" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-md">

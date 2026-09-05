@@ -2,9 +2,13 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.DateOverride;
 
@@ -116,5 +120,71 @@ class AdminDateOverridesTest {
                 .get("/me/date-overrides")
                 .then()
                 .statusCode(302);
+    }
+
+    private static final String PAST_MARKER = "id=\"past-overrides\"";
+
+    /** Seeds one global day-off override on the given date for owner 1. */
+    @Transactional
+    void seedOverrideOn(LocalDate date) {
+        DateOverride o = new DateOverride();
+        o.ownerId = 1L;
+        o.meetingTypeId = null;
+        o.overrideDate = date;
+        o.windows = new java.util.ArrayList<>();
+        o.persist();
+    }
+
+    private String pageBody() {
+        return given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/date-overrides")
+                .then()
+                .statusCode(200)
+                .extract()
+                .body()
+                .asString();
+    }
+
+    @Test
+    void pastOverridesRenderInsideTheCollapsedSectionAndUpcomingOnesAboveIt() {
+        // Owner 1 has no owner_settings row in tests, so the page's "today" is UTC today.
+        // +/-30 days keeps both sides of the split unambiguous under any timezone.
+        var future = LocalDate.now(ZoneOffset.UTC).plusDays(30);
+        var history = LocalDate.now(ZoneOffset.UTC).minusDays(30);
+        seedOverrideOn(future);
+        seedOverrideOn(history);
+
+        var body = pageBody();
+        var marker = body.indexOf(PAST_MARKER);
+        assertTrue(marker >= 0, "expected the past-overrides collapse to be rendered");
+
+        var beforeCollapse = body.substring(0, marker);
+        var insideCollapse = body.substring(marker);
+
+        assertTrue(beforeCollapse.contains(future.toString()), "upcoming override must render above the collapse");
+        assertFalse(beforeCollapse.contains(history.toString()), "past override must not render above the collapse");
+        assertTrue(insideCollapse.contains(history.toString()), "past override must render inside the collapse");
+        assertTrue(body.contains("Past overrides (1)"), "collapse summary must show the correct past count");
+    }
+
+    @Test
+    void todaysOverrideCountsAsUpcoming() {
+        // An override for today still governs today's bookable slots, so it belongs above the fold.
+        var today = LocalDate.now(ZoneOffset.UTC);
+        seedOverrideOn(today);
+
+        var body = pageBody();
+        var marker = body.indexOf(PAST_MARKER);
+        var beforeCollapse = marker >= 0 ? body.substring(0, marker) : body;
+
+        assertTrue(beforeCollapse.contains(today.toString()), "today's override must be treated as upcoming");
+    }
+
+    @Test
+    void noCollapseIsRenderedWhenThereAreNoPastOverrides() {
+        seedOverrideOn(LocalDate.now(ZoneOffset.UTC).plusDays(30));
+
+        assertFalse(pageBody().contains(PAST_MARKER), "an owner with no past overrides gets no empty collapse");
     }
 }

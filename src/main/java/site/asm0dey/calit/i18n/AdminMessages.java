@@ -683,6 +683,9 @@ public interface AdminMessages {
     @Message("to")
     String adm_dateOverrides_to();
 
+    @Message("Past overrides ({count})")
+    String adm_dateOverrides_past_summary(int count);
+
     // ---- Booking fields ----
 
     @Message("Default booking fields")
