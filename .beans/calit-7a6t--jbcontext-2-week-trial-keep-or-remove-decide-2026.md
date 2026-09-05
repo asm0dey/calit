@@ -5,7 +5,7 @@ status: completed
 type: task
 priority: normal
 created_at: 2026-08-22T09:29:52Z
-updated_at: 2026-09-05T16:33:07Z
+updated_at: 2026-09-05T16:34:40Z
 ---
 
 Trial of JetBrains Context (`jbcontext` 0.9.9, build 592) as a semantic-search layer for this repo. Started 2026-08-22. Decide keep-or-remove on 2026-09-05.
@@ -55,7 +55,7 @@ Three of those are tracked files. Stage explicit paths when committing feature w
 ## Removal (if the verdict is remove)
 
 - [x] `jbcontext remove-agent --agent CLAUDE --scope project` — hooks, skills, subagent, instructions and MCP entry all removed
-- [~] `jbcontext remove-index` — NOT run. It is an interactive y/N that deletes remote data on the JetBrains AI Platform; left for the user to confirm. Harmless to leave: nothing consults it now that the MCP server and instructions are gone.
+- [x] `jbcontext remove-index` — DELIBERATELY NOT RUN, and should stay that way. The index is what makes ad-hoc `jbcontext search` work; deleting it would remove the capability, not just the wiring. Keep it.
 - [x] ~~`git checkout -- CLAUDE.md .claude/settings.json .mcp.json`~~ — WRONG by the time it ran: the trial edits had long since been committed, so a checkout would have discarded nothing and reverted nothing. `remove-agent` did the surgical removal instead; verified by diff that only jbcontext entries went (`javadocs` MCP and the `beans prime` SessionStart hook untouched) and both JSON files still parse.
 - [x] Drop the SessionStart hook from `.claude/settings.local.json` — none present; nothing to do.
 - [~] Send findings upstream via `jbcontext send-feedback` — NOT sent (outward-facing; needs the user). Also largely moot: the `.properties` gap is FIXED. Re-tested 2026-09-05, `adm_de.properties` now returns at rank 2 for a natural-language translation query.
@@ -141,3 +141,28 @@ Left for the user: `jbcontext remove-index` (interactive, deletes remote data) a
 ## If this is ever revisited
 
 Re-run the trial only on a stretch of cold-start work, and fix the rule conflict first — mandate the `jbcontext search` CLI directly rather than an agent wrapper that the harness may forbid or remove. The `.properties` gap is closed, so the tool would start from a better position than it did in August.
+
+## Correction (same day): this removes the wiring, not the tool
+
+The verdict above reads as "jbcontext is out". That overstates it, and the distinction matters for whether the trial should have been extended instead.
+
+**What `remove-agent` actually removed** is the standing cost: an ~85-line CLAUDE.md block loaded into every session, a SessionStart and a SessionEnd index hook, an MCP server entry, a subagent and a skill. That tax was being paid on every task in the repo to serve 5% of them.
+
+**What survives**: the `jbcontext` binary (`~/.jbcontext/bin/jbcontext`, on PATH) and the remote index snapshots. `jbcontext search "..."` is one Bash call, costs nothing when unused, and still works. So `remove-index` must NOT be run — it would delete the capability rather than the tax.
+
+### The trial was invalid, and that is the real argument for a re-run
+
+Not the `.properties` fix. The mandated trigger was `Task(subagent_type: context-explorer)`. The session harness carries "Do not call the AgentTool unless the user requested it", which blocked it every time, and the agent type was withdrawn entirely on 2026-09-05. Two weeks measured a broken wire, not a tool. A 5% usage figure produced under a disabled trigger is not evidence about search quality.
+
+### What a re-run would still be up against
+
+Task mix, which no upstream release changes: most work here starts from a bean already carrying `AdminResource.java:1131` pointers, so there is nothing to locate. That caps the addressable surface independently of how good the search gets.
+
+### Re-trial conditions, if it happens
+
+1. Mandate the **CLI** (`jbcontext search`), never an agent wrapper the harness can forbid or delete.
+2. Do not re-add the hooks or the MCP entry — index manually, search on demand. The standing cost was never justified by the usage.
+3. Judge on cold-start tasks only: a GH issue with no file named, an unfamiliar subsystem. Planning from a well-filed bean is not a test of semantic search.
+4. Measure with `jbcontext analyze` over a window where the trigger actually fires.
+
+Interim: keep the index, use the CLI ad hoc, and re-wire only if it earns its keep in unforced use.
