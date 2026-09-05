@@ -44,6 +44,8 @@ Two override modes are available:
 
 Like rules, overrides can be global or scoped to a single meeting type. A per-type override takes precedence over a global one for the same date.
 
+The overrides page leads with your upcoming overrides, soonest at the top. Overrides dated before today are folded into a collapsed **Past overrides** section at the bottom of the list — they are kept, not deleted, and expand with one click. An override dated today still counts as upcoming, and "today" is read in the timezone configured in your account settings.
+
 ## How slots are computed
 
 When an invitee views your booking page, calit calculates the available slots by:
