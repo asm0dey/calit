@@ -1038,6 +1038,11 @@ public class BookingService {
             throw new NotFoundException("No active booking for token " + manageToken);
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        if (type != null && type.hideGuests) {
+            // Policy enforcement: with hideGuests on, drop any submitted guests before
+            // group delegation, normalization or reconciliation.
+            guestEmails = List.of();
+        }
 
         if (booking.groupId != null) {
             return updateGroupDetails(booking, type, title, description, guestEmails, byOwner);

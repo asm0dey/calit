@@ -450,6 +450,7 @@ public class AdminResource {
             @RestForm String locationDetail,
             @RestForm String slotIntervalMinutes,
             @RestForm String requiresApproval,
+            @RestForm String hideGuests,
             @RestForm String writeCalendar,
             MultivaluedMap<String, String> form) {
         // Whole unit-of-work in its own tx that commits BEFORE renderMeetingTypes() below, so no
@@ -483,7 +484,8 @@ public class AdminResource {
                         locationType,
                         locationDetail,
                         slotIntervalMinutes,
-                        requiresApproval);
+                        requiresApproval,
+                        hideGuests);
                 t.persist(); // need the generated id before scoping child rules/overrides to it
                 persistFrames(t.ownerId, t.id, form);
                 createInitialDateOverride(t.ownerId, t.id, form);
@@ -510,7 +512,8 @@ public class AdminResource {
             String locationType,
             String locationDetail,
             String slotIntervalMinutes,
-            String requiresApproval) {
+            String requiresApproval,
+            String hideGuests) {
         // A zero or negative duration is not a cosmetic error: the slot cadence falls back to the
         // shortest allowed length, so it makes the step zero and SlotService's loops never advance --
         // an unbounded allocation loop that pins the request thread (calit-xjrg). Refuse it here; the
@@ -534,6 +537,7 @@ public class AdminResource {
                 ? null
                 : Integer.valueOf(slotIntervalMinutes);
         t.requiresApproval = "on".equals(requiresApproval);
+        t.hideGuests = "on".equals(hideGuests);
     }
 
     /**
@@ -860,6 +864,7 @@ public class AdminResource {
             @RestForm String locationDetail,
             @RestForm String slotIntervalMinutes,
             @RestForm String requiresApproval,
+            @RestForm String hideGuests,
             @RestForm String writeCalendar) {
         // Load + mutate + flush in one tx that commits before the detail render (issue #75). Slug
         // guards run BEFORE any field is mutated, so a rejection rolls back an untouched entity and
@@ -887,7 +892,8 @@ public class AdminResource {
                         locationType,
                         locationDetail,
                         slotIntervalMinutes,
-                        requiresApproval);
+                        requiresApproval,
+                        hideGuests);
             }); // managed entity flushes on commit
         } catch (IllegalStateException e) {
             return detailInstance(id, localizedMessage(e));

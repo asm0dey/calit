@@ -69,6 +69,10 @@ public class MeetingType extends PanacheEntityBase {
     @Column(name = "requires_approval", nullable = false)
     public boolean requiresApproval = false;
 
+    /** When true, the Guests field is hidden on the booking page and guest emails are rejected. */
+    @Column(name = "hide_guests", nullable = false)
+    public boolean hideGuests = false;
+
     @Column(name = "slot_interval_minutes")
     public Integer slotIntervalMinutes;
 
