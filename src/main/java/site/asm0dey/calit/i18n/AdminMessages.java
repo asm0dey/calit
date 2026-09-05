@@ -188,6 +188,9 @@ public interface AdminMessages {
     @Message("Slug")
     String adm_meetingTypes_label_slug();
 
+    @Message("Note (shown to whoever books this type)")
+    String adm_meetingTypes_label_description();
+
     @Message("(blank = auto from name)")
     String adm_meetingTypes_slug_hint();
 
