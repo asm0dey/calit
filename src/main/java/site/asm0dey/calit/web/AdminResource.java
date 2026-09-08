@@ -542,9 +542,20 @@ public class AdminResource {
                 ? null
                 : Integer.valueOf(slotIntervalMinutes);
         t.requiresApproval = "on".equals(requiresApproval);
-        // Built-in invitee fields (GH #130). Guests can't be REQUIRED: a crafted value collapses to OPTIONAL.
-        t.nameMode = FieldMode.valueOf(nameMode);
-        t.guestsMode = FieldMode.valueOf(guestsMode) == FieldMode.HIDDEN ? FieldMode.HIDDEN : FieldMode.OPTIONAL;
+        // Built-in invitee fields (GH #130). A blank or unknown value falls back to the default; guests
+        // can't be REQUIRED, so anything but HIDDEN collapses to OPTIONAL.
+        t.nameMode = fieldMode(nameMode, FieldMode.REQUIRED);
+        t.guestsMode =
+                fieldMode(guestsMode, FieldMode.OPTIONAL) == FieldMode.HIDDEN ? FieldMode.HIDDEN : FieldMode.OPTIONAL;
+    }
+
+    /** {@code FieldMode.valueOf} that answers a crafted POST with the default instead of a 500. */
+    private static FieldMode fieldMode(String raw, FieldMode fallback) {
+        try {
+            return FieldMode.valueOf(raw);
+        } catch (IllegalArgumentException | NullPointerException _) {
+            return fallback;
+        }
     }
 
     /**

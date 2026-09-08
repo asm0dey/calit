@@ -11,14 +11,17 @@ import static org.mockito.Mockito.when;
 
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
+import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.FieldMode;
@@ -33,6 +36,9 @@ class InviteeFieldModesTest {
 
     @InjectMock
     CalendarPort calendarPort;
+
+    @Inject
+    BookingService bookingService;
 
     @BeforeEach
     void stubCalendar() {
@@ -175,8 +181,95 @@ class InviteeFieldModesTest {
         seed(FieldMode.REQUIRED, FieldMode.OPTIONAL);
         // The form handler re-renders the booking page with the validation message, so it is a 200
         // with no booking row -- the same contract every other BookingValidationException has here.
-        post("", null);
+        assertEquals(200, post("", null));
         assertEquals(0, Booking.count("inviteeEmail", "sam@example.com"));
+    }
+
+    private String apiBody(String name) {
+        return "{\"user\":\"modes\",\"slug\":\"modes\",\"startUtc\":\"" + firstSlot() + "\","
+                + "\"inviteeName\":\"" + name + "\",\"inviteeEmail\":\"sam@example.com\","
+                + "\"turnstileToken\":\"tok\",\"honeypot\":\"\"}";
+    }
+
+    @Test
+    void apiBlankNameOnOptionalTypeBooksWithEmailLocalPart() {
+        seed(FieldMode.OPTIONAL, FieldMode.OPTIONAL);
+        given().contentType("application/json")
+                .body(apiBody(""))
+                .when()
+                .post("/api/bookings")
+                .then()
+                .statusCode(201)
+                .body("inviteeName", org.hamcrest.Matchers.is("sam"));
+    }
+
+    @Test
+    void apiBlankNameOnRequiredTypeIs422() {
+        seed(FieldMode.REQUIRED, FieldMode.OPTIONAL);
+        given().contentType("application/json")
+                .body(apiBody(""))
+                .when()
+                .post("/api/bookings")
+                .then()
+                .statusCode(422);
+        assertEquals(0, Booking.count("inviteeEmail", "sam@example.com"));
+    }
+
+    @Test
+    void hostManageHubDropsGuestsForHiddenType() {
+        Long bookingId = seedOwnerBooking(FieldMode.HIDDEN);
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/bookings/" + bookingId + "/manage")
+                .then()
+                .statusCode(200)
+                .body(not(containsString("name=\"guests\"")));
+    }
+
+    /** A CONFIRMED booking on the admin's (owner 1) own type, so the host hub at /me can render it. */
+    @Transactional
+    Long seedOwnerBooking(FieldMode guestsMode) {
+        OwnerSettings s = OwnerSettings.forOwner(1L);
+        if (s == null) {
+            s = new OwnerSettings();
+            s.ownerId = 1L;
+        }
+        s.ownerName = "Owner";
+        s.ownerEmail = "owner@example.com";
+        s.timezone = "Europe/Amsterdam";
+        s.persist();
+        var slug = "modes-host-" + System.nanoTime();
+        MeetingType t = new MeetingType();
+        t.ownerId = 1L;
+        t.name = "Host modes";
+        t.slug = slug;
+        t.durationMinutes = 30;
+        t.locationType = LocationType.PHONE;
+        t.guestsMode = guestsMode;
+        t.persist();
+        for (DayOfWeek d : DayOfWeek.values()) {
+            AvailabilityRule r = new AvailabilityRule();
+            r.ownerId = 1L;
+            r.dayOfWeek = d;
+            r.startTime = LocalTime.of(0, 0);
+            r.endTime = LocalTime.of(23, 59);
+            r.persist();
+        }
+        var slot = bookingService
+                .availableSlots(t, LocalDate.now(), LocalDate.now().plusDays(14))
+                .getFirst();
+        return bookingService.book(
+                        1L,
+                        slug,
+                        slot.start().toInstant(),
+                        "Pat",
+                        "pat@example.com",
+                        java.util.Map.of(),
+                        "",
+                        "",
+                        "en",
+                        List.of())
+                .id;
     }
 
     @Test
@@ -231,6 +324,29 @@ class InviteeFieldModesTest {
                 .statusCode(200)
                 .body(containsString("value=\"OPTIONAL\" selected"))
                 .body(containsString("value=\"HIDDEN\" selected"));
+    }
+
+    @Test
+    void craftedModesFallBackInsteadOf500() {
+        var slug = "modes-crafted-" + System.nanoTime();
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Crafted")
+                .formParam("slug", slug)
+                .formParam("durationMinutes", "30")
+                .formParam("minNoticeMinutes", "0")
+                .formParam("horizonDays", "60")
+                .formParam("locationType", "PHONE")
+                .formParam("nameMode", "BOGUS")
+                .formParam("guestsMode", "REQUIRED")
+                .when()
+                .post("/me/meeting-types")
+                .then()
+                .statusCode(200);
+        MeetingType t = MeetingType.findBySlug(1L, slug);
+        assertNotNull(t);
+        assertEquals(FieldMode.REQUIRED, t.nameMode);
+        assertEquals(FieldMode.OPTIONAL, t.guestsMode);
     }
 
     @Transactional
