@@ -50,38 +50,58 @@ jobs:
       github.event.workflow_run.head_repository.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
-      # The PR number is resolved from the API by head SHA, never read out of the artifact: the
-      # artifact is fork-controlled, and a forged number would post this analysis onto someone
-      # else's pull request. workflow_run.pull_requests is empty for forks, hence the lookup.
-      - name: Resolve the pull request from the head SHA
+      # Resolve which PR this build belongs to. workflow_run.pull_requests is empty for forks, and
+      # `commits/{sha}/pulls` does NOT work either: it only associates commits that live in THIS
+      # repository, and a fork's head commit does not — it answers [] and the whole job silently
+      # skips. Query by head owner:branch instead, then confirm the SHA matches.
+      #
+      # Everything used here comes from the workflow_run payload, which GitHub writes, not from the
+      # fork's artifact: a forged PR number would post this analysis onto someone else's pull
+      # request. The values are still fork-CHOSEN (they name a fork branch), so they are shape-
+      # checked before they reach an API query, a shell, or the scanner's arguments.
+      - name: Resolve the pull request
         id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
-          pr=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" \
-                 --jq '[.[] | select(.state == "open")] | first // empty')
+          [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Refusing head SHA: $HEAD_SHA" >&2; exit 1; }
+          [[ "$HEAD_REPO" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]] \
+            || { echo "Refusing head repo: $HEAD_REPO" >&2; exit 1; }
+          [[ "$HEAD_BRANCH" =~ ^[A-Za-z0-9/_.-]+$ ]] \
+            || { echo "Refusing head ref: $HEAD_BRANCH" >&2; exit 1; }
+
+          pr=$(gh api "repos/$REPO/pulls" -X GET \
+                 -f state=open -f "head=${HEAD_REPO%%/*}:$HEAD_BRANCH" \
+                 --jq 'first // empty')
           if [ -z "$pr" ]; then
-            echo "No open PR has head $HEAD_SHA — nothing to analyse."
+            echo "No open PR for ${HEAD_REPO%%/*}:$HEAD_BRANCH — nothing to analyse."
             echo "found=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
           number=$(jq -r .number <<<"$pr")
-          branch=$(jq -r .head.ref <<<"$pr")
           base=$(jq -r .base.ref <<<"$pr")
-          # The branch name is chosen by the fork, and git permits ' ; ` $( ) in a ref name. These
-          # values reach a shell and the scanner's argument list in a job that holds SONAR_TOKEN,
-          # so they are shape-checked before they go anywhere near either.
-          [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]      || { echo "Refusing head SHA: $HEAD_SHA" >&2; exit 1; }
-          [[ "$number"  =~ ^[0-9]+$ ]]             || { echo "Refusing PR number: $number" >&2; exit 1; }
-          [[ "$branch"  =~ ^[A-Za-z0-9/_.-]+$ ]]   || { echo "Refusing head ref: $branch" >&2; exit 1; }
-          [[ "$base"    =~ ^[A-Za-z0-9/_.-]+$ ]]   || { echo "Refusing base ref: $base" >&2; exit 1; }
+          pr_head=$(jq -r .head.sha <<<"$pr")
+          [[ "$number" =~ ^[0-9]+$ ]]           || { echo "Refusing PR number: $number" >&2; exit 1; }
+          [[ "$base"   =~ ^[A-Za-z0-9/_.-]+$ ]] || { echo "Refusing base ref: $base" >&2; exit 1; }
+
+          # The PR moved on while this was queued. Its own run analyses the newer head; analysing
+          # the stale artifact here would report findings against code that is no longer the tip.
+          if [ "$pr_head" != "$HEAD_SHA" ]; then
+            echo "PR #$number has moved to $pr_head; leaving $HEAD_SHA to its own run."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           {
             echo "found=true"
             echo "number=$number"
-            echo "branch=$branch"
+            echo "branch=$HEAD_BRANCH"
             echo "base=$base"
           } >> "$GITHUB_OUTPUT"
 
