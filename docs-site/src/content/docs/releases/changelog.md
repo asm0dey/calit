@@ -7,6 +7,29 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- **The name and guests fields on the booking form are now per meeting type.**
+  Every booking form asked for a name and offered a **Guests** field, with no
+  way to trim it down for a type where neither matters. Each meeting type's
+  **Basics** section now has two selectors: the name field can be
+  **Required** (the default), **Optional**, or **Hidden**, and the guests
+  field can be **Optional** (the default) or **Hidden**. A blank or hidden
+  name files the booking under the part of the email before the `@`. A hidden
+  guests field is gone from the booking form and the invitee's Manage page,
+  and anything posted for it is ignored server-side — the JSON API included.
+  Two consequences of hiding guests are deliberate: guests already on a
+  booking are kept, keep getting invites and updates, and can no longer be
+  removed through any page; and the host's own guest editor on that
+  booking's Manage page goes away too, since the setting decides whether the
+  booking has a guest list at all, not just what the invitee sees.
+  ([#184](https://github.com/asm0dey/calit/pull/184))
+
+Upgrade: nothing to do — the migration adds two columns whose defaults
+reproduce the previous form exactly, so existing meeting types are untouched.
+
 ## 1.23.0
 
 Booking links now unfurl with a generated preview card, meeting types can carry

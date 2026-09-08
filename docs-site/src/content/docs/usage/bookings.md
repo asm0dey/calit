@@ -60,7 +60,7 @@ These actions work via a secure token; no login is required. The attached `.ics`
 
 ## Guests
 
-The invitee can bring guests along. On the booking form — and again from the **Edit name & description** section of the Manage page afterwards — there is a **Guests** field: type an email address and press Enter (or Tab) to turn it into a chip. Add up to **10** guests per booking. The invitee's own address and any malformed or duplicate entries are dropped automatically, so a typo never blocks the booking. The owner can edit the same guest list from their Manage page.
+The invitee can bring guests along. On the booking form — and again from the **Edit name & description** section of the Manage page afterwards — there is a **Guests** field (unless the meeting type [hides it](/calit/usage/meeting-types/#booking-form-fields)): type an email address and press Enter (or Tab) to turn it into a chip. Add up to **10** guests per booking. The invitee's own address and any malformed or duplicate entries are dropped automatically, so a typo never blocks the booking. The owner can edit the same guest list from their Manage page.
 
 Guests get their own calendar invite and stay in sync with the meeting. As with the invitee, delivery depends on whether the owner has connected Google: **when Google is connected**, guests are added as attendees on the Google Calendar event and **Google** sends them the invitation, update, or cancellation natively; **when Google is not connected**, calit sends each guest an `.ics` invite itself. Either way:
 
