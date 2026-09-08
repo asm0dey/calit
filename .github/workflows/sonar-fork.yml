@@ -201,7 +201,7 @@ jobs:
       # untrusted bytes from sitting in the repo's artifact storage for a day per fork push.
       - name: Delete the analysed artifact
         if: always() && steps.pr.outputs.found == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
