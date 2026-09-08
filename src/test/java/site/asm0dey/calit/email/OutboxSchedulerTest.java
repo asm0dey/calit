@@ -32,11 +32,26 @@ class OutboxSchedulerTest {
                 .run(() -> em.createNativeQuery("DELETE FROM email_outbox").executeUpdate());
     }
 
+    /**
+     * Enqueue a row and backdate next_attempt_at by a few seconds. enqueue() stamps it from the JVM
+     * clock, but the claim scan compares it with Postgres's now() -- a different machine once the
+     * database runs in a container VM, and a freshly booted one can run a few hundred milliseconds
+     * behind the host for its first half minute, which is when this class runs. Backdating keeps the
+     * row due by either clock without changing what each test checks.
+     */
+    private static Long enqueueDue(java.time.Instant deadline, String lastError) {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            Long id = EmailOutbox.enqueue("a@b.com", "S", "h", null, deadline, lastError);
+            EmailOutbox.<EmailOutbox>findById(id).nextAttemptAt =
+                    java.time.Instant.now().minusSeconds(5);
+            return id;
+        });
+    }
+
     @Test
     void dueRowIsSentAndMarked() {
         doNothing().when(mailSender).sendNow(any(), anyString(), anyString(), anyString(), any());
-        Long id = QuarkusTransaction.requiringNew()
-                .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, "prev"));
+        var id = enqueueDue(null, "prev");
 
         scheduler.dispatchDueMail();
 
@@ -49,8 +64,7 @@ class OutboxSchedulerTest {
         doThrow(new RuntimeException("still down"))
                 .when(mailSender)
                 .sendNow(any(), anyString(), anyString(), anyString(), any());
-        Long id = QuarkusTransaction.requiringNew()
-                .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
+        var id = enqueueDue(null, null);
 
         scheduler.dispatchDueMail();
 
@@ -83,9 +97,7 @@ class OutboxSchedulerTest {
     void deadlinedRowPastDeadlineIsMarkedDeadAndNotSent() {
         doNothing().when(mailSender).sendNow(any(), anyString(), anyString(), anyString(), any());
         // Due now (next_attempt_at <= now) but its usefulness deadline already passed.
-        Long id = QuarkusTransaction.requiringNew()
-                .call(() -> EmailOutbox.enqueue(
-                        "a@b.com", "S", "h", null, java.time.Instant.now().minusSeconds(1), null));
+        var id = enqueueDue(java.time.Instant.now().minusSeconds(1), null);
 
         scheduler.dispatchDueMail();
 
