@@ -34,6 +34,8 @@ Your landing page at `/<username>` lists all of your **active, non-secret** meet
 | **Requires approval** | When enabled, new bookings are held in a pending state until you approve them. See [Bookings & approvals](/calit/usage/bookings/). |
 | **Note** | Free text shown to whoever books this type — on the booking page and on your landing page card. See [Note](#note). |
 | **Custom booking fields** | Extra questions shown to the invitee on the booking form (name, company, notes, etc.). |
+| **Name field** | Whether the invitee's name on the booking form is **Required** (default), **Optional**, or **Hidden**. See [Booking form fields](#booking-form-fields). |
+| **Guests field** | Whether the booking form offers a **Guests** field (default) or hides it. See [Booking form fields](#booking-form-fields). |
 | **Secret** | Hides the type from `/<username>` while keeping the direct link active. |
 
 :::tip[Minimum notice smart default]
@@ -53,6 +55,15 @@ Write it in the **Note** box in the type's **Basics** section. It appears under 
 :::caution
 The note also becomes the description of the calendar event: it is written into the Google Calendar entry and into the `.ics` invite for every booking of that type. Keep anything you would not want in an invitee's calendar out of it.
 :::
+
+## Booking form fields
+
+The booking form always asks for the invitee's email — it identifies the booking and receives the manage link — but the other two built-in fields are up to you, per meeting type. In the type's **Basics** section:
+
+- **Name field on the booking form** — **Required** (the default), **Optional**, or **Hidden**. When the name is optional and left blank, or hidden altogether, the booking is filed under the part of the email address before the `@` (so `sam@example.com` books as `sam`), and that is the name you see in emails, calendar entries and your bookings list.
+- **Guests field on the booking form** — **Optional** (the default) or **Hidden**. A hidden guests field disappears from the booking form and from the invitee's Manage page. Anything submitted for it anyway is ignored, so a type with the field hidden never gains guests. Guests that already existed on a booking before you hid the field are kept and still get their invites.
+
+Both settings are enforced server-side, not just by hiding inputs, and apply to the JSON booking API as well as the form. Custom booking fields are unaffected: they keep their own **required** flag, and a question nobody should answer is simply not added to that type.
 
 ## Allowed durations
 
