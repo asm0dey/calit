@@ -23,6 +23,9 @@ jobs:
   test:
     name: Build & test (Maven)
     runs-on: ubuntu-latest
+    # Fork PRs are built by fork-ci.yml, which runs the same steps without secrets and hands its
+    # output to sonar-fork.yml. Keep the two build step lists in sync.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@v7
@@ -37,7 +40,7 @@ jobs:
           cache: maven
 
       - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: latest
 
@@ -54,14 +57,16 @@ jobs:
 
       # CI-based SonarQube Cloud analysis (Automatic Analysis is disabled for this project so the
       # sonar-maven-plugin's parameters in pom.xml — exclusions/ignores — are authoritative).
-      # Skipped on fork PRs, which cannot access the SONAR_TOKEN secret. Reuses the target/ built
-      # by the verify step above.
+      # Reuses the target/ built by the verify step above. Fork PRs never reach this job at all
+      # (see the job-level if): GitHub withholds secrets from pull_request runs whose head is a
+      # fork, so they go through fork-ci.yml -> sonar-fork.yml instead. Keep the scanner arguments
+      # there in sync with this line.
       - name: SonarQube Cloud analysis
-        if: ${{ !github.event.pull_request.head.repo.fork }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./mvnw --batch-mode --no-transfer-progress org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+
 
   scan:
     name: Vulnerability scan (Trivy fs)
