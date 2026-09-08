@@ -20,7 +20,11 @@ Merged but not yet in a tagged release.
   name files the booking under the part of the email before the `@`. A hidden
   guests field is gone from the booking form and the invitee's Manage page,
   and anything posted for it is ignored server-side — the JSON API included.
-  Guests already on a booking when you hide the field are kept.
+  Two consequences of hiding guests are deliberate: guests already on a
+  booking are kept, keep getting invites and updates, and can no longer be
+  removed through any page; and the host's own guest editor on that
+  booking's Manage page goes away too, since the setting decides whether the
+  booking has a guest list at all, not just what the invitee sees.
   ([#184](https://github.com/asm0dey/calit/pull/184))
 
 Upgrade: nothing to do — the migration adds two columns whose defaults

@@ -61,7 +61,9 @@ The note also becomes the description of the calendar event: it is written into 
 The booking form always asks for the invitee's email — it identifies the booking and receives the manage link — but the other two built-in fields are up to you, per meeting type. In the type's **Basics** section:
 
 - **Name field on the booking form** — **Required** (the default), **Optional**, or **Hidden**. When the name is optional and left blank, or hidden altogether, the booking is filed under the part of the email address before the `@` (so `sam@example.com` books as `sam`), and that is the name you see in emails, calendar entries and your bookings list.
-- **Guests field on the booking form** — **Optional** (the default) or **Hidden**. A hidden guests field disappears from the booking form and from the invitee's Manage page. Anything submitted for it anyway is ignored, so a type with the field hidden never gains guests. Guests that already existed on a booking before you hid the field are kept and still get their invites.
+- **Guests field on the booking form** — **Optional** (the default) or **Hidden**. A hidden guests field disappears from the booking form and from both Manage pages — the invitee's and your own — so nobody can add or remove guests on bookings of that type. Anything submitted for it anyway is ignored, so a type with the field hidden never gains guests. Guests that already existed on a booking before you hid the field are kept and still get their invites; switch the field back to **Optional** if you need to remove them.
+
+The local-part fallback is only as distinctive as the address: `sam@example.com` and `sam@work.example` both book as `sam`, and that is the name that greets them on the confirmation page and in emails. If you want to address people by name, keep the field **Required** or **Optional**.
 
 Both settings are enforced server-side, not just by hiding inputs, and apply to the JSON booking API as well as the form. Custom booking fields are unaffected: they keep their own **required** flag, and a question nobody should answer is simply not added to that type.
 
