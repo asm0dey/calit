@@ -132,7 +132,12 @@ jobs:
           BASE: ${{ steps.pr.outputs.base }}
         run: |
           set -euo pipefail
-          git fetch --depth=1 origin "$BASE"
+          # NOT --depth=1. A shallow base has no common ancestor with the PR branch, so Sonar
+          # cannot find the merge base and falls back to diffing against the base branch's TIP —
+          # every file the base changed since the PR branched then reads as new code in the PR,
+          # and the contributor gets findings on files they never touched (seen on #184: an
+          # unpinned action on a ci.yml line that PR does not modify).
+          git fetch origin "$BASE"
           git checkout FETCH_HEAD -- pom.xml mvnw .mvn
           git status --short pom.xml mvnw .mvn
 
