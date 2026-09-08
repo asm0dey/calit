@@ -16,6 +16,13 @@ public class MeetingType extends PanacheEntityBase {
         CUSTOM
     }
 
+    /** How a built-in invitee field is presented on the booking form. */
+    public enum FieldMode {
+        REQUIRED,
+        OPTIONAL,
+        HIDDEN
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
@@ -71,6 +78,20 @@ public class MeetingType extends PanacheEntityBase {
 
     @Column(name = "slot_interval_minutes")
     public Integer slotIntervalMinutes;
+
+    /** The invitee's name on the booking form (GH #130). Email is always required and has no mode. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "name_mode", nullable = false, length = 16)
+    public FieldMode nameMode = FieldMode.REQUIRED;
+
+    /** The guests field on the booking form: OPTIONAL or HIDDEN, never REQUIRED (GH #130). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "guests_mode", nullable = false, length = 16)
+    public FieldMode guestsMode = FieldMode.OPTIONAL;
+
+    public boolean hidesGuests() {
+        return guestsMode == FieldMode.HIDDEN;
+    }
 
     /**
      * Optional per-type override of the creator's write calendar: Google's calendar id. Null means

@@ -19,6 +19,7 @@ import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.booking.events.*;
 import site.asm0dey.calit.domain.BookingField;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingType.FieldMode;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.MeetingTypeHost;
@@ -331,6 +332,9 @@ public class BookingService {
         if (type == null) {
             throw new NotFoundException("No meeting type with slug " + meetingTypeSlug + " for owner " + ownerId);
         }
+        // Both form and JSON API land here, so the type's field policy (GH #130) is enforced once.
+        inviteeName = resolveInviteeName(type, inviteeName, inviteeEmail);
+        guestEmails = guestsFor(type, guestEmails);
         assertDurationAllowed(type, durationMinutes);
 
         // Feature 16: all three abuse guards run first, inside book(). The Plan 5 web layer
@@ -546,6 +550,30 @@ public class BookingService {
     }
 
     /**
+     * A type whose guests field is HIDDEN takes no guest list from anyone (GH #130): whatever was
+     * submitted is dropped, and null means "leave the existing guests untouched" to every caller.
+     */
+    private static List<String> guestsFor(MeetingType type, List<String> guestEmails) {
+        return type.hidesGuests() ? null : guestEmails;
+    }
+
+    /**
+     * booking.invitee_name stays NOT NULL: a HIDDEN name, or an OPTIONAL one left blank, is stored as
+     * the email's local-part (GH #130) so subjects, .ics summaries and event titles need no null
+     * handling. REQUIRED keeps rejecting a blank.
+     */
+    private static String resolveInviteeName(MeetingType type, String inviteeName, String inviteeEmail) {
+        var blank = inviteeName == null || inviteeName.isBlank();
+        if (type.nameMode == FieldMode.HIDDEN || (type.nameMode == FieldMode.OPTIONAL && blank)) {
+            return inviteeEmail.substring(0, inviteeEmail.indexOf('@'));
+        }
+        if (blank) {
+            throw new BookingValidationException("Name is required.");
+        }
+        return inviteeName;
+    }
+
+    /**
      * Cleaned, de-duped (case-insensitive), capped, invitee-excluded guest list. Preserves order.
      */
     private static List<String> normalizeGuestEmails(List<String> guestEmails, String inviteeEmail) {
@@ -631,10 +659,7 @@ public class BookingService {
      * {@code perEmailDailyCap} bookings during today's owner-tz day window.
      */
     private static void validateInputBounds(String inviteeName, Map<String, String> answers) {
-        if (inviteeName == null || inviteeName.isBlank()) {
-            throw new BookingValidationException("Name is required.");
-        }
-        if (inviteeName.length() > 200) {
+        if (inviteeName != null && inviteeName.length() > 200) {
             throw new BookingValidationException("Name is too long.");
         }
         if (answers != null) {
@@ -854,6 +879,9 @@ public class BookingService {
             throw new NotFoundException("No active booking for token " + manageToken);
         }
 
+        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        guestEmails = guestsFor(type, guestEmails);
+
         // No-op: same time and guests untouched (web callers pass null) -> nothing to do. Avoids a spurious
         // SEQUENCE bump + reschedule email when the invitee re-picks the current slot.
         if (newStartUtc.equals(booking.startUtc) && guestEmails == null) {
@@ -864,7 +892,6 @@ public class BookingService {
             return rescheduleGroup(booking, newStartUtc, guestEmails, byOwner, initiatorOwnerId);
         }
 
-        MeetingType type = MeetingType.findById(booking.meetingTypeId);
         int bookedLength = lengthOf(booking);
         var newEnd = newStartUtc.plus(bookedLength, ChronoUnit.MINUTES);
 
@@ -1038,6 +1065,7 @@ public class BookingService {
             throw new NotFoundException("No active booking for token " + manageToken);
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        guestEmails = guestsFor(type, guestEmails);
 
         if (booking.groupId != null) {
             return updateGroupDetails(booking, type, title, description, guestEmails, byOwner);
@@ -1051,7 +1079,7 @@ public class BookingService {
         // No-op guard: nothing changed → no notification storm, no SEQUENCE churn.
         if (java.util.Objects.equals(newTitle, booking.title)
                 && java.util.Objects.equals(newDescription, booking.description)
-                && sameGuestSet(booking, wanted)) {
+                && (guestEmails == null || sameGuestSet(booking, wanted))) {
             return booking;
         }
 

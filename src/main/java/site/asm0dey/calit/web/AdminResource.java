@@ -21,6 +21,7 @@ import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.booking.*;
 import site.asm0dey.calit.domain.*;
 import site.asm0dey.calit.domain.BookingField.FieldType;
+import site.asm0dey.calit.domain.MeetingType.FieldMode;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.google.CalendarRef;
 import site.asm0dey.calit.google.GoogleCalendar;
@@ -125,7 +126,8 @@ public class AdminResource {
                 String titleValue,
                 String descriptionValue,
                 String titlePlaceholder,
-                String descPlaceholder);
+                String descPlaceholder,
+                boolean guestsHidden);
 
         public static native TemplateInstance approvalResult(
                 Long pendingCount, boolean isAdmin, String title, String h1, String desc);
@@ -450,6 +452,8 @@ public class AdminResource {
             @RestForm String locationDetail,
             @RestForm String slotIntervalMinutes,
             @RestForm String requiresApproval,
+            @RestForm @DefaultValue("REQUIRED") String nameMode,
+            @RestForm @DefaultValue("OPTIONAL") String guestsMode,
             @RestForm String writeCalendar,
             MultivaluedMap<String, String> form) {
         // Whole unit-of-work in its own tx that commits BEFORE renderMeetingTypes() below, so no
@@ -483,7 +487,9 @@ public class AdminResource {
                         locationType,
                         locationDetail,
                         slotIntervalMinutes,
-                        requiresApproval);
+                        requiresApproval,
+                        nameMode,
+                        guestsMode);
                 t.persist(); // need the generated id before scoping child rules/overrides to it
                 persistFrames(t.ownerId, t.id, form);
                 createInitialDateOverride(t.ownerId, t.id, form);
@@ -510,7 +516,9 @@ public class AdminResource {
             String locationType,
             String locationDetail,
             String slotIntervalMinutes,
-            String requiresApproval) {
+            String requiresApproval,
+            String nameMode,
+            String guestsMode) {
         // A zero or negative duration is not a cosmetic error: the slot cadence falls back to the
         // shortest allowed length, so it makes the step zero and SlotService's loops never advance --
         // an unbounded allocation loop that pins the request thread (calit-xjrg). Refuse it here; the
@@ -534,6 +542,9 @@ public class AdminResource {
                 ? null
                 : Integer.valueOf(slotIntervalMinutes);
         t.requiresApproval = "on".equals(requiresApproval);
+        // Built-in invitee fields (GH #130). Guests can't be REQUIRED: a crafted value collapses to OPTIONAL.
+        t.nameMode = FieldMode.valueOf(nameMode);
+        t.guestsMode = FieldMode.valueOf(guestsMode) == FieldMode.HIDDEN ? FieldMode.HIDDEN : FieldMode.OPTIONAL;
     }
 
     /**
@@ -860,6 +871,8 @@ public class AdminResource {
             @RestForm String locationDetail,
             @RestForm String slotIntervalMinutes,
             @RestForm String requiresApproval,
+            @RestForm @DefaultValue("REQUIRED") String nameMode,
+            @RestForm @DefaultValue("OPTIONAL") String guestsMode,
             @RestForm String writeCalendar) {
         // Load + mutate + flush in one tx that commits before the detail render (issue #75). Slug
         // guards run BEFORE any field is mutated, so a rejection rolls back an untouched entity and
@@ -887,7 +900,9 @@ public class AdminResource {
                         locationType,
                         locationDetail,
                         slotIntervalMinutes,
-                        requiresApproval);
+                        requiresApproval,
+                        nameMode,
+                        guestsMode);
             }); // managed entity flushes on commit
         } catch (IllegalStateException e) {
             return detailInstance(id, localizedMessage(e));
@@ -1624,7 +1639,8 @@ public class AdminResource {
                 b.title == null ? "" : b.title, // raw override (empty when none) — never the effective value
                 b.description == null ? "" : b.description,
                 type.name, // placeholder = default name
-                type.description == null ? "" : type.description);
+                type.description == null ? "" : type.description,
+                type.hidesGuests());
     }
 
     @POST
