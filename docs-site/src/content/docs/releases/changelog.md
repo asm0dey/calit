@@ -21,7 +21,7 @@ Merged but not yet in a tagged release.
   guests field is gone from the booking form and the invitee's Manage page,
   and anything posted for it is ignored server-side — the JSON API included.
   Guests already on a booking when you hide the field are kept.
-  ([#130](https://github.com/asm0dey/calit/issues/130))
+  ([#184](https://github.com/asm0dey/calit/pull/184))
 
 Upgrade: nothing to do — the migration adds two columns whose defaults
 reproduce the previous form exactly, so existing meeting types are untouched.
