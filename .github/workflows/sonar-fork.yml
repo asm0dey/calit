@@ -116,6 +116,12 @@ jobs:
           # Nothing here pushes, and the checkout sits in a job holding SONAR_TOKEN: leaving a
           # credential in .git/config for fork-authored hooks or tooling to find buys nothing.
           persist-credentials: false
+          # actions/checkout refuses a fork ref inside workflow_run unless this opt-in is explicit,
+          # because the usual next step is BUILDING what was just checked out — the pwn-request
+          # shape. This job never does: the following step puts the base branch's pom.xml, mvnw and
+          # .mvn/ back over the tree, so Maven runs our configuration, and the fork's files are read
+          # by the scanner rather than executed. See this file's header for the full argument.
+          allow-unsafe-pr-checkout: true
 
       # This is the load-bearing security step: everything Maven reads to decide what to run comes
       # from the base branch, so a fork cannot introduce a plugin, an extension, a wrapper script or
