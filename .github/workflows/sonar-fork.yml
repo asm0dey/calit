@@ -1,0 +1,135 @@
+# SonarQube Cloud analysis for fork pull requests.
+#
+# WHY THIS FILE EXISTS: GitHub withholds repository secrets from `pull_request` runs whose head is
+# a fork, so ci.yml's own analysis step is skipped there (it would fail on an empty SONAR_TOKEN).
+# Fork PRs therefore used to merge with no quality gate, no coverage figure and no new-code check.
+# `workflow_run` fires in the BASE repo's context after that run finishes, where secrets exist.
+#
+# WHY THIS IS SAFE: a `workflow_run` job is privileged, so it must never execute code the fork
+# wrote. This job runs Maven with the BASE branch's pom.xml, .mvn/ and mvnw — restored over the
+# PR checkout after it lands — so the build configuration, plugin set and Sonar parameters are all
+# ours. The fork supplies only analysis INPUT: its sources (re-fetched here from refs/pull/N/head,
+# not from the artifact) and its compiled classes plus reports (from the artifact). The scanner
+# reads those; it never runs them. No test, no plugin and no wrapper script from the fork executes.
+#
+# Consequence worth knowing: a PR that edits pom.xml is analysed against the BASE pom. That is the
+# point — a fork cannot widen sonar.issue.ignore or sonar.cpd.exclusions to hide its own findings —
+# but it also means a PR adding a genuinely new source root or report path needs the base pom to
+# learn about it first.
+name: SonarQube (fork PRs)
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+# Deliberately minimal: this job holds SONAR_TOKEN, so GITHUB_TOKEN gets read-only scopes. Sonar
+# Cloud decorates the PR through its own GitHub App, not through this token.
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sonar:
+    name: SonarQube Cloud analysis (fork PR)
+    # Only successful CI runs for pull requests raised from a fork. A same-repo PR was already
+    # analysed inside ci.yml, and re-running here would report the same analysis twice.
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      # The PR number is resolved from the API by head SHA, never read out of the artifact: the
+      # artifact is fork-controlled, and a forged number would post this analysis onto someone
+      # else's pull request. workflow_run.pull_requests is empty for forks, hence the lookup.
+      - name: Resolve the pull request from the head SHA
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" \
+                 --jq '[.[] | select(.state == "open")] | first // empty')
+          if [ -z "$pr" ]; then
+            echo "No open PR has head $HEAD_SHA — nothing to analyse."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          {
+            echo "found=true"
+            echo "number=$(jq -r .number <<<"$pr")"
+            echo "branch=$(jq -r .head.ref <<<"$pr")"
+            echo "base=$(jq -r .base.ref <<<"$pr")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check out the pull request head
+        if: steps.pr.outputs.found == 'true'
+        uses: actions/checkout@v7
+        with:
+          # refs/pull/N/head lives in THIS repo, so the sources arrive over git with their real
+          # history — full depth so SonarQube can attribute new-code lines via git blame.
+          ref: refs/pull/${{ steps.pr.outputs.number }}/head
+          fetch-depth: 0
+
+      # This is the load-bearing security step: everything Maven reads to decide what to run comes
+      # from the base branch, so a fork cannot introduce a plugin, an extension, a wrapper script or
+      # a Sonar exclusion into a job that holds SONAR_TOKEN.
+      - name: Restore trusted build configuration from ${{ steps.pr.outputs.base }}
+        if: steps.pr.outputs.found == 'true'
+        env:
+          BASE: ${{ steps.pr.outputs.base }}
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin "$BASE"
+          git checkout FETCH_HEAD -- pom.xml mvnw .mvn
+          git status --short pom.xml mvnw .mvn
+
+      - name: Set up Liberica JDK 26
+        if: steps.pr.outputs.found == 'true'
+        uses: actions/setup-java@v6
+        with:
+          distribution: liberica
+          java-version: "26"
+          cache: maven
+
+      - name: Download the CI run's build output
+        if: steps.pr.outputs.found == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: sonar-inputs
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Unpack the build output
+        if: steps.pr.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+          # Refuse an archive holding anything outside the directories ci.yml packs, so a crafted
+          # member cannot land elsewhere in the workspace — over pom.xml, say, which was just
+          # restored from the base branch. Also rules out ../ traversal, which fails the prefix.
+          if tar -tzf sonar-inputs.tgz \
+               | grep -vE '^target/(classes|test-classes|jacoco-report|surefire-reports)(/|$)' \
+               | grep -q .; then
+            echo "Refusing the artifact: it contains paths outside the staged directories." >&2
+            exit 1
+          fi
+          tar -xzf sonar-inputs.tgz --no-same-owner
+          test -d target/classes
+
+      # The PR coordinates come from the resolved PR, not from the run's own context: this workflow
+      # is triggered by a push to the base repo, so the scanner's GitHub Actions auto-detection
+      # would otherwise analyse this as a branch rather than as a pull request.
+      - name: SonarQube Cloud analysis
+        if: steps.pr.outputs.found == 'true'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          ./mvnw --batch-mode --no-transfer-progress \
+            org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.pullrequest.key='${{ steps.pr.outputs.number }}' \
+            -Dsonar.pullrequest.branch='${{ steps.pr.outputs.branch }}' \
+            -Dsonar.pullrequest.base='${{ steps.pr.outputs.base }}' \
+            -Dsonar.scm.revision='${{ github.event.workflow_run.head_sha }}'
