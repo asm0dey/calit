@@ -36,15 +36,19 @@ jobs:
           cache: maven
 
       - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: latest
 
       # The Tailwind/daisyUI stylesheet is gitignored and built by Bun; some tests
       # (e.g. StaticAssetsTest) serve it, so it must exist before `verify`.
+      # --ignore-scripts is the one deliberate difference from ci.yml's twin of this step: the
+      # package.json and lockfile here are fork-authored, and a lifecycle script is arbitrary code
+      # execution on our runner. Nothing in the CSS build needs one — if that ever changes, the
+      # `test -s` below fails loudly rather than shipping an unstyled build.
       - name: Build Tailwind + daisyUI CSS
         run: |
-          bun install --frozen-lockfile
+          bun install --frozen-lockfile --ignore-scripts
           bun run css:build
           test -s src/main/resources/META-INF/resources/calit.css
 
