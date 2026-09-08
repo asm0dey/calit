@@ -84,7 +84,8 @@ public class PublicResource {
                 String descriptionValue,
                 String titlePlaceholder,
                 String descPlaceholder,
-                boolean hostInactive);
+                boolean hostInactive,
+                boolean guestsHidden);
 
         public static native TemplateInstance guestDeclineConfirm(
                 String title,
@@ -539,7 +540,8 @@ public class PublicResource {
                 booking.description == null ? "" : booking.description,
                 type.name,
                 type.description == null ? "" : type.description,
-                hostInactive(booking));
+                hostInactive(booking),
+                type.hidesGuests());
     }
 
     /**

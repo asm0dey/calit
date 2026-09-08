@@ -1,0 +1,15 @@
+{! Built-in invitee field modes (GH #130), passed as enum names so the create form can state its defaults. !}
+{@java.lang.String idPrefix}
+{@java.lang.String nameMode}
+{@java.lang.String guestsMode}
+<label class="label" for="{idPrefix}-name-mode">{adm:adm_meetingTypes_label_name_mode}</label>
+<select id="{idPrefix}-name-mode" class="select w-full" name="nameMode">
+  <option value="REQUIRED"{#if nameMode == 'REQUIRED'} selected{/if}>{adm:adm_meetingTypes_mode_required}</option>
+  <option value="OPTIONAL"{#if nameMode == 'OPTIONAL'} selected{/if}>{adm:adm_meetingTypes_mode_optional}</option>
+  <option value="HIDDEN"{#if nameMode == 'HIDDEN'} selected{/if}>{adm:adm_meetingTypes_mode_hidden}</option>
+</select>
+<label class="label" for="{idPrefix}-guests-mode">{adm:adm_meetingTypes_label_guests_mode}</label>
+<select id="{idPrefix}-guests-mode" class="select w-full" name="guestsMode">
+  <option value="OPTIONAL"{#if guestsMode == 'OPTIONAL'} selected{/if}>{adm:adm_meetingTypes_mode_optional}</option>
+  <option value="HIDDEN"{#if guestsMode == 'HIDDEN'} selected{/if}>{adm:adm_meetingTypes_mode_hidden}</option>
+</select>

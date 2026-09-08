@@ -1,11 +1,11 @@
 ---
 # calit-zpj6
 title: 'Per-meeting-type control over which invitee fields are required, optional, or hidden (GH #130)'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-08-22T16:37:37Z
-updated_at: 2026-08-22T16:44:51Z
+updated_at: 2026-09-08T10:58:43Z
 ---
 
 Upstream: https://github.com/asm0dey/calit/issues/130 (reporter @h200101)
@@ -69,17 +69,28 @@ column nullable.
 
 ## Todos
 
-- [ ] Migration adding `meeting_type.name_mode` + `meeting_type.guests_mode` with today's defaults
-- [ ] `MeetingType.nameMode` / `MeetingType.guestsMode` (+ enum type)
-- [ ] Admin create form: both selectors, persisted
-- [ ] Admin edit form: both selectors, persisted
-- [ ] `book.html`: name `required`/hidden per `nameMode`; guests include skipped per `guestsMode`
-- [ ] `manage.html`: guest editing skipped when guests HIDDEN
-- [ ] `BookingService`: blank name → email local-part when not REQUIRED; still reject blank when REQUIRED
-- [ ] `BookingService`: drop submitted guests for a HIDDEN type, on booking **and** on reschedule
-- [ ] `BookingResource` (JSON API) enforces the same policy
-- [ ] i18n: new admin labels with de + he translations
-- [ ] Tests: no name input when HIDDEN; no guests input when HIDDEN; posting a name/guests anyway for a
+- [x] Migration adding `meeting_type.name_mode` + `meeting_type.guests_mode` with today's defaults
+- [x] `MeetingType.nameMode` / `MeetingType.guestsMode` (+ enum type)
+- [x] Admin create form: both selectors, persisted
+- [x] Admin edit form: both selectors, persisted
+- [x] `book.html`: name `required`/hidden per `nameMode`; guests include skipped per `guestsMode`
+- [x] `manage.html`: guest editing skipped when guests HIDDEN
+- [x] `BookingService`: blank name → email local-part when not REQUIRED; still reject blank when REQUIRED
+- [x] `BookingService`: drop submitted guests for a HIDDEN type, on booking **and** on reschedule
+- [x] `BookingResource` (JSON API) enforces the same policy
+- [x] i18n: new admin labels with de + he translations
+- [x] Tests: no name input when HIDDEN; no guests input when HIDDEN; posting a name/guests anyway for a
       HIDDEN type still books and stores none of it; blank name on an OPTIONAL type books with the
       email local-part; blank name on a REQUIRED type still 400s
-- [ ] Docs: `docs-site` usage page + `## Unreleased` changelog bullet at merge
+- [x] Docs: `docs-site` usage page + `## Unreleased` changelog bullet at merge
+
+## Summary of Changes
+
+- `V31__meeting_type_invitee_fields.sql`: `name_mode` (default REQUIRED) and `guests_mode` (default OPTIONAL) on `meeting_type`.
+- `MeetingType.FieldMode` enum + `nameMode` / `guestsMode` fields, `hidesGuests()` helper.
+- Admin create + edit forms share a new `AdminResource/_inviteefields.html` partial (two selects); `applyEditableFields` persists both, guests can never be REQUIRED.
+- `BookingService`: policy applied once at the shared entry points (`book`, `reschedule`, `updateDetails`), so the HTML form and the JSON API behave the same. HIDDEN/blank-OPTIONAL name -> email local-part; HIDDEN guests -> submitted list treated as null (ignored, existing guests untouched).
+- `book.html` drops the name input / `required` per mode and skips the guests chips; both Manage hubs (invitee + host) skip the chips for a HIDDEN type via a new `guestsHidden` template param.
+- i18n: five new `adm_*` keys with de + he values.
+- `InviteeFieldModesTest` (9 cases) covers rendering, server-side enforcement, the edit-details no-field case and the admin persist/round-trip.
+- Docs on `docs-site` (branch `docs/invitee-field-modes`): meeting-types usage page, bookings guests note, `## Unreleased` changelog entry.

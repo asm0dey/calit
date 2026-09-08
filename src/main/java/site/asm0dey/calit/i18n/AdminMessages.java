@@ -200,6 +200,21 @@ public interface AdminMessages {
     @Message("Requires owner approval (hold as pending)")
     String adm_meetingTypes_label_approval();
 
+    @Message("Name field on the booking form")
+    String adm_meetingTypes_label_name_mode();
+
+    @Message("Guests field on the booking form")
+    String adm_meetingTypes_label_guests_mode();
+
+    @Message("Required")
+    String adm_meetingTypes_mode_required();
+
+    @Message("Optional")
+    String adm_meetingTypes_mode_optional();
+
+    @Message("Hidden")
+    String adm_meetingTypes_mode_hidden();
+
     @Message("Duration")
     String adm_meetingTypes_section_duration();
 
