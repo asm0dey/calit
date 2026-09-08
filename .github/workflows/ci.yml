@@ -23,6 +23,9 @@ jobs:
   test:
     name: Build & test (Maven)
     runs-on: ubuntu-latest
+    # Fork PRs are built by fork-ci.yml, which runs the same steps without secrets and hands its
+    # output to sonar-fork.yml. Keep the two build step lists in sync.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@v7
@@ -54,44 +57,16 @@ jobs:
 
       # CI-based SonarQube Cloud analysis (Automatic Analysis is disabled for this project so the
       # sonar-maven-plugin's parameters in pom.xml — exclusions/ignores — are authoritative).
-      # Reuses the target/ built by the verify step above. Fork PRs cannot reach SONAR_TOKEN
-      # (GitHub withholds secrets from pull_request runs whose head is a fork), so they take the
-      # deferred path instead: the next step ships this build's output to sonar-fork.yml, which
-      # analyses it from the base repo's context. Keep the two paths' scanner arguments in sync.
+      # Reuses the target/ built by the verify step above. Fork PRs never reach this job at all
+      # (see the job-level if): GitHub withholds secrets from pull_request runs whose head is a
+      # fork, so they go through fork-ci.yml -> sonar-fork.yml instead. Keep the scanner arguments
+      # there in sync with this line.
       - name: SonarQube Cloud analysis
-        if: ${{ !github.event.pull_request.head.repo.fork }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./mvnw --batch-mode --no-transfer-progress org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
 
-      # Fork PRs only: hand the compiled output to sonar-fork.yml. Sources and git history are NOT
-      # shipped — that job re-checks-out refs/pull/N/head itself, so this artifact carries only what
-      # cannot be rebuilt without executing fork-authored code: the classes Sonar's Java analyser
-      # needs for semantics, and the coverage/test reports it reads. Everything here is untrusted
-      # INPUT DATA to the scanner; nothing in it is ever executed.
-      - name: Stage Sonar inputs (fork PRs)
-        if: ${{ github.event.pull_request.head.repo.fork }}
-        run: |
-          set -euo pipefail
-          # target/classes is mandatory — Sonar's Java analyser refuses to run without binaries.
-          # The reports are best-effort: a run that produced none should still get an analysis.
-          test -d target/classes
-          staged=(target/classes)
-          for d in target/test-classes target/jacoco-report target/surefire-reports; do
-            # `if`, not `[ -d ] &&` — under `set -e` a false test as the last command of the loop
-            # body aborts the step, so a missing report directory would fail the whole build.
-            if [ -d "$d" ]; then staged+=("$d"); fi
-          done
-          tar -czf sonar-inputs.tgz "${staged[@]}"
-
-      - name: Upload Sonar inputs (fork PRs)
-        if: ${{ github.event.pull_request.head.repo.fork }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: sonar-inputs
-          path: sonar-inputs.tgz
-          retention-days: 1
 
   scan:
     name: Vulnerability scan (Trivy fs)
