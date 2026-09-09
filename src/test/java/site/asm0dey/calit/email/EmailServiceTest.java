@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -25,6 +26,8 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.test.MultiHostFixtures;
+import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class EmailServiceTest {
@@ -345,7 +348,7 @@ class EmailServiceTest {
     }
 
     @Test
-    void hostCancelNamesHostToGuestAndDoesNotBlameGuestToOwner() {
+    void hostCancelNamesHostToGuestAndSaysTheHostActedToOwner() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         long bookingId = seed(b -> b.status = BookingStatus.CANCELLED, true, LocationType.PHONE, "+1");
 
@@ -356,9 +359,55 @@ class EmailServiceTest {
                 invitee.getHtml().contains("Owner cancelled your booking"),
                 "host-initiated: invitee copy names the host");
         Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        assertTrue(
+                owner.getHtml().contains("You cancelled your meeting with Sam Invitee."),
+                "host-initiated: owner copy says the host acted and names the guest");
         assertFalse(
-                owner.getHtml().contains("Sam Invitee") && owner.getHtml().contains("was cancelled"),
-                "host-initiated: owner copy must not attribute to the guest");
+                owner.getHtml().contains("Your booking has been cancelled."),
+                "host-initiated: owner copy must not reuse the invitee's passive string");
+    }
+
+    @Test
+    void groupHostCancelDoesNotTellTheNonActingCohostTheyCancelled() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var creatorBookingId = seedGroup()[0];
+
+        // The creator (owner id 1) initiates the cancel; byOwner=true fans out to every accepted
+        // host's own row via hostDeliveries -- including the co-host, who did not click cancel.
+        emailService.handleCancelled(new BookingCancelled(creatorBookingId, true));
+
+        Mail cohostMail = mailbox.getMailsSentTo("volodya@x.com").getFirst();
+        assertFalse(
+                cohostMail.getHtml().contains("You cancelled"),
+                "non-acting co-host must not be told they personally cancelled");
+        assertTrue(
+                cohostMail.getHtml().contains("Your booking has been cancelled."),
+                "non-acting co-host falls back to the same passive body group bookings used before this fix");
+
+        // The single-host case (already covered elsewhere) keeps the active first-person body; a
+        // group booking's OWN acting host also gets the passive fallback -- hostSelfCancel is keyed
+        // purely on groupId == null, matching the reviewer's prescribed narrowing.
+        Mail creatorMail = mailbox.getMailsSentTo("pasha@x.com").getFirst();
+        assertFalse(
+                creatorMail.getHtml().contains("You cancelled"),
+                "group booking never uses the first-person self-cancel body, even for the acting host");
+    }
+
+    @Test
+    void guestCancelNamesGuestToOwnerAndStaysPassiveToGuest() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> b.status = BookingStatus.CANCELLED, true, LocationType.PHONE, "+1");
+
+        emailService.handleCancelled(new BookingCancelled(bookingId, false));
+
+        Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        assertTrue(
+                owner.getHtml().contains("Sam Invitee cancelled their booking."),
+                "guest-initiated: owner copy names the guest as the actor");
+        Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
+        assertTrue(
+                invitee.getHtml().contains("Your booking has been cancelled."),
+                "guest-initiated: invitee copy stays passive — it happened to them");
     }
 
     // ---- Reminder follows the fallback rule ----
@@ -490,6 +539,46 @@ class EmailServiceTest {
     }
 
     // --- seeding helpers ---
+
+    /**
+     * A two-host group booking (admin/owner id 1 as creator "pasha" + a second accepted co-host
+     * "volodya"), sharing one {@code groupId} across two {@link Booking} rows -- one per host --
+     * already {@code CANCELLED}. Mirrors {@code MultiHostFixtures.acceptedTwoHostType} /
+     * {@code GroupCancelRescheduleTest}'s fixture pattern. Returns {@code [creatorBookingId,
+     * cohostBookingId]}.
+     */
+    private long[] seedGroup() {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            AppUser cohost = MultiHostFixtures.enabledUser("volodya");
+            MultiHostFixtures.settings(1L, "pasha");
+            MultiHostFixtures.settings(cohost.id, "volodya");
+
+            MeetingType type = MultiHostFixtures.acceptedTwoHostType(1L, cohost.id, "intro", 30, false);
+
+            var groupId = UUID.randomUUID();
+            var startUtc = Instant.parse("2026-06-08T09:00:00Z");
+            long creatorBookingId = groupRow(groupId, 1L, type.id, startUtc);
+            long cohostBookingId = groupRow(groupId, cohost.id, type.id, startUtc);
+            return new long[] {creatorBookingId, cohostBookingId};
+        });
+    }
+
+    private static long groupRow(UUID groupId, long ownerId, long meetingTypeId, Instant startUtc) {
+        Booking b = new Booking();
+        b.ownerId = ownerId;
+        b.meetingTypeId = meetingTypeId;
+        b.groupId = groupId;
+        b.inviteeName = "Sam Invitee";
+        b.inviteeEmail = INVITEE_EMAIL;
+        b.startUtc = startUtc;
+        b.endUtc = startUtc.plus(30, ChronoUnit.MINUTES);
+        b.status = BookingStatus.CANCELLED;
+        b.answers = Map.of();
+        b.manageToken = "tok-" + ownerId + "-" + System.nanoTime();
+        b.createdAt = Instant.now();
+        b.persist();
+        return b.id;
+    }
 
     private long seed(
             java.util.function.Consumer<Booking> tweak,

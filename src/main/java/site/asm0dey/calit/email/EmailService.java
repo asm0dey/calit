@@ -230,6 +230,7 @@ public class EmailService {
         static native TemplateInstance cancellation(
                 String recipientRole,
                 boolean byOwner,
+                boolean hostSelfCancel,
                 String lang,
                 String inviteeName,
                 String inviteeEmail,
@@ -550,6 +551,7 @@ public class EmailService {
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates.cancellation(
                                 role,
                                 e.byOwner(),
+                                e.byOwner() && l.booking.groupId == null,
                                 locale.getLanguage(),
                                 l.booking.inviteeName,
                                 l.booking.inviteeEmail,

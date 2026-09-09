@@ -23,6 +23,10 @@ class EmailRoleCopyTest {
     @Location("email/confirmation.html")
     Template confirmation;
 
+    @Inject
+    @Location("email/cancellation.html")
+    Template cancellation;
+
     private static TemplateInstance base(Template t, String role) {
         return t.instance()
                 .setLocale(Locale.ENGLISH)
@@ -32,6 +36,9 @@ class EmailRoleCopyTest {
                 .data("greetingName", "invitee".equals(role) ? "Sam Invitee" : "Olivia Owner")
                 .data("inviteeName", "Sam Invitee")
                 .data("inviteeEmail", "sam@example.com")
+                .data("ownerName", "Olivia Owner")
+                .data("byOwner", false)
+                .data("hostSelfCancel", false)
                 .data("meetingTypeName", "Intro call")
                 .data("startTime", "Wed, 1 Jul 2026, 09:00")
                 .data("oldStartTime", "Tue, 30 Jun 2026, 09:00")
@@ -99,5 +106,45 @@ class EmailRoleCopyTest {
         assertTrue(
                 body.contains("Sam Invitee (<a href=\"mailto:sam@example.com\">sam@example.com</a>)"),
                 "owner copy shows the address, mailto-linked, beside the name");
+    }
+
+    @Test
+    void hostCancelOwnerCopySaysTheHostCancelledAndNamesTheInvitee() {
+        String body = base(cancellation, "owner")
+                .data("byOwner", true)
+                .data("hostSelfCancel", true)
+                .render();
+        assertTrue(
+                body.contains("You cancelled your meeting with Sam Invitee."),
+                "host who cancelled reads an active line naming the invitee");
+        assertFalse(
+                body.contains("Your booking has been cancelled."),
+                "host copy must not reuse the invitee's passive string");
+    }
+
+    @Test
+    void groupHostCancelNonActorOwnerCopyStaysPassive() {
+        String body = base(cancellation, "owner")
+                .data("byOwner", true)
+                .data("hostSelfCancel", false)
+                .render();
+        assertTrue(
+                body.contains("Your booking has been cancelled."),
+                "non-acting co-host reads the passive fallback, unchanged from before this fix");
+        assertFalse(body.contains("You cancelled"), "non-acting co-host copy must not claim the recipient cancelled");
+    }
+
+    @Test
+    void hostCancelInviteeCopyStillNamesTheHost() {
+        String body = base(cancellation, "invitee").data("byOwner", true).render();
+        assertTrue(body.contains("Olivia Owner cancelled your booking."), "invitee copy names the host");
+        assertFalse(body.contains("You cancelled"), "invitee copy must not claim the invitee acted");
+    }
+
+    @Test
+    void guestCancelOwnerCopyNamesTheGuestAsTheActor() {
+        String body = base(cancellation, "owner").render();
+        assertTrue(body.contains("Sam Invitee cancelled their booking."), "owner copy names who cancelled");
+        assertFalse(body.contains("was cancelled"), "owner copy is not passive");
     }
 }
