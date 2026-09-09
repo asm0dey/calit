@@ -3,6 +3,7 @@
 {@java.lang.String description}
 {@java.lang.String lang}
 {@java.lang.String inviteeName}
+{@java.lang.String inviteeEmail}
 {@java.lang.String ownerName}
 {@java.lang.String greetingName}
 {@java.lang.String meetingTypeName}
@@ -30,6 +31,7 @@
   {/if}
 {/if}
 <ul>
+  {#include email/_invitee /}
   <li><strong>{msg:email_body_meeting_label}</strong> {meetingTypeName}</li>
   {#if description}<li><strong>{msg:email_updated_description_label}</strong> {description}</li>{/if}
   <li><strong>{msg:email_body_when_label}</strong> {startTime}</li>

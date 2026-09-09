@@ -2,6 +2,7 @@
 {@java.lang.String lang}
 {@java.lang.String greetingName}
 {@java.lang.String inviteeName}
+{@java.lang.String inviteeEmail}
 {@java.lang.String meetingTypeName}
 {@java.lang.String startTime}
 {@java.lang.Integer durationMinutes}
@@ -13,6 +14,7 @@
 <p><strong>{msg:email_declined_body}</strong></p>
 {/if}
 <ul>
+  {#include email/_invitee /}
   <li><strong>{msg:email_body_meeting_label}</strong> {meetingTypeName}</li>
   <li><strong>{msg:email_body_requested_time_label}</strong> {startTime}</li>
   <li><strong>{msg:email_body_duration_label}</strong> {msg:email_body_duration_minutes(durationMinutes)}</li>

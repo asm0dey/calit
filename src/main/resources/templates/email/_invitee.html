@@ -1,0 +1,4 @@
+{@java.lang.String recipientRole}
+{@java.lang.String inviteeName}
+{@java.lang.String inviteeEmail}
+{#if recipientRole == 'owner'}<li><strong>{msg:email_body_invitee_label}</strong> {inviteeName} (<a href="mailto:{inviteeEmail}">{inviteeEmail}</a>)</li>{/if}
