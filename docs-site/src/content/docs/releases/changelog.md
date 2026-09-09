@@ -26,6 +26,17 @@ Merged but not yet in a tagged release.
   cancelled something they may not have.
   ([#201](https://github.com/asm0dey/calit/pull/201))
 
+- **Owner booking emails now show the invitee's email address.** Every
+  owner-facing notification — confirmation, request, reminder, reschedule,
+  update, decline and cancellation — named the person who booked but never
+  gave their address, so replying, forwarding or looking them up meant
+  leaving the mail and opening the admin UI. Replying was no help either:
+  the mail comes from your configured `MAIL_FROM`, not from the invitee.
+  Those mails now carry an **Invitee:** line with the name and the address,
+  and the address is a `mailto:` link. The invitee's own copy is unchanged —
+  it never echoes their address back at them.
+  ([#196](https://github.com/asm0dey/calit/issues/196))
+
 - **The name and guests fields on the booking form are now per meeting type.**
   Every booking form asked for a name and offered a **Guests** field, with no
   way to trim it down for a type where neither matters. Each meeting type's
@@ -44,6 +55,8 @@ Merged but not yet in a tagged release.
 
 Upgrade: nothing to do — the migration adds two columns whose defaults
 reproduce the previous form exactly, so existing meeting types are untouched.
+The email changes apply to mail sent from this version onward; already-delivered
+mail is of course untouched.
 
 ## 1.23.0
 
