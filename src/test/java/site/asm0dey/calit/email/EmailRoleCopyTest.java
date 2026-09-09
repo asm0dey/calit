@@ -38,6 +38,7 @@ class EmailRoleCopyTest {
                 .data("inviteeEmail", "sam@example.com")
                 .data("ownerName", "Olivia Owner")
                 .data("byOwner", false)
+                .data("hostSelfCancel", false)
                 .data("meetingTypeName", "Intro call")
                 .data("startTime", "Wed, 1 Jul 2026, 09:00")
                 .data("oldStartTime", "Tue, 30 Jun 2026, 09:00")
@@ -109,13 +110,28 @@ class EmailRoleCopyTest {
 
     @Test
     void hostCancelOwnerCopySaysTheHostCancelledAndNamesTheInvitee() {
-        String body = base(cancellation, "owner").data("byOwner", true).render();
+        String body = base(cancellation, "owner")
+                .data("byOwner", true)
+                .data("hostSelfCancel", true)
+                .render();
         assertTrue(
                 body.contains("You cancelled your meeting with Sam Invitee."),
                 "host who cancelled reads an active line naming the invitee");
         assertFalse(
                 body.contains("Your booking has been cancelled."),
                 "host copy must not reuse the invitee's passive string");
+    }
+
+    @Test
+    void groupHostCancelNonActorOwnerCopyStaysPassive() {
+        String body = base(cancellation, "owner")
+                .data("byOwner", true)
+                .data("hostSelfCancel", false)
+                .render();
+        assertTrue(
+                body.contains("Your booking has been cancelled."),
+                "non-acting co-host reads the passive fallback, unchanged from before this fix");
+        assertFalse(body.contains("You cancelled"), "non-acting co-host copy must not claim the recipient cancelled");
     }
 
     @Test
