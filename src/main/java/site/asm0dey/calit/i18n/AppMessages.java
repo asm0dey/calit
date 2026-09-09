@@ -694,6 +694,10 @@ public interface AppMessages {
     @Message("{name}'s booking was cancelled.")
     String email_cancellation_body_owner(String name);
 
+    /** Host's own copy when the host drove the cancellation; {name} is the invitee's display name. */
+    @Message("You cancelled your meeting with {name}.")
+    String email_cancellation_body_owner_self(String name);
+
     /** Invitee copy when the host drove the cancellation; {name} is the owner's display name. */
     @Message("{name} cancelled your booking.")
     String email_cancellation_body_by_owner(String name);

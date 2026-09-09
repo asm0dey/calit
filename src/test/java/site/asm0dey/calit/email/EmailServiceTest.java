@@ -345,7 +345,7 @@ class EmailServiceTest {
     }
 
     @Test
-    void hostCancelNamesHostToGuestAndDoesNotBlameGuestToOwner() {
+    void hostCancelNamesHostToGuestAndSaysTheHostActedToOwner() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         long bookingId = seed(b -> b.status = BookingStatus.CANCELLED, true, LocationType.PHONE, "+1");
 
@@ -356,9 +356,12 @@ class EmailServiceTest {
                 invitee.getHtml().contains("Owner cancelled your booking"),
                 "host-initiated: invitee copy names the host");
         Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        assertTrue(
+                owner.getHtml().contains("You cancelled your meeting with Sam Invitee."),
+                "host-initiated: owner copy says the host acted and names the guest");
         assertFalse(
-                owner.getHtml().contains("Sam Invitee") && owner.getHtml().contains("was cancelled"),
-                "host-initiated: owner copy must not attribute to the guest");
+                owner.getHtml().contains("Your booking has been cancelled."),
+                "host-initiated: owner copy must not reuse the invitee's passive string");
     }
 
     // ---- Reminder follows the fallback rule ----

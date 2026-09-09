@@ -12,7 +12,7 @@
 {#title}{msg:email_cancellation_title}{/title}
 {#if byOwner}
   {#if recipientRole == 'owner'}
-<p><strong>{msg:email_cancellation_body}</strong></p>
+<p><strong>{msg:email_cancellation_body_owner_self(inviteeName)}</strong></p>
   {#else}
 <p><strong>{msg:email_cancellation_body_by_owner(ownerName)}</strong></p>
   {/if}
