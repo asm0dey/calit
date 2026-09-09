@@ -11,6 +11,21 @@ asset downloads, are on
 
 Merged but not yet in a tagged release.
 
+- **Cancellation emails now say who cancelled.** When a host cancelled a
+  booking, their own copy of the mail reused the invitee's wording — *"Your
+  booking has been cancelled."* — which reads as though the invitee cancelled
+  on them, and never named who the meeting was with. The host now reads *"You
+  cancelled your meeting with `<invitee>`."* The other direction was passive in
+  the same way: when the invitee cancelled, the host's copy said *"`<invitee>`'s
+  booking was cancelled."* and now says *"`<invitee>` cancelled their booking."*
+  Both strings are translated in German and Hebrew. The invitee's own copy is
+  unchanged — for the person the cancellation happened to, the existing wording
+  is right. Group bookings are the one exception: a cancellation there is
+  recorded only as "a host did it", not which host, so every host on a group
+  booking keeps the previous neutral wording rather than being told they
+  cancelled something they may not have.
+  ([#201](https://github.com/asm0dey/calit/pull/201))
+
 - **The name and guests fields on the booking form are now per meeting type.**
   Every booking form asked for a name and offered a **Guests** field, with no
   way to trim it down for a type where neither matters. Each meeting type's
