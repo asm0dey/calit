@@ -554,6 +554,10 @@ public interface AppMessages {
     @Message("Meeting:")
     String email_body_meeting_label();
 
+    /** Owner-copy-only label naming the person who booked; the address follows it. */
+    @Message("Invitee:")
+    String email_body_invitee_label();
+
     @Message("When:")
     String email_body_when_label();
 

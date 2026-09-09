@@ -474,6 +474,21 @@ class EmailServiceTest {
                 "an .ics (text/calendar) attachment must be present");
     }
 
+    @Test
+    void confirmedOwnerCopyCarriesTheInviteeAddressButTheInviteeCopyDoesNot() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> b.status = BookingStatus.CONFIRMED, true, LocationType.CUSTOM, "Room 1");
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        String ownerHtml = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getHtml();
+        assertTrue(ownerHtml.contains("mailto:" + INVITEE_EMAIL), "owner can click through to the invitee");
+        assertTrue(ownerHtml.contains("Invitee:"), "owner copy labels the line");
+
+        String inviteeHtml = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getHtml();
+        assertFalse(inviteeHtml.contains("mailto:" + INVITEE_EMAIL), "invitee copy is unchanged");
+    }
+
     // --- seeding helpers ---
 
     private long seed(

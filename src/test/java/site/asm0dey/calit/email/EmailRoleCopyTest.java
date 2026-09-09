@@ -31,6 +31,7 @@ class EmailRoleCopyTest {
                 .data("recipientRoleDisplay", role)
                 .data("greetingName", "invitee".equals(role) ? "Sam Invitee" : "Olivia Owner")
                 .data("inviteeName", "Sam Invitee")
+                .data("inviteeEmail", "sam@example.com")
                 .data("meetingTypeName", "Intro call")
                 .data("startTime", "Wed, 1 Jul 2026, 09:00")
                 .data("oldStartTime", "Tue, 30 Jun 2026, 09:00")
@@ -74,5 +75,20 @@ class EmailRoleCopyTest {
         assertTrue(body.contains("Sam Invitee booked"), "owner body names the invitee");
         assertTrue(body.contains("/me/bookings/42/manage"), "owner copy links to owner manage page");
         assertFalse(body.contains("/booking/tok/manage"), "owner copy must NOT contain the invitee manage link");
+    }
+
+    @Test
+    void confirmationOwnerCopyShowsInviteeAddressAsMailto() {
+        String body = base(confirmation, "owner").render();
+        assertTrue(body.contains("Invitee:"), "owner copy carries the invitee label");
+        assertTrue(
+                body.contains("Sam Invitee (<a href=\"mailto:sam@example.com\">sam@example.com</a>)"),
+                "owner copy shows the address, mailto-linked, beside the name");
+    }
+
+    @Test
+    void confirmationInviteeCopyDoesNotEchoTheirOwnAddress() {
+        String body = base(confirmation, "invitee").render();
+        assertFalse(body.contains("sam@example.com"), "invitee copy must not gain an Invitee: line");
     }
 }
