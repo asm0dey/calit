@@ -91,4 +91,13 @@ class EmailRoleCopyTest {
         String body = base(confirmation, "invitee").render();
         assertFalse(body.contains("sam@example.com"), "invitee copy must not gain an Invitee: line");
     }
+
+    @Test
+    void requestedOwnerCopyShowsInviteeAddressAsMailto() {
+        String body = base(requested, "owner").render();
+        assertTrue(body.contains("Invitee:"), "owner copy carries the invitee label");
+        assertTrue(
+                body.contains("Sam Invitee (<a href=\"mailto:sam@example.com\">sam@example.com</a>)"),
+                "owner copy shows the address, mailto-linked, beside the name");
+    }
 }
