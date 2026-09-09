@@ -5,7 +5,7 @@ status: in-progress
 type: bug
 priority: normal
 created_at: 2026-09-09T22:29:38Z
-updated_at: 2026-09-09T22:36:45Z
+updated_at: 2026-09-09T22:38:09Z
 ---
 
 The owner's own copy of a cancellation mail reuses the invitee string "Your booking has been cancelled." — passive, and phrased for someone the cancellation happened to. Fix: a fourth message for the byOwner x owner branch ("You cancelled your meeting with {name}."), and reword the passive email_cancellation_body_owner to "{name} cancelled their booking."
@@ -15,5 +15,5 @@ Plan: docs/superpowers/plans/2026-09-10-owner-cancellation-email-wording.md
 
 ## Todo
 - [x] Task 1: new email_cancellation_body_owner_self key + cancellation.html branch + tests
-- [ ] Task 2: reword email_cancellation_body_owner to active voice + tests
+- [x] Task 2: reword email_cancellation_body_owner to active voice + tests
 - [ ] Task 3: docs-site `## Unreleased` changelog entry

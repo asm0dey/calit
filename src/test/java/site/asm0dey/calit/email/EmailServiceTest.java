@@ -364,6 +364,23 @@ class EmailServiceTest {
                 "host-initiated: owner copy must not reuse the invitee's passive string");
     }
 
+    @Test
+    void guestCancelNamesGuestToOwnerAndStaysPassiveToGuest() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> b.status = BookingStatus.CANCELLED, true, LocationType.PHONE, "+1");
+
+        emailService.handleCancelled(new BookingCancelled(bookingId, false));
+
+        Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
+        assertTrue(
+                owner.getHtml().contains("Sam Invitee cancelled their booking."),
+                "guest-initiated: owner copy names the guest as the actor");
+        Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
+        assertTrue(
+                invitee.getHtml().contains("Your booking has been cancelled."),
+                "guest-initiated: invitee copy stays passive — it happened to them");
+    }
+
     // ---- Reminder follows the fallback rule ----
 
     @Test

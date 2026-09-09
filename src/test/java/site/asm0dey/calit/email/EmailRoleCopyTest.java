@@ -124,4 +124,11 @@ class EmailRoleCopyTest {
         assertTrue(body.contains("Olivia Owner cancelled your booking."), "invitee copy names the host");
         assertFalse(body.contains("You cancelled"), "invitee copy must not claim the invitee acted");
     }
+
+    @Test
+    void guestCancelOwnerCopyNamesTheGuestAsTheActor() {
+        String body = base(cancellation, "owner").render();
+        assertTrue(body.contains("Sam Invitee cancelled their booking."), "owner copy names who cancelled");
+        assertFalse(body.contains("was cancelled"), "owner copy is not passive");
+    }
 }
