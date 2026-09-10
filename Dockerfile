@@ -61,7 +61,7 @@ RUN apk add --no-cache freetype fontconfig font-dejavu-core \
 # JRE 26 runs the JDK-25-compiled fast-jar fine (forward-compatible); pure-bytecode app, so the
 # musl libc is a non-issue. This base has no shell, no package manager, and no CVE-fixing distro
 # packages beyond what BellSoft ships -- it is the hardened/distroless target from calit-gabg.
-FROM bellsoft/hardened-liberica-runtime-container:jre-distroless-musl@sha256:6f8669837e8681f652cff974bfdcdea750d16446dfbc19f50ed2c2ca0c49817e AS runtime
+FROM bellsoft/hardened-liberica-runtime-container:jre-distroless-musl@sha256:0539f88b5c92d99c8f473d81d632aa65c5dc5379872a785551fa5a46857b1c99 AS runtime
 WORKDIR /app
 
 # This base ships libfontmanager.so but not the libfreetype.so.6 it links against, and no font,
