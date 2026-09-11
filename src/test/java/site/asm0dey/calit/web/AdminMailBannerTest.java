@@ -61,9 +61,9 @@ class AdminMailBannerTest {
                 .extract()
                 .body()
                 .asString();
-        var marker = body.indexOf("data-mail-dead-letters");
-        assertTrue(marker > 0, "dead-letter line rendered");
-        var line = body.substring(marker, Math.min(body.length(), marker + 400));
-        assertTrue(line.contains("1"), "dead-letter line carries the count, got: " + line);
+        var m = java.util.regex.Pattern.compile("data-mail-dead-letters[^>]*>([^<]*)</p>")
+                .matcher(body);
+        assertTrue(m.find(), "dead-letter line rendered");
+        assertTrue(m.group(1).contains("1"), "dead-letter line carries the count, got: " + m.group(1));
     }
 }
