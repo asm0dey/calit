@@ -7,9 +7,12 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.24.0
 
-Merged but not yet in a tagged release.
+Broken email is no longer invisible, owner notifications name the invitee and
+say who cancelled, the booking form's name and guests fields are per meeting
+type, and the availability editor's day buttons sit beside the times they
+change.
 
 - **Cancellation emails now say who cancelled.** When a host cancelled a
   booking, their own copy of the mail reused the invitee's wording — *"Your
