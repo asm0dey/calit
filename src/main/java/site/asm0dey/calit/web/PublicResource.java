@@ -72,7 +72,8 @@ public class PublicResource {
                 String startUtcIso,
                 String tzBar,
                 String tzScript,
-                boolean mailUndelivered);
+                boolean mailUndelivered,
+                boolean googleConnected);
 
         public static native TemplateInstance manage(
                 String title,
@@ -492,6 +493,12 @@ public class PublicResource {
         // bookingService.book(). So by the time we render, either the mail went out or MailSender
         // parked it. No polling needed; the page can just tell the truth.
         boolean mailUndelivered = mailHealth.undeliveredFor(booking.inviteeEmail);
+        // #195: whether to OFFER the .ics, not whether to serve it. When Google is connected it
+        // invites the guest natively and owns the event; an imported second copy has a different
+        // UID, so a later reschedule or cancel updates Google's copy and strands the imported one
+        // showing the old time. The endpoint itself stays unconditional -- a guest who deliberately
+        // goes for the file still gets it.
+        boolean googleConnected = calendarPort.isConnected(type.ownerId);
         return Templates.confirmation(
                 title,
                 booking,
@@ -503,7 +510,8 @@ public class PublicResource {
                 startUtcIso,
                 Layout.tzBar(m),
                 Layout.TZ_SCRIPT,
-                mailUndelivered);
+                mailUndelivered,
+                googleConnected);
     }
 
     @GET
