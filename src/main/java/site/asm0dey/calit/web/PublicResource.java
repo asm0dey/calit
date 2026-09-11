@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.Response;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -22,6 +23,8 @@ import site.asm0dey.calit.domain.BookingField;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.email.EmailService;
+import site.asm0dey.calit.email.MailHealth;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.google.CalendarUnavailableException;
 import site.asm0dey.calit.i18n.ActiveLocale;
@@ -68,7 +71,9 @@ public class PublicResource {
                 String whenLabel,
                 String startUtcIso,
                 String tzBar,
-                String tzScript);
+                String tzScript,
+                boolean mailUndelivered,
+                boolean googleConnected);
 
         public static native TemplateInstance manage(
                 String title,
@@ -122,6 +127,10 @@ public class PublicResource {
 
     final CalendarPort calendarPort;
 
+    final MailHealth mailHealth;
+
+    final EmailService emailService;
+
     // Root landing is public; with proactive auth this is the anonymous identity when logged out,
     // or the logged-in user's identity (so the landing can show Logout/Settings instead of Sign in).
     final SecurityIdentity identity;
@@ -140,7 +149,9 @@ public class PublicResource {
             CalendarPort calendarPort,
             SecurityIdentity identity,
             CaptchaProviderConfig captchaProviderConfig,
-            OgCards ogCards) {
+            OgCards ogCards,
+            MailHealth mailHealth,
+            EmailService emailService) {
         this.bookingService = bookingService;
         this.meetingHosts = meetingHosts;
         this.currentOwner = currentOwner;
@@ -150,6 +161,8 @@ public class PublicResource {
         this.identity = identity;
         this.captchaProviderConfig = captchaProviderConfig;
         this.ogCards = ogCards;
+        this.mailHealth = mailHealth;
+        this.emailService = emailService;
     }
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy");
@@ -476,6 +489,16 @@ public class PublicResource {
         String location =
                 (type.locationType == MeetingType.LocationType.GOOGLE_MEET) ? booking.meetLink : type.locationDetail;
         String meetingName = booking.effectiveTitle(type);
+        // #195: the mail observers are AFTER_SUCCESS -- synchronous, on the thread that committed
+        // bookingService.book(). So by the time we render, either the mail went out or MailSender
+        // parked it. No polling needed; the page can just tell the truth.
+        boolean mailUndelivered = mailHealth.undeliveredFor(booking.inviteeEmail);
+        // #195: whether to OFFER the .ics, not whether to serve it. When Google is connected it
+        // invites the guest natively and owns the event; an imported second copy has a different
+        // UID, so a later reschedule or cancel updates Google's copy and strands the imported one
+        // showing the old time. The endpoint itself stays unconditional -- a guest who deliberately
+        // goes for the file still gets it.
+        boolean googleConnected = calendarPort.isConnected(type.ownerId);
         return Templates.confirmation(
                 title,
                 booking,
@@ -486,7 +509,9 @@ public class PublicResource {
                 when,
                 startUtcIso,
                 Layout.tzBar(m),
-                Layout.TZ_SCRIPT);
+                Layout.TZ_SCRIPT,
+                mailUndelivered,
+                googleConnected);
     }
 
     @GET
@@ -498,6 +523,28 @@ public class PublicResource {
             throw new NotFoundException("No booking for token " + manageToken); // unknown token → 404
         }
         return renderManage(booking);
+    }
+
+    /**
+     * The guest's calendar entry for their booking. Keyed by the unguessable manage token, same as
+     * every other guest-facing booking route — no session, no owner scoping (the token IS the
+     * authorization). Serves the bytes the confirmation mail would have attached, so a booking whose
+     * mail failed still ends up in the guest's calendar.
+     */
+    @GET
+    @Path("/booking/{manageToken}/invite.ics")
+    @Produces("text/calendar;charset=UTF-8")
+    public Response inviteIcs(@PathParam("manageToken") String manageToken) {
+        Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
+        if (booking == null) {
+            throw new NotFoundException("No booking for token " + manageToken);
+        }
+        byte[] ics = emailService
+                .inviteeIcs(booking.id)
+                .orElseThrow(() -> new NotFoundException("No calendar entry for token " + manageToken));
+        return Response.ok(ics)
+                .header("Content-Disposition", "attachment; filename=\"invite.ics\"")
+                .build();
     }
 
     /** Render the invitee's Manage hub (shared by GET manage and POST edit-details). */

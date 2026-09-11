@@ -23,6 +23,7 @@ import site.asm0dey.calit.domain.*;
 import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType.FieldMode;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
+import site.asm0dey.calit.email.MailHealth;
 import site.asm0dey.calit.google.CalendarRef;
 import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
@@ -40,7 +41,13 @@ public class AdminResource {
     @SuppressWarnings("java:S107")
     public static class Templates {
         public static native TemplateInstance dashboard(
-                List<Booking> upcoming, long pendingCount, String tzScript, boolean isAdmin, String title, String zone);
+                List<Booking> upcoming,
+                long pendingCount,
+                String tzScript,
+                boolean isAdmin,
+                String title,
+                String zone,
+                MailHealth.Status mailHealth);
 
         public static native TemplateInstance meetingTypes(
                 List<MeetingType> types,
@@ -181,6 +188,8 @@ public class AdminResource {
 
     final ActiveLocale activeLocale;
 
+    final MailHealth mailHealth;
+
     @Inject
     public AdminResource(
             BookingService bookingService,
@@ -191,6 +200,7 @@ public class AdminResource {
             AdminMessageResolver adminMsgs,
             AppMessageResolver appMsgs,
             ActiveLocale activeLocale,
+            MailHealth mailHealth,
             @ConfigProperty(name = "app.base-url") String baseUrl,
             @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440") int reminderLeadMinutes) {
         this.bookingService = bookingService;
@@ -201,6 +211,7 @@ public class AdminResource {
         this.adminMsgs = adminMsgs;
         this.appMsgs = appMsgs;
         this.activeLocale = activeLocale;
+        this.mailHealth = mailHealth;
         this.baseUrl = baseUrl;
         this.reminderLeadMinutes = reminderLeadMinutes;
     }
@@ -326,7 +337,13 @@ public class AdminResource {
                 Instant.now());
         var pendingCount = pendingCount();
         return Templates.dashboard(
-                upcoming, pendingCount, Layout.TZ_SCRIPT, isAdmin(), m().adm_dashboard_title(), ownerZone());
+                upcoming,
+                pendingCount,
+                Layout.TZ_SCRIPT,
+                isAdmin(),
+                m().adm_dashboard_title(),
+                ownerZone(),
+                mailHealth.status());
     }
 
     /**

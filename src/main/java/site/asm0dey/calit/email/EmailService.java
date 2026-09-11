@@ -807,19 +807,7 @@ public class EmailService {
             MailSink sink,
             boolean actionable) {
         boolean googleNotifies = calendarPort.isConnected(l.owner.ownerId);
-        byte[] ics = googleNotifies
-                ? null
-                : IcsBuilder.build(IcsEvent.builder()
-                                .uid(l.booking.manageToken)
-                                .summary(label(l))
-                                .description(l.booking.effectiveDescription(l.meetingType))
-                                .location(icsLocation)
-                                .organizer(new IcsBuilder.Party(l.owner.ownerName, mailFrom))
-                                .attendee(new IcsBuilder.Party(l.booking.inviteeName, l.booking.inviteeEmail))
-                                .start(l.booking.startUtc)
-                                .end(l.booking.endUtc)
-                                .build())
-                        .getBytes(StandardCharsets.UTF_8);
+        var ics = googleNotifies ? null : inviteeIcsBytes(l, icsLocation);
         var from = fromName(l);
 
         Locale inviteeLocale = AppLocales.pick(l.booking.locale);
@@ -895,6 +883,45 @@ public class EmailService {
     /** The meeting label shown in every mail: the booking's title override, else the type name. */
     private static String label(Loaded l) {
         return l.booking.effectiveTitle(l.meetingType);
+    }
+
+    /**
+     * The invitee's calendar entry for one booking — byte-identical to what the confirmation mail
+     * attaches. Returns {@link Optional#empty()} when the booking (or its owner's settings) is gone,
+     * matching every other {@link #load} caller's "nothing to build" path.
+     * <p>
+     * Public because a failed send used to take the calendar entry with it: the .ics existed only as
+     * a mail attachment, so a guest with a confirmed booking had no way to get it. Opens its own
+     * transaction via {@link #load}, so it is safe to call from a plain GET. Unlike {@link
+     * #sendForKindLocaleAware}, this is built REGARDLESS of whether Google is connected: the route
+     * is reached only by following a link, and refusing to serve a file a guest deliberately asked
+     * for buys nothing. The confirmation page, which merely OFFERS the link, does hide it when
+     * Google is connected -- an imported copy Google can never update is worse than no copy.
+     */
+    public Optional<byte[]> inviteeIcs(Long bookingId) {
+        var l = load(bookingId);
+        if (l == null) {
+            return Optional.empty();
+        }
+        return Optional.of(inviteeIcsBytes(l, resolveLocation(l)));
+    }
+
+    /**
+     * The invitee's REQUEST .ics for one loaded booking. Shared by the mail attachment and the
+     * guest download so the two can never drift into two different RFC-5545 events.
+     */
+    private byte[] inviteeIcsBytes(Loaded l, String location) {
+        return IcsBuilder.build(IcsEvent.builder()
+                        .uid(l.booking.manageToken)
+                        .summary(label(l))
+                        .description(l.booking.effectiveDescription(l.meetingType))
+                        .location(location)
+                        .organizer(new IcsBuilder.Party(l.owner.ownerName, mailFrom))
+                        .attendee(new IcsBuilder.Party(l.booking.inviteeName, l.booking.inviteeEmail))
+                        .start(l.booking.startUtc)
+                        .end(l.booking.endUtc)
+                        .build())
+                .getBytes(StandardCharsets.UTF_8);
     }
 
     /** Meet link for GOOGLE_MEET types, else the type's locationDetail (phone/address/custom). */
