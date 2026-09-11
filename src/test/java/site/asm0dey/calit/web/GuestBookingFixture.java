@@ -40,6 +40,14 @@ final class GuestBookingFixture {
                 .post("/" + OWNER_USERNAME + "/" + slug);
     }
 
+    /** Pulls the manage token out of a confirmation-page response (it links /booking/{t}/manage). */
+    static String manageTokenOf(Response r) {
+        var m = java.util.regex.Pattern.compile("/booking/([^/\"]+)/manage")
+                .matcher(r.body().asString());
+        org.junit.jupiter.api.Assertions.assertTrue(m.find(), "confirmation page links the manage URL");
+        return m.group(1);
+    }
+
     // Package-private, not private: ARC does not intercept private (static or instance) methods, so
     // a private @Transactional method here would silently run with no transaction boundary.
     @Transactional

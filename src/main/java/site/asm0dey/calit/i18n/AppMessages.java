@@ -354,6 +354,9 @@ public interface AppMessages {
             + "Nothing is lost: we have your booking and the details are on this page.")
     String pub_conf_email_failed(String inviteeEmail);
 
+    @Message("Add to your calendar (.ics)")
+    String pub_conf_ics_download();
+
     @Message("Need to change or cancel this booking?")
     String pub_conf_manage_link();
 

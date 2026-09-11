@@ -34,6 +34,9 @@
       {#else}
       <p>{#if pending}{msg:pub_conf_pending_email(booking.inviteeEmail)}{#else}{msg:pub_conf_confirmed_email(booking.inviteeEmail)}{/if}</p>
       {/if}
+      {! #195: unconditional, not failure-only. It's one link either way, and a guest whose mail
+         client swallowed the attachment needs it just as much as one whose mail never sent. !}
+      <p><a class="btn btn-sm btn-outline" href="/booking/{booking.manageToken}/invite.ics">{msg:pub_conf_ics_download}</a></p>
       <p><a class="link link-hover" href="/booking/{booking.manageToken}/manage">{msg:pub_conf_manage_link}</a></p>
       {tzScript.raw}
     </div>

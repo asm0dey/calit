@@ -897,6 +897,36 @@ public class EmailService {
         return l.booking.effectiveTitle(l.meetingType);
     }
 
+    /**
+     * The invitee's calendar entry for one booking — byte-identical to what the confirmation mail
+     * attaches. Returns null when the booking (or its owner's settings) is gone, matching every
+     * other {@link #load} caller's "nothing to build" path.
+     * <p>
+     * Public because a failed send used to take the calendar entry with it: the .ics existed only as
+     * a mail attachment, so a guest with a confirmed booking had no way to get it. Opens its own
+     * transaction via {@link #load}, so it is safe to call from a plain GET. Unlike {@link
+     * #sendForKindLocaleAware}, this is built REGARDLESS of whether Google is connected -- the mail
+     * path omits the .ics when Google natively notifies attendees, but here the guest explicitly
+     * asked for the file, so always give it to them.
+     */
+    public byte[] inviteeIcs(Long bookingId) {
+        var l = load(bookingId);
+        if (l == null) {
+            return null;
+        }
+        return IcsBuilder.build(IcsEvent.builder()
+                        .uid(l.booking.manageToken)
+                        .summary(label(l))
+                        .description(l.booking.effectiveDescription(l.meetingType))
+                        .location(resolveLocation(l))
+                        .organizer(new IcsBuilder.Party(l.owner.ownerName, mailFrom))
+                        .attendee(new IcsBuilder.Party(l.booking.inviteeName, l.booking.inviteeEmail))
+                        .start(l.booking.startUtc)
+                        .end(l.booking.endUtc)
+                        .build())
+                .getBytes(StandardCharsets.UTF_8);
+    }
+
     /** Meet link for GOOGLE_MEET types, else the type's locationDetail (phone/address/custom). */
     private static String resolveLocation(Loaded l) {
         if (l.meetingType.locationType == LocationType.GOOGLE_MEET) {
