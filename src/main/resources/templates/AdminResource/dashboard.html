@@ -8,13 +8,16 @@
 {#include adminBase title=title pendingCount=pendingCount active="dashboard" isAdmin=isAdmin}
   <h1 class="text-2xl font-bold mb-4">{adm:adm_dashboard_h1}</h1>
 
-  {#if mailHealth.degraded}
+  {#if mailHealth.degraded || mailHealth.hasDeadLetters}
   {! #195: a deployment with broken or unconfigured SMTP looks healthy from inside the app while
-     every guest-facing mail silently fails. This is the one place an owner is guaranteed to look. !}
-  <div data-mail-banner class="alert alert-error mb-6" role="alert">
+     every guest-facing mail silently fails. This is the one place an owner is guaranteed to look.
+     Dead letters keep the banner up after SMTP is fixed: those guests got nothing and nothing will
+     retry, so reaching out by hand is the only remaining fix -- and an operator who never learns
+     the count can't do it. Mail working again is a warning, not an outage, hence alert-warning. !}
+  <div data-mail-banner class="alert {#if mailHealth.degraded}alert-error{#else}alert-warning{/if} mb-6" role="alert">
     <div>
       <p class="font-semibold">
-        {#if mailHealth.unconfigured}{adm:adm_mail_banner_unconfigured}{#else}{adm:adm_mail_banner_unreachable}{/if}
+        {#if mailHealth.unconfigured}{adm:adm_mail_banner_unconfigured}{#else if mailHealth.unreachable}{adm:adm_mail_banner_unreachable}{#else}{adm:adm_mail_banner_dead_only}{/if}
       </p>
       {#if mailHealth.hasDeadLetters}
       <p data-mail-dead-letters class="text-sm">{adm:adm_mail_banner_dead_letters(mailHealth.deadLetters)}</p>

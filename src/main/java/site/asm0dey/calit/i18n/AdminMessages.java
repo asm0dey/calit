@@ -134,7 +134,14 @@ public interface AdminMessages {
     @Message("Email is not being delivered — guests are not receiving booking confirmations.")
     String adm_mail_banner_unreachable();
 
-    @Message("{count} message(s) were given up on after repeated delivery failures.")
+    @Message("Email is working now, but some messages were never delivered.")
+    String adm_mail_banner_dead_only();
+
+    // Deliberately vague about the cause: a dead letter is a row with no next attempt scheduled,
+    // which is usually repeated delivery failures but is also how markExpired() parks a mail whose
+    // deadline passed (an expired password-reset link). "Never delivered, no longer retried" is
+    // true of both; naming retries would be false for the second.
+    @Message("{count} message(s) were never delivered and are no longer being retried.")
     String adm_mail_banner_dead_letters(long count);
 
     @Message("This describes the whole instance, not just your account.")
