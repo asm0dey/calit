@@ -887,8 +887,8 @@ public class EmailService {
 
     /**
      * The invitee's calendar entry for one booking — byte-identical to what the confirmation mail
-     * attaches. Returns null when the booking (or its owner's settings) is gone, matching every
-     * other {@link #load} caller's "nothing to build" path.
+     * attaches. Returns {@link Optional#empty()} when the booking (or its owner's settings) is gone,
+     * matching every other {@link #load} caller's "nothing to build" path.
      * <p>
      * Public because a failed send used to take the calendar entry with it: the .ics existed only as
      * a mail attachment, so a guest with a confirmed booking had no way to get it. Opens its own
@@ -898,12 +898,12 @@ public class EmailService {
      * for buys nothing. The confirmation page, which merely OFFERS the link, does hide it when
      * Google is connected -- an imported copy Google can never update is worse than no copy.
      */
-    public byte[] inviteeIcs(Long bookingId) {
+    public Optional<byte[]> inviteeIcs(Long bookingId) {
         var l = load(bookingId);
         if (l == null) {
-            return null;
+            return Optional.empty();
         }
-        return inviteeIcsBytes(l, resolveLocation(l));
+        return Optional.of(inviteeIcsBytes(l, resolveLocation(l)));
     }
 
     /**

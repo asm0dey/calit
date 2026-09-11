@@ -26,10 +26,12 @@ class GuestConfirmationMailCopyTest {
     @InjectSpy
     MailSender mailSender;
 
+    // S1612: not a method reference -- EmailOutbox::deleteAll breaks under Panache bytecode
+    // enhancement (the enhancer rewrites call-site bytecode, not lambda-captured method handles),
+    // throwing IllegalStateException at runtime. Keep the lambda.
+    @SuppressWarnings("java:S1612")
     @BeforeEach
     void clean() {
-        // Not a method reference: EmailOutbox::deleteAll breaks under Panache bytecode enhancement
-        // (the enhancer rewrites call-site bytecode, not lambda-captured method handles).
         QuarkusTransaction.requiringNew().run(() -> EmailOutbox.deleteAll());
     }
 

@@ -539,10 +539,9 @@ public class PublicResource {
         if (booking == null) {
             throw new NotFoundException("No booking for token " + manageToken);
         }
-        byte[] ics = emailService.inviteeIcs(booking.id);
-        if (ics == null) {
-            throw new NotFoundException("No calendar entry for token " + manageToken);
-        }
+        byte[] ics = emailService
+                .inviteeIcs(booking.id)
+                .orElseThrow(() -> new NotFoundException("No calendar entry for token " + manageToken));
         return Response.ok(ics)
                 .header("Content-Disposition", "attachment; filename=\"invite.ics\"")
                 .build();
