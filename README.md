@@ -37,6 +37,21 @@ site is the source of truth.
 |---|---|
 | ![Owner dashboard showing upcoming bookings and a side navigation](src/main/resources/META-INF/resources/img/product-dashboard.png) | ![Booking confirmation screen shown to the invitee after they pick a time](src/main/resources/META-INF/resources/img/product-confirmation.png) |
 
+## Requirements
+
+- **PostgreSQL** — the only supported database. No embedded fallback.
+- **An SMTP server** — **required**, not optional. calit's core promise to an invitee is "you'll get
+  a confirmation," and every booking confirmation, reminder, approval request, cancellation notice,
+  password reset, and account invite goes out over SMTP. Without working SMTP the app still runs and
+  bookings still succeed — that's exactly what makes it dangerous: nobody is ever told about the
+  failed emails, and the deployment looks entirely healthy from the inside. Configure `MAIL_*` (see
+  `.env.example` and the [full docs](https://asm0dey.github.io/calit/)); a failed send isn't a lost
+  mail — it's parked in a durable outbox and retried with backoff. The owner dashboard shows a banner
+  whenever mail isn't being delivered, and `/q/health/ready` reports SMTP reachability under the
+  `SMTP` check's `data.state`.
+- **Docker** — only for development (`mvn quarkus:dev` and the test suite use Dev Services to
+  provision a throwaway Postgres). Not needed to run a release image.
+
 ## Run it
 
 Prebuilt multi-arch images are published to **`ghcr.io/asm0dey/calit`** (tags: `latest`, `1.23.0`,
