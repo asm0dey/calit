@@ -9,7 +9,10 @@ This page walks you through the shortest path to a running calit instance.
 
 - **Docker and Docker Compose** installed on the host.
 - A **public HTTPS URL** pointing to the host (required for production use, e.g. `https://book.example.com`). For a local trial, `http://localhost:8080` works.
-- An **SMTP server** for sending booking confirmation and reminder emails.
+- An **SMTP server** — **required**, not optional. calit's core promise to an invitee is "you'll get
+  a confirmation," and every booking confirmation, reminder, approval request, cancellation notice,
+  password reset, and account invite goes out over SMTP. Skip it and the app still runs and bookings
+  still succeed — nobody is ever told the emails failed. See [Configuration → SMTP](/calit/installation/configuration/#smtp-email) once you're set up.
 
 ## Steps
 

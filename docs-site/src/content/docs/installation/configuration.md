@@ -36,6 +36,15 @@ On first run with an empty database every request redirects to `/setup` to creat
 | `MAIL_START_TLS` | STARTTLS mode: `REQUIRED`, `OPTIONAL`, or `DISABLED` | **required** |
 | `MAIL_TLS` | Implicit TLS (SMTPS): `true` or `false` | **required** |
 
+:::caution[Not optional]
+Leaving these unset, or getting one wrong, produces an instance that looks completely healthy: it
+boots, it serves pages, and bookings still succeed. The only symptom is a guest who never receives a
+confirmation. This is how you tell: the owner dashboard shows a mail-delivery banner whenever SMTP
+isn't working, distinguishing "not configured" from "configured but unreachable," and `/q/health/ready`
+reports the same thing under the `SMTP` check's `data.state` (see [Health probes](#health-probes)
+below).
+:::
+
 ### Encryption mode — set explicitly
 
 The port number does **not** automatically select an encryption mode. You must set `MAIL_PORT`, `MAIL_START_TLS`, and `MAIL_TLS` together. There are two valid combinations:
