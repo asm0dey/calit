@@ -4,8 +4,25 @@
 {@java.lang.Boolean isAdmin}
 {@java.lang.String title}
 {@java.lang.String zone}
+{@site.asm0dey.calit.email.MailHealth$Status mailHealth}
 {#include adminBase title=title pendingCount=pendingCount active="dashboard" isAdmin=isAdmin}
   <h1 class="text-2xl font-bold mb-4">{adm:adm_dashboard_h1}</h1>
+
+  {#if mailHealth.degraded}
+  {! #195: a deployment with broken or unconfigured SMTP looks healthy from inside the app while
+     every guest-facing mail silently fails. This is the one place an owner is guaranteed to look. !}
+  <div data-mail-banner class="alert alert-error mb-6" role="alert">
+    <div>
+      <p class="font-semibold">
+        {#if mailHealth.unconfigured}{adm:adm_mail_banner_unconfigured}{#else}{adm:adm_mail_banner_unreachable}{/if}
+      </p>
+      {#if mailHealth.hasDeadLetters}
+      <p data-mail-dead-letters class="text-sm">{adm:adm_mail_banner_dead_letters(mailHealth.deadLetters)}</p>
+      {/if}
+      <p class="text-sm opacity-80">{adm:adm_mail_banner_scope_note}</p>
+    </div>
+  </div>
+  {/if}
 
   <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 mb-6">
     <div class="stat">

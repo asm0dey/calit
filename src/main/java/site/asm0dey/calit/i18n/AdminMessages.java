@@ -126,6 +126,20 @@ public interface AdminMessages {
     @Message("Manage")
     String adm_dashboard_btn_manage();
 
+    // ---- Mail-delivery banner (#195) ----
+
+    @Message("Email is not configured — guests are not receiving booking confirmations.")
+    String adm_mail_banner_unconfigured();
+
+    @Message("Email is not being delivered — guests are not receiving booking confirmations.")
+    String adm_mail_banner_unreachable();
+
+    @Message("{count} message(s) were given up on after repeated delivery failures.")
+    String adm_mail_banner_dead_letters(long count);
+
+    @Message("This describes the whole instance, not just your account.")
+    String adm_mail_banner_scope_note();
+
     // ---- Meeting types list ----
 
     @Message("Meeting types")
