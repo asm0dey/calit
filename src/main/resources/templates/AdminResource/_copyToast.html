@@ -21,11 +21,18 @@
     var cfg = document.getElementById('copy-toast-config');
     var mailDegraded = !!cfg && cfg.dataset.mailDegraded === 'true';
     var degradedMsg = cfg ? cfg.dataset.degradedMsg : '';
+    // Captured ONCE, before any showToast overwrites it. Reading it at click time meant that after
+    // one failed copy the next successful one re-rendered "Copy failed — <old url>" in a green alert.
+    var okText = msg ? msg.textContent : '';
     var timer = null;
     function showToast(text, ok) {
       if (!toast) { return; }
       if (msg) { msg.textContent = text; }
       if (alert) { alert.className = ok ? 'alert alert-success' : 'alert alert-error'; }
+      // A six-second "mail is broken" warning has to interrupt a screen reader, not queue behind
+      // whatever it is reading; the success toast stays polite.
+      toast.setAttribute('role', ok ? 'status' : 'alert');
+      toast.setAttribute('aria-live', ok ? 'polite' : 'assertive');
       toast.style.display = '';
       if (timer) { clearTimeout(timer); }
       // A warning has to be readable, not glimpsed: hold it long enough to actually read.
@@ -35,7 +42,6 @@
       var btn = e.target.closest ? e.target.closest('.copy-link-btn') : null;
       if (!btn) { return; }
       var url = btn.dataset.copyLink;
-      var okText = msg ? msg.textContent : '';
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(
           function () {

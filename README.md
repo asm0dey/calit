@@ -43,12 +43,13 @@ site is the source of truth.
 - **An SMTP server** — **required**, not optional. calit's core promise to an invitee is "you'll get
   a confirmation," and every booking confirmation, reminder, approval request, cancellation notice,
   password reset, and account invite goes out over SMTP. Without working SMTP the app still runs and
-  bookings still succeed — that's exactly what makes it dangerous: nobody is ever told about the
-  failed emails, and the deployment looks entirely healthy from the inside. Configure `MAIL_*` (see
-  `.env.example` and the [full docs](https://asm0dey.github.io/calit/)); a failed send isn't a lost
-  mail — it's parked in a durable outbox and retried with backoff. The owner dashboard shows a banner
-  whenever mail isn't being delivered, and `/q/health/ready` reports SMTP reachability under the
-  `SMTP` check's `data.state`.
+  bookings still succeed — that's exactly what makes it dangerous: the booking flow looks fine from
+  the guest's side while not one of them receives anything. Configure `MAIL_*` (see `.env.example`
+  and the [full docs](https://asm0dey.github.io/calit/)); a failed send isn't a lost mail — it's
+  parked in a durable outbox and retried with backoff. The owner dashboard shows a banner whenever
+  mail isn't being delivered, along with a count of messages that were never delivered and are no
+  longer being retried; `/q/health/ready` reports SMTP reachability under the `SMTP` check's
+  `data.state`.
 - **Docker** — only for development (`mvn quarkus:dev` and the test suite use Dev Services to
   provision a throwaway Postgres). Not needed to run a release image.
 

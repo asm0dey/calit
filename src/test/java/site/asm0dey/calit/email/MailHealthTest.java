@@ -7,9 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.time.Instant;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.health.SmtpHealthCheck;
 
 // #195: MailHealth is the single seam four UI surfaces read to decide whether to warn about mail.
 @QuarkusTest
@@ -106,19 +110,31 @@ class MailHealthTest {
     }
 
     @Test
-    void reachableStateSpellingMatchesTheHealthCheck() {
-        // MailHealth matches on the literal values SmtpHealthCheck publishes under data.state.
-        // If either side is renamed, the banner would silently report UNCONFIGURED forever --
-        // a wrong-but-plausible state, which is the worst kind of silent break. Pin both spellings.
-        var reachable =
-                new site.asm0dey.calit.health.SmtpHealthCheck(false, java.util.Optional.of("localhost"), 2).call();
-        // Port 2 refuses fast -> "unreachable", proving the unreachable spelling.
-        assertEquals(
-                MailHealth.STATE_UNREACHABLE,
-                reachable.getData().orElseThrow().get("state"),
-                "MailHealth.STATE_UNREACHABLE must equal what SmtpHealthCheck publishes");
+    void everySmtpHealthCheckStateMapsToTheMailHealthStateItMeans() throws IOException {
+        // MailHealth matches on the literal values SmtpHealthCheck publishes under data.state, so a
+        // rename on either side is a silent break. The worst one is "reachable": a healthy
+        // deployment would fall into probe()'s default branch and show "Email is not configured"
+        // forever, on every owner's dashboard. Drive each spelling end to end -- through a real
+        // MailHealth built over a real SmtpHealthCheck -- rather than comparing string constants,
+        // so the assertion fails if the mapping breaks anywhere along the way.
 
-        var mocked = new site.asm0dey.calit.health.SmtpHealthCheck(true, java.util.Optional.empty(), 587).call();
+        // A socket we own, so the port is genuinely open: "reachable" -> OK.
+        try (var listening = new ServerSocket(0)) {
+            var ok = new MailHealth(new SmtpHealthCheck(false, Optional.of("127.0.0.1"), listening.getLocalPort()));
+            assertEquals(
+                    MailHealth.State.OK,
+                    ok.status().state(),
+                    "an SMTP port that accepts connections must map to OK -- this is the 'reachable' spelling");
+        }
+
+        // Port 2 refuses fast: "unreachable" -> UNREACHABLE (never the UNCONFIGURED default).
+        var down = new MailHealth(new SmtpHealthCheck(false, Optional.of("localhost"), 2));
+        assertEquals(
+                MailHealth.State.UNREACHABLE,
+                down.status().state(),
+                "a configured-but-dead SMTP host must map to UNREACHABLE, not the UNCONFIGURED default");
+
+        var mocked = new SmtpHealthCheck(true, Optional.empty(), 587).call();
         assertEquals(
                 "mocked-or-unconfigured",
                 mocked.getData().orElseThrow().get("state"),

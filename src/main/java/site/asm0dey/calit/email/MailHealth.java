@@ -112,15 +112,26 @@ public class MailHealth {
     }
 
     private State state() {
-        var now = System.currentTimeMillis();
         var cached = cachedState;
-        if (cached != null && now - probedAtMs < PROBE_TTL_MS) {
+        if (cached != null && System.currentTimeMillis() - probedAtMs < PROBE_TTL_MS) {
             return cached;
         }
-        var fresh = probe();
-        cachedState = fresh;
-        probedAtMs = now;
-        return fresh;
+        // Exactly one thread refreshes. Without the lock, every request arriving at the TTL
+        // boundary opens its own socket: against a firewalled SMTP host that DROPs rather than
+        // refuses, that is N worker threads blocked 2s each, once a minute, on the very pages an
+        // operator loads during an outage. The tradeoff is that latecomers now WAIT for that one
+        // probe instead of racing it -- one slow request per minute instead of N.
+        synchronized (this) {
+            var now = System.currentTimeMillis();
+            var recheck = cachedState; // another thread may have refreshed while we waited
+            if (recheck != null && now - probedAtMs < PROBE_TTL_MS) {
+                return recheck;
+            }
+            var fresh = probe();
+            cachedState = fresh;
+            probedAtMs = now;
+            return fresh;
+        }
     }
 
     private State probe() {
