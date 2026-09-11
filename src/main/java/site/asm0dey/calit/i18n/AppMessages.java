@@ -350,6 +350,10 @@ public interface AppMessages {
     @Message("A confirmation email is on its way to {inviteeEmail}.")
     String pub_conf_confirmed_email(String inviteeEmail);
 
+    @Message("We couldn't send the confirmation email to {inviteeEmail} yet — we'll keep trying. "
+            + "Your booking is confirmed either way.")
+    String pub_conf_email_failed(String inviteeEmail);
+
     @Message("Need to change or cancel this booking?")
     String pub_conf_manage_link();
 

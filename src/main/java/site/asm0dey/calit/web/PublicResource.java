@@ -22,6 +22,7 @@ import site.asm0dey.calit.domain.BookingField;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.email.MailHealth;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.google.CalendarUnavailableException;
 import site.asm0dey.calit.i18n.ActiveLocale;
@@ -68,7 +69,8 @@ public class PublicResource {
                 String whenLabel,
                 String startUtcIso,
                 String tzBar,
-                String tzScript);
+                String tzScript,
+                boolean mailUndelivered);
 
         public static native TemplateInstance manage(
                 String title,
@@ -122,6 +124,8 @@ public class PublicResource {
 
     final CalendarPort calendarPort;
 
+    final MailHealth mailHealth;
+
     // Root landing is public; with proactive auth this is the anonymous identity when logged out,
     // or the logged-in user's identity (so the landing can show Logout/Settings instead of Sign in).
     final SecurityIdentity identity;
@@ -140,7 +144,8 @@ public class PublicResource {
             CalendarPort calendarPort,
             SecurityIdentity identity,
             CaptchaProviderConfig captchaProviderConfig,
-            OgCards ogCards) {
+            OgCards ogCards,
+            MailHealth mailHealth) {
         this.bookingService = bookingService;
         this.meetingHosts = meetingHosts;
         this.currentOwner = currentOwner;
@@ -150,6 +155,7 @@ public class PublicResource {
         this.identity = identity;
         this.captchaProviderConfig = captchaProviderConfig;
         this.ogCards = ogCards;
+        this.mailHealth = mailHealth;
     }
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy");
@@ -476,6 +482,10 @@ public class PublicResource {
         String location =
                 (type.locationType == MeetingType.LocationType.GOOGLE_MEET) ? booking.meetLink : type.locationDetail;
         String meetingName = booking.effectiveTitle(type);
+        // #195: the mail observers are AFTER_SUCCESS -- synchronous, on the thread that committed
+        // bookingService.book(). So by the time we render, either the mail went out or MailSender
+        // parked it. No polling needed; the page can just tell the truth.
+        boolean mailUndelivered = mailHealth.undeliveredFor(booking.inviteeEmail);
         return Templates.confirmation(
                 title,
                 booking,
@@ -486,7 +496,8 @@ public class PublicResource {
                 when,
                 startUtcIso,
                 Layout.tzBar(m),
-                Layout.TZ_SCRIPT);
+                Layout.TZ_SCRIPT,
+                mailUndelivered);
     }
 
     @GET
