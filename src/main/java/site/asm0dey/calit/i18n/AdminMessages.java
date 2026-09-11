@@ -301,6 +301,9 @@ public interface AdminMessages {
     @Message("Link copied")
     String adm_meetingTypes_toast_copied();
 
+    @Message("Link copied. Email is not configured — whoever books this will get no confirmation.")
+    String adm_meetingTypes_toast_copied_no_mail();
+
     // ---- Shared meeting types (multi-host) ----
 
     @Message("Shared meeting types")

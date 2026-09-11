@@ -1,14 +1,26 @@
+{! #195: when mail can't be delivered, a copied booking link is a promise the deployment can't keep.
+   The degraded flag comes from {cdi:mailHealth.degraded} rather than a template parameter because
+   this fragment has no owning resource method -- it's pulled in bare by shared.html and
+   meetingTypes.html, so a parameter would mean editing two templates, two @CheckedTemplate
+   signatures and two resource methods to say one boolean. !}
 <div class="toast toast-end z-50" id="copy-toast" style="display:none" role="status" aria-live="polite">
   <div class="alert alert-success" id="copy-toast-alert">
     <span id="copy-toast-msg">{adm:adm_meetingTypes_toast_copied}</span>
   </div>
 </div>
+<div id="copy-toast-config"
+     style="display:none"
+     data-mail-degraded="{cdi:mailHealth.degraded}"
+     data-degraded-msg="{adm:adm_meetingTypes_toast_copied_no_mail}"></div>
 
 <script>
   (function () {
     var toast = document.getElementById('copy-toast');
     var alert = document.getElementById('copy-toast-alert');
     var msg = document.getElementById('copy-toast-msg');
+    var cfg = document.getElementById('copy-toast-config');
+    var mailDegraded = !!cfg && cfg.dataset.mailDegraded === 'true';
+    var degradedMsg = cfg ? cfg.dataset.degradedMsg : '';
     var timer = null;
     function showToast(text, ok) {
       if (!toast) { return; }
@@ -16,15 +28,19 @@
       if (alert) { alert.className = ok ? 'alert alert-success' : 'alert alert-error'; }
       toast.style.display = '';
       if (timer) { clearTimeout(timer); }
-      timer = setTimeout(function () { toast.style.display = 'none'; }, 2000);
+      // A warning has to be readable, not glimpsed: hold it long enough to actually read.
+      timer = setTimeout(function () { toast.style.display = 'none'; }, ok ? 2000 : 6000);
     }
     document.addEventListener('click', function (e) {
       var btn = e.target.closest ? e.target.closest('.copy-link-btn') : null;
       if (!btn) { return; }
       var url = btn.dataset.copyLink;
+      var okText = msg ? msg.textContent : '';
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(
-          function () { showToast(msg.textContent, true); },
+          function () {
+            if (mailDegraded) { showToast(degradedMsg, false); } else { showToast(okText, true); }
+          },
           function () { showToast('Copy failed — ' + url, false); }
         );
       } else {
