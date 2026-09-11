@@ -67,10 +67,35 @@ Merged but not yet in a tagged release.
   change together.
   ([#204](https://github.com/asm0dey/calit/pull/204))
 
+- **Broken email is no longer invisible.** An instance with unconfigured or
+  unreachable SMTP looked completely healthy from the inside: bookings
+  succeeded, the dashboard said nothing, and the guest was told a confirmation
+  was on its way that would never arrive. The owner dashboard now carries a
+  banner whenever mail is not being delivered, naming which problem it is —
+  not configured, versus configured but unreachable — and counting messages
+  that were given up on. That count is the part a reachability check cannot
+  see: a host that accepts the connection but rejects the login looks
+  reachable while mail never leaves. The banner stays up once mail recovers
+  if messages were lost, because that is exactly when you can still reach
+  those guests by hand. Copying a booking link while mail is down now shows a
+  red warning instead of a green "Copied" — that is the moment before you
+  hand the link to someone. The guest's confirmation page says plainly that
+  the email could not be sent, that it will keep trying, and that nothing is
+  lost, without showing them any server-side detail. And the confirmation
+  page now offers the calendar entry as a direct `.ics` download: previously
+  that file existed only as a mail attachment, so a failed send took the
+  guest's calendar entry with it. The download is hidden when Google Calendar
+  is connected, since Google already invites the guest and a second imported
+  copy could never be updated or cancelled.
+  ([#207](https://github.com/asm0dey/calit/pull/207))
+
 Upgrade: nothing to do — the migration adds two columns whose defaults
 reproduce the previous form exactly, so existing meeting types are untouched.
 The email changes apply to mail sent from this version onward; already-delivered
-mail is of course untouched.
+mail is of course untouched. If the new mail banner appears right after
+upgrading, it is not a regression: it is reporting an SMTP problem that was
+already there. Its count covers only messages already sitting in the outbox —
+mail that failed before this version is not retroactively counted.
 
 ## 1.23.0
 
