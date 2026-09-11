@@ -53,6 +53,20 @@ Merged but not yet in a tagged release.
   booking has a guest list at all, not just what the invitee sees.
   ([#184](https://github.com/asm0dey/calit/pull/184))
 
+- **Availability editor: the per-day buttons now sit beside the time
+  frames.** "+ Frame", "Copy to all days", "Copy to weekdays" and "Remove
+  availability" shared a row with the day name, so they lined up with the
+  label rather than with the frames they act on. That row also spread its
+  two items to its edges, so the space between a day name and its own
+  buttons grew with the browser window — on a wide screen they drifted most
+  of a card apart and stopped reading as one group. The day name now stands
+  on its own line and the buttons sit directly to the right of the time
+  inputs, a fixed distance from them at every width, wrapping below on
+  narrow screens. The same card is used by the availability page, a meeting
+  type's own hours, shared availability and the create form, so all four
+  change together.
+  ([#204](https://github.com/asm0dey/calit/pull/204))
+
 Upgrade: nothing to do — the migration adds two columns whose defaults
 reproduce the previous form exactly, so existing meeting types are untouched.
 The email changes apply to mail sent from this version onward; already-delivered
