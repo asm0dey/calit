@@ -25,6 +25,18 @@ class ChannelPolicyTest {
         assertEquals(ChannelPolicy.Reason.UNKNOWN_SCHEME, policy.check("   ").reason());
     }
 
+    /**
+     * The star is the DEFAULT, so a regression that parsed it into a literal one-entry allowlist would leave
+     * {@link #starAllowsEveryKnownScheme} green — it only names schemes such an allowlist might contain. This
+     * asks the real config about a scheme notify4j has never heard of, which only an empty (= allow-all) set
+     * admits, and pins the case-insensitive lookup at the same time.
+     */
+    @Test
+    void starMeansEveryScheme() {
+        assertTrue(config.schemeAllowed("carrier-pigeon"), "* must admit a scheme the catalog does not know");
+        assertTrue(config.schemeAllowed("TELEGRAM"), "scheme matching is case-insensitive");
+    }
+
     @Test
     void starAllowsEveryKnownScheme() {
         assertTrue(policy.check("telegram://111:AAbbCC/222333").ok());
