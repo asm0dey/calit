@@ -17,8 +17,8 @@ docs/superpowers/plans/2026-09-12-outbound-notification-channels.md
 - [x] 1. Native-image spike (gate) — notify4j-core 1.1.1 builds and delivers in the native image
 - [x] 2. Migration V32 + NotificationChannel / NotificationChannelMeetingType entities
 - [x] 3. ChannelRouter — per-host, per-meeting-type routing rule
-- [ ] 4. Promote BookingSnapshot + loader out of EmailService (IDE refactoring via steroid)
-- [ ] 5. HostNotification model, ChannelMessageRenderer, msg keys + de/he
+- [x] 4. Promote BookingSnapshot + loader out of EmailService (IDE refactoring via steroid)
+- [x] 5. HostNotification model, ChannelMessageRenderer, msg keys + de/he
 - [ ] 6. NotifyConfig, ChannelPolicy, NotificationDispatcher, ChannelSender
 - [ ] 7. /me/settings channel list (add, delete, send test)
 - [ ] 8. Per-meeting-type override (creator + co-host)
@@ -37,3 +37,11 @@ Both done, TDD per brief, full details/output in docs/superpowers/sdd/2026-09-12
 - Task 2 (e04897d): V32 migration + `NotificationChannel` / `NotificationChannelMeetingType` entities. `NotificationChannelTest`: 3/3 green.
 - Task 3 (f59ce15): `ChannelRouter`. `ChannelRouterTest`: 5/5 green.
 - Found and fixed a real bug in both briefs' verbatim test bodies: `notification_channel.owner_id` carries a hard FK to `app_user` (consistent with every other owner-scoped table since V8), but the given test code persisted rows for owner id 2 without that user existing yet — either missing the `MultiHostFixtures.enabledUser` seed entirely (Task 2's test) or calling it too late, after channels for HOST_B were already persisted (2 of Task 3's 5 tests). Fixed by seeding/reordering; no assertion was weakened.
+
+## Task 4
+
+`BookingSnapshot`/`HostDelivery`/`BookingSnapshotLoader` promoted out of `EmailService` (4d228d7b).
+
+## Task 5
+
+`HostNotification` sealed interface (11 event records + `Host`) and `ChannelMessageRenderer`, brief followed verbatim: full details in docs/superpowers/sdd/2026-09-12-outbound-notification-channels/task-5-report.md. `ChannelMessageRendererTest`: 4/4 green; `MultiHostMessageParityTest`: 4/4 green (nine new `channel_*` keys present in `AppMessages` + both `msg_de.properties`/`msg_he.properties`, no orphans). Full suite: 1103 tests, 0 failures. `AppMessages.java` edited through MCP Steroid per the IDE-editing rule.
