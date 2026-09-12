@@ -859,9 +859,6 @@ public interface AdminMessages {
     @Message("Channel URL")
     String adm_settings_channels_url();
 
-    @Message("Add another")
-    String adm_settings_channels_add();
-
     @Message("Save channels")
     String adm_settings_channels_save();
 

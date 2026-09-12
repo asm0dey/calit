@@ -117,7 +117,8 @@ public class ChannelAdmin {
             return false;
         }
         try {
-            SendResult r = Notifications.sendOnce(List.of(c.url), renderer.test(locale), config.http());
+            // interactiveHttp(), not http(): the owner is on the other end of this request.
+            SendResult r = Notifications.sendOnce(List.of(c.url), renderer.test(locale), config.interactiveHttp());
             return !r.anyFailed();
         } catch (RuntimeException e) {
             Log.warnf(e, "test delivery to channel %d threw", channelId);

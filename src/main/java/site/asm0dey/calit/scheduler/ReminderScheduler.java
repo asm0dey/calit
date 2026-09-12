@@ -10,12 +10,14 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.events.*;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.email.EmailService;
+import site.asm0dey.calit.notify.NotificationDispatcher;
 
 @ApplicationScoped
 public class ReminderScheduler {
@@ -28,14 +30,18 @@ public class ReminderScheduler {
 
     final EmailService emailService;
 
+    final NotificationDispatcher channels;
+
     @Inject
     public ReminderScheduler(
             EntityManager em,
             EmailService emailService,
+            NotificationDispatcher channels,
             @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440") int leadMinutes,
             @ConfigProperty(name = "calit.scheduler.grace-seconds", defaultValue = "30") int graceSeconds) {
         this.em = em;
         this.emailService = emailService;
+        this.channels = channels;
         this.leadMinutes = leadMinutes;
         this.graceSeconds = graceSeconds;
     }
@@ -135,8 +141,14 @@ public class ReminderScheduler {
      * Claims up to 50 due unsent reminders FOR UPDATE SKIP LOCKED, and for each, in the SAME tx:
      * stamps sent_at (exactly-once claim) and enqueues the reminder email to the outbox. A render
      * failure for one poison booking is caught and logged so it can't roll back the whole batch.
+     *
+     * <p>Outbound channel notifications (Telegram/Slack/ntfy/...) are dispatched AFTER that
+     * transaction commits, never inside it: a reminder has no CDI event to observe (the outbox
+     * enqueue above replaced it), so the dispatch is explicit -- and it must not be able to roll
+     * back the claim, delay it, or cost the reminder email when a channel is broken.
      */
     void claimAndMarkDueReminders() {
+        List<Long> claimed = new ArrayList<>();
         QuarkusTransaction.requiringNew().run(() -> {
             @SuppressWarnings("unchecked")
             List<Number> ids = em.createNativeQuery("SELECT id FROM reminder "
@@ -151,6 +163,7 @@ public class ReminderScheduler {
             for (Number n : ids) {
                 Reminder r = Reminder.findById(n.longValue());
                 r.sentAt = now; // claim: marked within the lock-holding transaction
+                claimed.add(r.bookingId);
                 // Guard covers a render/load failure (e.g. missing OwnerSettings), which throws
                 // BEFORE any persist -- session stays clean, the claim still commits, one mail dropped.
                 // A node crash is not caught here: it kills the process pre-commit, the tx rolls back,
@@ -162,5 +175,10 @@ public class ReminderScheduler {
                 }
             }
         });
+        // requiringNew().run() propagates a commit failure, so nothing below runs unless the claims
+        // are durable -- no channel message for a reminder that will be reclaimed next tick.
+        for (Long bookingId : claimed) {
+            channels.notifyReminder(bookingId); // swallows its own failures
+        }
     }
 }

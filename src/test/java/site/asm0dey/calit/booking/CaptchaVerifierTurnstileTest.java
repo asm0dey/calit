@@ -28,12 +28,14 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class CaptchaVerifierTurnstileTest {
 
-    static final int PORT = 18477;
+    /** Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide. */
+    static int port;
+
     static HttpServer server;
 
     @BeforeAll
     static void startStub() throws IOException {
-        server = HttpServer.create(new InetSocketAddress(PORT), 0);
+        server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/siteverify", exchange -> {
             var body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
             var ok = body.contains("response=good");
@@ -45,6 +47,7 @@ class CaptchaVerifierTurnstileTest {
             }
         });
         server.start();
+        port = server.getAddress().getPort();
     }
 
     @AfterAll
@@ -64,7 +67,7 @@ class CaptchaVerifierTurnstileTest {
     void enableTurnstile() {
         when(providerConfig.provider()).thenReturn("turnstile");
         when(providerConfig.turnstileSecret()).thenReturn(Optional.of("test-secret"));
-        when(providerConfig.turnstileVerifyUrl()).thenReturn("http://localhost:" + PORT + "/siteverify");
+        when(providerConfig.turnstileVerifyUrl()).thenReturn("http://localhost:" + port + "/siteverify");
     }
 
     @Test

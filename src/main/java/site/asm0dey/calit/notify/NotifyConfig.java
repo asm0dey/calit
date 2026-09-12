@@ -34,6 +34,16 @@ public class NotifyConfig {
      */
     final HttpClientConfig http;
 
+    /**
+     * A separate, deliberately impatient client for the interactive "Send test" button, which
+     * sends INLINE on the request thread. Built the same {@code final}-field way as {@link #http}
+     * and for the same reasons. One attempt and a short timeout: a human is waiting on a button,
+     * and the real config's ~33s ladder (3 attempts x 10s read timeout plus 1s+2s backoff, blocking
+     * because {@code Notifications.sendOnce} forces blocking retry) would park both them and the
+     * request thread.
+     */
+    final HttpClientConfig interactiveHttp;
+
     @Inject
     public NotifyConfig(
             @ConfigProperty(name = "calit.notify.allowed-schemes", defaultValue = ALL) String allowedSchemes,
@@ -49,6 +59,8 @@ public class NotifyConfig {
         this.allowPrivateTargets = allowPrivateTargets;
         this.http =
                 HttpClientConfig.of(Duration.ofSeconds(10), Duration.ofSeconds(10), maxAttempts, Duration.ofSeconds(1));
+        this.interactiveHttp =
+                HttpClientConfig.of(Duration.ofSeconds(4), Duration.ofSeconds(4), 1, Duration.ofSeconds(1));
     }
 
     /** An empty allowlist means "*" — every channel notify4j knows. */
@@ -72,5 +84,10 @@ public class NotifyConfig {
      */
     public HttpClientConfig http() {
         return http;
+    }
+
+    /** The impatient client for the inline "Send test" button -- see {@link #interactiveHttp}. */
+    public HttpClientConfig interactiveHttp() {
+        return interactiveHttp;
     }
 }

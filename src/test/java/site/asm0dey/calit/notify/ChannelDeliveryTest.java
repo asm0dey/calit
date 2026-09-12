@@ -37,14 +37,16 @@ import site.asm0dey.calit.test.MultiHostFixtures;
 @QuarkusTest
 class ChannelDeliveryTest {
 
-    static final int PORT = 18479;
+    /** Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide. */
+    static int port;
+
     static HttpServer server;
     static CountDownLatch hit;
     static final AtomicInteger status = new AtomicInteger(200);
 
     @BeforeAll
     static void startStub() throws IOException {
-        server = HttpServer.create(new InetSocketAddress(PORT), 0);
+        server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/", exchange -> {
             exchange.getRequestBody().readAllBytes();
             exchange.sendResponseHeaders(status.get(), -1);
@@ -52,6 +54,7 @@ class ChannelDeliveryTest {
             hit.countDown();
         });
         server.start();
+        port = server.getAddress().getPort();
     }
 
     @AfterAll
@@ -76,7 +79,7 @@ class ChannelDeliveryTest {
         return QuarkusTransaction.requiringNew().call(() -> {
             var c = new NotificationChannel();
             c.ownerId = ownerId;
-            c.url = "ntfy+http://localhost:" + PORT + "/calit";
+            c.url = "ntfy+http://localhost:" + port + "/calit";
             c.label = "Stub";
             c.createdAt = Instant.now();
             c.persist();

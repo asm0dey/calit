@@ -322,10 +322,6 @@ public class EmailService {
         handleGuestRemoved(e);
     }
 
-    void onReminder(@Observes(during = TransactionPhase.AFTER_SUCCESS) ReminderDue e) {
-        handleReminder(e);
-    }
-
     void onHostConsent(@Observes(during = TransactionPhase.AFTER_SUCCESS) HostConsentRequested e) {
         handleHostConsent(e);
     }
@@ -550,6 +546,11 @@ public class EmailService {
         sendGuestCancels(l, messages.forLocale(inviteeLocale).email_cancelled_subject(label(l)));
     }
 
+    /**
+     * Direct-send reminder. Production goes through {@link #enqueueReminder}, which
+     * {@code ReminderScheduler} calls inside its claim transaction; this renders and delivers the
+     * same mail straight to the mailer and is what the reminder render/fallback test drives.
+     */
     void handleReminder(ReminderDue e) {
         BookingSnapshot l = snapshots.load(e.bookingId());
         if (l == null) return;

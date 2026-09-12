@@ -7,6 +7,7 @@ import jakarta.enterprise.event.Event;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.TransactionPhase;
 import jakarta.inject.Inject;
+import java.time.Instant;
 import java.util.List;
 import java.util.function.BiFunction;
 import org.alexmond.notify4j.Message;
@@ -42,18 +43,26 @@ public class NotificationDispatcher {
 
     final Event<ChannelDelivery> deliveries;
 
+    final ChannelStamp stamp;
+
+    final DeliveryExecutor executor;
+
     @Inject
     public NotificationDispatcher(
             BookingSnapshotLoader snapshots,
             ChannelRouter router,
             ChannelMessageRenderer renderer,
             ChannelPolicy policy,
-            Event<ChannelDelivery> deliveries) {
+            Event<ChannelDelivery> deliveries,
+            ChannelStamp stamp,
+            DeliveryExecutor executor) {
         this.snapshots = snapshots;
         this.router = router;
         this.renderer = renderer;
         this.policy = policy;
         this.deliveries = deliveries;
+        this.stamp = stamp;
+        this.executor = executor;
     }
 
     // --- CDI observers: fire only after the booking transaction commits. ---
@@ -98,10 +107,6 @@ public class NotificationDispatcher {
         dispatch(e.bookingId(), (s, h) -> new HostNotification.GuestRemoved(s, h, g));
     }
 
-    void onReminder(@Observes(during = TransactionPhase.AFTER_SUCCESS) ReminderDue e) {
-        dispatch(e.bookingId(), HostNotification.ReminderDue::new);
-    }
-
     /**
      * The candidate has not accepted this meeting type yet, so they are notified on their INHERITED
      * set — they cannot have overridden a type they do not host. That falls out of the routing rule
@@ -124,6 +129,31 @@ public class NotificationDispatcher {
         } catch (RuntimeException ex) {
             Log.warn("channel notification failed for host consent", ex);
         }
+    }
+
+    // --- explicit dispatch: the two paths that have no event to observe ---
+
+    /**
+     * Reminders carry no CDI event. {@code ReminderScheduler} claims the due row, stamps {@code
+     * sent_at} and enqueues the email in ONE transaction -- the durable-outbox path that replaced
+     * the old {@code ReminderDue} event -- so there is nothing left to observe. The scheduler calls
+     * this once per claimed booking AFTER that transaction commits; {@link #dispatch} swallows every
+     * RuntimeException, so a channel problem can neither roll back nor delay the claim, and can
+     * never cost the reminder email.
+     */
+    public void notifyReminder(Long bookingId) {
+        dispatch(bookingId, HostNotification.ReminderDue::new);
+    }
+
+    /**
+     * Same shape for an auto-expired approval: {@code PendingExpiryScheduler} flips PENDING ->
+     * DECLINED and enqueues the declined email inside its own claim transaction WITHOUT firing
+     * {@code BookingDeclined}, so {@link #onDeclined} never sees it and an owner-initiated decline
+     * would otherwise be the only one reaching a channel. Called per declined booking after that
+     * transaction commits.
+     */
+    public void notifyDeclined(Long bookingId) {
+        dispatch(bookingId, HostNotification.Declined::new);
     }
 
     // --- internals ---
@@ -176,9 +206,24 @@ public class NotificationDispatcher {
             // needs neither the entity nor a session.
             if (!policy.check(c.url).ok()) {
                 Log.warnf("channel %d skipped: blocked by policy", c.id);
+                // Record the skip as a failure: nothing else writes a timestamp on this path, so
+                // /me/settings would keep rendering the stale green "last delivery OK" badge for a
+                // channel that silently stopped delivering when the allowlist was tightened.
+                // requiringNew, not the bare @Transactional call: an AFTER_SUCCESS observer runs in
+                // the committing transaction's afterCompletion, where a REQUIRED interceptor joins a
+                // caller transaction that is already complete and the UPDATE then fails with
+                // TransactionRequiredException -- the same reason the channel lookup above opens its
+                // own. Guarded so one unstampable row cannot abort the remaining channels.
+                try {
+                    var at = Instant.now();
+                    QuarkusTransaction.requiringNew().run(() -> stamp.stamp(c.id, false, at));
+                } catch (RuntimeException e) {
+                    Log.warnf(e, "could not stamp channel %d", c.id);
+                }
                 continue;
             }
-            deliveries.fireAsync(new ChannelDelivery(c.id, c.url, message));
+            // Never the shared worker pool -- see DeliveryExecutor for why.
+            deliveries.fireAsync(new ChannelDelivery(c.id, c.url, message), executor.options());
         }
     }
 }

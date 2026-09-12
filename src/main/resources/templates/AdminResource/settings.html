@@ -48,9 +48,9 @@
   {#if channels.isEmpty}
   <p class="text-sm text-base-content/70 mb-2">{adm:adm_settings_channels_none}</p>
   {/if}
-  <form method="post" action="/me/settings/channels" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-2xl" id="channel-form">
+  <form method="post" action="/me/settings/channels" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-2xl">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-    <div id="channel-rows">
+    <div>
       {#for c in channels}
       <div class="flex flex-wrap gap-2 items-center mb-2">
         <input type="hidden" name="channelId" value="{c.id}">
