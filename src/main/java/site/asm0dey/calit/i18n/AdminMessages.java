@@ -901,6 +901,19 @@ public interface AdminMessages {
     @Message("Private network targets are not allowed on this server")
     String adm_settings_channels_private_blocked();
 
+    @Message("+ Add another")
+    String adm_settings_channels_add();
+
+    @Message("Notify for every meeting type by default")
+    String adm_settings_channels_default();
+
+    @Message("Default")
+    String adm_settings_channels_default_col();
+
+    @Message("Channels ticked below receive every booking. Untick one to keep it off by default, then"
+            + " enable it on the meeting types that should use it.")
+    String adm_settings_channels_hint();
+
     // ---- Per-meeting-type channel routing ----
 
     @Message("Notifications")
@@ -920,6 +933,15 @@ public interface AdminMessages {
 
     @Message("Save routing")
     String adm_detail_notifications_save();
+
+    @Message("Add one in Settings.")
+    String adm_detail_notifications_setup_link();
+
+    @Message("not by default")
+    String adm_detail_notifications_not_default();
+
+    @Message("none — every channel is off by default")
+    String adm_detail_notifications_none_default();
 
     // ---- Google Calendar ----
 

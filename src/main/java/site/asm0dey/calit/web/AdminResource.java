@@ -92,6 +92,7 @@ public class AdminResource {
                 String hostTypeaheadScript,
                 String title,
                 List<ChannelRow> channels,
+                String defaultChannelNames,
                 Set<Long> selectedChannelIds);
 
         public static native TemplateInstance availability(
@@ -820,6 +821,12 @@ public class AdminResource {
         Set<Long> selectedChannelIds = NotificationChannelMeetingType.linkedChannelIds(id).stream()
                 .filter(ownChannelIds::contains)
                 .collect(Collectors.toSet());
+        // Joined here rather than in the template: a Qute loop cannot tell whether the channel AFTER
+        // the current one will also be rendered, so filtering inside it leaves a trailing separator.
+        String defaultChannelNames = channels.stream()
+                .filter(ChannelRow::defaultEnabled)
+                .map(ChannelRow::label)
+                .collect(Collectors.joining(", "));
         return Templates.meetingTypeDetail(
                 t,
                 fields,
@@ -841,6 +848,7 @@ public class AdminResource {
                 Layout.HOST_TYPEAHEAD_SCRIPT,
                 title,
                 channels,
+                defaultChannelNames,
                 selectedChannelIds);
     }
 
@@ -1559,7 +1567,8 @@ public class AdminResource {
                     currentOwner.id(),
                     form.getOrDefault("channelId", List.of()),
                     form.getOrDefault("channelLabel", List.of()),
-                    form.getOrDefault("channelUrl", List.of()));
+                    form.getOrDefault("channelUrl", List.of()),
+                    form.getOrDefault("channelDefault", List.of()));
         } catch (ChannelRejected e) {
             return settingsInstance(channelErrorMessage(e), null);
         }
@@ -1574,14 +1583,39 @@ public class AdminResource {
         return settingsInstance(null, null);
     }
 
+    /**
+     * Tests ONE row of the submitted channel form. The whole form posts here (the button carries a
+     * {@code formaction}), and {@code testIndex} names the row, so the empty row and an edited-but-
+     * unsaved URL can both be verified without being stored first.
+     */
     @POST
-    @Path("/settings/channels/{id}/test")
+    @Path("/settings/channels/test")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance testChannel(@PathParam("id") Long id) {
-        boolean ok = channelAdmin.test(currentOwner.id(), id, activeLocale.current());
+    public TemplateInstance testChannel(MultivaluedMap<String, String> form) {
+        boolean ok;
+        try {
+            ok = channelAdmin.test(
+                    currentOwner.id(),
+                    form.getOrDefault("channelId", List.of()),
+                    form.getOrDefault("channelUrl", List.of()),
+                    testIndex(form),
+                    activeLocale.current());
+        } catch (ChannelRejected e) {
+            return settingsInstance(channelErrorMessage(e), null);
+        }
         return ok
                 ? settingsInstance(null, m().adm_settings_channels_test_ok())
                 : settingsInstance(m().adm_settings_channels_test_failed(), null);
+    }
+
+    /** The row the clicked Send test button named, or -1 so an absent/garbled value tests nothing. */
+    private static int testIndex(MultivaluedMap<String, String> form) {
+        try {
+            return Integer.parseInt(form.getFirst("testIndex"));
+        } catch (NumberFormatException | NullPointerException _) {
+            return -1;
+        }
     }
 
     /** The channel URL a host pasted is never echoed back — only the policy's reason is. */

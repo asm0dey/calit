@@ -14,8 +14,9 @@ import site.asm0dey.calit.crypto.EncryptedStringConverter;
 
 /**
  * One owner's outbound notification channel: an Apprise-style URL notify4j resolves to a concrete
- * channel at send time. The presence of a row IS the owner's consent — there is no enabled flag,
- * "turn it off" is "delete the row".
+ * channel at send time. The presence of a row IS the owner's consent — "turn it off" is "delete
+ * the row". {@code defaultEnabled} is narrower: it governs only whether the channel joins the
+ * INHERIT set, never whether it may be used at all.
  */
 @Entity
 @Table(name = "notification_channel")
@@ -37,6 +38,15 @@ public class NotificationChannel extends PanacheEntityBase {
      * render without decrypting every URL. Defaulted from the channel's display name when left blank. */
     @Column(length = 64)
     public String label;
+
+    /**
+     * Whether this channel is in the owner's inherit set — the channels a meeting type notifies when
+     * it has no override of its own. A channel with this off still delivers for any meeting type that
+     * names it explicitly, which is how a channel is scoped to one meeting type without overriding
+     * every other one.
+     */
+    @Column(name = "default_enabled", nullable = false)
+    public boolean defaultEnabled = true;
 
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;

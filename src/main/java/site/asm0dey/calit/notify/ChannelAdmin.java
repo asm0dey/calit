@@ -49,7 +49,8 @@ public class ChannelAdmin {
                     descriptor.map(d -> d.displayName()).orElse(""),
                     descriptor.map(d -> d.docsUrl()).orElse(null),
                     stamp(c.lastSuccessAt, zone),
-                    stamp(c.lastFailureAt, zone)));
+                    stamp(c.lastFailureAt, zone),
+                    c.defaultEnabled));
         }
         return rows;
     }
@@ -58,9 +59,15 @@ public class ChannelAdmin {
      * Repeatable inputs: the three lists are index-aligned because every rendered row emits all
      * three fields (a new row emits an empty {@code channelId}). A row with a blank URL is ignored —
      * removing a channel is the Delete button, not an emptied field.
+     *
+     * <p>{@code defaultIds} cannot be index-aligned the same way: an unchecked checkbox submits
+     * nothing, so it arrives as the set of channel ids whose box IS ticked. That leaves no way to
+     * express "off" for a row that has no id yet, so a brand-new channel is created enabled and is
+     * unticked on the next save. ponytail: one extra round trip beats a per-row hidden-field dance.
      */
     @Transactional
-    public void save(Long ownerId, List<String> ids, List<String> labels, List<String> urls) {
+    public void save(Long ownerId, List<String> ids, List<String> labels, List<String> urls, List<String> defaultIds) {
+        var enabled = defaultIds == null ? List.<String>of() : defaultIds;
         for (var i = 0; i < urls.size(); i++) {
             var submitted = value(urls, i).trim();
             if (submitted.isEmpty()) {
@@ -78,6 +85,7 @@ public class ChannelAdmin {
             }
             row.url = url;
             applyLabel(row, value(labels, i), url);
+            row.defaultEnabled = existing == null || enabled.contains(String.valueOf(existing.id));
             row.persist();
         }
     }
@@ -124,21 +132,33 @@ public class ChannelAdmin {
     }
 
     /**
-     * Sends a test message inline and reports the outcome immediately. This is the only way a host
-     * learns a URL is wrong BEFORE a real booking — {@code last_failure_at} is by definition after
-     * the fact. Runs on the request thread on purpose: the owner is waiting for the answer.
+     * Sends a test message to ONE submitted row and reports the outcome immediately. Keyed by the
+     * row's index rather than a channel id so it works on the always-present empty row too: a host
+     * must be able to learn a URL is wrong BEFORE saving it, let alone before a real booking, and
+     * {@code last_failure_at} is by definition after the fact. Nothing is persisted either way.
+     *
+     * <p>The submitted value wins over the stored one, so an edited-but-unsaved URL is what gets
+     * tested; {@link #resolveUrl} still maps an untouched mask back to the stored secret, because the
+     * real URL never round-trips through the browser.
+     *
+     * <p>Runs on the request thread on purpose: the owner is waiting for the answer.
      */
-    public boolean test(Long ownerId, Long channelId, Locale locale) {
-        NotificationChannel c = NotificationChannel.ownedBy(channelId, ownerId);
-        if (c == null || !policy.check(c.url).ok()) {
+    public boolean test(Long ownerId, List<String> ids, List<String> urls, int index, Locale locale) {
+        var submitted = value(urls, index).trim();
+        if (submitted.isEmpty()) {
             return false;
         }
+        NotificationChannel existing = parseId(value(ids, index))
+                .map(id -> NotificationChannel.ownedBy(id, ownerId))
+                .orElse(null);
+        var url = resolveUrl(submitted, existing); // throws ChannelRejected, mapped to a page error
         try {
             // interactiveHttp(), not http(): the owner is on the other end of this request.
-            SendResult r = Notifications.sendOnce(List.of(c.url), renderer.test(locale), config.interactiveHttp());
+            SendResult r = Notifications.sendOnce(List.of(url), renderer.test(locale), config.interactiveHttp());
             return !r.anyFailed();
         } catch (RuntimeException e) {
-            Log.warnf(e, "test delivery to channel %d threw", channelId);
+            // The URL itself is secret-bearing, so only the row is identified.
+            Log.warnf(e, "test delivery for channel row %d threw", index);
             return false;
         }
     }
