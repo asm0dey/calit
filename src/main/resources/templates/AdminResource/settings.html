@@ -5,6 +5,9 @@
 {@java.lang.Boolean isAdmin}
 {@java.lang.String title}
 {@java.util.List<site.asm0dey.calit.i18n.LocaleOption> localeOptions}
+{@java.util.List<site.asm0dey.calit.notify.ChannelRow> channels}
+{@java.lang.String channelError}
+{@java.lang.String channelNotice}
 {#include adminBase title=title pendingCount=pendingCount active="settings" isAdmin=isAdmin}
   <h1 class="text-2xl font-bold mb-4">{adm:adm_settings_h1}</h1>
   <form method="post" action="/me/settings" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-2xl">
@@ -33,4 +36,49 @@
   <div class="alert mt-4 max-w-2xl">
     <span><strong>{adm:adm_settings_reminder_lead_prefix}</strong> {reminderLeadMinutes} {adm:adm_settings_reminder_lead_suffix} <em>{adm:adm_settings_reminder_lead_env}</em></span>
   </div>
+
+  <h2 class="text-xl font-bold mt-8 mb-2">{adm:adm_settings_channels_h2}</h2>
+  {#if channelError}
+  <div class="alert alert-error mb-2 max-w-2xl"><span>{channelError}</span></div>
+  {/if}
+  {#if channelNotice}
+  <div class="alert alert-info mb-2 max-w-2xl"><span>{channelNotice}</span></div>
+  {/if}
+  {#if channels.isEmpty}
+  <p class="text-sm text-base-content/70 mb-2">{adm:adm_settings_channels_none}</p>
+  {/if}
+  <form method="post" action="/me/settings/channels" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-2xl" id="channel-form">
+    <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+    <div id="channel-rows">
+      {#for c in channels}
+      <div class="flex flex-wrap gap-2 items-center mb-2">
+        <input type="hidden" name="channelId" value="{c.id}">
+        <input class="input input-sm" type="text" name="channelLabel" value="{c.label}" aria-label="{adm:adm_settings_channels_label}">
+        <input class="input input-sm grow" type="text" name="channelUrl" value="{c.maskedUrl}" aria-label="{adm:adm_settings_channels_url}">
+        {#if c.docsUrl}<a class="link link-hover text-xs" href="{c.docsUrl}" rel="noopener noreferrer" target="_blank">{adm:adm_settings_channels_docs}</a>{/if}
+        {#if c.lastSuccess}<span class="badge badge-success badge-sm">{adm:adm_settings_channels_last_ok} {c.lastSuccess}</span>{/if}
+        {#if c.lastFailure}<span class="badge badge-error badge-sm">{adm:adm_settings_channels_last_failed} {c.lastFailure}</span>{/if}
+      </div>
+      {/for}
+      <div class="flex flex-wrap gap-2 items-center mb-2">
+        <input type="hidden" name="channelId" value="">
+        <input class="input input-sm" type="text" name="channelLabel" value="" aria-label="{adm:adm_settings_channels_label}">
+        <input class="input input-sm grow" type="text" name="channelUrl" value="" aria-label="{adm:adm_settings_channels_url}">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm mt-2">{adm:adm_settings_channels_save}</button>
+  </form>
+
+  {#for c in channels}
+  <div class="flex gap-2 mt-1 max-w-2xl">
+    <form method="post" action="/me/settings/channels/{c.id}/test">
+      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+      <button type="submit" class="btn btn-ghost btn-xs">{adm:adm_settings_channels_test} — {c.label}</button>
+    </form>
+    <form method="post" action="/me/settings/channels/{c.id}/delete">
+      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+      <button type="submit" class="btn btn-ghost btn-xs text-error">{adm:adm_settings_channels_delete}</button>
+    </form>
+  </div>
+  {/for}
 {/include}

@@ -29,6 +29,9 @@ import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.google.WriteTargetResolver;
 import site.asm0dey.calit.i18n.*;
+import site.asm0dey.calit.notify.ChannelAdmin;
+import site.asm0dey.calit.notify.ChannelRejected;
+import site.asm0dey.calit.notify.ChannelRow;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
 
@@ -102,7 +105,10 @@ public class AdminResource {
                 Long pendingCount,
                 List<String> zones,
                 boolean isAdmin,
-                String title);
+                String title,
+                List<ChannelRow> channels,
+                String channelError,
+                String channelNotice);
 
         public static native TemplateInstance bookingFields(
                 List<BookingField> fields, FieldType[] fieldTypes, Long pendingCount, boolean isAdmin, String title);
@@ -190,6 +196,8 @@ public class AdminResource {
 
     final MailHealth mailHealth;
 
+    final ChannelAdmin channelAdmin;
+
     @Inject
     public AdminResource(
             BookingService bookingService,
@@ -201,6 +209,7 @@ public class AdminResource {
             AppMessageResolver appMsgs,
             ActiveLocale activeLocale,
             MailHealth mailHealth,
+            ChannelAdmin channelAdmin,
             @ConfigProperty(name = "app.base-url") String baseUrl,
             @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440") int reminderLeadMinutes) {
         this.bookingService = bookingService;
@@ -212,6 +221,7 @@ public class AdminResource {
         this.appMsgs = appMsgs;
         this.activeLocale = activeLocale;
         this.mailHealth = mailHealth;
+        this.channelAdmin = channelAdmin;
         this.baseUrl = baseUrl;
         this.reminderLeadMinutes = reminderLeadMinutes;
     }
@@ -1416,13 +1426,7 @@ public class AdminResource {
     @Path("/settings")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance settings() {
-        return Templates.settings(
-                OwnerSettings.forOwner(currentOwner.id()),
-                reminderLeadMinutes,
-                pendingCount(),
-                OwnerSettings.zoneIds(),
-                isAdmin(),
-                m().adm_settings_title());
+        return settingsInstance(null, null);
     }
 
     @POST
@@ -1462,7 +1466,82 @@ public class AdminResource {
         // request-scoped locale so THIS response (title, {adm:} keys, language dropdown) is in the new language.
         activeLocale.set(AppLocales.pick(s.locale));
         return Templates.settings(
-                s, reminderLeadMinutes, pendingCount(), OwnerSettings.zoneIds(), isAdmin(), m().adm_settings_title());
+                s,
+                reminderLeadMinutes,
+                pendingCount(),
+                OwnerSettings.zoneIds(),
+                isAdmin(),
+                m().adm_settings_title(),
+                channelRows(),
+                null,
+                null);
+    }
+
+    /** This owner's channel rows, timestamps formatted in their own timezone. */
+    private List<ChannelRow> channelRows() {
+        return channelAdmin.rows(currentOwner.id(), ownerZoneId());
+    }
+
+    /** Re-render /me/settings with an optional channel error/notice. */
+    private TemplateInstance settingsInstance(String channelError, String channelNotice) {
+        return Templates.settings(
+                OwnerSettings.forOwner(currentOwner.id()),
+                reminderLeadMinutes,
+                pendingCount(),
+                OwnerSettings.zoneIds(),
+                isAdmin(),
+                m().adm_settings_title(),
+                channelRows(),
+                channelError,
+                channelNotice);
+    }
+
+    /**
+     * Saves every submitted channel row. The three form fields repeat per row and are
+     * index-aligned; a blank URL row is skipped, so the always-rendered empty row costs nothing.
+     */
+    @POST
+    @Path("/settings/channels")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance saveChannels(MultivaluedMap<String, String> form) {
+        try {
+            channelAdmin.save(
+                    currentOwner.id(),
+                    form.getOrDefault("channelId", List.of()),
+                    form.getOrDefault("channelLabel", List.of()),
+                    form.getOrDefault("channelUrl", List.of()));
+        } catch (ChannelRejected e) {
+            return settingsInstance(channelErrorMessage(e), null);
+        }
+        return settingsInstance(null, m().adm_settings_channels_saved());
+    }
+
+    @POST
+    @Path("/settings/channels/{id}/delete")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance deleteChannel(@PathParam("id") Long id) {
+        channelAdmin.delete(currentOwner.id(), id);
+        return settingsInstance(null, null);
+    }
+
+    @POST
+    @Path("/settings/channels/{id}/test")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance testChannel(@PathParam("id") Long id) {
+        boolean ok = channelAdmin.test(currentOwner.id(), id, activeLocale.current());
+        return ok
+                ? settingsInstance(null, m().adm_settings_channels_test_ok())
+                : settingsInstance(m().adm_settings_channels_test_failed(), null);
+    }
+
+    /** The channel URL a host pasted is never echoed back — only the policy's reason is. */
+    private String channelErrorMessage(ChannelRejected e) {
+        return switch (e.reason()) {
+            case SCHEME_BLOCKED -> m().adm_settings_channels_scheme_blocked(e.scheme());
+            case PRIVATE_TARGET -> m().adm_settings_channels_private_blocked();
+            default -> m().adm_settings_channels_invalid();
+        };
     }
 
     @GET

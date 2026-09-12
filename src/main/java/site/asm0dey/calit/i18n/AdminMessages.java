@@ -848,6 +848,59 @@ public interface AdminMessages {
     @Message("(set via the REMINDER_LEAD_MINUTES environment variable)")
     String adm_settings_reminder_lead_env();
 
+    // ---- Notification channels ----
+
+    @Message("Notification channels")
+    String adm_settings_channels_h2();
+
+    @Message("Label")
+    String adm_settings_channels_label();
+
+    @Message("Channel URL")
+    String adm_settings_channels_url();
+
+    @Message("Add another")
+    String adm_settings_channels_add();
+
+    @Message("Save channels")
+    String adm_settings_channels_save();
+
+    @Message("Send test")
+    String adm_settings_channels_test();
+
+    @Message("Delete")
+    String adm_settings_channels_delete();
+
+    @Message("Docs")
+    String adm_settings_channels_docs();
+
+    @Message("No channels yet — bookings reach you by email only.")
+    String adm_settings_channels_none();
+
+    @Message("Last delivery OK")
+    String adm_settings_channels_last_ok();
+
+    @Message("Last delivery failed")
+    String adm_settings_channels_last_failed();
+
+    @Message("Channels saved")
+    String adm_settings_channels_saved();
+
+    @Message("Test delivered")
+    String adm_settings_channels_test_ok();
+
+    @Message("Test failed to deliver")
+    String adm_settings_channels_test_failed();
+
+    @Message("That is not a supported channel URL")
+    String adm_settings_channels_invalid();
+
+    @Message("Channel type {scheme} is not allowed on this server")
+    String adm_settings_channels_scheme_blocked(String scheme);
+
+    @Message("Private network targets are not allowed on this server")
+    String adm_settings_channels_private_blocked();
+
     // ---- Google Calendar ----
 
     @Message("Google Calendar")
