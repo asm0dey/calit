@@ -1,11 +1,11 @@
 ---
 # calit-6rzr
 title: 'Outbound notification channels via notify4j (closes #194)'
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-09-12T11:27:07Z
-updated_at: 2026-09-12T14:39:22Z
+updated_at: 2026-09-12T15:18:20Z
 ---
 
 Per-owner notification channel URLs delivered through notify4j-core, routed per meeting type. Design: docs/superpowers/specs/2026-09-12-outbound-notifications-design.md. Precedent: #notify4j-core-for-multi-channel-booking-notifica-1789206712
@@ -22,7 +22,7 @@ docs/superpowers/plans/2026-09-12-outbound-notification-channels.md
 - [x] 6. NotifyConfig, ChannelPolicy, NotificationDispatcher, ChannelSender
 - [x] 7. /me/settings channel list (add, delete, send test)
 - [x] 8. Per-meeting-type override (creator + co-host)
-- [ ] 9. .env.example, docs-site pages, changelog Unreleased bullet
+- [x] 9. .env.example, docs-site pages, changelog Unreleased bullet
 
 ## Native spike
 
@@ -48,7 +48,7 @@ Both done, TDD per brief, full details/output in docs/superpowers/sdd/2026-09-12
 
 ## Follow-up requested during execution
 
-- [ ] /me/settings channel section links to a docs page listing the supported channel URL formats. The per-row
+- [x] /me/settings channel section links to a docs page listing the supported channel URL formats. The per-row
       `docsUrl()` link only shows for channels that already exist, so a first-time host sees an empty field with
       no guidance. Link target: https://asm0dey.github.io/calit/usage/notification-channels/ (the page Task 9
       creates). New key `adm_settings_channels_help` + de/he, rendered near the section heading so it is visible
@@ -72,3 +72,27 @@ host saves. Proven to discriminate by mutation: unscoping the DELETE to `meeting
 alone (10 run, 1 failure) while every other override and router test still passes. Also `.distinct()` on `keep`
 in both handlers, so a crafted duplicate `channelIds` cannot violate V32's `uq_ncmt` and 500 the save. Full
 suite: 1126 tests, 0 failures.
+
+## Task 9
+
+.env.example: NOTIFY_ALLOWED_SCHEMES/NOTIFY_ALLOW_PRIVATE/NOTIFY_MAX_ATTEMPTS appended after the CAPTCHA
+block (20edd41). Docs (docs-site branch, throwaway worktree, 746660f6): new
+usage/notification-channels.md at the exact required path (per-provider URL instructions, /me/settings
+flow, per-host per-meeting-type override, delete-to-disable, channels-bypass-email-flag, fail-visible-
+not-why, mask round-trip + same-scheme-same-mask, generic webhook drops the title/reports ALERT,
+NOTIFY_MAX_ATTEMPTS worker-pressure note); installation/configuration.md gained an 'Outbound notification
+channels' section with the same three variables; releases/changelog.md gained an Unreleased section with
+the brief's two bullets and upgrade note, PR links as `#NNN` placeholders pending the real PR number.
+UI follow-up (6319de1): adm_settings_channels_help (+de/he) links the empty channel row to the new docs
+page; adm_detail_notifications_save (+de/he) replaces the borrowed adm_settings_channels_save on both
+notification-routing forms (meetingTypeDetail.html, sharedAvailability.html). Verification:
+ChannelPolicyTest+ChannelDeliveryTest 10/10, MultiHostMessageParityTest+ChannelSettingsPageTest+
+ChannelOverrideTest 17/17, full suite 1126/1126 (unchanged from baseline — no new tests, UI-string-only
+change). spotless:apply: no changes needed.
+
+## Summary of Changes
+
+Per-owner notification channels delivered via notify4j-core: migration V32 (notification_channel +
+notification_channel_meeting_type), encrypted URLs, per-host per-meeting-type routing, 11 booking
+events, /me/settings management UI with an inline send-test, NOTIFY_* operator config, docs and
+changelog on docs-site.
