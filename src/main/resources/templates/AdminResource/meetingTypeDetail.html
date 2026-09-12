@@ -18,6 +18,7 @@
 {@java.lang.String hostTypeaheadScript}
 {@java.lang.String title}
 {@java.util.List<site.asm0dey.calit.notify.ChannelRow> channels}
+{@java.lang.String defaultChannelNames}
 {@java.util.Set<java.lang.Long> selectedChannelIds}
 {#include adminBase title=title pendingCount=pendingCount active="meetingTypes" isAdmin=isAdmin}
   <p class="mb-2"><a class="link link-hover text-sm" href="/me/meeting-types">{adm:adm_detail_back}</a></p>
@@ -245,33 +246,39 @@
         </form>
       </div>
     </div>
-  </div>
-  <h2 class="text-xl font-bold mt-8 mb-2">{adm:adm_detail_notifications_h2}</h2>
-  {#if channels.isEmpty()}
-  <p class="text-sm text-base-content/70">{adm:adm_settings_channels_none}</p>
-  {#else}
-  <form method="post" action="/me/meeting-types/{type.id}/notifications" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-2xl">
-    <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-    <label class="label cursor-pointer justify-start gap-2">
-      <input type="radio" name="mode" value="all" class="radio radio-sm"{#if selectedChannelIds.isEmpty()} checked{/if}>
-      {adm:adm_detail_notifications_all}
-      <span class="text-xs text-base-content/70">({#for c in channels}{c.label}{#if c_hasNext}, {/if}{/for})</span>
-    </label>
-    <label class="label cursor-pointer justify-start gap-2">
-      <input type="radio" name="mode" value="custom" class="radio radio-sm"{#if !selectedChannelIds.isEmpty()} checked{/if}>
-      {adm:adm_detail_notifications_custom}
-    </label>
-    <div class="ps-6">
-      {#for c in channels}
-      <label class="label cursor-pointer justify-start gap-2">
-        <input type="checkbox" name="channelIds" value="{c.id}" class="checkbox checkbox-sm"{#if selectedChannelIds.contains(c.id)} checked{/if}>
-        {c.label}
-      </label>
-      {/for}
+    <div class="collapse collapse-arrow bg-base-100 border border-base-300">
+      <input type="checkbox">
+      <div class="collapse-title font-semibold">{adm:adm_detail_notifications_h2}</div>
+      <div class="collapse-content">
+        {#if channels.isEmpty()}
+        <p class="text-sm text-base-content/70">{adm:adm_settings_channels_none} <a class="link" href="/me/settings">{adm:adm_detail_notifications_setup_link}</a></p>
+        {#else}
+        <form method="post" action="/me/meeting-types/{type.id}/notifications" class="fieldset">
+          <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+          <label class="label cursor-pointer justify-start gap-2">
+            <input type="radio" name="mode" value="all" class="radio radio-sm"{#if selectedChannelIds.isEmpty()} checked{/if}>
+            {adm:adm_detail_notifications_all}
+            {#if defaultChannelNames.isEmpty()}<span class="text-xs text-base-content/70">({adm:adm_detail_notifications_none_default})</span>{#else}<span class="text-xs text-base-content/70">({defaultChannelNames})</span>{/if}
+          </label>
+          <label class="label cursor-pointer justify-start gap-2">
+            <input type="radio" name="mode" value="custom" class="radio radio-sm"{#if !selectedChannelIds.isEmpty()} checked{/if}>
+            {adm:adm_detail_notifications_custom}
+          </label>
+          <div class="ps-6 flex flex-col items-start">
+            {#for c in channels}
+            <label class="label cursor-pointer justify-start gap-2">
+              <input type="checkbox" name="channelIds" value="{c.id}" class="checkbox checkbox-sm"{#if selectedChannelIds.contains(c.id)} checked{/if}>
+              {c.label}
+              {#if !c.defaultEnabled}<span class="badge badge-ghost badge-sm">{adm:adm_detail_notifications_not_default}</span>{/if}
+            </label>
+            {/for}
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm mt-2">{adm:adm_detail_notifications_save}</button>
+        </form>
+        {/if}
+      </div>
     </div>
-    <button type="submit" class="btn btn-primary btn-sm mt-2">{adm:adm_detail_notifications_save}</button>
-  </form>
-  {/if}
+  </div>
   {#include AdminResource/_hostlist hosts=hosts type=type hostTypeaheadScript=hostTypeaheadScript /}
   <script src="/workplan.js"></script>
   <script src="/durations.js"></script>

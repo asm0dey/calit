@@ -13,9 +13,10 @@ import site.asm0dey.calit.test.MultiHostFixtures;
 
 /**
  * The routing rule: link rows for this meeting type that belong to THIS host's channels select
- * exactly those channels; no such rows means this host inherits all of their own channels. The
- * per-host scoping is what lets one host narrow a co-hosted type while their co-host keeps
- * inheriting.
+ * exactly those channels; no such rows means this host inherits their own defaultEnabled channels.
+ * The per-host scoping is what lets one host narrow a co-hosted type while their co-host keeps
+ * inheriting. A channel with defaultEnabled off sits outside the inherit set but is still
+ * deliverable — naming it on a meeting type IS the opt-in.
  */
 @QuarkusTest
 class ChannelRouterTest {
@@ -27,11 +28,16 @@ class ChannelRouterTest {
     ChannelRouter router;
 
     private Long channel(long ownerId, String label) {
+        return channel(ownerId, label, true);
+    }
+
+    private Long channel(long ownerId, String label, boolean defaultEnabled) {
         return QuarkusTransaction.requiringNew().call(() -> {
             var c = new NotificationChannel();
             c.ownerId = ownerId;
             c.url = "ntfy+http://localhost:1/" + label;
             c.label = label;
+            c.defaultEnabled = defaultEnabled;
             c.createdAt = Instant.now();
             c.persist();
             return c.id;
@@ -100,6 +106,40 @@ class ChannelRouterTest {
     @Test
     void nullMeetingTypeInheritsEverything() {
         channel(HOST_A, "phone");
+
+        assertEquals(1, router.channelsFor(HOST_A, null).size());
+    }
+
+    @Test
+    void aChannelThatIsNotDefaultStaysOutOfTheInheritSet() {
+        channel(HOST_A, "phone");
+        channel(HOST_A, "pager", false);
+        MeetingType type = sharedType();
+
+        List<NotificationChannel> picked = router.channelsFor(HOST_A, type.id);
+
+        assertEquals(1, picked.size());
+        assertEquals("phone", picked.getFirst().label);
+    }
+
+    @Test
+    void namingANonDefaultChannelOnAMeetingTypeIsTheOptIn() {
+        channel(HOST_A, "phone");
+        var pager = channel(HOST_A, "pager", false);
+        MeetingType type = sharedType();
+        QuarkusTransaction.requiringNew()
+                .run(() -> NotificationChannelMeetingType.replaceLinks(type.id, List.of(pager), List.of(pager)));
+
+        List<NotificationChannel> picked = router.channelsFor(HOST_A, type.id);
+
+        assertEquals(1, picked.size());
+        assertEquals("pager", picked.getFirst().label, "an explicit pick beats defaultEnabled");
+    }
+
+    @Test
+    void nullMeetingTypeAlsoSkipsANonDefaultChannel() {
+        channel(HOST_A, "phone");
+        channel(HOST_A, "pager", false);
 
         assertEquals(1, router.channelsFor(HOST_A, null).size());
     }

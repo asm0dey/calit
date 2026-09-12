@@ -37,8 +37,11 @@
     <span><strong>{adm:adm_settings_reminder_lead_prefix}</strong> {reminderLeadMinutes} {adm:adm_settings_reminder_lead_suffix} <em>{adm:adm_settings_reminder_lead_env}</em></span>
   </div>
 
-  <h2 class="text-xl font-bold mt-8 mb-2">{adm:adm_settings_channels_h2}</h2>
-  <p class="mb-2"><a class="link link-hover text-xs" href="https://asm0dey.github.io/calit/usage/notification-channels/" rel="noopener noreferrer" target="_blank">{adm:adm_settings_channels_help}</a></p>
+  <h2 class="text-xl font-bold mt-8 mb-2 flex items-center gap-1">
+    {adm:adm_settings_channels_h2}
+    <a class="btn btn-ghost btn-xs btn-circle font-normal" href="https://asm0dey.github.io/calit/usage/notification-channels/" rel="noopener noreferrer" target="_blank" title="{adm:adm_settings_channels_help}" aria-label="{adm:adm_settings_channels_help}">?</a>
+  </h2>
+  <p class="text-sm text-base-content/70 mb-2 max-w-2xl">{adm:adm_settings_channels_hint}</p>
   {#if channelError}
   <div class="alert alert-error mb-2 max-w-2xl"><span>{channelError}</span></div>
   {/if}
@@ -48,38 +51,45 @@
   {#if channels.isEmpty}
   <p class="text-sm text-base-content/70 mb-2">{adm:adm_settings_channels_none}</p>
   {/if}
-  <form method="post" action="/me/settings/channels" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-2xl">
+  <form method="post" action="/me/settings/channels" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-4xl">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-    <div>
-      {#for c in channels}
-      <div class="flex flex-wrap gap-2 items-center mb-2">
+    <div class="overflow-x-auto">
+      <!-- One row per channel: default / label / URL / actions. The column headers name the two
+           inputs once instead of repeating a label beside every field. -->
+      <div class="grid items-center gap-x-3 gap-y-2 min-w-2xl" style="grid-template-columns:4.5rem 11rem minmax(14rem,1fr) auto">
+        <div class="text-xs text-base-content/70">{adm:adm_settings_channels_default_col}</div>
+        <div class="text-xs text-base-content/70">{adm:adm_settings_channels_label}</div>
+        <div class="text-xs text-base-content/70">{adm:adm_settings_channels_url}</div>
+        <div></div>
+        {#for c in channels}
         <input type="hidden" name="channelId" value="{c.id}">
-        <input class="input input-sm" type="text" name="channelLabel" value="{c.label}" aria-label="{adm:adm_settings_channels_label}">
-        <input class="input input-sm grow" type="text" name="channelUrl" value="{c.maskedUrl}" aria-label="{adm:adm_settings_channels_url}">
-        {#if c.docsUrl}<a class="link link-hover text-xs" href="{c.docsUrl}" rel="noopener noreferrer" target="_blank">{adm:adm_settings_channels_docs}</a>{/if}
-        {#if c.lastSuccess}<span class="badge badge-success badge-sm">{adm:adm_settings_channels_last_ok} {c.lastSuccess}</span>{/if}
-        {#if c.lastFailure}<span class="badge badge-error badge-sm">{adm:adm_settings_channels_last_failed} {c.lastFailure}</span>{/if}
-      </div>
-      {/for}
-      <div class="flex flex-wrap gap-2 items-center mb-2">
-        <input type="hidden" name="channelId" value="">
-        <input class="input input-sm" type="text" name="channelLabel" value="" aria-label="{adm:adm_settings_channels_label}">
-        <input class="input input-sm grow" type="text" name="channelUrl" value="" aria-label="{adm:adm_settings_channels_url}">
+        <input type="checkbox" name="channelDefault" value="{c.id}" class="checkbox checkbox-sm" title="{adm:adm_settings_channels_default}" aria-label="{adm:adm_settings_channels_default}"{#if c.defaultEnabled} checked{/if}>
+        <input class="input input-sm w-full" type="text" name="channelLabel" value="{c.label}" aria-label="{adm:adm_settings_channels_label}">
+        <input class="input input-sm w-full" type="text" name="channelUrl" value="{c.maskedUrl}" aria-label="{adm:adm_settings_channels_url}">
+        <div class="flex items-center gap-2 whitespace-nowrap">
+          {#if c.lastSuccess}<span class="badge badge-success badge-sm" title="{adm:adm_settings_channels_last_ok} {c.lastSuccess}">{c.lastSuccess}</span>{/if}
+          {#if c.lastFailure}<span class="badge badge-error badge-sm" title="{adm:adm_settings_channels_last_failed} {c.lastFailure}">{c.lastFailure}</span>{/if}
+          <button type="submit" name="testIndex" value="{c_index}" formaction="/me/settings/channels/test" class="btn btn-ghost btn-xs">{adm:adm_settings_channels_test}</button>
+          <button type="submit" formaction="/me/settings/channels/{c.id}/delete" class="btn btn-ghost btn-xs text-error">{adm:adm_settings_channels_delete}</button>
+        </div>
+        {/for}
+        <!-- The always-present empty row. It has no id yet, so its checkbox cannot carry one: a new
+             channel is created enabled and is unticked on the next save. -->
+        <div data-channel-new class="contents">
+          <input type="hidden" name="channelId" value="">
+          <input type="checkbox" class="checkbox checkbox-sm" checked disabled title="{adm:adm_settings_channels_default}" aria-label="{adm:adm_settings_channels_default}">
+          <input class="input input-sm w-full" type="text" name="channelLabel" value="" aria-label="{adm:adm_settings_channels_label}">
+          <input class="input input-sm w-full" type="text" name="channelUrl" value="" placeholder="ntfy://ntfy.sh/my-topic" aria-label="{adm:adm_settings_channels_url}">
+          <div class="flex items-center gap-2 whitespace-nowrap">
+            <button type="submit" name="testIndex" value="{channels.size}" formaction="/me/settings/channels/test" class="btn btn-ghost btn-xs">{adm:adm_settings_channels_test}</button>
+          </div>
+        </div>
       </div>
     </div>
-    <button type="submit" class="btn btn-primary btn-sm mt-2">{adm:adm_settings_channels_save}</button>
+    <div class="flex gap-2 mt-3">
+      <button type="button" class="btn btn-ghost btn-sm hidden" data-channel-add>{adm:adm_settings_channels_add}</button>
+      <button type="submit" class="btn btn-primary btn-sm">{adm:adm_settings_channels_save}</button>
+    </div>
   </form>
-
-  {#for c in channels}
-  <div class="flex gap-2 mt-1 max-w-2xl">
-    <form method="post" action="/me/settings/channels/{c.id}/test">
-      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-      <button type="submit" class="btn btn-ghost btn-xs">{adm:adm_settings_channels_test} — {c.label}</button>
-    </form>
-    <form method="post" action="/me/settings/channels/{c.id}/delete">
-      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
-      <button type="submit" class="btn btn-ghost btn-xs text-error">{adm:adm_settings_channels_delete}</button>
-    </form>
-  </div>
-  {/for}
+  <script src="/channels.js"></script>
 {/include}
