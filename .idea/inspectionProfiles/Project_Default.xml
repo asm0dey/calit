@@ -1,0 +1,36 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="6ffda11e-1304-3191-80bd-43ef83f92d43" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="SSBasedInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <scope name="Tests" level="WARNING" enabled="true">
+        <replaceConfiguration name="get(0) instead of getFirst()" text="$list$.get(0)" recursive="false" caseInsensitive="false" type="JAVA" pattern_context="default" reformatAccordingToStyle="true" shortenFQN="true" useStaticImport="true" replacement="$list$.getFirst()">
+          <constraint name="__context__" within="" contains="" />
+          <constraint name="list" nameOfExprType="java\.util\.SequencedCollection" exprTypeWithinHierarchy="true" within="" contains="" />
+        </replaceConfiguration>
+        <replaceConfiguration name="Hardcoded port in a test: bind an ephemeral one" text="new InetSocketAddress($port$)" recursive="false" caseInsensitive="false" type="JAVA" pattern_context="default" reformatAccordingToStyle="true" shortenFQN="true" problemDescriptor="Hardcoded port in a test. Bind 0 and read server.getAddress().getPort() back — a fixed port collides with whatever else is listening and breaks concurrent runs." replacement="new InetSocketAddress(0)">
+          <constraint name="__context__" within="" contains="" />
+          <constraint name="port" regexp="[1-9][0-9]*" within="" contains="" />
+        </replaceConfiguration>
+        <replaceConfiguration name="Hardcoded port in a test: ServerSocket" text="new ServerSocket($port$)" recursive="false" caseInsensitive="false" type="JAVA" pattern_context="default" reformatAccordingToStyle="true" shortenFQN="true" problemDescriptor="Hardcoded port in a test. Pass 0 and read getLocalPort() back." replacement="new ServerSocket(0)">
+          <constraint name="__context__" within="" contains="" />
+          <constraint name="port" regexp="[1-9][0-9]*" within="" contains="" />
+        </replaceConfiguration>
+        <replaceConfiguration name="Hardcoded port in a test: DatagramSocket" text="new DatagramSocket($port$)" recursive="false" caseInsensitive="false" type="JAVA" pattern_context="default" reformatAccordingToStyle="true" shortenFQN="true" problemDescriptor="Hardcoded port in a test. Pass 0 and read getLocalPort() back." replacement="new DatagramSocket(0)">
+          <constraint name="__context__" within="" contains="" />
+          <constraint name="port" regexp="[1-9][0-9]*" within="" contains="" />
+        </replaceConfiguration>
+        <searchConfiguration name="Hardcoded port constant in a test" text="$Type$ $name$ = $value$;" recursive="false" caseInsensitive="false" type="JAVA" pattern_context="default" problemDescriptor="A test port pinned to a literal. Bind an ephemeral port and assign this from the started server instead.">
+          <constraint name="__context__" within="" contains="" />
+          <constraint name="Type" regexp="int|Integer" within="" contains="" />
+          <constraint name="name" regexp="(?i).*port.*" within="" contains="" />
+          <constraint name="value" regexp="[1-9][0-9]{2,}" within="" contains="" />
+        </searchConfiguration>
+      </scope>
+      <replaceConfiguration name="get(0) instead of getFirst()" text="$list$.get(0)" recursive="false" caseInsensitive="false" type="JAVA" pattern_context="default" reformatAccordingToStyle="true" shortenFQN="true" useStaticImport="true" replacement="$list$.getFirst()">
+        <constraint name="__context__" within="" contains="" />
+        <constraint name="list" nameOfExprType="java\.util\.SequencedCollection" exprTypeWithinHierarchy="true" within="" contains="" />
+      </replaceConfiguration>
+    </inspection_tool>
+  </profile>
+</component>

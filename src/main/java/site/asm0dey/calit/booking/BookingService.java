@@ -501,16 +501,26 @@ public class BookingService {
                 attendees,
                 type.locationType == LocationType.GOOGLE_MEET,
                 type.locationDetail);
-        organizerRow.googleEventId = created.googleEventId();
-        organizerRow.meetLink = created.meetLink();
-        organizerRow.googleCalendarId =
-                created.calendar() == null ? null : created.calendar().googleCalendarId();
-        organizerRow.googleCredentialId =
-                created.calendar() == null ? null : created.calendar().credentialId();
+        stampCreatedEvent(organizerRow, created);
         // propagate the meet link to the lead row too so invitee-facing views show it
         if (lead.meetLink == null) {
             lead.meetLink = created.meetLink();
         }
+    }
+
+    /**
+     * Stamps a created Google event onto its booking row: the event id, the meet link, and the
+     * calendar it actually landed on. Extracted so the invariant "the event id and the address it
+     * lives on are written together" has ONE home -- a row carrying an event id but no address
+     * cannot be cleaned up on the right calendar later (calit-vi8n).
+     */
+    private static void stampCreatedEvent(Booking row, CreatedEvent created) {
+        row.googleEventId = created.googleEventId();
+        row.meetLink = created.meetLink();
+        row.googleCalendarId =
+                created.calendar() == null ? null : created.calendar().googleCalendarId();
+        row.googleCredentialId =
+                created.calendar() == null ? null : created.calendar().credentialId();
     }
 
     /** Invitee + every host's OwnerSettings.ownerEmail + active guests (guests live on the lead row). */
@@ -614,12 +624,7 @@ public class BookingService {
                 attendeeEmails(booking, owner),
                 type.locationType == LocationType.GOOGLE_MEET,
                 type.locationDetail);
-        booking.googleEventId = created.googleEventId();
-        booking.meetLink = created.meetLink();
-        booking.googleCalendarId =
-                created.calendar() == null ? null : created.calendar().googleCalendarId();
-        booking.googleCredentialId =
-                created.calendar() == null ? null : created.calendar().credentialId();
+        stampCreatedEvent(booking, created);
     }
 
     /**

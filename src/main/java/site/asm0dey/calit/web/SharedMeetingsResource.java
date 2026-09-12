@@ -13,11 +13,14 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import org.jboss.resteasy.reactive.RestForm;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingService;
@@ -30,6 +33,10 @@ import site.asm0dey.calit.google.WriteTargetResolver;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AdminMessageResolver;
 import site.asm0dey.calit.i18n.AdminMessages;
+import site.asm0dey.calit.notify.ChannelAdmin;
+import site.asm0dey.calit.notify.ChannelRow;
+import site.asm0dey.calit.notify.NotificationChannel;
+import site.asm0dey.calit.notify.NotificationChannelMeetingType;
 import site.asm0dey.calit.user.CurrentOwner;
 
 /**
@@ -74,7 +81,9 @@ public class SharedMeetingsResource {
                 boolean isAdmin,
                 String error,
                 String notice,
-                String title);
+                String title,
+                List<ChannelRow> channels,
+                Set<Long> selectedChannelIds);
 
         public static native TemplateInstance revokeConfirm(
                 MeetingType type, long futureBookingCount, Long pendingCount, boolean isAdmin, String title);
@@ -96,6 +105,8 @@ public class SharedMeetingsResource {
 
     final ActiveLocale activeLocale;
 
+    final ChannelAdmin channelAdmin;
+
     @Inject
     public SharedMeetingsResource(
             CurrentOwner currentOwner,
@@ -104,7 +115,8 @@ public class SharedMeetingsResource {
             BookingService bookingService,
             SecurityIdentity identity,
             AdminMessageResolver adminMsgs,
-            ActiveLocale activeLocale) {
+            ActiveLocale activeLocale,
+            ChannelAdmin channelAdmin) {
         this.currentOwner = currentOwner;
         this.meetingHosts = meetingHosts;
         this.writeTargets = writeTargets;
@@ -112,6 +124,7 @@ public class SharedMeetingsResource {
         this.identity = identity;
         this.adminMsgs = adminMsgs;
         this.activeLocale = activeLocale;
+        this.channelAdmin = channelAdmin;
     }
 
     private boolean isAdmin() {
@@ -125,6 +138,22 @@ public class SharedMeetingsResource {
     /** Pending-approval count for the shared admin nav badge (same query as AdminResource). */
     private long pendingCount() {
         return Booking.count("ownerId = ?1 and status = ?2", currentOwner.id(), BookingStatus.PENDING);
+    }
+
+    /**
+     * The CURRENT owner's own stored timezone, for preformatting channel delivery stamps -- never
+     * another host's zone (owner-scoping invariant). Routed through {@link OwnerSettings#coerceZone}
+     * so a missing settings row, a null, or a stored id the JDK cannot parse becomes UTC instead of
+     * throwing out of the page render (calit-4whp: never a bare {@code ZoneId.of(settings.timezone)}).
+     */
+    private ZoneId ownerZoneId() {
+        OwnerSettings s = OwnerSettings.forOwner(currentOwner.id());
+        return ZoneId.of(OwnerSettings.coerceZone(s == null ? null : s.timezone));
+    }
+
+    /** This owner's own channels, rendered for the routing block on the shared-type page. */
+    private List<ChannelRow> channelRows() {
+        return channelAdmin.rows(currentOwner.id(), ownerZoneId());
     }
 
     /**
@@ -242,6 +271,14 @@ public class SharedMeetingsResource {
         var writeCalendars = GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id());
         var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
         var writeCalendarValue = WriteTargetResolver.writeCalendarValue(override, writeCalendarDangling);
+        // Routing override view model, scoped to THIS co-host: only their own channels are offered,
+        // and only links naming one of them read as a selection. The creator's links on the same type
+        // are invisible here, exactly as ChannelRouter treats them on the read side.
+        List<ChannelRow> channels = channelRows();
+        Set<Long> ownChannelIds = channels.stream().map(ChannelRow::id).collect(Collectors.toSet());
+        Set<Long> selectedChannelIds = NotificationChannelMeetingType.linkedChannelIds(typeId).stream()
+                .filter(ownChannelIds::contains)
+                .collect(Collectors.toSet());
         return Templates.sharedAvailability(
                 type,
                 h,
@@ -256,7 +293,9 @@ public class SharedMeetingsResource {
                 isAdmin(),
                 error,
                 notice,
-                m().adm_shared_availability_title(type.name));
+                m().adm_shared_availability_title(type.name),
+                channels,
+                selectedChannelIds);
     }
 
     /** This owner's own per-type date overrides, each with its (transient) windows loaded. */
@@ -277,6 +316,42 @@ public class SharedMeetingsResource {
             AdminResource.persistFrames(currentOwner.id(), typeId, form);
         });
         return availabilityInstance(typeId, null);
+    }
+
+    /**
+     * Per-meeting-type routing override for the CURRENT co-host's own channels. {@code all} clears
+     * the override (no link rows means inherit), {@code custom} pins exactly the submitted channels.
+     * {@code requireAcceptedHost} plus the {@code ownIds} filter are what keep this per-host: a
+     * co-host can only name channels they own, so {@code replaceLinks} never deletes or creates a
+     * link belonging to the creator or to another co-host of the same type.
+     */
+    @POST
+    @Path("/shared/{typeId}/notifications")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance saveNotificationRouting(
+            @PathParam("typeId") Long typeId, @RestForm String mode, @RestForm List<Long> channelIds) {
+        requireAcceptedHost(typeId); // 404 unless the current owner really co-hosts this type
+        List<Long> ownIds = NotificationChannel.forOwner(currentOwner.id()).stream()
+                .map(c -> c.id)
+                .toList();
+        // A checkbox group with nothing ticked submits the field not at all, and RESTEasy binds that
+        // absent field to an EMPTY list rather than null (pinned by ChannelOverrideTest's
+        // customWithNoChannelIsRejected), so the empty-selection case reaches the guard below.
+        // .distinct() because V32 carries UNIQUE (channel_id, meeting_type_id): a crafted
+        // channelIds=7&channelIds=7 would otherwise persist the row twice, and the second INSERT
+        // violating uq_ncmt rolls the transaction back into a 500 instead of a save.
+        List<Long> keep = "custom".equals(mode)
+                ? channelIds.stream().filter(ownIds::contains).distinct().toList()
+                : List.of();
+        if ("custom".equals(mode) && keep.isEmpty()) {
+            // "No link rows" already means INHERIT, so an empty custom selection is not expressible
+            // as a per-type mute -- reject it rather than silently turning it into "all".
+            return availabilityInstance(typeId, m().adm_detail_notifications_need_one());
+        }
+        // Commit before the render (#75).
+        QuarkusTransaction.requiringNew().run(() -> NotificationChannelMeetingType.replaceLinks(typeId, ownIds, keep));
+        return availabilityInstance(typeId, null, m().adm_detail_notifications_saved());
     }
 
     @POST

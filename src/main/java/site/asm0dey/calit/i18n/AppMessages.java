@@ -542,6 +542,33 @@ public interface AppMessages {
     @Message("You're invited to co-host: {meetingTypeName}")
     String email_host_consent_subject(String meetingTypeName);
 
+    // ---- Channel notifications ----
+    // Titles reuse the email_*_subject keys above wherever an equivalent one exists.
+
+    @Message("{inviteeName} · {when}")
+    String channel_body(String inviteeName, String when);
+
+    @Message("{inviteeName} · {oldWhen} → {newWhen}")
+    String channel_body_rescheduled(String inviteeName, String oldWhen, String newWhen);
+
+    @Message("Guest declined: {meetingTypeName}")
+    String channel_guest_declined_title(String meetingTypeName);
+
+    @Message("Guest removed: {meetingTypeName}")
+    String channel_guest_removed_title(String meetingTypeName);
+
+    @Message("{guestEmail} · {when}")
+    String channel_guest_body(String guestEmail, String when);
+
+    @Message("{meetingTypeName} — accept: {url}")
+    String channel_consent_body(String meetingTypeName, String url);
+
+    @Message("calit test notification")
+    String channel_test_title();
+
+    @Message("If you can read this, the channel works.")
+    String channel_test_body();
+
     // ---- Email date/time formatting ----
 
     /** strftime-like pattern used to format booking date/time in email bodies. */

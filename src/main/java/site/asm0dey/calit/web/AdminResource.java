@@ -29,6 +29,11 @@ import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.google.WriteTargetResolver;
 import site.asm0dey.calit.i18n.*;
+import site.asm0dey.calit.notify.ChannelAdmin;
+import site.asm0dey.calit.notify.ChannelRejected;
+import site.asm0dey.calit.notify.ChannelRow;
+import site.asm0dey.calit.notify.NotificationChannel;
+import site.asm0dey.calit.notify.NotificationChannelMeetingType;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
 
@@ -85,7 +90,9 @@ public class AdminResource {
                 String error,
                 String notice,
                 String hostTypeaheadScript,
-                String title);
+                String title,
+                List<ChannelRow> channels,
+                Set<Long> selectedChannelIds);
 
         public static native TemplateInstance availability(
                 List<AvailabilityRule> rules,
@@ -102,7 +109,10 @@ public class AdminResource {
                 Long pendingCount,
                 List<String> zones,
                 boolean isAdmin,
-                String title);
+                String title,
+                List<ChannelRow> channels,
+                String channelError,
+                String channelNotice);
 
         public static native TemplateInstance bookingFields(
                 List<BookingField> fields, FieldType[] fieldTypes, Long pendingCount, boolean isAdmin, String title);
@@ -190,6 +200,8 @@ public class AdminResource {
 
     final MailHealth mailHealth;
 
+    final ChannelAdmin channelAdmin;
+
     @Inject
     public AdminResource(
             BookingService bookingService,
@@ -201,6 +213,7 @@ public class AdminResource {
             AppMessageResolver appMsgs,
             ActiveLocale activeLocale,
             MailHealth mailHealth,
+            ChannelAdmin channelAdmin,
             @ConfigProperty(name = "app.base-url") String baseUrl,
             @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440") int reminderLeadMinutes) {
         this.bookingService = bookingService;
@@ -212,6 +225,7 @@ public class AdminResource {
         this.appMsgs = appMsgs;
         this.activeLocale = activeLocale;
         this.mailHealth = mailHealth;
+        this.channelAdmin = channelAdmin;
         this.baseUrl = baseUrl;
         this.reminderLeadMinutes = reminderLeadMinutes;
     }
@@ -798,6 +812,14 @@ public class AdminResource {
         var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
         var writeCalendarValue = WriteTargetResolver.writeCalendarValue(override, writeCalendarDangling);
         String title = m().adm_meetingTypeDetail_title_prefix().stripTrailing() + " " + t.name;
+        // Routing override view model. Only THIS owner's channels are offered, and only links
+        // naming one of them count as a selection -- a co-host's links on the same type are
+        // neither shown nor touched here (ChannelRouter applies the same per-host filter on read).
+        List<ChannelRow> channels = channelRows();
+        Set<Long> ownChannelIds = channels.stream().map(ChannelRow::id).collect(Collectors.toSet());
+        Set<Long> selectedChannelIds = NotificationChannelMeetingType.linkedChannelIds(id).stream()
+                .filter(ownChannelIds::contains)
+                .collect(Collectors.toSet());
         return Templates.meetingTypeDetail(
                 t,
                 fields,
@@ -817,7 +839,9 @@ public class AdminResource {
                 error,
                 notice,
                 Layout.HOST_TYPEAHEAD_SCRIPT,
-                title);
+                title,
+                channels,
+                selectedChannelIds);
     }
 
     /**
@@ -878,6 +902,41 @@ public class AdminResource {
         // detail-page render for zero benefit (issue #75). Reads run on the request-scoped session.
         requireType(id);
         return detailInstance(id);
+    }
+
+    /**
+     * Per-meeting-type routing override for the CURRENT owner's own channels. {@code all} clears the
+     * override (no link rows means inherit), {@code custom} pins exactly the submitted channels.
+     * {@code requireType} is what keeps this per-host: one host can only ever name channels they own
+     * on a type they own, so narrowing a co-hosted type never changes what a co-host receives.
+     */
+    @POST
+    @Path("/meeting-types/{id}/notifications")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance saveNotificationRouting(
+            @PathParam("id") Long id, @RestForm String mode, @RestForm List<Long> channelIds) {
+        requireType(id); // 404 unless this type belongs to the current owner
+        List<Long> ownIds = NotificationChannel.forOwner(currentOwner.id()).stream()
+                .map(c -> c.id)
+                .toList();
+        // A checkbox group with nothing ticked submits the field not at all, and RESTEasy binds that
+        // absent field to an EMPTY list rather than null (pinned by ChannelOverrideTest's
+        // customWithNoChannelIsRejected), so the empty-selection case reaches the guard below.
+        // .distinct() because V32 carries UNIQUE (channel_id, meeting_type_id): a crafted
+        // channelIds=7&channelIds=7 would otherwise persist the row twice, and the second INSERT
+        // violating uq_ncmt rolls the transaction back into a 500 instead of a save.
+        List<Long> keep = "custom".equals(mode)
+                ? channelIds.stream().filter(ownIds::contains).distinct().toList()
+                : List.of();
+        if ("custom".equals(mode) && keep.isEmpty()) {
+            // "No link rows" already means INHERIT, so an empty custom selection is not expressible
+            // as a per-type mute -- reject it rather than silently turning it into "all".
+            return detailInstance(id, m().adm_detail_notifications_need_one());
+        }
+        // Commit before the render (#75).
+        QuarkusTransaction.requiringNew().run(() -> NotificationChannelMeetingType.replaceLinks(id, ownIds, keep));
+        return detailInstance(id, null, m().adm_detail_notifications_saved());
     }
 
     @POST
@@ -1416,13 +1475,7 @@ public class AdminResource {
     @Path("/settings")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance settings() {
-        return Templates.settings(
-                OwnerSettings.forOwner(currentOwner.id()),
-                reminderLeadMinutes,
-                pendingCount(),
-                OwnerSettings.zoneIds(),
-                isAdmin(),
-                m().adm_settings_title());
+        return settingsInstance(null, null);
     }
 
     @POST
@@ -1462,7 +1515,82 @@ public class AdminResource {
         // request-scoped locale so THIS response (title, {adm:} keys, language dropdown) is in the new language.
         activeLocale.set(AppLocales.pick(s.locale));
         return Templates.settings(
-                s, reminderLeadMinutes, pendingCount(), OwnerSettings.zoneIds(), isAdmin(), m().adm_settings_title());
+                s,
+                reminderLeadMinutes,
+                pendingCount(),
+                OwnerSettings.zoneIds(),
+                isAdmin(),
+                m().adm_settings_title(),
+                channelRows(),
+                null,
+                null);
+    }
+
+    /** This owner's channel rows, timestamps formatted in their own timezone. */
+    private List<ChannelRow> channelRows() {
+        return channelAdmin.rows(currentOwner.id(), ownerZoneId());
+    }
+
+    /** Re-render /me/settings with an optional channel error/notice. */
+    private TemplateInstance settingsInstance(String channelError, String channelNotice) {
+        return Templates.settings(
+                OwnerSettings.forOwner(currentOwner.id()),
+                reminderLeadMinutes,
+                pendingCount(),
+                OwnerSettings.zoneIds(),
+                isAdmin(),
+                m().adm_settings_title(),
+                channelRows(),
+                channelError,
+                channelNotice);
+    }
+
+    /**
+     * Saves every submitted channel row. The three form fields repeat per row and are
+     * index-aligned; a blank URL row is skipped, so the always-rendered empty row costs nothing.
+     */
+    @POST
+    @Path("/settings/channels")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance saveChannels(MultivaluedMap<String, String> form) {
+        try {
+            channelAdmin.save(
+                    currentOwner.id(),
+                    form.getOrDefault("channelId", List.of()),
+                    form.getOrDefault("channelLabel", List.of()),
+                    form.getOrDefault("channelUrl", List.of()));
+        } catch (ChannelRejected e) {
+            return settingsInstance(channelErrorMessage(e), null);
+        }
+        return settingsInstance(null, m().adm_settings_channels_saved());
+    }
+
+    @POST
+    @Path("/settings/channels/{id}/delete")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance deleteChannel(@PathParam("id") Long id) {
+        channelAdmin.delete(currentOwner.id(), id);
+        return settingsInstance(null, null);
+    }
+
+    @POST
+    @Path("/settings/channels/{id}/test")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance testChannel(@PathParam("id") Long id) {
+        boolean ok = channelAdmin.test(currentOwner.id(), id, activeLocale.current());
+        return ok
+                ? settingsInstance(null, m().adm_settings_channels_test_ok())
+                : settingsInstance(m().adm_settings_channels_test_failed(), null);
+    }
+
+    /** The channel URL a host pasted is never echoed back — only the policy's reason is. */
+    private String channelErrorMessage(ChannelRejected e) {
+        return switch (e.reason()) {
+            case SCHEME_BLOCKED -> m().adm_settings_channels_scheme_blocked(e.scheme());
+            case PRIVATE_TARGET -> m().adm_settings_channels_private_blocked();
+            default -> m().adm_settings_channels_invalid();
+        };
     }
 
     @GET

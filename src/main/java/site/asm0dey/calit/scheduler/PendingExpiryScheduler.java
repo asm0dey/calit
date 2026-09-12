@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -14,6 +15,7 @@ import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.email.EmailService;
+import site.asm0dey.calit.notify.NotificationDispatcher;
 
 /**
  * Feature 14: auto-expire approval-mode (PENDING) bookings whose hold window has
@@ -53,14 +55,18 @@ public class PendingExpiryScheduler {
 
     final EmailService emailService;
 
+    final NotificationDispatcher channels;
+
     @Inject
     public PendingExpiryScheduler(
             EntityManager em,
             EmailService emailService,
+            NotificationDispatcher channels,
             @ConfigProperty(name = "calit.approval.hold-hours", defaultValue = "24") int holdHours,
             @ConfigProperty(name = "calit.scheduler.grace-seconds", defaultValue = "30") int graceSeconds) {
         this.em = em;
         this.emailService = emailService;
+        this.channels = channels;
         this.holdHours = holdHours;
         this.graceSeconds = graceSeconds;
     }
@@ -95,8 +101,15 @@ public class PendingExpiryScheduler {
      * SAME tx (crash-safe: a node dying mid-tick loses nothing, everything commits together or not
      * at all). Expiry = min(createdAt + holdHours, startUtc) <= now() + grace. A render failure for
      * one poison booking is caught/logged so it can't roll back the whole batch.
+     *
+     * <p>Outbound channel notifications are dispatched AFTER this transaction commits, never
+     * inside it. An auto-expiry fires no {@code BookingDeclined} event (it does the reminder
+     * cleanup and the mail enqueue itself), so without this explicit dispatch an auto-expired
+     * booking would email the host but send no channel message, while an owner-initiated decline
+     * does both. A broken channel must not roll back or delay the decline.
      */
     void claimAndDeclineExpired() {
+        List<Long> declined = new ArrayList<>();
         QuarkusTransaction.requiringNew().run(() -> {
             @SuppressWarnings("unchecked")
             List<Object[]> candidates = em.createNativeQuery("SELECT id, group_id FROM booking "
@@ -114,9 +127,12 @@ public class PendingExpiryScheduler {
                 // Defensive parse: driver/Hibernate version can return a uuid column as either
                 // java.util.UUID or its String form from a scalar native query.
                 var groupId = row[1] == null ? null : UUID.fromString(row[1].toString());
-                processCandidate(id, groupId);
+                processCandidate(id, groupId, declined);
             }
         });
+        for (Long bookingId : declined) {
+            channels.notifyDeclined(bookingId); // swallows its own failures
+        }
     }
 
     /**
@@ -127,8 +143,12 @@ public class PendingExpiryScheduler {
      * transactional boundary, so the advisory lock and the eventual flip + email enqueue still
      * commit or roll back together. Split out to keep {@code claimAndDeclineExpired}'s cognitive
      * complexity in check.
+     *
+     * <p>{@code declined} collects the booking id whose host channels must be notified once the
+     * caller's transaction has committed -- the lead row's id for a group, the booking's own id
+     * for a single-host booking.
      */
-    private void processCandidate(Long id, UUID groupId) {
+    private void processCandidate(Long id, UUID groupId, List<Long> declined) {
         // Non-blocking: two ticks racing on the same group/booking never wait on each
         // other, so no wait-for cycle -- and thus no deadlock -- can ever form. The prefix
         // keeps the group and single-booking key spaces disjoint (a group_id and a booking
@@ -160,13 +180,13 @@ public class PendingExpiryScheduler {
         // just the one that happened to be claimed, and send a single declined email (fanned
         // out per host by EmailService) keyed on the group's lead row.
         if (b.groupId != null) {
-            declineGroup(b);
+            declineGroup(b, declined);
         } else {
-            declineSingle(id, b);
+            declineSingle(id, b, declined);
         }
     }
 
-    private void declineGroup(Booking b) {
+    private void declineGroup(Booking b, List<Long> declined) {
         Long creatorOwnerId = MeetingType.<MeetingType>findById(b.meetingTypeId).ownerId;
         Long leadId = Booking.leadOfGroup(b.groupId, creatorOwnerId).id;
         // Cheap idempotency guard (kept alongside the advisory lock, which is the primary
@@ -190,6 +210,7 @@ public class PendingExpiryScheduler {
             r.status = BookingStatus.DECLINED; // flipped while holding the group's advisory lock
             Reminder.deleteUnsentFor(r.id); // was ReminderScheduler.onDeclined observer
         }
+        declined.add(lead.id);
         // Guard covers a render/load failure (throws before any persist): the flip +
         // cleanup still commit, one mail dropped. A crash (not caught) rolls back the
         // whole tx pre-commit and the row is reclaimed next tick -- the crash-safety
@@ -205,9 +226,10 @@ public class PendingExpiryScheduler {
         }
     }
 
-    private void declineSingle(Long id, Booking b) {
+    private void declineSingle(Long id, Booking b, List<Long> declined) {
         b.status = BookingStatus.DECLINED; // flipped while holding this booking's advisory lock
         Reminder.deleteUnsentFor(id); // was ReminderScheduler.onDeclined observer
+        declined.add(id);
         // Guard covers a render/load failure (throws before any persist): the flip + cleanup
         // still commit, one mail dropped. A crash (not caught) rolls back the whole tx pre-commit
         // and the row is reclaimed next tick -- the crash-safety guarantee.

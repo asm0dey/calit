@@ -3,6 +3,7 @@ package site.asm0dey.calit.test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.notify.NotificationChannel;
 import site.asm0dey.calit.user.AppUser;
 
 /**
@@ -20,6 +21,21 @@ public final class MultiHostFixtures {
         t.durationMinutes = durationMinutes;
         t.persist();
         return t;
+    }
+
+    /**
+     * One outbound notification channel for {@code ownerId}. The caller must have seeded that
+     * {@code app_user} row first (V32's owner_id FK rejects a dangling owner) — the baseline admin is
+     * id 1, any other owner comes from {@link #enabledUser}.
+     */
+    public static NotificationChannel channel(long ownerId, String url, String label) {
+        NotificationChannel c = new NotificationChannel();
+        c.ownerId = ownerId;
+        c.url = url;
+        c.label = label;
+        c.createdAt = java.time.Instant.now();
+        c.persist();
+        return c;
     }
 
     /** Enabled, onboarded (settingsComplete) user — the minimum shape for a co-host candidate. */
