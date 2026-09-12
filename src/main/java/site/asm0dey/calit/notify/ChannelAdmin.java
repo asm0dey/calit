@@ -70,8 +70,14 @@ public class ChannelAdmin {
                     .map(id -> NotificationChannel.ownedBy(id, ownerId))
                     .orElse(null);
             // An unchanged redacted value means "keep the stored secret": the real URL never
-            // round-trips through the browser, so it cannot come back from the form.
-            String url = existing != null && submitted.equals(policy.redact(existing.url)) ? existing.url : submitted;
+            // round-trips through the browser, so it cannot come back from the form. This
+            // comparison MUST come first — the guard below would otherwise reject the very
+            // round trip the masked rendering depends on.
+            var keepStored = existing != null && submitted.equals(policy.redact(existing.url));
+            var url = keepStored ? existing.url : submitted;
+            if (!keepStored && looksRedacted(url)) {
+                throw new ChannelRejected(ChannelPolicy.Reason.UNKNOWN_SCHEME, null);
+            }
             var check = policy.check(url);
             if (!check.ok()) {
                 throw new ChannelRejected(check.reason(), check.scheme());
@@ -117,6 +123,20 @@ public class ChannelAdmin {
             Log.warnf(e, "test delivery to channel %d threw", channelId);
             return false;
         }
+    }
+
+    /**
+     * True when this value is one of notify4j's own redactions rather than a channel URL. A mask
+     * PARSES — {@code tryParse("telegram://…")} yields a ParsedChannel and the policy admits it —
+     * so a host who pastes one into the empty row would otherwise store a syntactically valid but
+     * functionally dead channel. Detection is by the markers {@code AbstractHttpNotifier.redact}
+     * inserts: the U+2026 ellipsis it puts in place of a credential or path, and its two sentinels
+     * for a hostless or absent URL. Deliberately NOT {@code url.equals(redact(url))}: a
+     * path-less URL such as {@code webhook://example.com} redacts to ITSELF, and that is a
+     * legitimate channel a host must be able to save.
+     */
+    private static boolean looksRedacted(String url) {
+        return url.indexOf('\u2026') >= 0 || "<redacted>".equals(url) || "<none>".equals(url);
     }
 
     private static String value(List<String> list, int i) {

@@ -114,6 +114,52 @@ class ChannelSettingsPageTest {
         assertTrue(channelsOf(1L).isEmpty());
     }
 
+    /**
+     * A mask PARSES as a channel (notify4j's {@code tryParse("telegram://…")} yields a
+     * ParsedChannel), so without the marker guard a pasted mask would store a dead channel.
+     */
+    @Test
+    @TestSecurity(
+            user = "admin",
+            roles = {"user"})
+    void aPastedMaskIsRejectedInANewRow() {
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("channelId", "")
+                .formParam("channelLabel", "")
+                .formParam("channelUrl", "telegram://…")
+                .when()
+                .post("/me/settings/channels")
+                .then()
+                .statusCode(200)
+                .body(containsString("supported"));
+
+        assertTrue(channelsOf(1L).isEmpty(), "a redaction marker must never be stored as a URL");
+    }
+
+    /**
+     * The counter-case that keeps the mask guard from being over-broad: {@code webhook://example.com}
+     * has no path, so notify4j redacts it to ITSELF — an {@code url.equals(redact(url))} guard would
+     * refuse a perfectly good channel. The marker guard must let it through.
+     */
+    @Test
+    @TestSecurity(
+            user = "admin",
+            roles = {"user"})
+    void aPathlessUrlThatRedactsToItselfStillSaves() {
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("channelId", "")
+                .formParam("channelLabel", "")
+                .formParam("channelUrl", "webhook://example.com")
+                .when()
+                .post("/me/settings/channels")
+                .then()
+                .statusCode(200);
+
+        var saved = channelsOf(1L);
+        assertEquals(1, saved.size(), "a path-less webhook URL is a legitimate channel");
+        assertEquals("webhook://example.com", saved.getFirst().url);
+    }
+
     @Test
     @TestSecurity(
             user = "admin",
