@@ -17,9 +17,19 @@ Merged but not yet in a tagged release.
 - Channel delivery is tuned with `NOTIFY_ALLOWED_SCHEMES`, `NOTIFY_ALLOW_PRIVATE` and
   `NOTIFY_MAX_ATTEMPTS`. A meeting type can override which channels it uses, per host; a failed
   delivery shows when it failed, not why. ([#210](https://github.com/asm0dey/calit/pull/210))
+- A notification channel has a **Default** checkbox. Untick it and the channel stays registered but
+  only delivers for meeting types that name it explicitly. Migration `V33` adds
+  `default_enabled`. ([#211](https://github.com/asm0dey/calit/pull/211))
+- **Send test** now tests the URL in the field, so a channel can be checked before it is saved. The
+  route moved from `/me/settings/channels/{id}/test` to `/me/settings/channels/test`.
+  ([#211](https://github.com/asm0dey/calit/pull/211))
+- The channel list is one row per channel with named columns, Test and Delete on the row, and one
+  help icon by the heading. A meeting type's Notifications section is now a collapsible card like its
+  neighbours. ([#211](https://github.com/asm0dey/calit/pull/211))
 
-Upgrade: nothing to do — `TOKEN_ENCRYPTION_KEY` is already required, and no channel exists until an
-owner adds one.
+Upgrade: nothing to do — `TOKEN_ENCRYPTION_KEY` is already required, no channel exists until an owner
+adds one, and `V33` defaults existing channels to on, so routing is unchanged until you untick
+something.
 
 ## 1.24.0
 
