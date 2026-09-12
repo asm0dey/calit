@@ -130,5 +130,5 @@ worker for up to roughly 33 seconds (three 10-second request timeouts, plus 1 s 
 between attempts). On an instance with many registered channels and a large reminder burst, lowering
 `NOTIFY_MAX_ATTEMPTS` reduces how long a single bad channel can hold a worker thread.
 
-See [Configuration](/calit/installation/configuration/#outbound-notification-channels) for the full
+See [Configuration](/calit/installation/configuration/#outbound-notification-channels-optional) for the full
 list of `NOTIFY_*` environment variables.
