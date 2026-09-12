@@ -7,9 +7,10 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.25.0
 
-Merged but not yet in a tagged release.
+Booking events now reach Telegram, Slack, Discord, ntfy, Gotify or any webhook alongside email —
+per owner, with per-meeting-type routing and a per-channel default.
 
 - Owners can register notification channel URLs (Telegram, Slack, Discord, ntfy, Gotify, webhook and
   more) under `/me/settings` and receive every booking event on them. Migration `V32` adds
