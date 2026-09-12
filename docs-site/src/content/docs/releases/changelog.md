@@ -13,10 +13,10 @@ Merged but not yet in a tagged release.
 
 - Owners can register notification channel URLs (Telegram, Slack, Discord, ntfy, Gotify, webhook and
   more) under `/me/settings` and receive every booking event on them. Migration `V32` adds
-  `notification_channel`; URLs are encrypted at rest. ([#NNN](https://github.com/asm0dey/calit/pull/NNN))
+  `notification_channel`; URLs are encrypted at rest. ([#210](https://github.com/asm0dey/calit/pull/210))
 - Channel delivery is tuned with `NOTIFY_ALLOWED_SCHEMES`, `NOTIFY_ALLOW_PRIVATE` and
   `NOTIFY_MAX_ATTEMPTS`. A meeting type can override which channels it uses, per host; a failed
-  delivery shows when it failed, not why. ([#NNN](https://github.com/asm0dey/calit/pull/NNN))
+  delivery shows when it failed, not why. ([#210](https://github.com/asm0dey/calit/pull/210))
 
 Upgrade: nothing to do — `TOKEN_ENCRYPTION_KEY` is already required, and no channel exists until an
 owner adds one.

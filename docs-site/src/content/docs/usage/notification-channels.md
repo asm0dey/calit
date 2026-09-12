@@ -20,6 +20,10 @@ From `/me/settings`, under **Notification channels**:
 3. Press **Save channels**.
 4. Press **Send test** next to the saved row to confirm delivery before relying on it.
 
+:::note
+The **Send test** button uses a short timeout (about 4 seconds) and a single attempt, so you get an answer while you wait. Real booking deliveries are more patient — they retry up to `NOTIFY_MAX_ATTEMPTS` times. A slow self-hosted target can therefore fail the test button and still deliver bookings fine.
+:::
+
 There is no "enable/disable" switch. **Deleting the row is how you turn a channel off.**
 
 ## Getting a channel URL
