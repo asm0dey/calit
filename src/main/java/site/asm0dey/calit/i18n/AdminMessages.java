@@ -901,6 +901,23 @@ public interface AdminMessages {
     @Message("Private network targets are not allowed on this server")
     String adm_settings_channels_private_blocked();
 
+    // ---- Per-meeting-type channel routing ----
+
+    @Message("Notifications")
+    String adm_detail_notifications_h2();
+
+    @Message("All my channels")
+    String adm_detail_notifications_all();
+
+    @Message("Custom for this meeting type")
+    String adm_detail_notifications_custom();
+
+    @Message("Pick at least one channel, or choose \"All my channels\".")
+    String adm_detail_notifications_need_one();
+
+    @Message("Notification routing saved")
+    String adm_detail_notifications_saved();
+
     // ---- Google Calendar ----
 
     @Message("Google Calendar")

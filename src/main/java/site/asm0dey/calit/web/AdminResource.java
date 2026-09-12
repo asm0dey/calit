@@ -32,6 +32,8 @@ import site.asm0dey.calit.i18n.*;
 import site.asm0dey.calit.notify.ChannelAdmin;
 import site.asm0dey.calit.notify.ChannelRejected;
 import site.asm0dey.calit.notify.ChannelRow;
+import site.asm0dey.calit.notify.NotificationChannel;
+import site.asm0dey.calit.notify.NotificationChannelMeetingType;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
 
@@ -88,7 +90,9 @@ public class AdminResource {
                 String error,
                 String notice,
                 String hostTypeaheadScript,
-                String title);
+                String title,
+                List<ChannelRow> channels,
+                Set<Long> selectedChannelIds);
 
         public static native TemplateInstance availability(
                 List<AvailabilityRule> rules,
@@ -808,6 +812,14 @@ public class AdminResource {
         var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
         var writeCalendarValue = WriteTargetResolver.writeCalendarValue(override, writeCalendarDangling);
         String title = m().adm_meetingTypeDetail_title_prefix().stripTrailing() + " " + t.name;
+        // Routing override view model. Only THIS owner's channels are offered, and only links
+        // naming one of them count as a selection -- a co-host's links on the same type are
+        // neither shown nor touched here (ChannelRouter applies the same per-host filter on read).
+        List<ChannelRow> channels = channelRows();
+        Set<Long> ownChannelIds = channels.stream().map(ChannelRow::id).collect(Collectors.toSet());
+        Set<Long> selectedChannelIds = NotificationChannelMeetingType.linkedChannelIds(id).stream()
+                .filter(ownChannelIds::contains)
+                .collect(Collectors.toSet());
         return Templates.meetingTypeDetail(
                 t,
                 fields,
@@ -827,7 +839,9 @@ public class AdminResource {
                 error,
                 notice,
                 Layout.HOST_TYPEAHEAD_SCRIPT,
-                title);
+                title,
+                channels,
+                selectedChannelIds);
     }
 
     /**
@@ -888,6 +902,38 @@ public class AdminResource {
         // detail-page render for zero benefit (issue #75). Reads run on the request-scoped session.
         requireType(id);
         return detailInstance(id);
+    }
+
+    /**
+     * Per-meeting-type routing override for the CURRENT owner's own channels. {@code all} clears the
+     * override (no link rows means inherit), {@code custom} pins exactly the submitted channels.
+     * {@code requireType} is what keeps this per-host: one host can only ever name channels they own
+     * on a type they own, so narrowing a co-hosted type never changes what a co-host receives.
+     */
+    @POST
+    @Path("/meeting-types/{id}/notifications")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance saveNotificationRouting(
+            @PathParam("id") Long id, @RestForm String mode, @RestForm List<Long> channelIds) {
+        requireType(id); // 404 unless this type belongs to the current owner
+        List<Long> ownIds = NotificationChannel.forOwner(currentOwner.id()).stream()
+                .map(c -> c.id)
+                .toList();
+        // A checkbox group with nothing ticked submits the field not at all, and RESTEasy binds that
+        // absent field to an EMPTY list rather than null (pinned by ChannelOverrideTest's
+        // customWithNoChannelIsRejected), so the empty-selection case reaches the guard below.
+        List<Long> keep = "custom".equals(mode)
+                ? channelIds.stream().filter(ownIds::contains).toList()
+                : List.of();
+        if ("custom".equals(mode) && keep.isEmpty()) {
+            // "No link rows" already means INHERIT, so an empty custom selection is not expressible
+            // as a per-type mute -- reject it rather than silently turning it into "all".
+            return detailInstance(id, m().adm_detail_notifications_need_one());
+        }
+        // Commit before the render (#75).
+        QuarkusTransaction.requiringNew().run(() -> NotificationChannelMeetingType.replaceLinks(id, ownIds, keep));
+        return detailInstance(id, null, m().adm_detail_notifications_saved());
     }
 
     @POST

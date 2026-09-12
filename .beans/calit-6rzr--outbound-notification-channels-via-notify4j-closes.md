@@ -5,7 +5,7 @@ status: in-progress
 type: feature
 priority: normal
 created_at: 2026-09-12T11:27:07Z
-updated_at: 2026-09-12T12:33:48Z
+updated_at: 2026-09-12T14:39:22Z
 ---
 
 Per-owner notification channel URLs delivered through notify4j-core, routed per meeting type. Design: docs/superpowers/specs/2026-09-12-outbound-notifications-design.md. Precedent: #notify4j-core-for-multi-channel-booking-notifica-1789206712
@@ -21,7 +21,7 @@ docs/superpowers/plans/2026-09-12-outbound-notification-channels.md
 - [x] 5. HostNotification model, ChannelMessageRenderer, msg keys + de/he
 - [x] 6. NotifyConfig, ChannelPolicy, NotificationDispatcher, ChannelSender
 - [x] 7. /me/settings channel list (add, delete, send test)
-- [ ] 8. Per-meeting-type override (creator + co-host)
+- [x] 8. Per-meeting-type override (creator + co-host)
 - [ ] 9. .env.example, docs-site pages, changelog Unreleased bullet
 
 ## Native spike
@@ -45,3 +45,20 @@ Both done, TDD per brief, full details/output in docs/superpowers/sdd/2026-09-12
 ## Task 5
 
 `HostNotification` sealed interface (11 event records + `Host`) and `ChannelMessageRenderer`, brief followed verbatim: full details in docs/superpowers/sdd/2026-09-12-outbound-notification-channels/task-5-report.md. `ChannelMessageRendererTest`: 4/4 green; `MultiHostMessageParityTest`: 4/4 green (nine new `channel_*` keys present in `AppMessages` + both `msg_de.properties`/`msg_he.properties`, no orphans). Full suite: 1103 tests, 0 failures. `AppMessages.java` edited through MCP Steroid per the IDE-editing rule.
+
+## Follow-up requested during execution
+
+- [ ] /me/settings channel section links to a docs page listing the supported channel URL formats. The per-row
+      `docsUrl()` link only shows for channels that already exist, so a first-time host sees an empty field with
+      no guidance. Link target: https://asm0dey.github.io/calit/usage/notification-channels/ (the page Task 9
+      creates). New key `adm_settings_channels_help` + de/he, rendered near the section heading so it is visible
+      when the list is empty. Assigned to Task 9 so the page and the link land together.
+
+## Task 8
+
+Per-meeting-type routing override on both pages (`POST /me/meeting-types/{id}/notifications` for the creator,
+`POST /me/shared/{typeId}/notifications` for a co-host), radio + checkboxes, no JS. Full details in
+docs/superpowers/sdd/2026-09-12-outbound-notification-channels/task-8-report.md. `ChannelOverrideTest`: 4/4 green
+(404 on all four before the handlers existed); `MultiHostMessageParityTest`: 4/4 green (five new
+`adm_detail_notifications_*` keys with de/he, no orphans). Full suite: 1125 tests, 0 failures. `AdminResource`,
+`SharedMeetingsResource` and `AdminMessages` edited through MCP Steroid per the IDE-editing rule.

@@ -12,6 +12,8 @@
 {@java.lang.String error}
 {@java.lang.String notice}
 {@java.lang.String title}
+{@java.util.List<site.asm0dey.calit.notify.ChannelRow> channels}
+{@java.util.Set<java.lang.Long> selectedChannelIds}
 {#include adminBase title=title pendingCount=pendingCount active="shared" isAdmin=isAdmin}
   <p class="mb-2"><a class="link link-hover text-sm" href="/me/shared/requests">{adm:adm_shared_availability_back}</a></p>
   <h1 class="text-2xl font-bold mb-4">{type.name}</h1>
@@ -115,5 +117,31 @@
     </div>
     {/if}
   </div>
+  <h2 class="text-xl font-bold mt-8 mb-2">{adm:adm_detail_notifications_h2}</h2>
+  {#if channels.isEmpty()}
+  <p class="text-sm text-base-content/70">{adm:adm_settings_channels_none}</p>
+  {#else}
+  <form method="post" action="/me/shared/{type.id}/notifications" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-2xl">
+    <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+    <label class="label cursor-pointer justify-start gap-2">
+      <input type="radio" name="mode" value="all" class="radio radio-sm"{#if selectedChannelIds.isEmpty()} checked{/if}>
+      {adm:adm_detail_notifications_all}
+      <span class="text-xs text-base-content/70">({#for c in channels}{c.label}{#if c_hasNext}, {/if}{/for})</span>
+    </label>
+    <label class="label cursor-pointer justify-start gap-2">
+      <input type="radio" name="mode" value="custom" class="radio radio-sm"{#if !selectedChannelIds.isEmpty()} checked{/if}>
+      {adm:adm_detail_notifications_custom}
+    </label>
+    <div class="ps-6">
+      {#for c in channels}
+      <label class="label cursor-pointer justify-start gap-2">
+        <input type="checkbox" name="channelIds" value="{c.id}" class="checkbox checkbox-sm"{#if selectedChannelIds.contains(c.id)} checked{/if}>
+        {c.label}
+      </label>
+      {/for}
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm mt-2">{adm:adm_settings_channels_save}</button>
+  </form>
+  {/if}
   <script src="/workplan.js"></script>
 {/include}
