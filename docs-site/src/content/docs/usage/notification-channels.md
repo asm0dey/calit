@@ -17,14 +17,22 @@ From `/me/settings`, under **Notification channels**:
    for each provider).
 2. Give it a **Label** — a short name for your own reference. Leave it blank and calit fills in the
    channel's display name (e.g. "Telegram").
-3. Press **Save channels**.
-4. Press **Send test** next to the saved row to confirm delivery before relying on it.
+3. Press **Send test** on that row to confirm delivery. This works *before* you save, so you can
+   correct a wrong URL without storing it first.
+4. Leave **Default** ticked to notify this channel for every meeting type, or untick it to keep the
+   channel registered but silent until a meeting type names it explicitly.
+5. Press **Save channels**.
 
 :::note
 The **Send test** button uses a short timeout (about 4 seconds) and a single attempt, so you get an answer while you wait. Real booking deliveries are more patient — they retry up to `NOTIFY_MAX_ATTEMPTS` times. A slow self-hosted target can therefore fail the test button and still deliver bookings fine.
 :::
 
-There is no "enable/disable" switch. **Deleting the row is how you turn a channel off.**
+**Default** is the enable switch for the inherit set. Unticking it does not delete the channel — the
+URL stays registered and testable, and any meeting type that names the channel explicitly still
+delivers to it. Deleting the row is how you remove a channel entirely.
+
+A new channel is created with **Default** on. The checkbox needs a saved row to carry, so untick it
+on the next save if you want the channel silent by default.
 
 ## Getting a channel URL
 
@@ -83,8 +91,8 @@ Two references, for two different questions. For **the URL syntax calit accepts*
 [Channel URLs reference](https://www.alexmond.org/notify4j/current/configuration/#_channel_urls) — calit
 implements notify4j's catalog, which follows Apprise conventions without being identical to it, so
 Apprise's reference can describe field layouts calit rejects. For **how to obtain the token or webhook
-in the first place**, use the provider's own docs below; the **Docs** link beside each saved channel on
-`/me/settings` opens exactly that page.
+in the first place**, use the provider's own docs below. The **?** icon beside the **Notification
+channels** heading on `/me/settings` opens this page.
 
 | Scheme | Channel | Where the URL format is documented |
 |---|---|---|
@@ -125,9 +133,14 @@ Discord, ntfy, and Gotify all render both a title and a body.
 
 ## Per-meeting-type routing
 
-By default a meeting type notifies **all** of the host's channels. On a meeting type's page, under
-**Notifications**, a host can instead pick a **custom** subset of their own channels for that
-specific type.
+By default a meeting type notifies every channel the host has marked **Default**. On a meeting type's
+page, under **Notifications**, a host can instead pick a **custom** subset for that specific type —
+and that subset may include channels that are *not* Default, which is how a channel is scoped to one
+meeting type without touching any other. Non-default channels are shown there with a
+**not by default** badge.
+
+Naming a channel on a meeting type always wins over its **Default** setting: the explicit pick is
+the opt-in.
 
 This override is **per host**: on a shared (multi-host) meeting type, each co-host sets their own
 routing independently from their own view of the type. A co-host narrowing their own notifications
