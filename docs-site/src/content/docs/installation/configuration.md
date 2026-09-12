@@ -173,6 +173,18 @@ Self-hosted proof-of-work — no external service or account. See [ALTCHA setup]
 | `ALTCHA_HMAC_KEY` | Secret that signs ALTCHA challenges. **Required** when `CAPTCHA_PROVIDER=altcha` (startup fails without it). Generate: `openssl rand -hex 32`. | *(blank)* |
 | `ALTCHA_MAX_NUMBER` | Proof-of-work difficulty — max number the browser brute-forces | `100000` |
 
+## Outbound notification channels (optional)
+
+Owners register their own channel URLs (Telegram, Slack, Discord, ntfy, Gotify, webhook, …) under
+`/me/settings`; these knobs are the operator's side of that. See
+[Notification channels](/calit/usage/notification-channels/) for how an owner sets one up.
+
+| Variable | Description | Default |
+|---|---|---|
+| `NOTIFY_ALLOWED_SCHEMES` | Comma-separated scheme allowlist, or `*` for every channel notify4j supports. A shared instance that does not want owner-supplied generic webhooks sets e.g. `telegram,slack,discord,gotify,ntfy`. | `*` |
+| `NOTIFY_ALLOW_PRIVATE` | Whether an owner may point a channel at a private/loopback address. Default true: `http://gotify.lan` and `ntfy+http://ntfy:8080` beside calit in Docker are the primary self-hosted case. Set false on a shared instance to stop an authenticated user probing the internal network. | `true` |
+| `NOTIFY_MAX_ATTEMPTS` | Delivery attempts per channel before giving up (exponential backoff, capped at 30s). | `3` |
+
 ## OIDC / SSO (optional)
 
 Leave `OIDC_ENABLED=false` to run with form login only. See [OIDC / SSO setup](/calit/installation/oidc-sso/) for the redirect URI, required scopes/claims, and worked examples (generic provider + Authelia).
