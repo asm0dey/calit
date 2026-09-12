@@ -28,7 +28,7 @@ There is no "enable/disable" switch. **Deleting the row is how you turn a channe
 
 ## Getting a channel URL
 
-Every channel is an [Apprise](https://github.com/caronc/apprise)-style URL. Here is how to obtain one
+Every channel is an Apprise-style URL — the same shape Apprise popularised, implemented here by [notify4j](https://central.sonatype.com/artifact/org.alexmond/notify4j-core). Here is how to obtain one
 per provider:
 
 ### Telegram
@@ -48,7 +48,7 @@ per provider:
 1. Create an [incoming webhook](https://api.slack.com/messaging/webhooks) for the channel you want
    notifications posted to.
 2. Slack gives you a webhook URL; the channel URL uses the same path components after the
-   `slack://` scheme (see the notify4j/Apprise Slack format for the exact token layout).
+   `slack://` scheme; the exact token layout is in [Slack's incoming-webhook docs](https://api.slack.com/messaging/webhooks).
 
 ### Discord
 
@@ -77,9 +77,37 @@ per provider:
 1. In your Gotify server's web UI, create an **application** — Gotify gives you an app token.
 2. The channel URL points at your Gotify server with that token.
 
-For any provider not listed here, or the exact URL syntax notify4j expects, see the
-[Apprise URL reference](https://github.com/caronc/apprise#supported-notifications) — notify4j follows
-the same URL conventions.
+### Every supported channel
+
+The **Docs** link beside each saved channel on `/me/settings` opens that provider's own reference —
+the authoritative source for its URL format. Do not follow Apprise's reference for the field layout:
+calit implements notify4j's catalog, which follows Apprise conventions but is not identical to it.
+
+| Scheme | Channel | Where the URL format is documented |
+|---|---|---|
+| `telegram://` | Telegram | [Telegram bots](https://core.telegram.org/bots) |
+| `slack://` | Slack | [Slack incoming webhooks](https://api.slack.com/messaging/webhooks) |
+| `discord://` | Discord | [Discord webhooks](https://support.discord.com/hc/en-us/articles/228383668) |
+| `ntfy://`, `ntfy+http://` | ntfy | [ntfy docs](https://docs.ntfy.sh/) |
+| `gotify://` | Gotify | [Gotify push](https://gotify.net/docs/pushmsg) |
+| `teams://` | Microsoft Teams | [Teams incoming webhooks](https://learn.microsoft.com/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook) |
+| `googlechat://` | Google Chat | [Google Chat webhooks](https://developers.google.com/chat/how-tos/webhooks) |
+| `mattermost://` | Mattermost | [Mattermost incoming webhooks](https://developers.mattermost.com/integrate/webhooks/incoming/) |
+| `rocketchat://` | Rocket.Chat | [Rocket.Chat integrations](https://docs.rocket.chat/docs/integrations) |
+| `matrix://` | Matrix | [Matrix docs](https://matrix.org/docs/) |
+| `mastodon://` | Mastodon | [Mastodon tokens](https://docs.joinmastodon.org/client/token/) |
+| `bluesky://` | Bluesky | [AT Protocol](https://atproto.com) |
+| `signal://` | Signal | [signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api) |
+| `pushover://` | Pushover | [Pushover API](https://pushover.net/api) |
+| `pushbullet://` | Pushbullet | [Pushbullet API](https://docs.pushbullet.com/) |
+| `zulip://` | Zulip | [Zulip send-message](https://zulip.com/api/send-message) |
+| `pagerduty://` | PagerDuty | [Events API v2](https://developer.pagerduty.com/docs/events-api-v2/overview/) |
+| `opsgenie://` | Opsgenie | [Opsgenie API integration](https://support.atlassian.com/opsgenie/docs/api-integration/) |
+| `twilio://` | Twilio SMS | [Twilio SMS](https://www.twilio.com/docs/sms) |
+| `whatsapp://` | WhatsApp | [WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api) |
+| `webhook://` | Generic webhook | Posts JSON to any URL you control — see the caveat below |
+
+An operator can restrict which of these are accepted with `NOTIFY_ALLOWED_SCHEMES`.
 
 ### Generic webhook
 

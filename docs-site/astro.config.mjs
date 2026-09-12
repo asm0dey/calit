@@ -70,6 +70,7 @@ export default defineConfig({
             { label: 'Multi-host meeting types', slug: 'usage/multi-host-meetings' },
             { label: 'Availability & overrides', slug: 'usage/availability' },
             { label: 'Bookings & approvals', slug: 'usage/bookings' },
+            { label: 'Notification channels', slug: 'usage/notification-channels' },
             { label: 'Users & admin', slug: 'usage/users-admin' },
             { label: 'Language & localization', slug: 'usage/languages' },
           ],
