@@ -338,8 +338,11 @@ public class SharedMeetingsResource {
         // A checkbox group with nothing ticked submits the field not at all, and RESTEasy binds that
         // absent field to an EMPTY list rather than null (pinned by ChannelOverrideTest's
         // customWithNoChannelIsRejected), so the empty-selection case reaches the guard below.
+        // .distinct() because V32 carries UNIQUE (channel_id, meeting_type_id): a crafted
+        // channelIds=7&channelIds=7 would otherwise persist the row twice, and the second INSERT
+        // violating uq_ncmt rolls the transaction back into a 500 instead of a save.
         List<Long> keep = "custom".equals(mode)
-                ? channelIds.stream().filter(ownIds::contains).toList()
+                ? channelIds.stream().filter(ownIds::contains).distinct().toList()
                 : List.of();
         if ("custom".equals(mode) && keep.isEmpty()) {
             // "No link rows" already means INHERIT, so an empty custom selection is not expressible

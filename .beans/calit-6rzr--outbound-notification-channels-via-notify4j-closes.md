@@ -62,3 +62,13 @@ docs/superpowers/sdd/2026-09-12-outbound-notification-channels/task-8-report.md.
 (404 on all four before the handlers existed); `MultiHostMessageParityTest`: 4/4 green (five new
 `adm_detail_notifications_*` keys with de/he, no orphans). Full suite: 1125 tests, 0 failures. `AdminResource`,
 `SharedMeetingsResource` and `AdminMessages` edited through MCP Steroid per the IDE-editing rule.
+
+## Task 8 fix round 1
+
+Review came back approved (all seven security verdicts pass); two Minors addressed. Added
+`ChannelOverrideTest.oneHostsSaveNeverDeletesAnotherHostsLinkRows` — the only test that can observe
+`replaceLinks`' per-host DELETE scope, because it gives the non-acting host a REAL override before the acting
+host saves. Proven to discriminate by mutation: unscoping the DELETE to `meetingTypeId = ?1` fails that test
+alone (10 run, 1 failure) while every other override and router test still passes. Also `.distinct()` on `keep`
+in both handlers, so a crafted duplicate `channelIds` cannot violate V32's `uq_ncmt` and 500 the save. Full
+suite: 1126 tests, 0 failures.
