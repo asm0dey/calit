@@ -23,9 +23,10 @@ public class ChannelStamp {
         // version column, so a read-modify-write would let two concurrent deliveries for the same
         // channel write back each other's stale column and silently drop a timestamp. 0 rows means
         // the channel was deleted between dispatch and delivery; nothing to record.
-        int updated = ok
-                ? NotificationChannel.update("lastSuccessAt = ?1 where id = ?2", at, channelId)
-                : NotificationChannel.update("lastFailureAt = ?1 where id = ?2", at, channelId);
+        // The ternary picks the COLUMN, not the call: both branches are compile-time literals, so
+        // nothing caller-supplied reaches the query.
+        int updated = NotificationChannel.update(
+                (ok ? "lastSuccessAt" : "lastFailureAt") + " = ?1 where id = ?2", at, channelId);
         if (updated == 0) {
             return;
         }

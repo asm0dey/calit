@@ -24,11 +24,15 @@ public class NotifyConfig {
 
     final boolean allowPrivateTargets;
 
-    final int maxAttempts;
-
-    /** Lazily built, then reused for every delivery. Volatile + double-checked: the async delivery
-     * threads all read it. */
-    private volatile HttpClientConfig http;
+    /**
+     * Built once per bean rather than per delivery: {@link HttpClientConfig#of} constructs an
+     * {@code HttpClient}, and a reminder batch fanning out hundreds of events would otherwise create
+     * hundreds of clients and their selector threads with no connection reuse. A {@code final} field in
+     * an {@code @ApplicationScoped} bean is safely published by the JMM with no synchronisation, and
+     * being an instance field (never a static) keeps the native-image contract intact -- see
+     * Dockerfile.native's --initialize-at-run-time=org.alexmond.notify4j.HttpClientConfig.
+     */
+    final HttpClientConfig http;
 
     @Inject
     public NotifyConfig(
@@ -43,7 +47,8 @@ public class NotifyConfig {
                         .filter(s -> !s.isEmpty())
                         .collect(Collectors.toUnmodifiableSet());
         this.allowPrivateTargets = allowPrivateTargets;
-        this.maxAttempts = maxAttempts;
+        this.http =
+                HttpClientConfig.of(Duration.ofSeconds(10), Duration.ofSeconds(10), maxAttempts, Duration.ofSeconds(1));
     }
 
     /** An empty allowlist means "*" — every channel notify4j knows. */
@@ -66,17 +71,6 @@ public class NotifyConfig {
      * {@code --initialize-at-run-time} flag exists to work around.
      */
     public HttpClientConfig http() {
-        HttpClientConfig cached = http;
-        if (cached == null) {
-            synchronized (this) {
-                cached = http;
-                if (cached == null) {
-                    cached = HttpClientConfig.of(
-                            Duration.ofSeconds(10), Duration.ofSeconds(10), maxAttempts, Duration.ofSeconds(1));
-                    http = cached;
-                }
-            }
-        }
-        return cached;
+        return http;
     }
 }
