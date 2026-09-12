@@ -19,16 +19,16 @@ public class ChannelStamp {
     @Transactional
     @ActivateRequestContext
     public void stamp(Long channelId, boolean ok, Instant at) {
-        NotificationChannel c = NotificationChannel.findById(channelId);
-        if (c == null) {
-            return; // deleted between dispatch and delivery; nothing to record
+        // A targeted single-column UPDATE, not findById -> mutate -> persist: the row carries no
+        // version column, so a read-modify-write would let two concurrent deliveries for the same
+        // channel write back each other's stale column and silently drop a timestamp. 0 rows means
+        // the channel was deleted between dispatch and delivery; nothing to record.
+        int updated = ok
+                ? NotificationChannel.update("lastSuccessAt = ?1 where id = ?2", at, channelId)
+                : NotificationChannel.update("lastFailureAt = ?1 where id = ?2", at, channelId);
+        if (updated == 0) {
+            return;
         }
-        if (ok) {
-            c.lastSuccessAt = at;
-        } else {
-            c.lastFailureAt = at;
-        }
-        c.persist();
         Log.debugf("channel %d delivery %s", channelId, ok ? "ok" : "failed");
     }
 }

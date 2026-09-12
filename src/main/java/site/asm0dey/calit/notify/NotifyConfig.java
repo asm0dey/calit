@@ -26,6 +26,10 @@ public class NotifyConfig {
 
     final int maxAttempts;
 
+    /** Lazily built, then reused for every delivery. Volatile + double-checked: the async delivery
+     * threads all read it. */
+    private volatile HttpClientConfig http;
+
     @Inject
     public NotifyConfig(
             @ConfigProperty(name = "calit.notify.allowed-schemes", defaultValue = ALL) String allowedSchemes,
@@ -54,8 +58,25 @@ public class NotifyConfig {
     /**
      * Built from config rather than {@code HttpClientConfig.defaults()} so {@code %test} can pin
      * max-attempts=1. Blocking retry is correct here: delivery runs on a background thread.
+     *
+     * <p>Built ONCE and reused: {@code HttpClientConfig.of} builds a real {@code HttpClient}, so a
+     * per-delivery call would give a reminder tick fanning out 200 events 200 clients (and their
+     * selector threads) with no connection reuse. An INSTANCE field, not a static: a static holding a
+     * live {@code HttpClient} is exactly the build-time-heap hazard the native image's
+     * {@code --initialize-at-run-time} flag exists to work around.
      */
     public HttpClientConfig http() {
-        return HttpClientConfig.of(Duration.ofSeconds(10), Duration.ofSeconds(10), maxAttempts, Duration.ofSeconds(1));
+        HttpClientConfig cached = http;
+        if (cached == null) {
+            synchronized (this) {
+                cached = http;
+                if (cached == null) {
+                    cached = HttpClientConfig.of(
+                            Duration.ofSeconds(10), Duration.ofSeconds(10), maxAttempts, Duration.ofSeconds(1));
+                    http = cached;
+                }
+            }
+        }
+        return cached;
     }
 }

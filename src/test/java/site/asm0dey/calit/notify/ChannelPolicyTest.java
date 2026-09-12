@@ -60,6 +60,10 @@ class ChannelPolicyTest {
         // would leak the bot token to a DNS server, so the private-target check must skip it.
         when(config.allowPrivateTargets()).thenReturn(false);
         assertTrue(policy.check("telegram://111:AAbbCC/222333").ok());
+        // The discriminating input: this token DOES parse as a host ("localhost" resolves to
+        // loopback), so the check passes only while the host-bearing guard excludes telegram. Drop
+        // that guard and this assertion turns PRIVATE_TARGET -- which is the whole point of it.
+        assertTrue(policy.check("telegram://localhost/222").ok(), "a bot token must never be resolved");
     }
 
     @Test

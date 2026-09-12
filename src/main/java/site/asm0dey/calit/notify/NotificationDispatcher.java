@@ -128,8 +128,18 @@ public class NotificationDispatcher {
 
     // --- internals ---
 
+    /**
+     * Guarded like {@link #dispatch}: its own {@code requiringNew} transaction can fail (pool
+     * exhaustion), and an escape here would land as an ERROR with a stack trace attributed to this
+     * dispatcher instead of the single WARN the rest of the path emits.
+     */
     private static BookingGuest guest(Long guestId) {
-        return QuarkusTransaction.requiringNew().call(() -> BookingGuest.findById(guestId));
+        try {
+            return QuarkusTransaction.requiringNew().call(() -> BookingGuest.findById(guestId));
+        } catch (RuntimeException e) {
+            Log.warnf(e, "channel notification failed loading guest %d", guestId);
+            return null;
+        }
     }
 
     /**
