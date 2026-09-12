@@ -22,6 +22,14 @@ Issues are beans in `.beans/` (agentic-first tracker, `beans` CLI). See `docs/ag
 
 Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+A decision that lands in `docs/adr/`, in a `docs/superpowers/specs/` design, or in `CONTEXT.md` is
+also cross-project memory: mirror it into the **precedent** graph in the same change (`precedent
+check --topic <t> --chose <o>` first to avoid a duplicate, then `precedent record` with `--rejected`
+and `--rationale` — the rejected alternatives and the why are the half that gets quoted back).
+The ADR holds the why for calit; the graph holds it for the next project. `.claude/hooks/precedent-nudge.sh`
+(PostToolUse) fires the reminder on those paths. Skip a mechanical call you made yourself — record
+what was actually settled.
+
 ## Build & run
 
 ```bash
