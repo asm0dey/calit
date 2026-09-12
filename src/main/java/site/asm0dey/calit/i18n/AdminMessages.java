@@ -874,6 +874,9 @@ public interface AdminMessages {
     @Message("Docs")
     String adm_settings_channels_docs();
 
+    @Message("Which URLs can I use?")
+    String adm_settings_channels_help();
+
     @Message("No channels yet — bookings reach you by email only.")
     String adm_settings_channels_none();
 
@@ -917,6 +920,9 @@ public interface AdminMessages {
 
     @Message("Notification routing saved")
     String adm_detail_notifications_saved();
+
+    @Message("Save routing")
+    String adm_detail_notifications_save();
 
     // ---- Google Calendar ----
 
