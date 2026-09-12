@@ -19,7 +19,7 @@ docs/superpowers/plans/2026-09-12-outbound-notification-channels.md
 - [x] 3. ChannelRouter — per-host, per-meeting-type routing rule
 - [x] 4. Promote BookingSnapshot + loader out of EmailService (IDE refactoring via steroid)
 - [x] 5. HostNotification model, ChannelMessageRenderer, msg keys + de/he
-- [ ] 6. NotifyConfig, ChannelPolicy, NotificationDispatcher, ChannelSender
+- [x] 6. NotifyConfig, ChannelPolicy, NotificationDispatcher, ChannelSender
 - [ ] 7. /me/settings channel list (add, delete, send test)
 - [ ] 8. Per-meeting-type override (creator + co-host)
 - [ ] 9. .env.example, docs-site pages, changelog Unreleased bullet
