@@ -17,8 +17,6 @@ import site.asm0dey.calit.i18n.AppMessageResolver;
  * incident, and every channel with a native priority notion keeps its own default.
  */
 @ApplicationScoped
-// S6813: CDI field injection is the established pattern across this codebase's beans.
-@SuppressWarnings("java:S6813")
 public class ChannelMessageRenderer {
 
     final AppMessageResolver messages;
@@ -62,7 +60,7 @@ public class ChannelMessageRenderer {
                         Severity.DEFAULT);
             case HostNotification.ConsentRequested r ->
                 Message.of(
-                        m.channel_consent_title(),
+                        m.email_host_consent_subject(r.meetingType().name),
                         m.channel_consent_body(r.meetingType().name, baseUrl + "/consent/" + r.consentToken()),
                         Severity.DEFAULT);
         };

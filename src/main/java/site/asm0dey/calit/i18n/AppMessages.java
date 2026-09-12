@@ -539,9 +539,11 @@ public interface AppMessages {
     @Message("Action needed: reconnect your Google Calendar")
     String email_google_disconnected_subject();
 
+    @Message("You're invited to co-host: {meetingTypeName}")
+    String email_host_consent_subject(String meetingTypeName);
+
     // ---- Channel notifications ----
-    // Titles reuse the email_*_subject keys above wherever an equivalent one exists; only the three
-    // events with no email subject of their own get a title key here.
+    // Titles reuse the email_*_subject keys above wherever an equivalent one exists.
 
     @Message("{inviteeName} · {when}")
     String channel_body(String inviteeName, String when);
@@ -558,9 +560,6 @@ public interface AppMessages {
     @Message("{guestEmail} · {when}")
     String channel_guest_body(String guestEmail, String when);
 
-    @Message("Co-host invitation")
-    String channel_consent_title();
-
     @Message("{meetingTypeName} — accept: {url}")
     String channel_consent_body(String meetingTypeName, String url);
 
@@ -569,9 +568,6 @@ public interface AppMessages {
 
     @Message("If you can read this, the channel works.")
     String channel_test_body();
-
-    @Message("You're invited to co-host: {meetingTypeName}")
-    String email_host_consent_subject(String meetingTypeName);
 
     // ---- Email date/time formatting ----
 
