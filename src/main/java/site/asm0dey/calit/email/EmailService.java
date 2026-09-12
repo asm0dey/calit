@@ -366,45 +366,32 @@ public class EmailService {
     void handleConfirmed(BookingConfirmed e) {
         BookingSnapshot l = snapshots.load(e.bookingId());
         if (l == null) return;
-        var location = resolveLocation(l);
-        Locale inviteeLocale = AppLocales.pick(l.booking().locale);
-        sendForKindLocaleAware(
-                l,
-                location,
-                locale -> messages.forLocale(locale).email_confirmed_subject(label(l)),
-                (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates.confirmation(
-                                role,
-                                locale.getLanguage(),
-                                greetingName,
-                                l.booking().inviteeName,
-                                l.booking().inviteeEmail,
-                                label(l),
-                                format(l.booking().startUtc, zone, locale, hourCycle),
-                                BookingService.lengthOf(l.booking()),
-                                location,
-                                isMeet(l),
-                                manageUrl(linkBooking),
-                                ownerManageUrl(linkBooking),
-                                cancelUrl(linkBooking),
-                                l.answers())
-                        .setLocale(locale)
-                        .render(),
-                false);
-        sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_confirmed_subject(label(l)));
+        sendConfirmation(l, locale -> messages.forLocale(locale).email_confirmed_subject(label(l)));
     }
 
     void handleApproved(BookingApproved e) {
         BookingSnapshot l = snapshots.load(e.bookingId());
         if (l == null) return;
-        var location = resolveLocation(l);
-        Locale inviteeLocale = AppLocales.pick(l.booking().locale);
         // Same body as confirmed (now confirmed after approval); only subject differs. (Group
         // bookings never fire BookingApproved -- the last host's approval fires BookingConfirmed
         // instead -- so this handler is single-host only; the fan-out branch never triggers here.)
+        sendConfirmation(l, locale -> messages.forLocale(locale).email_approved_subject(label(l)));
+    }
+
+    /**
+     * Renders and sends the confirmation mail (invitee + owner copies) plus guest invites, shared
+     * by {@link #handleConfirmed} and {@link #handleApproved}: an approval becomes the same
+     * confirmation mail as a direct confirm for everyone -- only the owner subject text differs
+     * between the two callers. The guest invite deliberately keeps the confirmed subject in both
+     * cases: guests never see an "approved" wording, only invitees/owners do.
+     */
+    private void sendConfirmation(BookingSnapshot l, Function<Locale, String> subjectForLocale) {
+        var location = resolveLocation(l);
+        Locale inviteeLocale = AppLocales.pick(l.booking().locale);
         sendForKindLocaleAware(
                 l,
                 location,
-                locale -> messages.forLocale(locale).email_approved_subject(label(l)),
+                subjectForLocale,
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates.confirmation(
                                 role,
                                 locale.getLanguage(),
@@ -640,12 +627,7 @@ public class EmailService {
         if (guests.isEmpty()) return;
         Locale locale = AppLocales.pick(l.booking().locale);
         for (BookingGuest g : guests) {
-            mailSender.send(
-                    fromName(l),
-                    g.email,
-                    subject,
-                    guestCancelBody(l, g, locale),
-                    calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, g, null, IcsMethod.CANCEL));
+            sendGuestCancelMail(l, g, subject, locale);
         }
     }
 
@@ -655,12 +637,7 @@ public class EmailService {
         BookingGuest guest = QuarkusTransaction.requiringNew().call(() -> BookingGuest.findById(e.guestId()));
         if (guest == null) return;
         Locale locale = AppLocales.pick(l.booking().locale);
-        mailSender.send(
-                fromName(l),
-                guest.email,
-                messages.forLocale(locale).email_cancelled_subject(label(l)),
-                guestCancelBody(l, guest, locale),
-                calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, guest, null, IcsMethod.CANCEL));
+        sendGuestCancelMail(l, guest, messages.forLocale(locale).email_cancelled_subject(label(l)), locale);
     }
 
     void handleGuestDeclined(GuestDeclined e) {
@@ -671,12 +648,7 @@ public class EmailService {
         Locale locale = AppLocales.pick(l.booking().locale);
         String start = format(l.booking().startUtc, l.zone(), locale);
         // 1) cancel .ics to the departing guest (omit .ics when Google natively notifies)
-        mailSender.send(
-                fromName(l),
-                guest.email,
-                messages.forLocale(locale).email_cancelled_subject(label(l)),
-                guestCancelBody(l, guest, locale),
-                calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, guest, null, IcsMethod.CANCEL));
+        sendGuestCancelMail(l, guest, messages.forLocale(locale).email_cancelled_subject(label(l)), locale);
         // 2) notify the invitee so they can reschedule
         String inviteeBody = Templates.guestDeclinedNotice(
                         locale.getLanguage(),
@@ -724,6 +696,21 @@ public class EmailService {
                     body,
                     null);
         });
+    }
+
+    /**
+     * CANCEL mail to a single guest: cancel body + CANCEL .ics attachment, the same at all three
+     * call sites ({@link #sendGuestCancels}, {@link #handleGuestRemoved}, {@link
+     * #handleGuestDeclined}). The .ics is omitted when Google notifies the guest natively (the
+     * guest is already a Google event attendee); each caller supplies its own subject.
+     */
+    private void sendGuestCancelMail(BookingSnapshot l, BookingGuest g, String subject, Locale locale) {
+        mailSender.send(
+                fromName(l),
+                g.email,
+                subject,
+                guestCancelBody(l, g, locale),
+                calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, g, null, IcsMethod.CANCEL));
     }
 
     /** Renders the guest cancel body in the given locale. */

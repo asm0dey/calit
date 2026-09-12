@@ -103,7 +103,7 @@ class BookingCalendarAddressTest {
 
     @Test
     @TestTransaction
-    void cancelOfAPreMigrationRowPassesNoAddress() {
+    void bookingWithNoReportedAddressStoresNone() {
         stubGoogle(null, "evt-old"); // createEvent reports no address, as pre-V26 rows have none
         Booking booked = bookAnySlot("addr-old");
 
