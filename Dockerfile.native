@@ -54,10 +54,18 @@ RUN printf 'git.build.version=%s\ngit.commit.id.abbrev=%s\n' "$APP_VERSION" "$GI
 # time by design, so forcing run-time init fights that machinery (untested) to guard a field nobody
 # has written yet. The failure mode is loud (build fails outright), so this comment is the mitigation
 # until a new AWT-typed static field actually appears -- then reach for the class-level flag instead.
+# --initialize-at-run-time=org.alexmond.notify4j.HttpClientConfig: discovered by the notify4j-core
+# native-image spike (calit-6rzr). HttpClientConfig.defaults() builds and caches a java.net.http
+# HttpClient; that cached instance is a static-final-reachable constant, so GraalVM's analysis walks
+# it into the build-time image heap -- but the JDK's own HttpClientFacade is itself only marked for
+# run-time init, so embedding a live instance of it in the heap is the exact "not allowed for
+# correctness reasons" UnsupportedFeatureException. Forcing HttpClientConfig to run-time init instead
+# means its defaults() (and any HttpClient it builds) is only ever constructed after the native binary
+# starts, never folded into the heap at build time.
 # Each of these is a separate comma item (Quarkus splits additional-build-args on commas).
 RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw -B -DskipTests package -Dquarkus.native.enabled=true \
-    "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken,--initialize-at-run-time=org.altcha.altcha.v1.Altcha,--initialize-at-build-time=java.awt.Color"
+    "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken,--initialize-at-run-time=org.altcha.altcha.v1.Altcha,--initialize-at-build-time=java.awt.Color,--initialize-at-run-time=org.alexmond.notify4j.HttpClientConfig"
 
 # --- Runtime stage: Alpaquita musl base (~3.9MB) — no JDK, just the native binary ---
 FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:b2a795bdfbf97bc2bef7bc32f1076440e0c9a4ee46ffc7c7ec3832483a3cd0fc AS runtime
