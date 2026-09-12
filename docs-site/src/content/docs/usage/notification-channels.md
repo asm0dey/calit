@@ -28,7 +28,7 @@ There is no "enable/disable" switch. **Deleting the row is how you turn a channe
 
 ## Getting a channel URL
 
-Every channel is an Apprise-style URL — the same shape Apprise popularised, implemented here by [notify4j](https://central.sonatype.com/artifact/org.alexmond/notify4j-core). Here is how to obtain one
+Every channel is an Apprise-style URL — the same shape Apprise popularised, implemented here by [notify4j](https://www.alexmond.org/notify4j/current/), whose [Channel URLs reference](https://www.alexmond.org/notify4j/current/configuration/#_channel_urls) is the authority on the exact syntax calit accepts. Here is how to obtain one
 per provider:
 
 ### Telegram
@@ -79,9 +79,12 @@ per provider:
 
 ### Every supported channel
 
-The **Docs** link beside each saved channel on `/me/settings` opens that provider's own reference —
-the authoritative source for its URL format. Do not follow Apprise's reference for the field layout:
-calit implements notify4j's catalog, which follows Apprise conventions but is not identical to it.
+Two references, for two different questions. For **the URL syntax calit accepts**, use notify4j's own
+[Channel URLs reference](https://www.alexmond.org/notify4j/current/configuration/#_channel_urls) — calit
+implements notify4j's catalog, which follows Apprise conventions without being identical to it, so
+Apprise's reference can describe field layouts calit rejects. For **how to obtain the token or webhook
+in the first place**, use the provider's own docs below; the **Docs** link beside each saved channel on
+`/me/settings` opens exactly that page.
 
 | Scheme | Channel | Where the URL format is documented |
 |---|---|---|
