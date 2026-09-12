@@ -124,6 +124,8 @@ class ChannelAllowlistDeliveryTest {
         });
     }
 
+    // S2925: polling for an async DB write with no latch to observe it; a single fixed sleep would be worse.
+    @SuppressWarnings("java:S2925")
     private NotificationChannel awaitFailureStamp(Long channelId) throws InterruptedException {
         for (var i = 0; i < 100; i++) {
             NotificationChannel c =

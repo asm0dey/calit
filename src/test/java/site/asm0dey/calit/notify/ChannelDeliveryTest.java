@@ -112,6 +112,8 @@ class ChannelDeliveryTest {
         QuarkusTransaction.requiringNew().run(() -> confirmed.fire(new BookingConfirmed(bookingId)));
     }
 
+    // S2925: polling for an async DB write with no latch to observe it; a single fixed sleep would be worse.
+    @SuppressWarnings("java:S2925")
     private NotificationChannel await(Long channelId, boolean success) throws InterruptedException {
         assertTrue(hit.await(10, TimeUnit.SECONDS), "the stub never received a POST");
         for (var i = 0; i < 100; i++) { // the timestamp write happens just after the POST returns

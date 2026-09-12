@@ -9,6 +9,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.test.MultiHostFixtures;
 
@@ -22,6 +23,15 @@ class ChannelSettingsPageTest {
     private static final String TELEGRAM = "telegram://111:AAbbCC/222333";
 
     private static final String SLACK = "slack://T00/B00/xxxx";
+
+    // S8786: a compiled find() pattern instead of replaceAll's backtracking-prone ".*x.*" regex.
+    private static final Pattern VALUE_ATTR = Pattern.compile("value=\"([^\"]+)\"");
+
+    private static String extractValue(String line) {
+        var m = VALUE_ATTR.matcher(line);
+        assertTrue(m.find(), "no value attribute found: " + line);
+        return m.group(1);
+    }
 
     private static List<NotificationChannel> channelsOf(long ownerId) {
         return QuarkusTransaction.requiringNew().call(() -> NotificationChannel.forOwner(ownerId));
@@ -71,7 +81,7 @@ class ChannelSettingsPageTest {
             roles = {"user"})
     void resubmittingTheRedactedValueKeepsTheStoredSecret() {
         var id = seed(1L, TELEGRAM, "Phone");
-        String redacted = given().when()
+        String line = given().when()
                 .get("/me/settings")
                 .then()
                 .statusCode(200)
@@ -81,8 +91,8 @@ class ChannelSettingsPageTest {
                 .lines()
                 .filter(l -> l.contains("name=\"channelUrl\"") && l.contains("value=\"telegram"))
                 .findFirst()
-                .orElseThrow()
-                .replaceAll(".*value=\"([^\"]+)\".*", "$1");
+                .orElseThrow();
+        var redacted = extractValue(line);
 
         given().contentType("application/x-www-form-urlencoded")
                 .formParam("channelId", String.valueOf(id))

@@ -88,7 +88,7 @@ public class ChannelPolicy {
         String host;
         try {
             host = URI.create(url).getHost();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             return false; // not a parseable authority; notify4j will fail it at send time
         }
         if (host == null || host.isBlank()) {
@@ -104,7 +104,7 @@ public class ChannelPolicy {
                     return true;
                 }
             }
-        } catch (UnknownHostException e) {
+        } catch (UnknownHostException _) {
             return false; // cannot resolve: not our business to block, the send will fail anyway
         }
         return false;

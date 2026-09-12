@@ -69,19 +69,7 @@ public class ChannelAdmin {
             NotificationChannel existing = parseId(value(ids, i))
                     .map(id -> NotificationChannel.ownedBy(id, ownerId))
                     .orElse(null);
-            // An unchanged redacted value means "keep the stored secret": the real URL never
-            // round-trips through the browser, so it cannot come back from the form. This
-            // comparison MUST come first — the guard below would otherwise reject the very
-            // round trip the masked rendering depends on.
-            var keepStored = existing != null && submitted.equals(policy.redact(existing.url));
-            var url = keepStored ? existing.url : submitted;
-            if (!keepStored && looksRedacted(url)) {
-                throw new ChannelRejected(ChannelPolicy.Reason.UNKNOWN_SCHEME, null);
-            }
-            var check = policy.check(url);
-            if (!check.ok()) {
-                throw new ChannelRejected(check.reason(), check.scheme());
-            }
+            var url = resolveUrl(submitted, existing);
             NotificationChannel row = existing;
             if (row == null) {
                 row = new NotificationChannel();
@@ -89,12 +77,41 @@ public class ChannelAdmin {
                 row.createdAt = Instant.now();
             }
             row.url = url;
-            var label = value(labels, i).trim();
-            row.label = label.isEmpty() ? policy.defaultLabel(url) : label;
-            if (row.label.length() > LABEL_MAX) {
-                row.label = row.label.substring(0, LABEL_MAX);
-            }
+            applyLabel(row, value(labels, i), url);
             row.persist();
+        }
+    }
+
+    /**
+     * Resolves the URL to store for one submitted row: the stored secret when the submitted
+     * value is exactly the redacted form of the existing URL, otherwise the submitted value
+     * itself once it clears the mask-paste guard and the channel policy check.
+     */
+    private String resolveUrl(String submitted, NotificationChannel existing) {
+        // An unchanged redacted value means "keep the stored secret": the real URL never
+        // round-trips through the browser, so it cannot come back from the form. This
+        // comparison MUST come first — the guard below would otherwise reject the very
+        // round trip the masked rendering depends on.
+        var keepStored = existing != null && submitted.equals(policy.redact(existing.url));
+        if (keepStored) {
+            return existing.url;
+        }
+        if (looksRedacted(submitted)) {
+            throw new ChannelRejected(ChannelPolicy.Reason.UNKNOWN_SCHEME, null);
+        }
+        var check = policy.check(submitted);
+        if (!check.ok()) {
+            throw new ChannelRejected(check.reason(), check.scheme());
+        }
+        return submitted;
+    }
+
+    /** Applies the submitted label, falling back to the policy default and truncating to {@link #LABEL_MAX}. */
+    private void applyLabel(NotificationChannel row, String rawLabel, String url) {
+        var label = rawLabel.trim();
+        row.label = label.isEmpty() ? policy.defaultLabel(url) : label;
+        if (row.label.length() > LABEL_MAX) {
+            row.label = row.label.substring(0, LABEL_MAX);
         }
     }
 
@@ -147,7 +164,7 @@ public class ChannelAdmin {
     private static Optional<Long> parseId(String raw) {
         try {
             return raw == null || raw.isBlank() ? Optional.empty() : Optional.of(Long.valueOf(raw.trim()));
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             return Optional.empty();
         }
     }
