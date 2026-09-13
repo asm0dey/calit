@@ -82,5 +82,6 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 ## Releases
 
 Maintainers cut a release with a `release: X.Y.Z` commit on `main` and a `vX.Y.Z` tag (which triggers
-the GitHub release + multi-arch image publish). A release also updates the changelog on the
-`docs-site` branch and bumps the example image tags in the README.
+the GitHub release + multi-arch image publish). The tag supplies the version displayed by release
+images; `pom.xml` remains at the stable `dev` revision for build-layer cache reuse. A release also
+updates the changelog on the `docs-site` branch and bumps the example image tags in the README.

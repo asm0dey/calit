@@ -173,7 +173,16 @@ jobs:
       - name: Resolve build metadata
         id: buildmeta
         run: |
-          echo "version=$(grep -m1 -oP '(?<=<version>)[^<]+' pom.xml)" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?(\+[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+              echo "::error::tag $GITHUB_REF_NAME is not a supported semantic version"
+              exit 1
+            fi
+          else
+            version="edge"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "commit=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Buildx
@@ -248,7 +257,7 @@ jobs:
           docker network create smoke
           docker run -d --name pg --network smoke \
             -e POSTGRES_USER=calit -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=calit postgres:16-alpine
-          for i in $(seq 1 60); do docker exec pg pg_isready -U calit >/dev/null 2>&1 && break; sleep 1; done
+          for _ in $(seq 1 60); do docker exec pg pg_isready -U calit >/dev/null 2>&1 && break; sleep 1; done
           docker run -d --name app --network smoke -p 8080:8080 \
             -e DB_URL=jdbc:postgresql://pg:5432/calit -e DB_USER=calit -e DB_PASSWORD=pw \
             -e SESSION_ENCRYPTION_KEY=ci-smoke-session-key-0123456789-abcdef \
@@ -258,14 +267,16 @@ jobs:
             -e GOOGLE_OAUTH_STATE_SECRET=ci-smoke-state-secret-0123456789-abcd \
             "$IMG"
           ready=""
-          for i in $(seq 1 120); do
+          for _ in $(seq 1 120); do
             if curl -fs http://localhost:8080/q/health/ready >/dev/null 2>&1; then ready=1; break; fi
             docker ps -q -f name=app -f status=running | grep -q . || { echo "::error::app container exited during boot"; break; }
             sleep 1
           done
           if [ -z "$ready" ]; then echo "::error::image did not become ready"; docker logs app; exit 1; fi
           # /setup render (Qute) + create admin (argon2id / BouncyCastle native path) with CSRF.
-          csrf=$(curl -s -c /tmp/cj http://localhost:8080/setup | grep -oP 'name="csrf-token"[^>]*value="\K[^"]+' | head -1)
+          curl -fs -c /tmp/cj http://localhost:8080/setup -o /tmp/setup.html
+          grep -Fq '<span>${{ steps.buildmeta.outputs.version }} &middot; ${{ steps.buildmeta.outputs.commit }}</span>' /tmp/setup.html || { echo "::error::/setup footer does not contain expected build metadata"; docker logs app; exit 1; }
+          csrf=$(grep -oP 'name="csrf-token"[^>]*value="\K[^"]+' /tmp/setup.html | head -1)
           code=$(curl -s -b /tmp/cj -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/setup \
             --data-urlencode "username=admin" --data-urlencode "email=a@b.co" \
             --data-urlencode "password=hunter2hunter2" --data-urlencode "csrf-token=$csrf")
@@ -383,7 +394,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: [test]
+    needs: [test, merge]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -393,16 +404,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history for generated release notes
-
-      - name: Verify tag matches pom version
-        run: |
-          # First <version> in pom.xml is the project version (no <parent> block).
-          POM_VERSION=$(grep -m1 -oP '(?<=<version>)[^<]+' pom.xml)
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          if [ "$POM_VERSION" != "$TAG_VERSION" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match pom version $POM_VERSION"
-            exit 1
-          fi
 
       - name: Create release with generated notes
         uses: softprops/action-gh-release@v3

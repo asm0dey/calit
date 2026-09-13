@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>site.asm0dey.calit</groupId>
   <artifactId>calit</artifactId>
-  <version>1.25.0</version>
+  <version>${revision}</version>
 
   <licenses>
     <license>
@@ -16,6 +16,8 @@
   </licenses>
 
   <properties>
+    <!-- Keep the compiled artifact version stable so metadata-only releases reuse Docker build layers. -->
+    <revision>dev</revision>
     <maven.compiler.release>25</maven.compiler.release>
     <!-- Quarkus @CheckedTemplate needs parameter names retained in bytecode. -->
     <maven.compiler.parameters>true</maven.compiler.parameters>
