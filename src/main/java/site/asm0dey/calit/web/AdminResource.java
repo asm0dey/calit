@@ -1623,6 +1623,7 @@ public class AdminResource {
         return switch (e.reason()) {
             case SCHEME_BLOCKED -> m().adm_settings_channels_scheme_blocked(e.scheme());
             case PRIVATE_TARGET -> m().adm_settings_channels_private_blocked();
+            case INCOMPLETE -> m().adm_settings_channels_incomplete(e.scheme());
             default -> m().adm_settings_channels_invalid();
         };
     }

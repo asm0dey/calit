@@ -28,7 +28,7 @@ import site.asm0dey.calit.test.MultiHostFixtures;
 @QuarkusTest
 class ChannelSettingsPageTest {
 
-    private static final String TELEGRAM = "telegram://111:AAbbCC/222333";
+    private static final String TELEGRAM = "telegram://api.telegram.org/111:AAbbCC/222333";
 
     private static final String SLACK = "slack://T00/B00/xxxx";
 
@@ -339,6 +339,31 @@ class ChannelSettingsPageTest {
         var saved = channelsOf(1L);
         assertEquals(1, saved.size(), "a path-less webhook URL is a legitimate channel");
         assertEquals("webhook://example.com", saved.getFirst().url);
+    }
+
+    /**
+     * #216: {@code telegram://<bot-token>/<chat-id>} -- the shape calit used to document -- leaves
+     * notify4j's chatId empty. It used to save without a word and then throw on every delivery, so
+     * the host learned nothing until a real booking failed to arrive. It must be refused here, and
+     * the message must say the URL is incomplete rather than that the channel type is unsupported.
+     */
+    @Test
+    @TestSecurity(
+            user = "admin",
+            roles = {"user"})
+    void anIncompleteUrlIsRejectedWithItsOwnMessage() {
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("channelId", "")
+                .formParam("channelLabel", "")
+                .formParam("channelUrl", "telegram://111:AAbbCC/222333")
+                .when()
+                .post("/me/settings/channels")
+                .then()
+                .statusCode(200)
+                .body(containsString("missing a part"))
+                .body(not(containsString("not a supported")));
+
+        assertTrue(channelsOf(1L).isEmpty(), "a channel that could never deliver must not be stored");
     }
 
     @Test

@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.Optional;
 import org.alexmond.notify4j.ChannelCatalog;
+import org.alexmond.notify4j.ChannelField;
 import org.alexmond.notify4j.FieldType;
 import org.alexmond.notify4j.ParsedChannel;
 
@@ -22,7 +23,8 @@ public class ChannelPolicy {
         OK,
         UNKNOWN_SCHEME,
         SCHEME_BLOCKED,
-        PRIVATE_TARGET
+        PRIVATE_TARGET,
+        INCOMPLETE
     }
 
     public record Check(Reason reason, String scheme) {
@@ -49,6 +51,9 @@ public class ChannelPolicy {
         if (!config.schemeAllowed(scheme)) {
             return new Check(Reason.SCHEME_BLOCKED, scheme);
         }
+        if (missingRequiredField(parsed.get())) {
+            return new Check(Reason.INCOMPLETE, scheme);
+        }
         if (!config.allowPrivateTargets() && hostBearing(parsed.get()) && resolvesPrivate(url)) {
             return new Check(Reason.PRIVATE_TARGET, scheme);
         }
@@ -69,19 +74,40 @@ public class ChannelPolicy {
     }
 
     /**
-     * Whether this channel's URL authority is a real host rather than a credential. {@code
-     * telegram://<bot-token>/<chat-id>} puts a SECRET where a host would go, and resolving it would
-     * hand the bot token to a DNS resolver — so only channels with a URL-typed field, or one using
-     * the {@code +http} cleartext transport, are ever resolved. Those are exactly the self-hosted
-     * channels {@code allow-private-targets} exists for.
+     * Whether a URL names every part its channel needs. {@link ChannelCatalog#tryParse} only
+     * DECOMPOSES — it splits the URL into the descriptor's fields and reports success for any known
+     * scheme, however short the URL is — so it admits {@code telegram://<bot-token>/<chat-id>},
+     * which leaves {@code chatId} empty and throws in {@code NotifierUrlParser} at DELIVERY time.
+     * A channel that saves and can then never deliver is the worst outcome available, so the
+     * required-field check runs here instead.
+     *
+     * <p>Only {@code required} errors count. {@link ChannelCatalog#parse} masks secret values, and a
+     * URL-typed secret (webhook's and slack's whole URL) therefore comes back as {@code ********}
+     * and fails notify4j's {@code invalid_url} format check — on a perfectly good channel.
+     */
+    private boolean missingRequiredField(ParsedChannel parsed) {
+        return catalog.validate(parsed.scheme(), parsed.values()).stream().anyMatch(e -> "required".equals(e.code()));
+    }
+
+    /**
+     * Whether this channel's URL authority is a real host, so that resolving it is both meaningful
+     * and safe. It is for every channel whose descriptor declares a {@code host} field (telegram's
+     * Bot API host, ntfy's and gotify's server) or a URL-typed one (webhook, slack, discord), and
+     * for anything on the {@code +http} cleartext transport. It is NOT for a channel that puts a
+     * credential in the authority — {@code pushover://<app-token>/<user-key>} — where a lookup would
+     * hand the secret to a DNS resolver for nothing.
      */
     private boolean hostBearing(ParsedChannel parsed) {
         if (parsed.cleartextHttp()) {
             return true;
         }
         return catalog.describe(parsed.scheme())
-                .map(d -> d.fields().stream().anyMatch(f -> f.type() == FieldType.URL))
+                .map(d -> d.fields().stream().anyMatch(ChannelPolicy::namesAHost))
                 .orElse(false);
+    }
+
+    private static boolean namesAHost(ChannelField f) {
+        return f.type() == FieldType.URL || "host".equals(f.key());
     }
 
     private static boolean resolvesPrivate(String url) {

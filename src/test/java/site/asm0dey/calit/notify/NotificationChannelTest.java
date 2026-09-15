@@ -17,7 +17,7 @@ import site.asm0dey.calit.test.MultiHostFixtures;
 @QuarkusTest
 class NotificationChannelTest {
 
-    private static final String TELEGRAM = "telegram://111:AAbbCC/222333";
+    private static final String TELEGRAM = "telegram://api.telegram.org/111:AAbbCC/222333";
 
     @Inject
     EntityManager em;
