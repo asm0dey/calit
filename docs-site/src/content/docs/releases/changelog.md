@@ -7,9 +7,10 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.25.1
 
-Merged but not yet in a tagged release.
+Telegram and ntfy channel URLs in the shape the docs gave could never deliver; the shapes are
+corrected and an incomplete URL is now refused when you save it.
 
 - Corrected the documented Telegram and ntfy channel URLs: `telegram://api.telegram.org/<bot-token>/<chat-id>`
   and `ntfy://<host>/<topic>`. The host-less forms shown before could never deliver.
@@ -21,7 +22,9 @@ Merged but not yet in a tagged release.
   ([#218](https://github.com/asm0dey/calit/pull/218))
 
 Upgrade: if a Telegram or ntfy channel has never delivered, re-enter its URL in the corrected form —
-existing rows are not rewritten.
+existing rows are not rewritten. On an instance running `NOTIFY_ALLOW_PRIVATE=false`, an `ntfy://`,
+`gotify://` or `telegram://` channel aimed at a private address stops delivering and is refused on
+save; set `NOTIFY_ALLOW_PRIVATE=true` to keep it.
 
 ## 1.25.0
 
