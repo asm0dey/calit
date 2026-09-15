@@ -45,11 +45,14 @@ per provider:
    BotFather gives you a **bot token** (looks like `123456:AAbbCCddEE...`).
 2. Get the **chat id** to send to — message your new bot (or add it to a group), then call
    `https://api.telegram.org/bot<token>/getUpdates` and read the `chat.id` field from the response.
-3. The channel URL is:
+3. The channel URL carries the Bot API host, then the token, then the chat id:
 
    ```
-   telegram://<bot-token>/<chat-id>
+   telegram://api.telegram.org/<bot-token>/<chat-id>
    ```
+
+   The `api.telegram.org` part is required — it is the host the message is posted to, not a
+   placeholder. A URL without it has nowhere to put the chat id and can never deliver.
 
 ### Slack
 
@@ -68,13 +71,14 @@ per provider:
 
 1. Pick a topic name (a private, hard-to-guess string works as the access control) on
    [ntfy.sh](https://ntfy.sh) or your own self-hosted ntfy server.
-2. The channel URL is:
+2. The channel URL names the server first, then the topic:
 
    ```
-   ntfy://<topic>
+   ntfy://ntfy.sh/<topic>
    ```
 
-   For a self-hosted server, use the `+http` or `+https` transport suffix to point at your own host:
+   For a self-hosted server, swap in your own host — and use the `+http` transport suffix if it is
+   not behind TLS:
 
    ```
    ntfy+http://<host>:<port>/<topic>
@@ -83,7 +87,11 @@ per provider:
 ### Gotify
 
 1. In your Gotify server's web UI, create an **application** — Gotify gives you an app token.
-2. The channel URL points at your Gotify server with that token.
+2. The channel URL points at your Gotify server with that token:
+
+   ```
+   gotify://<host>/<app-token>
+   ```
 
 ### Every supported channel
 
@@ -119,6 +127,10 @@ channels** heading on `/me/settings` opens this page.
 | `webhook://` | Generic webhook | Posts JSON to any URL you control — see the caveat below |
 
 An operator can restrict which of these are accepted with `NOTIFY_ALLOWED_SCHEMES`.
+
+A URL that is missing a part its channel needs — a Telegram URL with no chat id, an ntfy URL with no
+topic — is refused when you save it, with a message naming the channel type. It is never stored,
+because a stored channel that cannot deliver would fail silently on every booking.
 
 ### Generic webhook
 
