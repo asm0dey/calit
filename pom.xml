@@ -231,7 +231,7 @@
                metaspace — Quarkus augmentation is metaspace-heavy) absorbs the few extra classloaders.
                The exit timeout is raised so a slow Vert.x/Quarkus shutdown isn't misreported. -->
           <reuseForks>true</reuseForks>
-          <argLine>-Xms512m -Xmx6g</argLine>
+          <argLine>@{argLine} -Xms512m -Xmx6g</argLine>
           <forkedProcessExitTimeoutInSeconds>120</forkedProcessExitTimeoutInSeconds>
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
