@@ -13,12 +13,12 @@ Merged but not yet in a tagged release.
 
 - Corrected the documented Telegram and ntfy channel URLs: `telegram://api.telegram.org/<bot-token>/<chat-id>`
   and `ntfy://<host>/<topic>`. The host-less forms shown before could never deliver.
-  ([#217](https://github.com/asm0dey/calit/pull/217))
+  ([#218](https://github.com/asm0dey/calit/pull/218))
 - A channel URL missing a part its channel needs is now refused at save time instead of being stored
-  and silently failing every delivery. ([#217](https://github.com/asm0dey/calit/pull/217))
+  and silently failing every delivery. ([#218](https://github.com/asm0dey/calit/pull/218))
 - `NOTIFY_ALLOW_PRIVATE=false` now also covers `telegram://`, `ntfy://` and `gotify://`, whose
   authority is a server address; they previously bypassed the private-target check.
-  ([#217](https://github.com/asm0dey/calit/pull/217))
+  ([#218](https://github.com/asm0dey/calit/pull/218))
 
 Upgrade: if a Telegram or ntfy channel has never delivered, re-enter its URL in the corrected form —
 existing rows are not rewritten.
