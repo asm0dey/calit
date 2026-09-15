@@ -7,6 +7,22 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- Corrected the documented Telegram and ntfy channel URLs: `telegram://api.telegram.org/<bot-token>/<chat-id>`
+  and `ntfy://<host>/<topic>`. The host-less forms shown before could never deliver.
+  ([#217](https://github.com/asm0dey/calit/pull/217))
+- A channel URL missing a part its channel needs is now refused at save time instead of being stored
+  and silently failing every delivery. ([#217](https://github.com/asm0dey/calit/pull/217))
+- `NOTIFY_ALLOW_PRIVATE=false` now also covers `telegram://`, `ntfy://` and `gotify://`, whose
+  authority is a server address; they previously bypassed the private-target check.
+  ([#217](https://github.com/asm0dey/calit/pull/217))
+
+Upgrade: if a Telegram or ntfy channel has never delivered, re-enter its URL in the corrected form —
+existing rows are not rewritten.
+
 ## 1.25.0
 
 Booking events now reach Telegram, Slack, Discord, ntfy, Gotify or any webhook alongside email —
