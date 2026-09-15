@@ -895,6 +895,9 @@ public interface AdminMessages {
     @Message("That is not a supported channel URL")
     String adm_settings_channels_invalid();
 
+    @Message("That {scheme} URL is missing a part — check the expected format in the docs")
+    String adm_settings_channels_incomplete(String scheme);
+
     @Message("Channel type {scheme} is not allowed on this server")
     String adm_settings_channels_scheme_blocked(String scheme);
 

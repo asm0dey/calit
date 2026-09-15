@@ -39,7 +39,7 @@ class ChannelPolicyTest {
 
     @Test
     void starAllowsEveryKnownScheme() {
-        assertTrue(policy.check("telegram://111:AAbbCC/222333").ok());
+        assertTrue(policy.check("telegram://api.telegram.org/111:AAbbCC/222333").ok());
         assertTrue(policy.check("ntfy+http://localhost:1/topic").ok());
     }
 
@@ -68,24 +68,75 @@ class ChannelPolicyTest {
 
     @Test
     void aCredentialInTheAuthorityIsNeverResolved() {
-        // telegram://<bot-token>/<chat-id>: the authority is a SECRET, not a host. Resolving it
-        // would leak the bot token to a DNS server, so the private-target check must skip it.
+        // pushover://<app-token>/<user-key> puts a SECRET where a host would go -- its descriptor
+        // declares neither a host field nor a URL-typed one. Resolving that authority would hand
+        // the token to a DNS server for nothing, so the private-target check must skip it.
         when(config.allowPrivateTargets()).thenReturn(false);
-        assertTrue(policy.check("telegram://111:AAbbCC/222333").ok());
         // The discriminating input: this token DOES parse as a host ("localhost" resolves to
-        // loopback), so the check passes only while the host-bearing guard excludes telegram. Drop
+        // loopback), so the check passes only while the host-bearing guard excludes pushover. Drop
         // that guard and this assertion turns PRIVATE_TARGET -- which is the whole point of it.
-        assertTrue(policy.check("telegram://localhost/222").ok(), "a bot token must never be resolved");
+        assertTrue(policy.check("pushover://localhost/user-key").ok(), "an app token must never be resolved");
+    }
+
+    /**
+     * telegram, ntfy and gotify put a real SERVER in the authority -- {@code api.telegram.org}, or
+     * whichever box runs your ntfy. They declare it as a {@code host} field rather than a URL-typed
+     * one, which used to put them outside the private-target guard: {@code ntfy://192.168.1.5/topic}
+     * sailed past a server that had switched private targets off.
+     */
+    @Test
+    void aHostFieldIsAPrivateTargetLikeAnyOther() {
+        when(config.allowPrivateTargets()).thenReturn(false);
+        assertEquals(
+                ChannelPolicy.Reason.PRIVATE_TARGET,
+                policy.check("ntfy://localhost/topic").reason());
+        assertEquals(
+                ChannelPolicy.Reason.PRIVATE_TARGET,
+                policy.check("gotify://localhost/AppToken").reason());
+        assertEquals(
+                ChannelPolicy.Reason.PRIVATE_TARGET,
+                policy.check("telegram://localhost/111:AAbbCC/222333").reason());
+    }
+
+    /**
+     * The bug behind #216: notify4j's telegram URL carries the Bot API host in the authority and
+     * BOTH the token and the chat id in the path. {@code catalog.tryParse} only DECOMPOSES, so the
+     * host-less form it produced -- token in the authority, one path segment left -- came back
+     * "parsed" with an empty chatId, saved without complaint, and then threw in the delivery
+     * parser on every send. A channel that saves and can never deliver must be refused up front.
+     */
+    @Test
+    void aUrlMissingARequiredPartIsRejectedRatherThanSavedAndDead() {
+        assertEquals(
+                ChannelPolicy.Reason.INCOMPLETE,
+                policy.check("telegram://111:AAbbCC/222333").reason(),
+                "the host-less telegram URL calit used to document");
+        assertEquals(
+                ChannelPolicy.Reason.INCOMPLETE,
+                policy.check("telegram://api.telegram.org/111:AAbbCC").reason(),
+                "chat id missing");
+        assertTrue(policy.check("telegram://api.telegram.org/111:AAbbCC/222333").ok());
+    }
+
+    /**
+     * A URL-typed SECRET (webhook's and slack's whole URL) comes back from {@code parse} as the
+     * mask, which fails notify4j's {@code invalid_url} format check. Only {@code required} errors
+     * may reject, or the incomplete-URL guard would refuse every webhook in existence.
+     */
+    @Test
+    void aMaskedSecretIsNotMistakenForAMissingPart() {
+        assertTrue(policy.check("webhook://example.com/hook").ok());
+        assertTrue(policy.check("slack://T000/B000/xxxx").ok());
     }
 
     @Test
     void redactionHidesTheSecret() {
-        String redacted = policy.redact("telegram://111:AAbbCC/222333");
+        String redacted = policy.redact("telegram://api.telegram.org/111:AAbbCC/222333");
         assertFalse(redacted.contains("AAbbCC"), redacted);
     }
 
     @Test
     void defaultLabelIsTheChannelDisplayName() {
-        assertEquals("Telegram", policy.defaultLabel("telegram://111:AAbbCC/222333"));
+        assertEquals("Telegram", policy.defaultLabel("telegram://api.telegram.org/111:AAbbCC/222333"));
     }
 }
