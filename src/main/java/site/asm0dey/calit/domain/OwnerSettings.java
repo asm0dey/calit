@@ -2,6 +2,7 @@ package site.asm0dey.calit.domain;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
+import site.asm0dey.calit.privacy.PrivacyConfig;
 
 @Entity
 @Table(name = "owner_settings")
@@ -54,10 +55,26 @@ public class OwnerSettings extends PanacheEntityBase {
      * This owner's effective retention window in days, or null for "keep forever". The owner's own
      * value wins in BOTH directions — a longer window is as legitimate a choice as a shorter one,
      * and silently capping it at the instance default would be a deletion the operator did not ask
-     * for.
+     * for. The result is always clamped to {@link PrivacyConfig#MAX_RETENTION_DAYS} via
+     * {@link #clampDays(Integer)}: {@code bookingRetentionDays} is normally written through the
+     * settings form's own clamp, but this is the one place every Java caller reads the value back
+     * through, so a column value above the cap (however it got there) can never be reported as a
+     * longer window than {@code RetentionScheduler}'s SQL — which applies the same cap — will
+     * actually honour.
      */
     public Integer retentionDaysOrDefault(Integer instanceDefault) {
-        return bookingRetentionDays != null ? bookingRetentionDays : instanceDefault;
+        return clampDays(bookingRetentionDays != null ? bookingRetentionDays : instanceDefault);
+    }
+
+    /**
+     * Clamps a retention-day count to {@link PrivacyConfig#MAX_RETENTION_DAYS}; {@code null}
+     * passes through unchanged ("keep forever"). The single clamp point for every retention-day
+     * value any Java caller reads — {@link #retentionDaysOrDefault(Integer)} and the
+     * no-settings-row fallback both go through it, so both branches stay consistent with the SQL
+     * sweep's own {@code LEAST(...)} cap.
+     */
+    public static Integer clampDays(Integer days) {
+        return days == null ? null : Math.min(days, PrivacyConfig.MAX_RETENTION_DAYS);
     }
 
     /** Returns this owner's settings row, or null if not yet configured. */

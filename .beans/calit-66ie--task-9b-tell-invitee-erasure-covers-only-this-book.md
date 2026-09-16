@@ -5,7 +5,7 @@ status: completed
 type: task
 priority: normal
 created_at: 2026-09-16T17:44:25Z
-updated_at: 2026-09-16T17:52:25Z
+updated_at: 2026-09-16T18:09:30Z
 parent: calit-l3fk
 ---
 
@@ -24,3 +24,14 @@ Add pub_erase_not_linked/links_expire/links_forever copy to eraseConfirm.html an
 - [x] Wire into eraseConfirm.html and erased.html with CALIT_ERASE_NOT_LINKED marker
 - [x] Add/extend tests, register Hebrew deferral
 - [x] Full suite green
+
+
+
+## Fix round 1 (task review)
+
+- Clamped OwnerSettings.retentionDaysOrDefault (and added OwnerSettings.clampDays static helper)
+  to PrivacyConfig.MAX_RETENTION_DAYS, matching RetentionScheduler's SQL LEAST(...) cap. Routed
+  PublicResource.erasureWindowDaysFor's missing-owner-settings-row branch through the same clamp.
+- Added test: oversized owner override (99,999,999) renders clamped to 36500 days on the confirm page.
+- Added test: no owner_settings row at all -> confirm page still renders 200 with the 'keep forever' copy (verified it does NOT 404; documented in the test/report).
+- [x] Fix round 1 addressed

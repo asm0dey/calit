@@ -118,4 +118,44 @@ class InviteeErasureRouteTest {
                 .statusCode(200)
                 .body(containsString("CALIT_ERASE_NOT_LINKED"));
     }
+
+    /**
+     * Fix round 1: an owner override written before {@link PrivacyConfig#MAX_RETENTION_DAYS}
+     * existed (or by anything other than the clamping settings form) must still be reported as
+     * the clamped value — {@code RetentionScheduler}'s SQL sweep applies the same cap, so the page
+     * must never promise a longer window than the sweep will actually honour.
+     */
+    @Test
+    void confirmPageClampsAnOversizedOwnerOverride() {
+        var token = seedToken();
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(ErasureFixtures.OWNER);
+            s.bookingRetentionDays = 99_999_999;
+        });
+
+        given().when()
+                .get("/booking/" + token + "/erase")
+                .then()
+                .statusCode(200)
+                .body(containsString("CALIT_ERASE_NOT_LINKED"))
+                .body(containsString("stop working " + PrivacyConfig.MAX_RETENTION_DAYS + " days"));
+    }
+
+    /**
+     * Fix round 1 (promoted minor): R22's LEFT JOIN means the retention sweep never skips an owner
+     * with no {@code owner_settings} row — the erase confirm page must be equally robust and fall
+     * back to "keep forever" rather than 404 or NPE.
+     */
+    @Test
+    void confirmPageFallsBackToForeverWithNoOwnerSettingsRow() {
+        var token = seedToken();
+        QuarkusTransaction.requiringNew().run(() -> OwnerSettings.delete("ownerId", ErasureFixtures.OWNER));
+
+        given().when()
+                .get("/booking/" + token + "/erase")
+                .then()
+                .statusCode(200)
+                .body(containsString("CALIT_ERASE_NOT_LINKED"))
+                .body(containsString("keep working until"));
+    }
 }

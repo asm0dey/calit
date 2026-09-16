@@ -777,12 +777,18 @@ public class PublicResource {
      * This booking's owner's effective retention window in days — the owner's own {@code
      * bookingRetentionDays} override if set, else the instance-wide default, else {@code null}
      * ("keep forever"). Used only to tell the invitee how long their OTHER manage links with this
-     * host stay valid (Task 9b) — it plays no part in the erasure itself.
+     * host stay valid (Task 9b) — it plays no part in the erasure itself. Both branches are
+     * clamped via {@link OwnerSettings#clampDays(Integer)}: {@code retentionDaysOrDefault} clamps
+     * the with-settings-row case, and the missing-row case is routed through the same clamp here
+     * for consistency (the instance default is already clamped by {@code PrivacyConfig}, so this
+     * is a no-op there, but it keeps both branches provably consistent with the SQL sweep's cap).
      */
     private Integer erasureWindowDaysFor(Booking booking) {
         Integer instanceDefault = privacyConfig.bookingRetentionDays().orElse(null);
         OwnerSettings settings = OwnerSettings.forOwner(booking.ownerId);
-        return settings != null ? settings.retentionDaysOrDefault(instanceDefault) : instanceDefault;
+        return settings != null
+                ? settings.retentionDaysOrDefault(instanceDefault)
+                : OwnerSettings.clampDays(instanceDefault);
     }
 
     /**
