@@ -37,6 +37,16 @@ public final class PersonalData {
         CASCADES,
         /** Removed on a fixed schedule regardless of any request. */
         AGE_PURGE,
+        /**
+         * Deliberately NEVER erased or purged — written AT deletion time specifically to outlive
+         * the row it derives from, closing a security gap (deleted-username tombstones, R16:
+         * blocks account-takeover via username reuse). Fix-round note: none of the four routes
+         * above honestly describe this case (it isn't blanked, deleted, cascaded away, or aged
+         * out — the whole point is that it is none of those), so this is a fifth, precisely-scoped
+         * route rather than a contorted fit onto an existing one. Flagged for review in the fix
+         * report rather than silently forced onto e.g. {@code DELETE_ROWS} or {@code AGE_PURGE}.
+         */
+        RETAINED_INDEFINITELY,
         /** No personal data. */
         NOT_PERSONAL
     }
@@ -118,6 +128,14 @@ public final class PersonalData {
                     Subject.INVITEE,
                     EraseRoute.AGE_PURGE),
             // --- owner data ---------------------------------------------------------------------
+            new Classified(
+                    "deleted_username",
+                    Set.of("deleted_at", "username_sha256"),
+                    // A one-way hash of a deleted owner's username, kept forever on purpose — see
+                    // EraseRoute.RETAINED_INDEFINITELY's javadoc.
+                    Set.of("username_sha256"),
+                    Subject.OWNER,
+                    EraseRoute.RETAINED_INDEFINITELY),
             new Classified(
                     "app_user",
                     Set.of(

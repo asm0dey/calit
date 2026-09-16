@@ -8,8 +8,6 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -37,7 +35,12 @@ public class UsersResource {
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance users(
-                List<AppUser> users, String error, boolean isAdmin, Long pendingCount, String title);
+                List<AppUser> users,
+                String error,
+                boolean isAdmin,
+                Long pendingCount,
+                String title,
+                Long currentUserId);
     }
 
     final CurrentOwner currentOwner;
@@ -90,12 +93,14 @@ public class UsersResource {
 
     /** All users, oldest first. Page is admin-only, so isAdmin is always true here. */
     private TemplateInstance render(String error) {
+        AppUser me = currentUser();
         return Templates.users(
                 AppUser.list("order by createdAt asc"),
                 error,
                 true,
                 pendingCount(),
-                adminMsgs.forLocale(activeLocale.current()).adm_users_title());
+                adminMsgs.forLocale(activeLocale.current()).adm_users_title(),
+                me == null ? null : me.id);
     }
 
     @GET
@@ -111,7 +116,8 @@ public class UsersResource {
         var m = adminMsgs.forLocale(activeLocale.current());
         String normalized;
         try {
-            normalized = Usernames.validateNew(username, AppUser::usernameTaken); // throws on invalid/reserved/taken
+            normalized =
+                    Usernames.validateNew(username, AppUser::usernameUnavailable); // throws on invalid/reserved/taken
         } catch (IllegalArgumentException e) {
             return render(e.getMessage());
         }
@@ -286,27 +292,29 @@ public class UsersResource {
      * arrives by mail. Same last-admin guard as revoke/lock: there is no in-app recovery from zero
      * enabled admins (SEC-AUTHZ-01).
      *
-     * <p>An admin deleting their OWN account through this route is sent through {@code /logout} —
-     * same as self-serve deletion in {@code AdminResource} — instead of re-rendering the users page:
-     * the session it would render with is one whose backing row no longer exists, and the next
-     * request would be rejected anyway once {@code EnabledUserAugmentor} re-checks it. Clearing the
-     * credential cookie now is cleaner than leaving a dangling session for the browser to discover.
+     * <p>An admin can never delete THEIR OWN account through this route (Finding 1, R15): a
+     * same-shape one-click POST with no re-authentication is exactly the shortcut self-serve
+     * deletion in {@code AdminResource} deliberately refuses to offer — that route re-verifies a
+     * password (or a retyped username, for a passwordless account) before deleting anything. Refused
+     * here with a pointer to {@code /me/settings/delete}; mirrors {@link #lock}'s self-guard. The
+     * "Delete" button is also hidden on the admin's own row in {@code users.html}, but this
+     * server-side refusal is the real guard — a crafted POST must not bypass it.
      */
     @POST
     @Path("/{id}/delete")
     @Produces(MediaType.TEXT_HTML)
-    public Response deleteUser(@PathParam("id") Long id) {
+    public TemplateInstance deleteUser(@PathParam("id") Long id) {
         var m = adminMsgs.forLocale(activeLocale.current());
-        var self = isSelf(id);
+        if (isSelf(id)) {
+            return render(m.adm_users_error_delete_self());
+        }
+        requireUser(id); // 404 for an unknown id -- no audit event for a delete that never happened
         try {
             privacy.deleteAccount(id);
         } catch (IllegalStateException e) {
-            return Response.ok(render(m.adm_users_error_last_admin_delete())).build();
+            return render(m.adm_users_error_last_admin_delete());
         }
         audit.event(identity.getPrincipal().getName(), "delete-user", USER_TARGET + id, null);
-        if (self) {
-            return Response.seeOther(URI.create("/logout")).build();
-        }
-        return Response.ok(render(null)).build();
+        return render(null);
     }
 }

@@ -70,7 +70,8 @@ class MultiHostMessageParityTest {
             "adm_delete_account_error_mismatch",
             "adm_delete_account_error_last_admin",
             "adm_users_delete",
-            "adm_users_error_last_admin_delete");
+            "adm_users_error_last_admin_delete",
+            "adm_users_error_delete_self");
 
     @Test
     void everyAppMessageKeyHasGermanAndHebrewTranslation() {

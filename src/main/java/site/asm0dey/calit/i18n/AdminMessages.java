@@ -934,7 +934,7 @@ public interface AdminMessages {
     String adm_delete_account_desc();
 
     @Message(
-            "Disconnecting Google here removes calit's copy of the tokens. Revoke calit's access in your Google account to withdraw the grant itself.")
+            "Deleting your account removes calit's copy of your Google tokens. Revoke calit's access in your Google account to withdraw the grant itself.")
     String adm_delete_account_google_note();
 
     @Message("Enter your password to confirm")
@@ -1105,6 +1105,9 @@ public interface AdminMessages {
 
     @Message("Cannot delete the last enabled admin.")
     String adm_users_error_last_admin_delete();
+
+    @Message("You can't delete your own account here — use \"Delete my account\" in Settings.")
+    String adm_users_error_delete_self();
 
     // ---- Me setup wizard ----
 

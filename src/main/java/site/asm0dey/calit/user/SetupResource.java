@@ -56,7 +56,7 @@ public class SetupResource {
         AppMessages m = messages.forLocale(activeLocale.current());
         final String normalized;
         try {
-            normalized = Usernames.validateNew(username, AppUser::usernameTaken);
+            normalized = Usernames.validateNew(username, AppUser::usernameUnavailable);
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(Templates.setup(m.auth_setup_title(), true))

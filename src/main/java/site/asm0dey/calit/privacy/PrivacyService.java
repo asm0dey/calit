@@ -5,6 +5,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import java.time.Instant;
@@ -21,6 +22,7 @@ import site.asm0dey.calit.email.EmailOutbox;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.notify.NotificationChannel;
 import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.user.DeletedUsername;
 
 /**
  * Every read and write that treats personal data AS personal data: erasure, export, account
@@ -259,7 +261,12 @@ public class PrivacyService {
         return out;
     }
 
-    /** Admins who can still log in. Driving this to zero locks everyone out with no in-app recovery. */
+    /**
+     * Admins who can still log in. Driving this to zero locks everyone out with no in-app recovery.
+     * Advisory only (no lock) — safe as a UI pre-check, but {@link #deleteAccount} re-checks under a
+     * pessimistic lock rather than trusting this read, since two concurrent deletions of two
+     * different enabled admins could otherwise both observe "count > 1" and both proceed.
+     */
     public boolean isLastEnabledAdmin(Long userId) {
         AppUser u = AppUser.findById(userId);
         return u != null && u.isAdmin && u.enabled && AppUser.count("isAdmin = true and enabled = true") <= 1;
@@ -275,6 +282,12 @@ public class PrivacyService {
      * The explicit delete is a no-op for those, so the 30-day age purge remains their only route —
      * which is why the operator guide names that window.
      *
+     * <p>The username is tombstoned ({@link DeletedUsername}, R16) BEFORE the row is deleted, in the
+     * same transaction: form-auth's persistent-login cookie carries only a username and keeps
+     * renewing itself even after the backing account is gone, so a deleted name must never become
+     * choosable again — otherwise a stale cookie from this account would silently authenticate as
+     * whoever re-registers the name.
+     *
      * <p>No Google revoke: {@code GooglePageResource.disconnect} never called Google's revoke
      * endpoint either, so deleting the credential rows removes calit's copy of the tokens without
      * withdrawing the grant at Google. The privacy copy and the operator guide both say so.
@@ -283,14 +296,23 @@ public class PrivacyService {
      */
     @Transactional
     public void deleteAccount(Long userId) {
-        if (isLastEnabledAdmin(userId)) {
-            throw new IllegalStateException("last-admin");
-        }
         AppUser u = AppUser.findById(userId);
         if (u == null) {
             return;
         }
+        if (u.isAdmin && u.enabled) {
+            // Pessimistic lock on every enabled-admin row before counting: closes the race where
+            // two concurrent deletions of two DIFFERENT enabled admins could each read "more than
+            // one enabled admin" and both proceed, leaving zero.
+            List<AppUser> enabledAdmins = AppUser.<AppUser>find("isAdmin = true and enabled = true")
+                    .withLock(LockModeType.PESSIMISTIC_WRITE)
+                    .list();
+            if (enabledAdmins.size() <= 1) {
+                throw new IllegalStateException("last-admin");
+            }
+        }
         EmailOutbox.deleteForOwner(userId);
+        DeletedUsername.tombstone(u.username);
         u.delete();
         Log.infof("PRIVACY account-deleted user=%d", userId);
     }

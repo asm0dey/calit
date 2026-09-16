@@ -73,7 +73,8 @@ public class SignupResource {
         String title = messages.forLocale(activeLocale.current()).auth_signup_title();
         String normalized;
         try {
-            normalized = Usernames.validateNew(username, AppUser::usernameTaken); // throws on invalid/reserved/taken
+            normalized =
+                    Usernames.validateNew(username, AppUser::usernameUnavailable); // throws on invalid/reserved/taken
         } catch (IllegalArgumentException _) {
             String error = messages.forLocale(activeLocale.current()).auth_signup_error();
             return Response.ok(Templates.signup(title, error, ogCards.product("/signup")))

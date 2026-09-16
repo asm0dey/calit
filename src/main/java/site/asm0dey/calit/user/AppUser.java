@@ -136,6 +136,17 @@ public class AppUser extends PanacheEntityBase {
         return count("username", Usernames.normalize(username)) > 0;
     }
 
+    /**
+     * True when {@code username} is either already in use OR was permanently tombstoned by a
+     * previously-deleted account ({@link DeletedUsername}, R16) — the combined "taken" predicate
+     * every username-choosing path (signup, admin invite, first-run setup, OIDC/Google
+     * auto-provisioning) must use instead of {@link #usernameTaken}, so a deleted account's name
+     * can never be reused.
+     */
+    public static boolean usernameUnavailable(String username) {
+        return usernameTaken(username) || DeletedUsername.isTombstoned(username);
+    }
+
     /** Toggle site-admin, keeping the roles string in sync (the augmentor/identity reads roles). */
     public void setAdmin(boolean admin) {
         this.isAdmin = admin;
