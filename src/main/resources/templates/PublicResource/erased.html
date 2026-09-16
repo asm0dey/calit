@@ -1,6 +1,7 @@
 {@java.lang.String title}
 {@site.asm0dey.calit.privacy.ErasureReport report}
 {@java.lang.String contactEmail}
+{@java.lang.Integer erasureWindowDays}
 {#include base title=title}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-xl mx-auto">
     <!-- CALIT_ERASED -->
@@ -15,6 +16,7 @@
         {#if report.channelsWereUsed}<li>{msg:pub_erased_channels}</li>{/if}
         {#if report.mailWasDelivered}<li>{msg:pub_erased_mail}</li>{/if}
       </ul>
+      <p class="text-base-content/70"><!-- CALIT_ERASE_NOT_LINKED -->{msg:pub_erase_not_linked} {#if erasureWindowDays != null}{msg:pub_erase_links_expire(erasureWindowDays)}{#else}{msg:pub_erase_links_forever}{/if}</p>
       {#if contactEmail && report.hasUnreachableCopies}
       <p class="mt-2">{msg:pub_erased_contact(contactEmail)}</p>
       {/if}

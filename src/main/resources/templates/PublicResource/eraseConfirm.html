@@ -4,6 +4,7 @@
 {@java.lang.String meetingName}
 {@java.lang.Boolean upcoming}
 {@java.lang.String tzScript}
+{@java.lang.Integer erasureWindowDays}
 {#include base title=title}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-xl mx-auto">
     <!-- CALIT_ERASE_CONFIRM -->
@@ -11,6 +12,7 @@
       <h1 class="text-2xl font-bold">{msg:pub_erase_confirm_h1}</h1>
       <p class="text-base-content/70">{msg:pub_erase_confirm_desc}</p>
       {#if upcoming}<p class="text-base-content/70">{msg:pub_erase_confirm_cancels_first}</p>{/if}
+      <p class="text-base-content/70"><!-- CALIT_ERASE_NOT_LINKED -->{msg:pub_erase_not_linked} {#if erasureWindowDays != null}{msg:pub_erase_links_expire(erasureWindowDays)}{#else}{msg:pub_erase_links_forever}{/if}</p>
       <ul class="list-disc ms-5">
         <li><strong>{msg:pub_booking_meeting_label}</strong> {meetingName}</li>
         <li><strong>{msg:pub_booking_when_label}</strong> <time data-utc="{booking.startUtc}">{booking.startUtc} UTC</time></li>

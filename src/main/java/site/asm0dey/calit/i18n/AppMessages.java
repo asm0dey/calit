@@ -413,6 +413,17 @@ public interface AppMessages {
     @Message("An upcoming booking is cancelled first, so the host is notified and the slot is freed.")
     String pub_erase_confirm_cancels_first();
 
+    @Message("We don't link bookings to each other by email address, so this erases only this booking. "
+            + "To erase your other bookings, open the manage link in each one's confirmation email.")
+    String pub_erase_not_linked();
+
+    @Message("Links for your bookings with this host stop working {days} days after the meeting ends, "
+            + "when their details are deleted automatically.")
+    String pub_erase_links_expire(int days);
+
+    @Message("Those links keep working until the host or the site operator removes the booking.")
+    String pub_erase_links_forever();
+
     @Message("What erasure cannot reach")
     String pub_erase_boundary_h2();
 

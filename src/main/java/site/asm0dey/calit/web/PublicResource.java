@@ -113,9 +113,16 @@ public class PublicResource {
         public static native TemplateInstance cancelled(String title);
 
         public static native TemplateInstance eraseConfirm(
-                String title, Booking booking, MeetingType type, String meetingName, boolean upcoming, String tzScript);
+                String title,
+                Booking booking,
+                MeetingType type,
+                String meetingName,
+                boolean upcoming,
+                String tzScript,
+                Integer erasureWindowDays);
 
-        public static native TemplateInstance erased(String title, ErasureReport report, String contactEmail);
+        public static native TemplateInstance erased(
+                String title, ErasureReport report, String contactEmail, Integer erasureWindowDays);
 
         public static native TemplateInstance notReady(String title);
 
@@ -745,7 +752,13 @@ public class PublicResource {
         var upcoming = booking.endUtc.isAfter(Instant.now())
                 && (booking.status == BookingStatus.PENDING || booking.status == BookingStatus.CONFIRMED);
         return Templates.eraseConfirm(
-                m.pub_erase_confirm_title(), booking, type, booking.effectiveTitle(type), upcoming, Layout.TZ_SCRIPT);
+                m.pub_erase_confirm_title(),
+                booking,
+                type,
+                booking.effectiveTitle(type),
+                upcoming,
+                Layout.TZ_SCRIPT,
+                erasureWindowDaysFor(booking));
     }
 
     @POST
@@ -754,9 +767,22 @@ public class PublicResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance erase(@PathParam("manageToken") String manageToken) {
         var m = messages.forLocale(activeLocale.current());
-        requireErasableBooking(manageToken);
+        Booking booking = requireErasableBooking(manageToken);
+        Integer erasureWindowDays = erasureWindowDaysFor(booking); // owner_id survives the anonymising erasure below
         ErasureReport report = privacy.eraseByManageToken(manageToken);
-        return Templates.erased(m.pub_erased_title(), report, siteInfo.getContactEmail());
+        return Templates.erased(m.pub_erased_title(), report, siteInfo.getContactEmail(), erasureWindowDays);
+    }
+
+    /**
+     * This booking's owner's effective retention window in days — the owner's own {@code
+     * bookingRetentionDays} override if set, else the instance-wide default, else {@code null}
+     * ("keep forever"). Used only to tell the invitee how long their OTHER manage links with this
+     * host stay valid (Task 9b) — it plays no part in the erasure itself.
+     */
+    private Integer erasureWindowDaysFor(Booking booking) {
+        Integer instanceDefault = privacyConfig.bookingRetentionDays().orElse(null);
+        OwnerSettings settings = OwnerSettings.forOwner(booking.ownerId);
+        return settings != null ? settings.retentionDaysOrDefault(instanceDefault) : instanceDefault;
     }
 
     /**
