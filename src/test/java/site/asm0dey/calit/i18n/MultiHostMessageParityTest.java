@@ -78,7 +78,8 @@ class MultiHostMessageParityTest {
             "adm_users_error_delete_self",
             "adm_settings_label_retention",
             "adm_settings_retention_hint_with_default",
-            "adm_settings_retention_hint_forever");
+            "adm_settings_retention_hint_forever",
+            "adm_fields_sensitive_warning");
 
     @Test
     void everyAppMessageKeyHasGermanAndHebrewTranslation() {

@@ -1,6 +1,10 @@
 {@java.lang.String title}
 {@site.asm0dey.calit.web.OgCard og}
+{@io.quarkus.qute.RawString override}
 {#include base title=title og=og}
+{#if override}
+<div class="max-w-3xl mx-auto">{override}</div>
+{#else}
 {! ponytail: English-only legal copy. Add msg: keys only if bilingual terms are requested. !}
 <div class="max-w-3xl mx-auto">
   <!-- CALIT_LEGAL_TERMS -->
@@ -15,6 +19,9 @@
   <h2 class="text-xl font-semibold mt-6">Acceptable use</h2>
   <p class="mt-2">Do not use this service to send spam, harass others, or violate any applicable law. The operator may suspend accounts that do.</p>
 
+  <h2 class="text-xl font-semibold mt-6">Your account</h2>
+  <p class="mt-2">You may delete your account at any time from <a class="link" href="/me/settings">Settings</a>. Deleting it removes your scheduling data from this instance.</p>
+
   <h2 class="text-xl font-semibold mt-6">No warranty</h2>
   <p class="mt-2">The service is provided "as is", without warranty of any kind. The operator is not liable for missed meetings, lost data, or any indirect damages arising from use of the service.</p>
 
@@ -26,4 +33,5 @@
   <p class="mt-2"><a class="link" href="mailto:{inject:site.contactEmail}">{inject:site.contactEmail}</a></p>
   {/if}
 </div>
+{/if}
 {/include}

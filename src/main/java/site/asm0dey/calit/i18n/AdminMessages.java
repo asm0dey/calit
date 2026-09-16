@@ -746,6 +746,11 @@ public interface AdminMessages {
     @Message("Delete")
     String adm_bookingFields_btn_delete();
 
+    @Message("Answers are stored as plain text and shown to you and anyone with access to this site's database. "
+            + "Don't ask for health, biometric, religious, political or other sensitive details unless you have a "
+            + "lawful basis for holding them.")
+    String adm_fields_sensitive_warning();
+
     @Message("Add a field")
     String adm_bookingFields_add_h2();
 
