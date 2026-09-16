@@ -126,6 +126,9 @@ public interface AdminMessages {
     @Message("Manage")
     String adm_dashboard_btn_manage();
 
+    @Message("(erased at the invitee's request)")
+    String adm_booking_invitee_erased();
+
     // ---- Mail-delivery banner (#195) ----
 
     @Message("Email is not configured — guests are not receiving booking confirmations.")

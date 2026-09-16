@@ -17,9 +17,7 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.BookingStatus;
-import site.asm0dey.calit.booking.GuestStatus;
 import site.asm0dey.calit.email.EmailOutbox;
-import site.asm0dey.calit.email.MailTag;
 import site.asm0dey.calit.scheduler.Reminder;
 import site.asm0dey.calit.user.AppUser;
 
@@ -27,77 +25,10 @@ import site.asm0dey.calit.user.AppUser;
 class BookingErasureTest {
 
     /** The seeded admin owner — DatabaseResetCallback guarantees id 1. */
-    private static final Long OWNER = 1L;
+    private static final Long OWNER = ErasureFixtures.OWNER;
 
     @Inject
     PrivacyService privacy;
-
-    /** A CONFIRMED booking in the past, with a guest, a parked mail and an unsent reminder. */
-    private Long seedPastBooking() {
-        return QuarkusTransaction.requiringNew().call(() -> {
-            var b = new Booking();
-            b.ownerId = OWNER;
-            b.meetingTypeId = firstMeetingTypeId();
-            b.inviteeName = "Dana Vogel";
-            b.inviteeEmail = "dana@example.com";
-            b.answers = new java.util.HashMap<>(Map.of("why", "annual review"));
-            b.title = "Dana's slot";
-            b.description = "notes from Dana";
-            b.meetLink = "https://meet.google.com/abc-defg-hij";
-            b.startUtc = Instant.now().minus(30, ChronoUnit.DAYS);
-            b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
-            b.status = BookingStatus.CONFIRMED;
-            b.createdAt = Instant.now().minus(31, ChronoUnit.DAYS);
-            b.manageToken = UUID.randomUUID().toString();
-            b.persist();
-
-            var g = new BookingGuest();
-            g.ownerId = OWNER;
-            g.bookingId = b.id;
-            g.email = "guest@example.com";
-            g.status = GuestStatus.INVITED;
-            g.declineToken = UUID.randomUUID().toString();
-            g.createdAt = Instant.now();
-            g.persist();
-
-            var r = new Reminder();
-            r.bookingId = b.id;
-            r.sendAt = Instant.now().plus(1, ChronoUnit.DAYS);
-            r.kind = Reminder.KIND_REMINDER;
-            r.sentAt = null;
-            r.persist();
-
-            EmailOutbox.enqueue(
-                    "dana@example.com",
-                    "Your booking",
-                    "<p>Hi Dana Vogel</p>",
-                    null,
-                    null,
-                    "seed",
-                    MailTag.forBooking(b.id, OWNER));
-            return b.id;
-        });
-    }
-
-    /**
-     * DatabaseResetCallback seeds only the admin {@code app_user} row, not a MeetingType, so this
-     * seeds one on demand (adapted from the brief, which assumed a pre-seeded type for owner 1).
-     */
-    private static Long firstMeetingTypeId() {
-        var existing = site.asm0dey.calit.domain.MeetingType.<site.asm0dey.calit.domain.MeetingType>find(
-                        "ownerId", OWNER)
-                .firstResult();
-        if (existing != null) {
-            return existing.id;
-        }
-        var t = new site.asm0dey.calit.domain.MeetingType();
-        t.ownerId = OWNER;
-        t.name = "Erasure test type";
-        t.slug = "erasure-test-" + UUID.randomUUID();
-        t.durationMinutes = 30;
-        t.persist();
-        return t.id;
-    }
 
     /** A second host for group-booking rows — booking.owner_id's no-overlap constraint is per-owner. */
     private static Long secondOwnerId() {
@@ -112,7 +43,7 @@ class BookingErasureTest {
      */
     private UUID seedGroupBooking() {
         return QuarkusTransaction.requiringNew().call(() -> {
-            var meetingTypeId = firstMeetingTypeId();
+            var meetingTypeId = ErasureFixtures.firstMeetingTypeId();
             var secondOwner = secondOwnerId();
             var groupId = UUID.randomUUID();
             var start = Instant.now().minus(30, ChronoUnit.DAYS);
@@ -138,7 +69,7 @@ class BookingErasureTest {
 
     @Test
     void anonymiseBlanksEveryPersonalColumn() {
-        var id = seedPastBooking();
+        var id = ErasureFixtures.seedPastBookingId();
         privacy.anonymise(id);
 
         Booking b = QuarkusTransaction.requiringNew().call(() -> Booking.<Booking>findById(id));
@@ -154,7 +85,7 @@ class BookingErasureTest {
 
     @Test
     void anonymiseRemovesGuestsRemindersAndParkedMail() {
-        var id = seedPastBooking();
+        var id = ErasureFixtures.seedPastBookingId();
         // A sent reminder must survive: only the "sentAt is null" filter's target should be removed.
         QuarkusTransaction.requiringNew().run(() -> {
             var sent = new Reminder();
@@ -180,7 +111,7 @@ class BookingErasureTest {
 
     @Test
     void anonymiseIsIdempotent() {
-        var id = seedPastBooking();
+        var id = ErasureFixtures.seedPastBookingId();
         privacy.anonymise(id);
         Instant first = QuarkusTransaction.requiringNew().call(() -> Booking.<Booking>findById(id).erasedAt);
         privacy.anonymise(id);
@@ -208,8 +139,7 @@ class BookingErasureTest {
 
     @Test
     void erasingAPastBookingDoesNotTouchGoogle() {
-        var id = seedPastBooking();
-        String token = QuarkusTransaction.requiringNew().call(() -> Booking.<Booking>findById(id).manageToken);
+        String token = ErasureFixtures.seedPastBooking();
 
         ErasureReport report = privacy.eraseByManageToken(token);
         assertEquals(
@@ -220,7 +150,7 @@ class BookingErasureTest {
 
     @Test
     void erasingAPastBookingWithAStoredGoogleEventAttemptsBestEffortDelete() {
-        var id = seedPastBooking();
+        var id = ErasureFixtures.seedPastBookingId();
         String token = QuarkusTransaction.requiringNew().call(() -> {
             Booking b = Booking.<Booking>findById(id);
             b.googleEventId = "evt-123";

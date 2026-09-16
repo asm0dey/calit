@@ -13,6 +13,8 @@
 {@java.lang.String descPlaceholder}
 {@java.lang.Boolean hostInactive}
 {@java.lang.Boolean guestsHidden}
+{@java.lang.Boolean erasureEnabled}
+{@java.lang.String contactEmail}
 {#include base title=title}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-2xl mx-auto">
     <div class="card-body">
@@ -82,6 +84,12 @@
         <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
         <button type="submit" class="btn btn-error btn-outline">{msg:pub_manage_btn_cancel}</button>
       </form>
+
+      {#if erasureEnabled}
+      <a class="btn btn-ghost btn-sm text-error" href="/booking/{booking.manageToken}/erase">{msg:pub_erase_confirm_btn}</a>
+      {#else}
+      <p class="text-sm text-base-content/70">{#if contactEmail}{msg:pub_erase_disabled_notice(contactEmail)}{#else}{msg:pub_erase_disabled_notice_no_contact}{/if}</p>
+      {/if}
       {tzScript.raw}
       {calScript.raw}
     </div>

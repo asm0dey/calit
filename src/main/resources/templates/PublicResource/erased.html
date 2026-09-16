@@ -1,0 +1,24 @@
+{@java.lang.String title}
+{@site.asm0dey.calit.privacy.ErasureReport report}
+{@java.lang.String contactEmail}
+{#include base title=title}
+  <div class="card bg-base-100 border border-base-300 shadow-sm max-w-xl mx-auto">
+    <!-- CALIT_ERASED -->
+    <div class="card-body items-start gap-2">
+      <h1 class="text-2xl font-bold">{msg:pub_erased_h1}</h1>
+      <p class="text-base-content/70">{msg:pub_erased_desc}</p>
+      <ul class="list-disc ms-5">
+        <li>{msg:pub_erased_local_ok}</li>
+        {#if report.google.name == 'REMOVED'}<li>{msg:pub_erased_google_removed}</li>{/if}
+        {#if report.google.name == 'UNREACHABLE'}<li class="text-warning">{msg:pub_erased_google_unreachable}</li>{/if}
+        {#if report.google.name == 'NOT_APPLICABLE'}<li>{msg:pub_erased_google_none}</li>{/if}
+        {#if report.channelsWereUsed}<li>{msg:pub_erased_channels}</li>{/if}
+        {#if report.mailWasDelivered}<li>{msg:pub_erased_mail}</li>{/if}
+      </ul>
+      {#if contactEmail && report.hasUnreachableCopies}
+      <p class="mt-2">{msg:pub_erased_contact(contactEmail)}</p>
+      {/if}
+      <a class="btn btn-primary mt-2" href="/">{msg:pub_erased_btn}</a>
+    </div>
+  </div>
+{/include}

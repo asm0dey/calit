@@ -30,6 +30,9 @@ import site.asm0dey.calit.google.CalendarUnavailableException;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AppMessageResolver;
 import site.asm0dey.calit.i18n.AppMessages;
+import site.asm0dey.calit.privacy.ErasureReport;
+import site.asm0dey.calit.privacy.PrivacyConfig;
+import site.asm0dey.calit.privacy.PrivacyService;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
 import site.asm0dey.calit.user.Usernames;
@@ -90,7 +93,9 @@ public class PublicResource {
                 String titlePlaceholder,
                 String descPlaceholder,
                 boolean hostInactive,
-                boolean guestsHidden);
+                boolean guestsHidden,
+                boolean erasureEnabled,
+                String contactEmail);
 
         public static native TemplateInstance guestDeclineConfirm(
                 String title,
@@ -106,6 +111,11 @@ public class PublicResource {
                 String title, Booking booking, MeetingType type, String meetingName, String tzScript);
 
         public static native TemplateInstance cancelled(String title);
+
+        public static native TemplateInstance eraseConfirm(
+                String title, Booking booking, MeetingType type, String meetingName, boolean upcoming, String tzScript);
+
+        public static native TemplateInstance erased(String title, ErasureReport report, String contactEmail);
 
         public static native TemplateInstance notReady(String title);
 
@@ -139,6 +149,12 @@ public class PublicResource {
 
     final OgCards ogCards;
 
+    final PrivacyService privacy;
+
+    final PrivacyConfig privacyConfig;
+
+    final SiteInfo siteInfo;
+
     @Inject
     public PublicResource(
             BookingService bookingService,
@@ -151,7 +167,10 @@ public class PublicResource {
             CaptchaProviderConfig captchaProviderConfig,
             OgCards ogCards,
             MailHealth mailHealth,
-            EmailService emailService) {
+            EmailService emailService,
+            PrivacyService privacy,
+            PrivacyConfig privacyConfig,
+            SiteInfo siteInfo) {
         this.bookingService = bookingService;
         this.meetingHosts = meetingHosts;
         this.currentOwner = currentOwner;
@@ -163,6 +182,9 @@ public class PublicResource {
         this.ogCards = ogCards;
         this.mailHealth = mailHealth;
         this.emailService = emailService;
+        this.privacy = privacy;
+        this.privacyConfig = privacyConfig;
+        this.siteInfo = siteInfo;
     }
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy");
@@ -519,7 +541,7 @@ public class PublicResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance manage(@PathParam("manageToken") String manageToken) {
         Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
-        if (booking == null) {
+        if (booking == null || booking.isErased()) {
             throw new NotFoundException("No booking for token " + manageToken); // unknown token → 404
         }
         return renderManage(booking);
@@ -536,7 +558,7 @@ public class PublicResource {
     @Produces("text/calendar;charset=UTF-8")
     public Response inviteIcs(@PathParam("manageToken") String manageToken) {
         Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
-        if (booking == null) {
+        if (booking == null || booking.isErased()) {
             throw new NotFoundException("No booking for token " + manageToken);
         }
         byte[] ics = emailService
@@ -588,7 +610,9 @@ public class PublicResource {
                 type.name,
                 type.description == null ? "" : type.description,
                 hostInactive(booking),
-                type.hidesGuests());
+                type.hidesGuests(),
+                privacyConfig.inviteeErasureEnabled(),
+                siteInfo.getContactEmail());
     }
 
     /**
@@ -624,7 +648,7 @@ public class PublicResource {
             MultivaluedMap<String, String> form) {
         // Authenticated solely by the unguessable manage token. Re-renders the Manage hub with fresh values.
         Booking existing = Booking.findByManageToken(manageToken);
-        if (existing == null) {
+        if (existing == null || existing.isErased()) {
             throw new NotFoundException("No booking for token " + manageToken);
         }
         if (hostInactive(existing)) {
@@ -645,7 +669,7 @@ public class PublicResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance rescheduleBooking(@PathParam("manageToken") String manageToken, @RestForm String startUtc) {
         Booking existing = Booking.findByManageToken(manageToken);
-        if (existing == null) {
+        if (existing == null || existing.isErased()) {
             throw new NotFoundException("No booking for token " + manageToken);
         }
         if (hostInactive(existing)) {
@@ -666,7 +690,7 @@ public class PublicResource {
     public TemplateInstance cancelConfirmPage(@PathParam("manageToken") String manageToken) {
         var m = messages.forLocale(activeLocale.current());
         Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
-        if (booking == null) {
+        if (booking == null || booking.isErased()) {
             throw new NotFoundException("No booking for token " + manageToken);
         }
         if (booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
@@ -684,8 +708,57 @@ public class PublicResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance cancelBooking(@PathParam("manageToken") String manageToken) {
         var m = messages.forLocale(activeLocale.current());
+        Booking existing = Booking.findByManageToken(manageToken);
+        if (existing == null || existing.isErased()) {
+            throw new NotFoundException("No booking for token " + manageToken);
+        }
         bookingService.cancel(manageToken); // keyed by the token
         return Templates.cancelled(m.pub_cancelled_title());
+    }
+
+    /**
+     * Art. 17 erasure, keyed by the manage token that already proves control of this booking — the
+     * same authorization every other invitee route uses, so no new identity check is introduced.
+     * 404 when the toggle is off: the manage page then shows the operator's contact address instead
+     * of the button, and this route must not remain as a way around that.
+     */
+    @GET
+    @Path("/booking/{manageToken}/erase")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance eraseConfirmPage(@PathParam("manageToken") String manageToken) {
+        var m = messages.forLocale(activeLocale.current());
+        Booking booking = requireErasableBooking(manageToken);
+        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        var upcoming = booking.endUtc.isAfter(Instant.now())
+                && (booking.status == BookingStatus.PENDING || booking.status == BookingStatus.CONFIRMED);
+        return Templates.eraseConfirm(
+                m.pub_erase_confirm_title(), booking, type, booking.effectiveTitle(type), upcoming, Layout.TZ_SCRIPT);
+    }
+
+    @POST
+    @Path("/booking/{manageToken}/erase")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance erase(@PathParam("manageToken") String manageToken) {
+        var m = messages.forLocale(activeLocale.current());
+        requireErasableBooking(manageToken);
+        ErasureReport report = privacy.eraseByManageToken(manageToken);
+        return Templates.erased(m.pub_erased_title(), report, siteInfo.getContactEmail());
+    }
+
+    /**
+     * The booking behind an erasure request, or 404. Covers three cases with one answer: an unknown
+     * token, an already-erased booking (its data is gone, so there is nothing to confirm or repeat),
+     * and the operator having switched invitee erasure off.
+     */
+    private Booking requireErasableBooking(String manageToken) {
+        if (!privacyConfig.inviteeErasureEnabled()) {
+            throw new NotFoundException("Invitee erasure is disabled on this deployment");
+        }
+        Booking booking = Booking.findByManageToken(manageToken);
+        if (booking == null || booking.isErased()) {
+            throw new NotFoundException("No booking for token " + manageToken);
+        }
+        return booking;
     }
 
     @GET
