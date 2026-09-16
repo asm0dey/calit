@@ -112,6 +112,14 @@ public class Booking extends PanacheEntityBase {
     public int icsSequence = 0;
 
     /**
+     * When this booking's invitee data was anonymised (Art. 17 erasure, or the retention window
+     * elapsing). NULL = not erased. The row survives so the owner keeps the slot record; this stamp
+     * 404s every invitee-facing route on it and switches the owner's list to a placeholder.
+     */
+    @Column(name = "erased_at")
+    public Instant erasedAt;
+
+    /**
      * Multi-host: links the N rows (one per host) of a single conceptual booking. NULL means a
      * single-host booking (the common case).
      */
@@ -137,6 +145,11 @@ public class Booking extends PanacheEntityBase {
     /** Loads a booking by its invitee manage-token (reschedule/cancel key), or null. */
     public static Booking findByManageToken(String manageToken) {
         return find("manageToken", manageToken).firstResult();
+    }
+
+    /** True once the invitee's data has been anonymised — see {@link #erasedAt}. */
+    public boolean isErased() {
+        return erasedAt != null;
     }
 
     /** Displayed meeting name: this booking's override when set + non-blank, else the type's name. */

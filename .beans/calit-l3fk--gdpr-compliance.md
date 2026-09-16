@@ -1,11 +1,11 @@
 ---
 # calit-l3fk
 title: GDPR compliance
-status: todo
+status: in-progress
 type: epic
 priority: normal
 created_at: 2026-09-12T19:03:30Z
-updated_at: 2026-09-12T19:24:29Z
+updated_at: 2026-09-16T13:25:45Z
 ---
 
 Design + implement what calit needs so a deployment can be GDPR-compliant. Brainstorming in progress; scope TBD.
@@ -20,7 +20,7 @@ data subject, so a switch would remove the tools without removing the obligation
 
 ## Planned children
 
-- [ ] V33 migration: `booking.erased_at`, `owner_settings.booking_retention_days`, `email_outbox.booking_id`/`owner_id`, explicit cascade on `booking.meeting_type_id`
+- [x] V34 migration (calit-gfl7): `booking.erased_at`, `owner_settings.booking_retention_days`, `email_outbox.booking_id`/`owner_id`, explicit cascade on `booking.meeting_type_id`
 - [ ] `privacy/PersonalData` inventory + `PersonalDataInventoryTest` schema guard
 - [ ] Invitee erasure + per-booking JSON export on the manage link (`INVITEE_ERASURE`, default true)
 - [ ] Erasure boundary reporting (Google / channels / delivered mail) on confirm + done pages

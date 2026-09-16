@@ -57,6 +57,14 @@ public class EmailOutbox extends PanacheEntityBase {
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
 
+    /** The booking this mail is about, when there is one. Lets erasure purge it by key, not by address. */
+    @Column(name = "booking_id")
+    public Long bookingId;
+
+    /** The owner this mail belongs to, when known. Cascades away with the account. */
+    @Column(name = "owner_id")
+    public Long ownerId;
+
     /**
      * Parks a failed send. Must run inside a transaction (caller opens requiringNew). Returns the new id.
      * {@code notAfter} null = no usefulness deadline; non-null = stop retrying once that instant passes

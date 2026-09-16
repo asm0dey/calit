@@ -43,6 +43,13 @@ public class OwnerSettings extends PanacheEntityBase {
     @Column(name = "owner_notifications_enabled", nullable = false)
     public boolean ownerNotificationsEnabled = true;
 
+    /**
+     * This owner's booking-retention window in days. NULL = fall back to the instance default
+     * ({@code calit.retention.booking-days}), which is itself unset by default = keep forever.
+     */
+    @Column(name = "booking_retention_days")
+    public Integer bookingRetentionDays;
+
     /** Returns this owner's settings row, or null if not yet configured. */
     public static OwnerSettings forOwner(Long ownerId) {
         return find("ownerId", ownerId).firstResult();
