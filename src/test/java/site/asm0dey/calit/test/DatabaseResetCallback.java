@@ -26,10 +26,15 @@ public class DatabaseResetCallback implements QuarkusTestBeforeEachCallback {
     // Hash once per JVM (argon2 is deliberately slow); the same encoded hash verifies "testpass".
     private static final String ADMIN_HASH = new PasswordHasher().hash("testpass");
 
+    // deleted_username carries no FK to app_user (R16 — it must outlive the row it tombstones), so
+    // TRUNCATE ... CASCADE does not sweep it in via app_user the way every FK-linked table is;
+    // it must be named explicitly or a username tombstoned by one test method would poison every
+    // later test method that reuses the same username, for the rest of the suite run (the Postgres
+    // container and its rows persist across test methods under reuseForks=true).
     private static final String TRUNCATE_ALL = "TRUNCATE TABLE "
             + "reminder, booking, date_override_window, date_override, availability_rule, "
             + "booking_field, meeting_type, owner_settings, google_calendar, google_credential, "
-            + "app_user RESTART IDENTITY CASCADE";
+            + "deleted_username, app_user RESTART IDENTITY CASCADE";
 
     @Override
     public void beforeEach(QuarkusTestMethodContext context) {

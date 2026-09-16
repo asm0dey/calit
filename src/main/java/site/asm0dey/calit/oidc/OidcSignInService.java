@@ -80,7 +80,7 @@ public class OidcSignInService {
     }
 
     private AppUser provision(OidcIdentity identity, boolean grantsAdmin) {
-        String username = Usernames.uniquify(Usernames.fromEmail(identity.email()), AppUser::usernameTaken);
+        String username = Usernames.uniquify(Usernames.fromEmail(identity.email()), AppUser::usernameUnavailable);
         AppUser u = AppUser.createOidcUser(username, identity.sub(), grantsAdmin);
         u.persist();
 

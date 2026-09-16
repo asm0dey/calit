@@ -3,6 +3,7 @@
 {@java.lang.Boolean isAdmin}
 {@java.lang.Long pendingCount}
 {@java.lang.String title}
+{@java.lang.Long currentUserId}
 {#include adminBase title=title pendingCount=pendingCount active="users" isAdmin=isAdmin}
   <h1 class="text-2xl font-bold mb-4">{adm:users_h1}</h1>
 
@@ -41,6 +42,9 @@
           {/if}
           {#if u.passwordHash == null && u.googleSub == null}
           <form method="post" action="/me/users/{u.id}/resend-invite"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs">{adm:users_btn_resend_invite}</button></form>
+          {/if}
+          {#if u.id != currentUserId}
+          <a href="/me/users/{u.id}/delete" class="btn btn-ghost btn-xs text-error">{adm:adm_users_delete}</a>
           {/if}
         </td>
       </tr>

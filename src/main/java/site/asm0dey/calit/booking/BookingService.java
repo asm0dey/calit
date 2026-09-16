@@ -1,5 +1,7 @@
 package site.asm0dey.calit.booking;
 
+import io.quarkus.logging.Log;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
@@ -880,8 +882,11 @@ public class BookingService {
     public Booking reschedule(
             String manageToken, Instant newStartUtc, List<String> guestEmails, boolean byOwner, Long initiatorOwnerId) {
         Booking booking = Booking.findByManageToken(manageToken);
-        if (booking == null || booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
-            throw new NotFoundException("No active booking for token " + manageToken);
+        if (booking == null
+                || booking.status == BookingStatus.CANCELLED
+                || booking.status == BookingStatus.DECLINED
+                || booking.isErased()) {
+            throw new NotFoundException("No active booking for that token");
         }
 
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
@@ -935,8 +940,7 @@ public class BookingService {
             booking.persistAndFlush();
         } catch (PersistenceException ex) {
             if (isNoOverlapViolation(ex)) {
-                throw new BookingConflictException(
-                        "Slot " + newStartUtc + " is not available for token " + manageToken);
+                throw new BookingConflictException("Slot " + newStartUtc + " is not available for this booking");
             }
             throw ex;
         }
@@ -1066,8 +1070,11 @@ public class BookingService {
     public Booking updateDetails(
             String manageToken, String title, String description, List<String> guestEmails, boolean byOwner) {
         Booking booking = Booking.findByManageToken(manageToken);
-        if (booking == null || booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
-            throw new NotFoundException("No active booking for token " + manageToken);
+        if (booking == null
+                || booking.status == BookingStatus.CANCELLED
+                || booking.status == BookingStatus.DECLINED
+                || booking.isErased()) {
+            throw new NotFoundException("No active booking for that token");
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         guestEmails = guestsFor(type, guestEmails);
@@ -1273,29 +1280,46 @@ public class BookingService {
      */
     @Transactional
     public void cancel(String manageToken, boolean byOwner) {
+        cancel(manageToken, byOwner, false);
+    }
+
+    /**
+     * {@link #cancel(String, boolean)} for the privacy paths (invitee erasure, account deletion), which
+     * must not fail because Google does: a failing remote delete is logged and the cancellation still
+     * commits, mails and all. The ordinary cancel keeps failing loudly — a host clicking Cancel should
+     * learn that the calendar event survived.
+     *
+     * @return true when a Google event was deleted remotely; false when there was none, the owner is
+     *     not connected, or the delete failed
+     */
+    @Transactional
+    public boolean cancelToleratingGoogleFailure(String manageToken, boolean byOwner) {
+        return cancel(manageToken, byOwner, true);
+    }
+
+    private boolean cancel(String manageToken, boolean byOwner, boolean tolerateGoogleFailure) {
         Booking booking = Booking.findByManageToken(manageToken);
-        if (booking == null) {
-            throw new NotFoundException("No booking for token " + manageToken);
+        if (booking == null || booking.isErased()) {
+            throw new NotFoundException("No booking for that token");
         }
         if (booking.groupId == null) {
-            cancelSingle(booking, byOwner);
-            return;
+            return cancelSingle(booking, byOwner, tolerateGoogleFailure);
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        deleteGroupGoogleEvent(booking.groupId); // one shared event
+        boolean deleted = deleteGroupGoogleEvent(booking.groupId, tolerateGoogleFailure); // one shared event
         for (Booking r : Booking.<Booking>group(booking.groupId)) {
             r.status = BookingStatus.CANCELLED;
         }
         Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
         bookingCancelledEvent.fire(new BookingCancelled(lead.id, byOwner));
+        return deleted;
     }
 
-    private void cancelSingle(Booking booking, boolean byOwner) {
+    private boolean cancelSingle(Booking booking, boolean byOwner, boolean tolerateGoogleFailure) {
         booking.status = BookingStatus.CANCELLED;
+        var deleted = false;
         if (booking.googleEventId != null) {
-            if (calendarPort.isConnected(booking.ownerId)) {
-                calendarPort.deleteEvent(booking.ownerId, booking.calendarRef(), booking.googleEventId);
-            }
+            deleted = deleteRemoteEvent(booking, tolerateGoogleFailure);
             // Clear the refs whether or not the remote call could be made -- same rule, and same
             // reason, as deleteGroupGoogleEvent: a cancelled row must not keep pointing at an event
             // that is gone (calit-ek26).
@@ -1305,6 +1329,7 @@ public class BookingService {
             booking.googleCredentialId = null;
         }
         bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner));
+        return deleted;
     }
 
     /**
@@ -1316,16 +1341,50 @@ public class BookingService {
      * made. {@link #cancelSingle} follows the same rule.
      */
     private void deleteGroupGoogleEvent(UUID groupId) {
+        deleteGroupGoogleEvent(groupId, false);
+    }
+
+    private boolean deleteGroupGoogleEvent(UUID groupId, boolean tolerateGoogleFailure) {
+        var deleted = false;
         for (Booking r : Booking.<Booking>group(groupId)) {
             if (r.googleEventId != null) {
-                if (calendarPort.isConnected(r.ownerId)) {
-                    calendarPort.deleteEvent(r.ownerId, r.calendarRef(), r.googleEventId);
-                }
+                deleted |= deleteRemoteEvent(r, tolerateGoogleFailure);
                 r.googleEventId = null;
                 r.meetLink = null;
                 r.googleCalendarId = null;
                 r.googleCredentialId = null;
             }
+        }
+        return deleted;
+    }
+
+    /**
+     * The remote half of a cancel, skipped when the row's owner is not connected. Returns whether the
+     * delete call was made and succeeded.
+     *
+     * <p>Tolerant mode runs the call in its OWN transaction: {@code CalendarPort.deleteEvent} is
+     * {@code @Transactional} and rethrows, and a failure inside the caller's transaction would mark
+     * that transaction rollback-only — catching the exception afterwards could not save the
+     * cancellation. The call touches only Google credential/calendar rows (a token refresh may write
+     * the credential), which the cancel itself never changes, so the two transactions cannot collide.
+     */
+    private boolean deleteRemoteEvent(Booking row, boolean tolerateFailure) {
+        if (!calendarPort.isConnected(row.ownerId)) {
+            return false;
+        }
+        Long ownerId = row.ownerId;
+        CalendarRef ref = row.calendarRef();
+        String eventId = row.googleEventId;
+        if (!tolerateFailure) {
+            calendarPort.deleteEvent(ownerId, ref, eventId);
+            return true;
+        }
+        try {
+            QuarkusTransaction.requiringNew().run(() -> calendarPort.deleteEvent(ownerId, ref, eventId));
+            return true;
+        } catch (RuntimeException e) {
+            Log.warnf(e, "Could not delete Google event %s for booking %d; cancelling anyway", eventId, row.id);
+            return false;
         }
     }
 
@@ -1360,7 +1419,7 @@ public class BookingService {
     public void declineGuest(String declineToken) {
         BookingGuest guest = BookingGuest.findByDeclineToken(declineToken);
         if (guest == null) {
-            throw new NotFoundException("No guest for token " + declineToken);
+            throw new NotFoundException("No guest for that token");
         }
         if (guest.status == GuestStatus.DECLINED) {
             return; // idempotent: a second decline click is a no-op

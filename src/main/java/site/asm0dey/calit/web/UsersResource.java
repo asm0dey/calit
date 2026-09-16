@@ -20,6 +20,7 @@ import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailService;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AdminMessageResolver;
+import site.asm0dey.calit.privacy.PrivacyService;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
 import site.asm0dey.calit.user.PasswordResetService;
@@ -34,7 +35,15 @@ public class UsersResource {
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance users(
-                List<AppUser> users, String error, boolean isAdmin, Long pendingCount, String title);
+                List<AppUser> users,
+                String error,
+                boolean isAdmin,
+                Long pendingCount,
+                String title,
+                Long currentUserId);
+
+        public static native TemplateInstance deleteUser(
+                String title, Long pendingCount, Long userId, String username, String error);
     }
 
     final CurrentOwner currentOwner;
@@ -54,6 +63,8 @@ public class UsersResource {
 
     final EmailService emailService;
 
+    final PrivacyService privacy;
+
     @Inject
     public UsersResource(
             CurrentOwner currentOwner,
@@ -63,6 +74,7 @@ public class UsersResource {
             ActiveLocale activeLocale,
             PasswordResetService resetService,
             EmailService emailService,
+            PrivacyService privacy,
             @ConfigProperty(name = "app.base-url") String baseUrl) {
         this.currentOwner = currentOwner;
         this.identity = identity;
@@ -71,6 +83,7 @@ public class UsersResource {
         this.activeLocale = activeLocale;
         this.resetService = resetService;
         this.emailService = emailService;
+        this.privacy = privacy;
         this.baseUrl = baseUrl;
     }
 
@@ -83,12 +96,14 @@ public class UsersResource {
 
     /** All users, oldest first. Page is admin-only, so isAdmin is always true here. */
     private TemplateInstance render(String error) {
+        AppUser me = currentUser();
         return Templates.users(
                 AppUser.list("order by createdAt asc"),
                 error,
                 true,
                 pendingCount(),
-                adminMsgs.forLocale(activeLocale.current()).adm_users_title());
+                adminMsgs.forLocale(activeLocale.current()).adm_users_title(),
+                me == null ? null : me.id);
     }
 
     @GET
@@ -104,7 +119,8 @@ public class UsersResource {
         var m = adminMsgs.forLocale(activeLocale.current());
         String normalized;
         try {
-            normalized = Usernames.validateNew(username, AppUser::usernameTaken); // throws on invalid/reserved/taken
+            normalized =
+                    Usernames.validateNew(username, AppUser::usernameUnavailable); // throws on invalid/reserved/taken
         } catch (IllegalArgumentException e) {
             return render(e.getMessage());
         }
@@ -115,18 +131,20 @@ public class UsersResource {
         var inviteEmail = candidate;
         var now = Instant.now();
         // One tx: create the dormant user + its settings row + mint the activation token together.
-        String token = QuarkusTransaction.requiringNew().call(() -> {
+        record Invited(Long userId, String token) {}
+        Invited invited = QuarkusTransaction.requiringNew().call(() -> {
             AppUser u = AppUser.create(normalized, null, false); // null hash => cannot log in until activated
             u.settingsComplete = false;
             u.persist();
             // ownerEmail holds the invite address so resend + the wizard's pre-fill both find it.
             OwnerSettings.seed(u.id, inviteEmail);
             audit.event(identity.getPrincipal().getName(), "invite-user", USER_TARGET + normalized, null);
-            return resetService.issue(u.id, now, Duration.ofHours(48));
+            return new Invited(u.id, resetService.issue(u.id, now, Duration.ofHours(48)));
         });
         emailService.sendInvite(
+                invited.userId(),
                 inviteEmail,
-                baseUrl + "/reset-password?token=" + token,
+                baseUrl + "/reset-password?token=" + invited.token(),
                 inviterEmail(),
                 baseUrl,
                 now.plus(Duration.ofHours(48)),
@@ -265,6 +283,7 @@ public class UsersResource {
         String token = resetService.issue(u.id, now, Duration.ofHours(48));
         audit.event(identity.getPrincipal().getName(), "resend-invite", USER_TARGET + u.username, null);
         emailService.sendInvite(
+                u.id,
                 s.ownerEmail,
                 baseUrl + "/reset-password?token=" + token,
                 inviterEmail(),
@@ -272,5 +291,66 @@ public class UsersResource {
                 now.plus(Duration.ofHours(48)),
                 activeLocale.current());
         return render(null);
+    }
+
+    /**
+     * Confirm page for deleting another account: shows which account and asks the admin to type its
+     * username. Same guards as the POST — own account refused, unknown id 404.
+     */
+    @GET
+    @Path("/{id}/delete")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance deleteUserConfirm(@PathParam("id") Long id) {
+        if (isSelf(id)) {
+            return render(adminMsgs.forLocale(activeLocale.current()).adm_users_error_delete_self());
+        }
+        return renderDeleteUser(requireUser(id), null);
+    }
+
+    /**
+     * Site-admin deletion of another account — the operator's route for an Art. 17 request that
+     * arrives by mail. Same last-admin guard as revoke/lock: there is no in-app recovery from zero
+     * enabled admins (SEC-AUTHZ-01).
+     *
+     * <p>The admin must type the target's username: deleting an account cancels its upcoming
+     * bookings and removes everything it owns, so a stray click on the users list must not be
+     * enough. A mismatch re-renders the confirm page and deletes nothing.
+     *
+     * <p>An admin can never delete THEIR OWN account through this route (Finding 1, R15): self-serve
+     * deletion in {@code AdminResource} re-verifies a password (or a retyped username, for a
+     * passwordless account) and this route does not. Refused here with a pointer to {@code
+     * /me/settings/delete}; mirrors {@link #lock}'s self-guard. The "Delete" link is also hidden on
+     * the admin's own row in {@code users.html}, but this server-side refusal is the real guard — a
+     * crafted POST must not bypass it.
+     */
+    @POST
+    @Path("/{id}/delete")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance deleteUser(@PathParam("id") Long id, @RestForm String confirmation) {
+        var m = adminMsgs.forLocale(activeLocale.current());
+        if (isSelf(id)) {
+            return render(m.adm_users_error_delete_self());
+        }
+        AppUser target = requireUser(id); // 404 for an unknown id -- no audit event for a delete that never happened
+        if (!target.username.equals(Usernames.normalize(confirmation == null ? "" : confirmation))) {
+            return renderDeleteUser(target, m.adm_users_delete_error_mismatch());
+        }
+        try {
+            privacy.deleteAccount(id);
+        } catch (IllegalStateException _) {
+            return render(m.adm_users_error_last_admin_delete());
+        }
+        audit.event(identity.getPrincipal().getName(), "delete-user", USER_TARGET + id, null);
+        return render(null);
+    }
+
+    private TemplateInstance renderDeleteUser(AppUser target, String error) {
+        return Templates.deleteUser(
+                adminMsgs.forLocale(activeLocale.current()).adm_users_delete_title(),
+                pendingCount(),
+                target.id,
+                target.username,
+                error);
     }
 }

@@ -126,6 +126,9 @@ public interface AdminMessages {
     @Message("Manage")
     String adm_dashboard_btn_manage();
 
+    @Message("(erased at the invitee's request)")
+    String adm_booking_invitee_erased();
+
     // ---- Mail-delivery banner (#195) ----
 
     @Message("Email is not configured — guests are not receiving booking confirmations.")
@@ -196,6 +199,10 @@ public interface AdminMessages {
 
     @Message("Delete")
     String adm_meetingTypes_btn_delete();
+
+    @Message("This meeting type still has upcoming bookings. Cancel them first, then delete the meeting type. "
+            + "Deleting it also removes its past bookings.")
+    String adm_meetingTypes_error_delete_upcoming();
 
     @Message("Create meeting type")
     String adm_meetingTypes_create_h2();
@@ -743,6 +750,11 @@ public interface AdminMessages {
     @Message("Delete")
     String adm_bookingFields_btn_delete();
 
+    @Message("Answers are stored as plain text and shown to you and anyone with access to this site's database. "
+            + "Don't ask for health, biometric, religious, political or other sensitive details unless you have a "
+            + "lawful basis for holding them.")
+    String adm_fields_sensitive_warning();
+
     @Message("Add a field")
     String adm_bookingFields_add_h2();
 
@@ -836,6 +848,17 @@ public interface AdminMessages {
     @Message("Send me (the owner) email notifications for bookings")
     String adm_settings_label_notifications();
 
+    @Message("Delete booking details after (days)")
+    String adm_settings_label_retention();
+
+    @Message(
+            "Leave blank to use the site default of {days} days. Invitee name, email and answers are removed; the time slot record stays.")
+    String adm_settings_retention_hint_with_default(int days);
+
+    @Message(
+            "Leave blank to keep bookings indefinitely. Invitee name, email and answers are removed; the time slot record stays.")
+    String adm_settings_retention_hint_forever();
+
     @Message("Save")
     String adm_settings_btn_save();
 
@@ -916,6 +939,50 @@ public interface AdminMessages {
     @Message("Channels ticked below receive every booking. Untick one to keep it off by default, then"
             + " enable it on the meeting types that should use it.")
     String adm_settings_channels_hint();
+
+    // ---- Owner data export (Task 8) ----
+
+    @Message("Download all my data")
+    String adm_settings_export_link();
+
+    // ---- Account deletion (Task 7) ----
+
+    @Message("Delete my account")
+    String adm_delete_account_link();
+
+    @Message("Delete your account?")
+    String adm_delete_account_title();
+
+    @Message("This permanently removes your account, your meeting types and availability, every booking "
+            + "on your calendar, your connected Google accounts and your notification channels. "
+            + "It can't be undone.")
+    String adm_delete_account_desc();
+
+    @Message(
+            "Deleting your account removes calit's copy of your Google tokens. Revoke calit's access in your Google account to withdraw the grant itself.")
+    String adm_delete_account_google_note();
+
+    @Message("Enter your password to confirm")
+    String adm_delete_account_password_label();
+
+    @Message("Type your username to confirm")
+    String adm_delete_account_username_label();
+
+    @Message("Delete my account permanently")
+    String adm_delete_account_btn();
+
+    @Message("Cancel")
+    String adm_delete_account_cancel();
+
+    @Message("That didn't match. Your account was not deleted.")
+    String adm_delete_account_error_mismatch();
+
+    @Message("You are the last enabled admin. Grant admin to another account first.")
+    String adm_delete_account_error_last_admin();
+
+    @Message("Upcoming bookings on your meeting types are cancelled first, so invitees, guests and co-hosts "
+            + "get the usual cancellation email.")
+    String adm_delete_account_upcoming_note();
 
     // ---- Per-meeting-type channel routing ----
 
@@ -1061,6 +1128,36 @@ public interface AdminMessages {
 
     @Message("Resend invite")
     String users_btn_resend_invite();
+
+    @Message("Delete")
+    String adm_users_delete();
+
+    @Message("Cannot delete the last enabled admin.")
+    String adm_users_error_last_admin_delete();
+
+    @Message("You can't delete your own account here — use \"Delete my account\" in Settings.")
+    String adm_users_error_delete_self();
+
+    @Message("Delete this account?")
+    String adm_users_delete_title();
+
+    @Message("This permanently removes the account {username}: its meeting types and availability, every "
+            + "booking on its calendar, its connected Google accounts and its notification channels. "
+            + "It can't be undone.")
+    String adm_users_delete_desc(String username);
+
+    @Message("Upcoming bookings on the account's meeting types are cancelled first, so invitees, guests and "
+            + "co-hosts get the usual cancellation email.")
+    String adm_users_delete_upcoming_note();
+
+    @Message("Type the account's username to confirm")
+    String adm_users_delete_username_label();
+
+    @Message("Delete this account permanently")
+    String adm_users_delete_btn();
+
+    @Message("That didn't match the username. The account was not deleted.")
+    String adm_users_delete_error_mismatch();
 
     // ---- Me setup wizard ----
 

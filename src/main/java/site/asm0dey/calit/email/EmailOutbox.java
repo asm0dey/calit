@@ -57,13 +57,34 @@ public class EmailOutbox extends PanacheEntityBase {
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
 
+    /** The booking this mail is about, when there is one. Lets erasure purge it by key, not by address. */
+    @Column(name = "booking_id")
+    public Long bookingId;
+
+    /** The owner this mail belongs to, when known. Cascades away with the account. */
+    @Column(name = "owner_id")
+    public Long ownerId;
+
+    /** Parks a failed send with no booking/owner link — see {@link #enqueue(String, String, String, byte[], Instant, String, MailTag)}. */
+    public static Long enqueue(
+            String recipient, String subject, String htmlBody, byte[] icsBytes, Instant notAfter, String error) {
+        return enqueue(recipient, subject, htmlBody, icsBytes, notAfter, error, MailTag.none());
+    }
+
     /**
      * Parks a failed send. Must run inside a transaction (caller opens requiringNew). Returns the new id.
      * {@code notAfter} null = no usefulness deadline; non-null = stop retrying once that instant passes
-     * (so a time-limited mail like a reset link isn't delivered dead).
+     * (so a time-limited mail like a reset link isn't delivered dead). {@code tag} records what the mail
+     * is about so erasure can clear it without waiting for the 30-day age purge.
      */
     public static Long enqueue(
-            String recipient, String subject, String htmlBody, byte[] icsBytes, Instant notAfter, String error) {
+            String recipient,
+            String subject,
+            String htmlBody,
+            byte[] icsBytes,
+            Instant notAfter,
+            String error,
+            MailTag tag) {
         var r = new EmailOutbox();
         r.recipient = recipient;
         r.subject = subject;
@@ -75,8 +96,20 @@ public class EmailOutbox extends PanacheEntityBase {
         r.nextAttemptAt = Instant.now(); // due immediately
         r.sentAt = null;
         r.createdAt = Instant.now();
+        r.bookingId = tag.bookingId();
+        r.ownerId = tag.ownerId();
         r.persist();
         return r.id;
+    }
+
+    /** Drops every parked mail about one booking. Returns the row count. */
+    public static long deleteForBooking(Long bookingId) {
+        return delete("bookingId", bookingId);
+    }
+
+    /** Drops every parked mail belonging to one owner. Returns the row count. */
+    public static long deleteForOwner(Long ownerId) {
+        return delete("ownerId", ownerId);
     }
 
     /** True once a deadlined mail is no longer worth delivering. */

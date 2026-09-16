@@ -52,10 +52,10 @@ public class ConsentResource {
         try {
             host = MeetingTypeHost.findByConsentToken(token);
         } catch (IllegalArgumentException _) {
-            throw new NotFoundException("No consent request for token " + token);
+            throw new NotFoundException("No consent request for that token");
         }
         if (host == null) {
-            throw new NotFoundException("No consent request for token " + token);
+            throw new NotFoundException("No consent request for that token");
         }
         return host;
     }
@@ -68,7 +68,7 @@ public class ConsentResource {
         MeetingTypeHost host = requireHost(token);
         MeetingType type = MeetingType.findById(host.meetingTypeId);
         if (type == null) {
-            throw new NotFoundException("No consent request for token " + token);
+            throw new NotFoundException("No consent request for that token");
         }
         OwnerSettings creator = OwnerSettings.forOwner(type.ownerId);
         return Templates.confirm(m.pub_consent_confirm_title(), type, creator != null ? creator.ownerName : "?", token);

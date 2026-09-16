@@ -98,11 +98,11 @@ public class GoogleConnectionScheduler {
     public void notifyPendingDisconnects() {
         List<Pending> pending = claimUnnotifiedDisconnects();
         for (Pending p : pending) {
-            emailService.sendGoogleDisconnected(p.ownerEmail(), p.accountEmail(), p.locale());
+            emailService.sendGoogleDisconnected(p.ownerId(), p.ownerEmail(), p.accountEmail(), p.locale());
         }
     }
 
-    private record Pending(String ownerEmail, String accountEmail, Locale locale) {}
+    private record Pending(Long ownerId, String ownerEmail, String accountEmail, Locale locale) {}
 
     List<Pending> claimUnnotifiedDisconnects() {
         return QuarkusTransaction.requiringNew().call(() -> {
@@ -119,7 +119,7 @@ public class GoogleConnectionScheduler {
                 c.reconnectNotifiedAt = now; // claim: prevents any replica re-sending
                 OwnerSettings s = OwnerSettings.forOwner(c.ownerId);
                 if (s != null) {
-                    out.add(new Pending(s.ownerEmail, c.accountEmail, AppLocales.pick(s.locale)));
+                    out.add(new Pending(c.ownerId, s.ownerEmail, c.accountEmail, AppLocales.pick(s.locale)));
                 }
             }
             return out;

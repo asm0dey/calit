@@ -397,6 +397,90 @@ public interface AppMessages {
     @Message("Keep booking")
     String pub_cancel_keep_btn();
 
+    // ---- Invitee erasure (eraseConfirm.html / erased.html) ----
+
+    @Message("Erase your data")
+    String pub_erase_confirm_title();
+
+    @Message("Erase your data from this booking?")
+    String pub_erase_confirm_h1();
+
+    @Message("This removes your name, email address, answers and guest list from this booking. "
+            + "The host keeps a record that the slot was taken, with no personal details. "
+            + "It can't be undone.")
+    String pub_erase_confirm_desc();
+
+    @Message("An upcoming booking is cancelled first, so the host is notified and the slot is freed.")
+    String pub_erase_confirm_cancels_first();
+
+    @Message("We don't link bookings to each other by email address, so this erases only this booking. "
+            + "To erase your other bookings, open the manage link in each one's confirmation email.")
+    String pub_erase_not_linked();
+
+    @Message("Links for your bookings with this host stop working {days} days after the meeting ends, "
+            + "when their details are deleted automatically.")
+    String pub_erase_links_expire(int days);
+
+    @Message("Those links keep working until the host or the site operator removes the booking.")
+    String pub_erase_links_forever();
+
+    @Message("What erasure cannot reach")
+    String pub_erase_boundary_h2();
+
+    @Message("A calendar event on the host's Google Calendar stays in their trash for about 30 days.")
+    String pub_erase_boundary_google();
+
+    @Message("A chat notification the host already received (Telegram, Slack, Discord) cannot be recalled.")
+    String pub_erase_boundary_channels();
+
+    @Message("Emails already delivered, and the calendar entry in your own calendar, stay where they are.")
+    String pub_erase_boundary_mail();
+
+    @Message("Erase my data")
+    String pub_erase_confirm_btn();
+
+    @Message("Keep my data")
+    String pub_erase_keep_btn();
+
+    @Message("Your data has been erased")
+    String pub_erased_title();
+
+    @Message("Your data has been erased")
+    String pub_erased_h1();
+
+    @Message("Here is what happened to each copy:")
+    String pub_erased_desc();
+
+    @Message("Removed from this site")
+    String pub_erased_local_ok();
+
+    @Message("The host's calendar event was deleted (Google keeps it in trash for about 30 days).")
+    String pub_erased_google_removed();
+
+    @Message("The host's calendar event could not be reached — ask the operator to remove it.")
+    String pub_erased_google_unreachable();
+
+    @Message("No calendar event existed for this booking.")
+    String pub_erased_google_none();
+
+    @Message("A chat notification the host already received cannot be recalled.")
+    String pub_erased_channels();
+
+    @Message("Emails already delivered cannot be recalled.")
+    String pub_erased_mail();
+
+    @Message("For the copies calit cannot reach, contact the operator at {contactEmail}.")
+    String pub_erased_contact(String contactEmail);
+
+    @Message("Back to the home page")
+    String pub_erased_btn();
+
+    @Message("To have your data erased, contact the operator at {contactEmail}.")
+    String pub_erase_disabled_notice(String contactEmail);
+
+    @Message("To have your data erased, contact the operator of this site.")
+    String pub_erase_disabled_notice_no_contact();
+
     // ---- Manage booking page (manage.html) ----
 
     @Message("Manage booking")
@@ -440,6 +524,9 @@ public interface AppMessages {
 
     @Message("Cancel this booking")
     String pub_manage_btn_cancel();
+
+    @Message("Download my data")
+    String pub_manage_download_data();
 
     // ---- Unavailable page (unavailable.html) ----
 

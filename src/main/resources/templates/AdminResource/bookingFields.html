@@ -18,6 +18,9 @@
   </div>
 
   <h2 class="text-xl font-semibold mb-3">{adm:adm_bookingFields_add_h2}</h2>
+  <div class="alert alert-warning max-w-2xl mb-4">
+    <span>{adm:adm_fields_sensitive_warning}</span>
+  </div>
   <form method="post" action="/me/booking-fields" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-2xl">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
     <label class="label" for="bf-label">{adm:adm_bookingFields_label_label}</label>

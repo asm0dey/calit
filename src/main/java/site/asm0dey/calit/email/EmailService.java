@@ -72,43 +72,71 @@ public class EmailService {
      * Sends a password-reset link. Caller has already resolved the destination address.
      * {@code expiresAt} is the reset token's expiry: if the mail can't be sent now and has to fall
      * back to the outbox, retries stop at that instant so a dead-link email is never delivered.
-     * {@code locale} drives any {msg:} keys rendered in the template body.
+     * {@code locale} drives any {msg:} keys rendered in the template body. {@code ownerId} tags a
+     * parked copy so deleting that account also clears it.
      */
-    public void sendPasswordReset(String toEmail, String resetUrl, Instant expiresAt, Locale locale) {
+    public void sendPasswordReset(Long ownerId, String toEmail, String resetUrl, Instant expiresAt, Locale locale) {
         String body = Templates.passwordReset(locale.getLanguage(), resetUrl)
                 .setLocale(locale)
                 .render();
         mailSender.send(
-                null, toEmail, messages.forLocale(locale).email_password_reset_subject(), body, null, expiresAt);
+                null,
+                toEmail,
+                messages.forLocale(locale).email_password_reset_subject(),
+                body,
+                null,
+                expiresAt,
+                MailTag.forOwner(ownerId));
     }
 
     /**
      * Sends an account-invite email carrying a set-password activation link (same single-use token
      * machinery as a password reset). {@code inviter} is the admin's display email, {@code host} the
      * app base URL, {@code expiresAt} the token expiry (retries stop there so no dead link is sent).
-     * {@code locale} drives the {msg:} keys in the body.
+     * {@code locale} drives the {msg:} keys in the body. {@code ownerId} is the invited account, so a
+     * parked copy goes with it if the account is deleted.
      */
     public void sendInvite(
-            String toEmail, String activationUrl, String inviter, String host, Instant expiresAt, Locale locale) {
+            Long ownerId,
+            String toEmail,
+            String activationUrl,
+            String inviter,
+            String host,
+            Instant expiresAt,
+            Locale locale) {
         String body = Templates.invite(locale.getLanguage(), activationUrl, inviter, host)
                 .setLocale(locale)
                 .render();
-        mailSender.send(null, toEmail, messages.forLocale(locale).email_invite_subject(), body, null, expiresAt);
+        mailSender.send(
+                null,
+                toEmail,
+                messages.forLocale(locale).email_invite_subject(),
+                body,
+                null,
+                expiresAt,
+                MailTag.forOwner(ownerId));
     }
 
     /**
      * Critical operational alert: the owner's Google account is disconnected and their booking page
      * is paused. Sent regardless of {@code ownerNotificationsEnabled} (that flag governs only routine
      * booking notifications). Links to the Google settings page so the owner can reconnect.
-     * {@code locale} drives any {msg:} keys rendered in the template body.
+     * {@code locale} drives any {msg:} keys rendered in the template body. {@code ownerId} tags a
+     * parked copy so deleting that account also clears it.
      */
-    public void sendGoogleDisconnected(String toEmail, String accountEmail, Locale locale) {
+    public void sendGoogleDisconnected(Long ownerId, String toEmail, String accountEmail, Locale locale) {
         var reconnectUrl = baseUrl + "/me/google";
         String body = Templates.googleDisconnected(
                         locale.getLanguage(), accountEmail == null ? "your account" : accountEmail, reconnectUrl)
                 .setLocale(locale)
                 .render();
-        mailSender.send(null, toEmail, messages.forLocale(locale).email_google_disconnected_subject(), body, null);
+        mailSender.send(
+                null,
+                toEmail,
+                messages.forLocale(locale).email_google_disconnected_subject(),
+                body,
+                null,
+                MailTag.forOwner(ownerId));
     }
 
     // basePath = "email": @Location on individual @CheckedTemplate native methods is NOT honored by
@@ -272,7 +300,7 @@ public class EmailService {
     /** Where a rendered mail goes: either a direct SMTP send or an outbox enqueue. */
     @FunctionalInterface
     private interface MailSink {
-        void deliver(String fromName, String to, String subject, String html, byte[] ics);
+        void deliver(String fromName, String to, String subject, String html, byte[] ics, MailTag tag);
     }
 
     /**
@@ -280,8 +308,9 @@ public class EmailService {
      * commits atomically with the caller's transaction. OutboxScheduler delivers it with retry/backoff.
      * Static so it can be used as a method reference with no captured state.
      */
-    private static void enqueueToOutbox(String fromName, String to, String subject, String html, byte[] ics) {
-        EmailOutbox.enqueue(to, subject, html, ics, null, "scheduled dispatch (transactional outbox)");
+    private static void enqueueToOutbox(
+            String fromName, String to, String subject, String html, byte[] ics, MailTag tag) {
+        EmailOutbox.enqueue(to, subject, html, ics, null, "scheduled dispatch (transactional outbox)", tag);
     }
 
     // --- CDI observers: fire only after the booking transaction commits. ---
@@ -617,7 +646,8 @@ public class EmailService {
                             declineGuestUrl(g))
                     .setLocale(locale)
                     .render();
-            mailSender.send(fromName(l), g.email, subject, body, ics);
+            mailSender.send(
+                    fromName(l), g.email, subject, body, ics, MailTag.forBooking(l.booking().id, l.booking().ownerId));
         }
     }
 
@@ -665,7 +695,8 @@ public class EmailService {
                 l.booking().inviteeEmail,
                 messages.forLocale(locale).email_guest_declined_subject(label(l)),
                 inviteeBody,
-                null);
+                null,
+                MailTag.forBooking(l.booking().id, l.booking().ownerId));
     }
 
     /**
@@ -695,7 +726,8 @@ public class EmailService {
                     cohost.ownerEmail,
                     messages.forLocale(locale).email_host_consent_subject(type.name),
                     body,
-                    null);
+                    null,
+                    MailTag.forOwner(cohost.ownerId));
         });
     }
 
@@ -711,7 +743,8 @@ public class EmailService {
                 g.email,
                 subject,
                 guestCancelBody(l, g, locale),
-                calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, g, null, IcsMethod.CANCEL));
+                calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, g, null, IcsMethod.CANCEL),
+                MailTag.forBooking(l.booking().id, l.booking().ownerId));
     }
 
     /** Renders the guest cancel body in the given locale. */
@@ -808,7 +841,8 @@ public class EmailService {
                 subjectForLocale.apply(inviteeLocale),
                 bodyForRecipient.render(
                         INVITEE_ROLE, inviteeLocale, l.zone(), l.booking().inviteeName, l.booking(), "auto"),
-                ics);
+                ics,
+                MailTag.forBooking(l.booking().id, l.booking().ownerId));
 
         if (l.booking().groupId != null) {
             for (HostDelivery hd : l.hostDeliveries()) {
@@ -826,7 +860,8 @@ public class EmailService {
                                 hd.settings().ownerName,
                                 hd.booking(),
                                 hd.settings().timeFormat),
-                        ics);
+                        ics,
+                        MailTag.forBooking(hd.booking().id, hd.settings().ownerId));
             }
         } else if (l.owner().ownerNotificationsEnabled) {
             Locale ownerLocale = AppLocales.pick(l.owner().locale);
@@ -836,7 +871,8 @@ public class EmailService {
                     subjectForLocale.apply(ownerLocale),
                     bodyForRecipient.render(
                             OWNER_ROLE, ownerLocale, l.zone(), l.owner().ownerName, l.booking(), l.owner().timeFormat),
-                    ics);
+                    ics,
+                    MailTag.forBooking(l.booking().id, l.owner().ownerId));
         }
     }
 

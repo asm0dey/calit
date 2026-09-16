@@ -80,6 +80,7 @@ public class PasswordResetResource {
                 var now = Instant.now();
                 String token = resetService.issue(user.id, now);
                 emailService.sendPasswordReset(
+                        user.id,
                         os.ownerEmail,
                         baseUrl + "/reset-password?token=" + token,
                         now.plus(PasswordResetService.TTL),

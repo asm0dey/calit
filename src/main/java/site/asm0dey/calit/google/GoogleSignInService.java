@@ -61,7 +61,7 @@ public class GoogleSignInService {
     }
 
     private AppUser provision(GoogleIdentity identity) {
-        String username = Usernames.uniquify(Usernames.fromEmail(identity.email()), AppUser::usernameTaken);
+        String username = Usernames.uniquify(Usernames.fromEmail(identity.email()), AppUser::usernameUnavailable);
         AppUser u = AppUser.createGoogleUser(username, identity.sub());
         u.persist();
 

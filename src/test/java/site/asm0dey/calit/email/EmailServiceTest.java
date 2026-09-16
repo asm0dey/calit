@@ -485,7 +485,7 @@ class EmailServiceTest {
     void passwordResetMailHasNoPerMessageFrom() {
         mailbox.clear();
         emailService.sendPasswordReset(
-                "u@example.com", "https://x/reset", Instant.now().plusSeconds(3600), java.util.Locale.ENGLISH);
+                1L, "u@example.com", "https://x/reset", Instant.now().plusSeconds(3600), java.util.Locale.ENGLISH);
         assertNull(
                 mailbox.getMailsSentTo("u@example.com").getFirst().getFrom(),
                 "no per-message From -> falls back to config default");

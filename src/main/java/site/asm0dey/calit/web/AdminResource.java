@@ -9,6 +9,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.Response;
+import java.net.URI;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -17,6 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestForm;
+import site.asm0dey.calit.audit.AuditLog;
 import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.booking.*;
 import site.asm0dey.calit.domain.*;
@@ -34,8 +37,12 @@ import site.asm0dey.calit.notify.ChannelRejected;
 import site.asm0dey.calit.notify.ChannelRow;
 import site.asm0dey.calit.notify.NotificationChannel;
 import site.asm0dey.calit.notify.NotificationChannelMeetingType;
+import site.asm0dey.calit.privacy.PrivacyConfig;
+import site.asm0dey.calit.privacy.PrivacyService;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
+import site.asm0dey.calit.user.PasswordHasher;
+import site.asm0dey.calit.user.Usernames;
 
 @Path("/me")
 @RolesAllowed("user")
@@ -113,7 +120,8 @@ public class AdminResource {
                 String title,
                 List<ChannelRow> channels,
                 String channelError,
-                String channelNotice);
+                String channelNotice,
+                Integer retentionInstanceDefault);
 
         public static native TemplateInstance bookingFields(
                 List<BookingField> fields, FieldType[] fieldTypes, Long pendingCount, boolean isAdmin, String title);
@@ -158,6 +166,9 @@ public class AdminResource {
                 Long pendingCount,
                 boolean isAdmin,
                 String title);
+
+        public static native TemplateInstance deleteAccount(
+                String title, Long pendingCount, boolean isAdmin, boolean hasPassword, String username, String error);
     }
 
     /**
@@ -203,6 +214,14 @@ public class AdminResource {
 
     final ChannelAdmin channelAdmin;
 
+    final PrivacyService privacy;
+
+    final PrivacyConfig privacyConfig;
+
+    final PasswordHasher passwordHasher;
+
+    final AuditLog audit;
+
     @Inject
     public AdminResource(
             BookingService bookingService,
@@ -215,6 +234,10 @@ public class AdminResource {
             ActiveLocale activeLocale,
             MailHealth mailHealth,
             ChannelAdmin channelAdmin,
+            PrivacyService privacy,
+            PrivacyConfig privacyConfig,
+            PasswordHasher passwordHasher,
+            AuditLog audit,
             @ConfigProperty(name = "app.base-url") String baseUrl,
             @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440") int reminderLeadMinutes) {
         this.bookingService = bookingService;
@@ -227,6 +250,10 @@ public class AdminResource {
         this.activeLocale = activeLocale;
         this.mailHealth = mailHealth;
         this.channelAdmin = channelAdmin;
+        this.privacy = privacy;
+        this.privacyConfig = privacyConfig;
+        this.passwordHasher = passwordHasher;
+        this.audit = audit;
         this.baseUrl = baseUrl;
         this.reminderLeadMinutes = reminderLeadMinutes;
     }
@@ -718,11 +745,24 @@ public class AdminResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance deleteMeetingType(@PathParam("id") Long id) {
-        QuarkusTransaction.requiringNew().run(() -> {
+        boolean deleted = QuarkusTransaction.requiringNew().call(() -> {
             requireType(id);
+            // booking.meeting_type_id cascades (V34), so deleting a type deletes its bookings -- every
+            // host's row of a group booking included. An upcoming one would vanish with no mail to
+            // anyone and its Google event left behind, so refuse until it is cancelled. Counted across
+            // all owners on purpose: co-hosts' rows carry this (creator's) type id too.
+            if (Booking.count(
+                            "meetingTypeId = ?1 and endUtc > ?2 and status in ?3",
+                            id,
+                            Instant.now(),
+                            List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED))
+                    > 0) {
+                return false;
+            }
             MeetingType.deleteById(id);
+            return true;
         });
-        return renderMeetingTypes();
+        return deleted ? renderMeetingTypes() : renderMeetingTypes(m().adm_meetingTypes_error_delete_upcoming());
     }
 
     /** Date overrides scoped to one meeting type, each with its (transient) windows loaded. */
@@ -1496,7 +1536,8 @@ public class AdminResource {
             @RestForm String timezone,
             @RestForm String locale,
             @RestForm String ownerNotificationsEnabled,
-            @RestForm String timeFormat) {
+            @RestForm String timeFormat,
+            @RestForm String bookingRetentionDays) {
         // Persist in its own tx that commits before the settings render (#75); return the (now
         // detached) row so the render below reads its committed field values with no connection held.
         OwnerSettings s = QuarkusTransaction.requiringNew().call(() -> {
@@ -1516,6 +1557,7 @@ public class AdminResource {
             row.timeFormat = timeFormat != null && OwnerSettings.HOUR_CYCLES.contains(timeFormat) ? timeFormat : "auto";
             // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
             row.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
+            row.bookingRetentionDays = parseRetentionDays(bookingRetentionDays);
             row.persist();
             return row;
         });
@@ -1531,7 +1573,28 @@ public class AdminResource {
                 m().adm_settings_title(),
                 channelRows(),
                 null,
-                null);
+                null,
+                privacyConfig.bookingRetentionDays().orElse(null));
+    }
+
+    /**
+     * Blank, zero, negative and unparseable all mean "no override" — fall back to the instance
+     * default. Anything above {@link PrivacyConfig#MAX_RETENTION_DAYS} is clamped, not rejected —
+     * see that constant for why an unclamped huge value can't reach the column.
+     */
+    private static Integer parseRetentionDays(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            var days = Integer.parseInt(raw.trim());
+            if (days <= 0) {
+                return null;
+            }
+            return Math.min(days, PrivacyConfig.MAX_RETENTION_DAYS);
+        } catch (NumberFormatException _) {
+            return null;
+        }
     }
 
     /** This owner's channel rows, timestamps formatted in their own timezone. */
@@ -1550,7 +1613,69 @@ public class AdminResource {
                 m().adm_settings_title(),
                 channelRows(),
                 channelError,
-                channelNotice);
+                channelNotice,
+                privacyConfig.bookingRetentionDays().orElse(null));
+    }
+
+    /**
+     * Art. 15/20 for the owner: their whole subtree as one JSON file. Owner-scoped by {@code
+     * currentOwner.id()} like every other /me query — never a parameter. {@link
+     * PrivacyService#exportOwner} returns raw JSON text (R14); Quarkus's Jackson writer special-
+     * cases {@link String} and writes it byte-for-byte, so this serves it verbatim.
+     */
+    @GET
+    @Path("/export")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response export() {
+        return Response.ok(privacy.exportOwner(currentOwner.id()))
+                .header("Content-Disposition", "attachment; filename=\"calit-export.json\"")
+                .header("Cache-Control", "no-store") // personal data: never kept by a shared cache
+                .build();
+    }
+
+    @GET
+    @Path("/settings/delete")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance deleteAccountConfirm() {
+        return deleteAccountPage(null);
+    }
+
+    /**
+     * Art. 17 for the owner. Re-authentication is deliberate: a session left open on a shared
+     * machine must not be one click away from destroying an account. An OIDC- or Google-only
+     * account has no password to re-enter, so it types its username instead — the same friction
+     * without asking for a credential it does not have.
+     */
+    @POST
+    @Path("/settings/delete")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public Response deleteAccount(@RestForm String confirmation) {
+        AppUser me = AppUser.findById(currentOwner.id());
+        var normalizedConfirmation = confirmation == null ? "" : confirmation;
+        boolean ok = me.passwordHash != null
+                ? passwordHasher.verify(confirmation, me.passwordHash)
+                : me.username.equals(Usernames.normalize(normalizedConfirmation));
+        if (!ok) {
+            return Response.ok(deleteAccountPage(m().adm_delete_account_error_mismatch()))
+                    .build();
+        }
+        try {
+            privacy.deleteAccount(me.id);
+        } catch (IllegalStateException _) {
+            return Response.ok(deleteAccountPage(m().adm_delete_account_error_last_admin()))
+                    .build();
+        }
+        audit.event(me.username, "delete-account", "user:" + me.id, null);
+        // The session now points at a row that no longer exists; send the browser through logout
+        // so the credential cookie is cleared rather than left dangling.
+        return Response.seeOther(URI.create("/logout")).build();
+    }
+
+    private TemplateInstance deleteAccountPage(String error) {
+        AppUser me = AppUser.findById(currentOwner.id());
+        return Templates.deleteAccount(
+                m().adm_delete_account_title(), pendingCount(), isAdmin(), me.passwordHash != null, me.username, error);
     }
 
     /**
