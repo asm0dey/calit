@@ -35,15 +35,16 @@ Locking an account does not cancel the bookings it already has. They stay on the
 
 ## Deleting an account
 
-Any user can delete their own account from **Settings → Delete my account** (`/me/settings/delete`), confirming with their password, or with their username if they sign in only through Google or SSO. A site admin can delete another account with the **Delete** button in `/me/users`; there is no separate confirmation page.
+Any user can delete their own account from **Settings → Delete my account** (`/me/settings/delete`), confirming with their password, or with their username if they sign in only through Google or SSO. A site admin can delete another account with the **Delete** link in `/me/users`: it opens a confirm page (`/me/users/{id}/delete`) naming the account, and the admin must type that account's username. A mismatch deletes nothing.
 
-- Deletion removes the account, its settings, meeting types, availability, bookings, connected Google accounts and notification channels. No email is sent.
+- Upcoming pending and confirmed bookings on the account's own meeting types are cancelled first, including every host's copy of a multi-host booking. Invitees, guests and co-hosts get the usual cancellation email, and the Google event is deleted where Google is reachable.
+- Deletion then removes the account, its settings, meeting types, availability, bookings, connected Google accounts and notification channels. The deleted user gets no email.
 - The last enabled admin cannot be deleted. An admin deletes their own account from Settings, not from `/me/users`.
 - It does not revoke calit's access at Google; the user does that in their Google account.
 - The username can never be used again: calit keeps a hash of it so a stale login cookie cannot attach to a new account.
 
-:::caution[Upcoming bookings are not cancelled]
-Deleting an account does not cancel its upcoming bookings, notify their invitees, or delete their Google Calendar events. Invitees and guests keep the invites for meetings whose host is gone. Cancel the person's upcoming bookings first so everyone is told.
+:::note[Co-hosted meetings]
+Bookings on other people's meeting types, where the deleted user was only a co-host, are not cancelled. The deleted user's own copy goes; the meeting stays on the other hosts' calendars.
 :::
 
 Before deleting, a user can download everything calit holds about their account as JSON with **Download all my data** in Settings (`/me/export`). In the same place, **Delete booking details after (days)** sets how long their bookings keep invitee details; leave it blank to use the site default. See the [GDPR operator guide](/calit/compliance/operator-guide/).

@@ -32,8 +32,16 @@ server, so the tools below are on by default, and only two of them are configura
     queued email deleted;
   - the row survives with `erased_at` set, and the host sees "(erased at the invitee's request)" in
     place of the invitee;
-  - for a past booking with a Google event, calit makes a best-effort delete of that event;
+  - for a past booking with a Google event, calit makes a best-effort delete of that event and
+    clears the event reference from the row;
   - for a multi-host booking, every host's copy is anonymised.
+
+  If Google fails the delete, the erasure still completes: the booking is cancelled and anonymised,
+  and the done page reports the Google copy as unreachable.
+
+  Hosts' copies of a multi-host booking can be anonymised at different times, because retention
+  follows each host's own window. The link keeps working until every host's copy is erased: the
+  download reads from a copy that still holds the data, and erasure clears the rest.
 
   After erasure every route for that token returns 404, including the JSON API
   (`/api/bookings/{token}` and `/api/bookings/{token}/reschedule`). Set `INVITEE_ERASURE=false` to
@@ -43,8 +51,8 @@ server, so the tools below are on by default, and only two of them are configura
   Google OAuth tokens are left out, and notification-channel URLs appear as `[redacted]`.
 - **Account deletion.** A user deletes their own account at `/me/settings/delete`, confirming with
   their password (or their username, for accounts that sign in only through Google or SSO). A site
-  admin deletes someone else's from `/me/users` with one click. See
-  [Users & admin](/calit/usage/users-admin/#deleting-an-account).
+  admin deletes someone else's from `/me/users`, on a confirm page that asks for that account's
+  username. See [Users & admin](/calit/usage/users-admin/#deleting-an-account).
 - **Retention sweep.** With `BOOKING_RETENTION_DAYS` set, or a host's own **Delete booking details
   after (days)** setting, bookings are anonymised that many days after they end. See
   [Configuration](/calit/installation/configuration/#privacy).
@@ -109,11 +117,20 @@ accounts, notification channels, queued email, and reset and sign-in tokens. No 
 deleted" email is sent. The last enabled admin cannot be deleted, and an admin cannot delete their
 own account from `/me/users`.
 
-:::caution[Upcoming bookings are not cancelled]
-Deleting an account does not cancel its upcoming bookings, notify their invitees, or delete their
-Google Calendar events. Invitees and guests keep the invites for meetings whose host is gone. If the
-person has upcoming meetings, cancel them first so everyone is told.
-:::
+- **Upcoming bookings are cancelled first.** Every upcoming pending or confirmed booking on the
+  account's own meeting types is cancelled through the normal cancel path before anything is
+  deleted, including every host's copy of a multi-host booking. Invitees, guests and co-hosts get
+  the usual cancellation email, and the Google event is deleted where Google is reachable; a Google
+  failure does not stop the deletion.
+- **Queued cancellation emails survive.** If a cancellation email could not be sent and is waiting
+  in `email_outbox`, the copies for invitees, guests and co-hosts are kept for retry; their booking
+  link is dropped, so the 30-day age purge clears them. The deleted user's own copy is deleted with
+  the account.
+- **Bookings where the user is only a co-host are not cancelled.** Their own copy of such a booking
+  is deleted; the meeting stays on the other hosts' calendars.
+- **A narrow race remains.** A booking made in the moment between the cancellations and the final
+  delete is removed without a notice. Two admins deleting the last two enabled admin accounts at
+  once can both cancel their bookings before one of the deletions is refused.
 
 - **Google grants are not revoked.** Deletion removes calit's copy of the OAuth tokens. It does not
   withdraw the grant at Google; the user does that in their own Google account settings.
@@ -140,13 +157,20 @@ an earlier version and need those rows gone sooner, wait 30 days or clear `email
 
 Both jobs run on every replica, coordinated through Postgres with no leader.
 
-- The retention sweep runs daily at 03:17 and anonymises up to 200 bookings per run per replica, in
-  one transaction. A larger backlog drains over the following days.
+- The retention sweep runs daily at 03:17. It anonymises bookings in batches of 200, each batch in
+  its own transaction, until nothing is left or five minutes have passed; a larger backlog continues
+  the next day.
 - The purge runs daily at 03:37. Email still waiting for a retry is never purged.
 
 Each erasure, account deletion, retention run and purge writes a log line starting with `PRIVACY`.
 These lines carry ids and counts, never personal data, and are your record that a request was
-handled. See the [breach checklist](/calit/compliance/breach-checklist/) for which logs to keep.
+handled.
+
+Account deletions also write a line to the `audit` logger category. For a self-deletion that line
+names the deleted account by username (`AUDIT actor=<username> action=delete-account
+target=user:<id>`), so the audit log keeps a username after the account is gone. An admin deletion
+names the acting admin and only the target's id (`action=delete-user target=user:<id>`). Set your
+audit-log retention with that in mind. See the [breach checklist](/calit/compliance/breach-checklist/) for which logs to keep.
 
 ## Related pages
 

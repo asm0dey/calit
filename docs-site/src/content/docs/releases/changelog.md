@@ -31,12 +31,18 @@ Merged but not yet in a tagged release.
   `/me/users`. The last enabled admin is refused. Google grants are not revoked. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - Migration `V35` adds `deleted_username`: a hash of every deleted username is kept permanently, so
   signup, invites, setup and Google/SSO provisioning refuse that name. ([#TBD](https://github.com/asm0dey/calit/pulls))
+- Account deletion first cancels upcoming bookings on the account's meeting types, co-hosts' copies
+  included, so invitees, guests and co-hosts are notified. ([#TBD](https://github.com/asm0dey/calit/pulls))
+- Admins delete another account through a confirm page, `/me/users/{id}/delete`, by typing its
+  username. ([#TBD](https://github.com/asm0dey/calit/pulls))
+- A meeting type with upcoming pending or confirmed bookings can no longer be deleted; deleting one
+  removes its past bookings. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - `GET /me/export` returns the whole account as JSON, built in the database. Password hashes and
   OAuth tokens are excluded; notification-channel URLs are redacted. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - `BOOKING_RETENTION_DAYS` anonymises bookings that many days after they end; unset keeps them
   forever. Each host may set their own window; values are capped at 36500. ([#TBD](https://github.com/asm0dey/calit/pulls))
-- The retention sweep runs daily on every replica, up to 200 bookings per run, and does not delete
-  Google Calendar events. ([#TBD](https://github.com/asm0dey/calit/pulls))
+- The retention sweep runs daily on every replica in batches of 200 until done or five minutes pass,
+  and does not delete Google Calendar events. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - Queued emails are deleted about 30 days after they are sent (or queued, if never sent);
   password-reset, invitation and sign-in tokens about a day after they expire. Not configurable. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - `/privacy` now describes the running deployment: Google sections only when configured, the real
