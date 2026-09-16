@@ -48,7 +48,7 @@ public class MailSender {
 
     /** Try direct; on any failure, durably queue to the outbox for retry (no usefulness deadline). */
     public void send(String fromName, String to, String subject, String html, byte[] ics) {
-        send(fromName, to, subject, html, ics, null);
+        send(fromName, to, subject, html, ics, null, MailTag.none());
     }
 
     /**
@@ -60,11 +60,28 @@ public class MailSender {
      * rare retry path is ever required.
      */
     public void send(String fromName, String to, String subject, String html, byte[] ics, Instant notAfter) {
+        send(fromName, to, subject, html, ics, notAfter, MailTag.none());
+    }
+
+    public void send(String fromName, String to, String subject, String html, byte[] ics, MailTag tag) {
+        send(fromName, to, subject, html, ics, null, tag);
+    }
+
+    /**
+     * Try direct; on any failure, durably queue to the outbox for retry. Never throws.
+     * {@code notAfter} non-null bounds retry: a queued mail is dropped undelivered once that instant
+     * passes (e.g. a reset link whose token has expired — delivering it would only hand over a dead
+     * link). {@code tag} records the booking/owner the mail is about so erasure can purge it by key.
+     * ponytail: the outbox does not persist {@code fromName}; a retried mail sends with the
+     * config-default From (cosmetic only).
+     */
+    public void send(
+            String fromName, String to, String subject, String html, byte[] ics, Instant notAfter, MailTag tag) {
         try {
             sendNow(fromName, to, subject, html, ics);
         } catch (Exception e) {
             QuarkusTransaction.requiringNew()
-                    .run(() -> EmailOutbox.enqueue(to, subject, html, ics, notAfter, e.getMessage()));
+                    .run(() -> EmailOutbox.enqueue(to, subject, html, ics, notAfter, e.getMessage(), tag));
             Log.warnf(e, "SMTP send failed, queued to outbox: to=%s subject=%s", to, subject);
         }
     }

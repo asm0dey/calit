@@ -272,7 +272,7 @@ public class EmailService {
     /** Where a rendered mail goes: either a direct SMTP send or an outbox enqueue. */
     @FunctionalInterface
     private interface MailSink {
-        void deliver(String fromName, String to, String subject, String html, byte[] ics);
+        void deliver(String fromName, String to, String subject, String html, byte[] ics, MailTag tag);
     }
 
     /**
@@ -280,8 +280,9 @@ public class EmailService {
      * commits atomically with the caller's transaction. OutboxScheduler delivers it with retry/backoff.
      * Static so it can be used as a method reference with no captured state.
      */
-    private static void enqueueToOutbox(String fromName, String to, String subject, String html, byte[] ics) {
-        EmailOutbox.enqueue(to, subject, html, ics, null, "scheduled dispatch (transactional outbox)");
+    private static void enqueueToOutbox(
+            String fromName, String to, String subject, String html, byte[] ics, MailTag tag) {
+        EmailOutbox.enqueue(to, subject, html, ics, null, "scheduled dispatch (transactional outbox)", tag);
     }
 
     // --- CDI observers: fire only after the booking transaction commits. ---
@@ -617,7 +618,8 @@ public class EmailService {
                             declineGuestUrl(g))
                     .setLocale(locale)
                     .render();
-            mailSender.send(fromName(l), g.email, subject, body, ics);
+            mailSender.send(
+                    fromName(l), g.email, subject, body, ics, MailTag.forBooking(l.booking().id, l.booking().ownerId));
         }
     }
 
@@ -665,7 +667,8 @@ public class EmailService {
                 l.booking().inviteeEmail,
                 messages.forLocale(locale).email_guest_declined_subject(label(l)),
                 inviteeBody,
-                null);
+                null,
+                MailTag.forBooking(l.booking().id, l.booking().ownerId));
     }
 
     /**
@@ -695,7 +698,8 @@ public class EmailService {
                     cohost.ownerEmail,
                     messages.forLocale(locale).email_host_consent_subject(type.name),
                     body,
-                    null);
+                    null,
+                    MailTag.forOwner(cohost.ownerId));
         });
     }
 
@@ -711,7 +715,8 @@ public class EmailService {
                 g.email,
                 subject,
                 guestCancelBody(l, g, locale),
-                calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, g, null, IcsMethod.CANCEL));
+                calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, g, null, IcsMethod.CANCEL),
+                MailTag.forBooking(l.booking().id, l.booking().ownerId));
     }
 
     /** Renders the guest cancel body in the given locale. */
@@ -808,7 +813,8 @@ public class EmailService {
                 subjectForLocale.apply(inviteeLocale),
                 bodyForRecipient.render(
                         INVITEE_ROLE, inviteeLocale, l.zone(), l.booking().inviteeName, l.booking(), "auto"),
-                ics);
+                ics,
+                MailTag.forBooking(l.booking().id, l.booking().ownerId));
 
         if (l.booking().groupId != null) {
             for (HostDelivery hd : l.hostDeliveries()) {
@@ -826,7 +832,8 @@ public class EmailService {
                                 hd.settings().ownerName,
                                 hd.booking(),
                                 hd.settings().timeFormat),
-                        ics);
+                        ics,
+                        MailTag.forBooking(hd.booking().id, hd.settings().ownerId));
             }
         } else if (l.owner().ownerNotificationsEnabled) {
             Locale ownerLocale = AppLocales.pick(l.owner().locale);
@@ -836,7 +843,8 @@ public class EmailService {
                     subjectForLocale.apply(ownerLocale),
                     bodyForRecipient.render(
                             OWNER_ROLE, ownerLocale, l.zone(), l.owner().ownerName, l.booking(), l.owner().timeFormat),
-                    ics);
+                    ics,
+                    MailTag.forBooking(l.booking().id, l.owner().ownerId));
         }
     }
 

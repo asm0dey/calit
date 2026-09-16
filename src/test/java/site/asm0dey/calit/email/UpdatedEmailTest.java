@@ -83,7 +83,8 @@ class UpdatedEmailTest {
         ArgumentCaptor<String> to = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> subject = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
-        verify(mailSender, atLeast(2)).send(any(), to.capture(), subject.capture(), body.capture(), any());
+        verify(mailSender, atLeast(2))
+                .send(any(), to.capture(), subject.capture(), body.capture(), any(), any(MailTag.class));
         assertTrue(to.getAllValues().contains("pat@example.com"), "invitee notified");
         assertTrue(to.getAllValues().contains("owner@example.com"), "owner notified");
         assertTrue(subject.getAllValues().stream().anyMatch(su -> su.contains("Roadmap sync")), "subject has new name");
