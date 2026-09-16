@@ -4,10 +4,11 @@ import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,10 +17,8 @@ import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.email.EmailOutbox;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.notify.NotificationChannel;
-import site.asm0dey.calit.scheduler.Reminder;
 
 /**
  * Every read and write that treats personal data AS personal data: erasure, export, account
@@ -33,61 +32,93 @@ public class PrivacyService {
 
     final CalendarPort calendarPort;
 
+    final EntityManager em;
+
     @Inject
-    public PrivacyService(BookingService bookingService, CalendarPort calendarPort) {
+    public PrivacyService(BookingService bookingService, CalendarPort calendarPort, EntityManager em) {
         this.bookingService = bookingService;
         this.calendarPort = calendarPort;
+        this.em = em;
     }
 
     /**
-     * Blanks one booking's invitee data in place. The ROW survives: the owner keeps a
-     * "someone booked 14:00-14:30" record, which is the legitimate-interest half of the balance,
-     * and {@code erasedAt} is what 404s the invitee-facing routes afterwards.
+     * Blanks and stamps every not-yet-erased booking in {@code bookingIds}, and removes its
+     * dependents, in exactly two native statements run in this one transaction:
      *
-     * <p>{@code invitee_email} is NOT NULL, so it becomes an empty string rather than null. That
-     * also means the per-email abuse cap ({@code idx_booking_email_created}) can never match an
-     * erased row against a real address.
+     * <ol>
+     *   <li>One UPDATE blanks every personal column of {@code booking} (see {@code
+     *       PersonalData}'s "booking" entry — keep the two in sync) and stamps {@code erased_at},
+     *       filtered to {@code erased_at IS NULL} so an already-erased row is left exactly as it
+     *       was. {@code RETURNING id} reports which rows it actually touched.
+     *   <li>One statement of data-modifying CTEs deletes the {@code booking_guest}, unsent {@code
+     *       reminder} and {@code email_outbox} rows for exactly those returned ids — never the
+     *       full input, so an already-erased id's dependents are not re-deleted. Skipped entirely
+     *       when statement 1 touched nothing.
+     * </ol>
      *
-     * <p>Group bookings ({@code groupId != null}) write one row per co-host, each carrying its own
-     * copy of the invitee's name, email and answers (see {@code BookingService.bookGroup}). Erasing
-     * only the row named by {@code bookingId} would leave every other host's row holding that data
-     * indefinitely, so a group booking erases every row sharing that {@code groupId} — mirroring how
-     * {@code BookingService.cancel} already treats a group as one unit.
+     * <p>The ROW survives: the owner keeps a "someone booked 14:00-14:30" record, which is the
+     * legitimate-interest half of the balance, and {@code erased_at} is what 404s the
+     * invitee-facing routes afterwards. {@code invitee_email} is NOT NULL, so it becomes an empty
+     * string rather than null — which also means the per-email abuse cap ({@code
+     * idx_booking_email_created}) can never match an erased row against a real address.
      *
-     * <p>Idempotent: an already-erased booking is left exactly as it was, so the retention
-     * scheduler cannot restamp a row the invitee erased last week.
+     * <p>Both statements are native SQL and bypass the Hibernate persistence context: a {@code
+     * Booking} entity already loaded (and possibly managed) in this transaction is stale once this
+     * call returns — reload it if current state is needed afterward.
+     *
+     * @return how many bookings were newly erased; 0 for empty input or when every id was already
+     *     erased (no SQL runs for empty input)
+     */
+    @Transactional
+    public int anonymise(Collection<Long> bookingIds) {
+        if (bookingIds.isEmpty()) {
+            return 0;
+        }
+        List<Long> ids = List.copyOf(bookingIds);
+
+        @SuppressWarnings("unchecked")
+        List<Number> erased = em.createNativeQuery("UPDATE booking SET invitee_name = '', invitee_email = '', "
+                        + "answers = '{}'::jsonb, meet_link = NULL, title = NULL, description = NULL, "
+                        + "erased_at = now() "
+                        + "WHERE id IN (:ids) AND erased_at IS NULL "
+                        + "RETURNING id")
+                .setParameter("ids", ids)
+                .getResultList();
+        if (erased.isEmpty()) {
+            return 0;
+        }
+        List<Long> erasedIds = erased.stream().map(Number::longValue).toList();
+
+        em.createNativeQuery("WITH g AS (DELETE FROM booking_guest WHERE booking_id IN (:ids)), "
+                        + "r AS (DELETE FROM reminder WHERE booking_id IN (:ids) AND sent_at IS NULL) "
+                        + "DELETE FROM email_outbox WHERE booking_id IN (:ids)")
+                .setParameter("ids", erasedIds)
+                .executeUpdate();
+
+        Log.infof("PRIVACY erasure count=%d bookings=%s", erasedIds.size(), erasedIds);
+        return erasedIds.size();
+    }
+
+    /**
+     * Single-booking entry point. Group bookings ({@code groupId != null}) write one row per
+     * co-host, each carrying its own copy of the invitee's name, email and answers (see {@code
+     * BookingService.bookGroup}). Erasing only the row named by {@code bookingId} would leave every
+     * other host's row holding that data indefinitely, so this resolves every row sharing that
+     * {@code groupId} — mirroring how {@code BookingService.cancel} already treats a group as one
+     * unit — and delegates to {@link #anonymise(Collection)}, which does the actual erasure and is
+     * idempotent per id. See that method for the two-statement mechanics and the stale-entity
+     * caveat.
      */
     @Transactional
     public void anonymise(Long bookingId) {
         Booking b = Booking.findById(bookingId);
-        if (b == null || b.isErased()) {
+        if (b == null) {
             return;
         }
-        if (b.groupId == null) {
-            anonymiseRow(b);
-            return;
-        }
-        for (Booking row : Booking.group(b.groupId)) {
-            anonymiseRow(row);
-        }
-    }
-
-    /** Blanks and stamps one row. Guarded again per-row: a group can never end up half-erased. */
-    private static void anonymiseRow(Booking b) {
-        if (b.isErased()) {
-            return;
-        }
-        b.inviteeName = "";
-        b.inviteeEmail = "";
-        b.answers = new HashMap<>();
-        b.meetLink = null;
-        b.title = null; // invitee-writable free text; falls back to the meeting type's name
-        b.description = null;
-        b.erasedAt = Instant.now();
-        BookingGuest.delete("bookingId", b.id);
-        Reminder.delete("bookingId = ?1 and sentAt is null", b.id);
-        EmailOutbox.deleteForBooking(b.id);
-        Log.infof("PRIVACY erasure booking=%d", b.id);
+        List<Long> ids = b.groupId == null
+                ? List.of(bookingId)
+                : Booking.group(b.groupId).stream().map(row -> row.id).toList();
+        anonymise(ids);
     }
 
     /**

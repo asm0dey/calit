@@ -120,6 +120,22 @@ class BookingErasureTest {
     }
 
     @Test
+    void anonymiseManyErasesAllAndReportsTheCount() {
+        var a = ErasureFixtures.seedPastBookingId();
+        var b = ErasureFixtures.seedPastBookingId();
+
+        int count = privacy.anonymise(List.of(a, b));
+        assertEquals(2, count);
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            assertNotNull(Booking.<Booking>findById(a).erasedAt);
+            assertNotNull(Booking.<Booking>findById(b).erasedAt);
+        });
+
+        assertEquals(0, privacy.anonymise(List.of(a, b)), "already-erased ids are not re-counted");
+    }
+
+    @Test
     void anonymiseErasesEveryRowInAGroupBooking() {
         var groupId = seedGroupBooking();
         Long anyRowId = QuarkusTransaction.requiringNew()

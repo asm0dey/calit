@@ -6,6 +6,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -26,6 +27,13 @@ public final class ErasureFixtures {
     /** The seeded admin owner — DatabaseResetCallback guarantees id 1. */
     public static final Long OWNER = 1L;
 
+    /**
+     * Spaces out repeated {@link #seedPastBookingId()} calls within one test so their held
+     * ([start, end)) windows never overlap for the same owner — {@code booking_no_overlap_held}
+     * would otherwise reject a second CONFIRMED row landing in the same ~30-day-ago slot.
+     */
+    private static final AtomicLong SEED_OFFSET = new AtomicLong();
+
     private ErasureFixtures() {}
 
     /**
@@ -43,7 +51,8 @@ public final class ErasureFixtures {
             b.title = "Dana's slot";
             b.description = "notes from Dana";
             b.meetLink = "https://meet.google.com/abc-defg-hij";
-            b.startUtc = Instant.now().minus(30, ChronoUnit.DAYS);
+            b.startUtc =
+                    Instant.now().minus(30, ChronoUnit.DAYS).minus(SEED_OFFSET.getAndIncrement(), ChronoUnit.HOURS);
             b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
             b.status = BookingStatus.CONFIRMED;
             b.createdAt = Instant.now().minus(31, ChronoUnit.DAYS);
