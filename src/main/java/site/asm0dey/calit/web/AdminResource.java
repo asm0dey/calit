@@ -1592,7 +1592,7 @@ public class AdminResource {
                 return null;
             }
             return Math.min(days, PrivacyConfig.MAX_RETENTION_DAYS);
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             return null;
         }
     }
@@ -1652,16 +1652,17 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public Response deleteAccount(@RestForm String confirmation) {
         AppUser me = AppUser.findById(currentOwner.id());
+        var normalizedConfirmation = confirmation == null ? "" : confirmation;
         boolean ok = me.passwordHash != null
                 ? passwordHasher.verify(confirmation, me.passwordHash)
-                : me.username.equals(Usernames.normalize(confirmation == null ? "" : confirmation));
+                : me.username.equals(Usernames.normalize(normalizedConfirmation));
         if (!ok) {
             return Response.ok(deleteAccountPage(m().adm_delete_account_error_mismatch()))
                     .build();
         }
         try {
             privacy.deleteAccount(me.id);
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException _) {
             return Response.ok(deleteAccountPage(m().adm_delete_account_error_last_admin()))
                     .build();
         }

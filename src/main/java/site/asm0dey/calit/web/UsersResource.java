@@ -338,7 +338,7 @@ public class UsersResource {
         }
         try {
             privacy.deleteAccount(id);
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException _) {
             return render(m.adm_users_error_last_admin_delete());
         }
         audit.event(identity.getPrincipal().getName(), "delete-user", USER_TARGET + id, null);

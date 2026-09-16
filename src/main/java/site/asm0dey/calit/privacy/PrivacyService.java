@@ -474,10 +474,7 @@ public class PrivacyService {
             return;
         }
 
-        long outboxMarker = QuarkusTransaction.requiringNew()
-                .call(() -> ((Number) em.createNativeQuery("SELECT coalesce(max(id), 0) FROM email_outbox")
-                                .getSingleResult())
-                        .longValue());
+        long outboxMarker = QuarkusTransaction.requiringNew().call(this::currentOutboxMaxId);
         List<Booking> held = QuarkusTransaction.requiringNew()
                 .call(() -> Booking.<Booking>list(
                         "meetingTypeId in (select t.id from MeetingType t where t.ownerId = ?1) "
@@ -492,13 +489,20 @@ public class PrivacyService {
             }
             try {
                 bookingService.cancelToleratingGoogleFailure(b.manageToken, true);
-            } catch (NotFoundException e) {
+            } catch (NotFoundException _) {
                 // erased between the read and the cancel: nothing left to notify about
             }
         }
         List<Long> cancelledIds = held.stream().map(b -> b.id).toList();
 
         QuarkusTransaction.requiringNew().run(() -> deleteAccountRow(userId, outboxMarker, cancelledIds));
+    }
+
+    /** The current max id in {@code email_outbox}, as a marker for {@link #deleteAccount}. */
+    private long currentOutboxMaxId() {
+        return ((Number) em.createNativeQuery("SELECT coalesce(max(id), 0) FROM email_outbox")
+                        .getSingleResult())
+                .longValue();
     }
 
     /** The atomic half of {@link #deleteAccount}: locked admin check, outbox, tombstone, delete. */

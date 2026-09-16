@@ -177,7 +177,8 @@ class BookingErasureTest {
                         .forEach(r -> assertTrue(r.isErased(), "row " + r.id + " must be erased")));
         assertThrows(NotFoundException.class, () -> privacy.exportBooking(erasedRow.manageToken));
         assertThrows(NotFoundException.class, () -> privacy.eraseByManageToken(erasedRow.manageToken));
-        assertThrows(NotFoundException.class, () -> privacy.exportBooking(rows.get(1).manageToken));
+        String coHostManageToken = rows.get(1).manageToken;
+        assertThrows(NotFoundException.class, () -> privacy.exportBooking(coHostManageToken));
     }
 
     @Test

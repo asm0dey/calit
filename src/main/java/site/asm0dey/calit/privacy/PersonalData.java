@@ -15,6 +15,9 @@ import java.util.Set;
  * <p>ponytail: a flat list of records, no lookup indices. Twenty-odd entries walked a handful of
  * times per request at most.
  */
+// Column-name literals are duplicated by design: this inventory mirrors information_schema
+// verbatim, and PersonalDataInventoryTest checks every literal against the live schema.
+@SuppressWarnings("java:S1192")
 public final class PersonalData {
 
     private PersonalData() {}

@@ -1,6 +1,7 @@
 package site.asm0dey.calit.privacy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.test.junit.QuarkusTest;
@@ -86,11 +87,13 @@ class PersonalDataInventoryTest {
             if (c.personalColumns().isEmpty()) {
                 continue;
             }
-            assertTrue(
-                    c.route() != PersonalData.EraseRoute.NOT_PERSONAL,
+            assertNotSame(
+                    PersonalData.EraseRoute.NOT_PERSONAL,
+                    c.route(),
                     "'" + c.table() + "' carries personal columns but declares no erase route");
-            assertTrue(
-                    c.subject() != PersonalData.Subject.NONE,
+            assertNotSame(
+                    PersonalData.Subject.NONE,
+                    c.subject(),
                     "'" + c.table() + "' carries personal columns but names no data subject");
         }
     }
