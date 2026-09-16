@@ -91,6 +91,26 @@ class RetentionSchedulerTest {
     }
 
     /**
+     * A backlog larger than one batch drains in ONE sweep: the tick keeps claiming batches until one
+     * comes back short. Batch size 2 against 5 rows forces three batches (2, 2, 1) without seeding
+     * hundreds of bookings.
+     */
+    @Test
+    void oneSweepDrainsMoreThanOneBatch() {
+        var ids = java.util.stream.IntStream.range(0, 5)
+                .mapToObj(i -> ErasureFixtures.seedPastBookingId())
+                .toList();
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            s.bookingRetentionDays = 7;
+        });
+
+        assertEquals(5, scheduler.sweep(2), "every row past its window is anonymised in one tick");
+
+        ids.forEach(id -> assertTrue(erased(id), "booking " + id + " must be erased"));
+    }
+
+    /**
      * R20: an unclamped huge window makes Postgres' {@code make_interval}/{@code timestamp}
      * arithmetic raise "timestamp out of range" — and since one sweep tick is one transaction, that
      * would stop retention for every owner that tick. The scheduler's SQL clamps via
@@ -105,7 +125,7 @@ class RetentionSchedulerTest {
             s.bookingRetentionDays = 99_999_999;
         });
 
-        assertDoesNotThrow(scheduler::sweep, "a huge retention window must not blow up interval arithmetic");
+        assertDoesNotThrow(() -> scheduler.sweep(), "a huge retention window must not blow up interval arithmetic");
 
         assertFalse(erased(id), "clamped to ~100 years, a 30-day-old booking is still well inside the window");
     }
