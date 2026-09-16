@@ -461,7 +461,7 @@ public interface AppMessages {
     @Message("For the copies calit cannot reach, contact the operator at {contactEmail}.")
     String pub_erased_contact(String contactEmail);
 
-    @Message("Back to the booking page")
+    @Message("Back to the home page")
     String pub_erased_btn();
 
     @Message("To have your data erased, contact the operator at {contactEmail}.")

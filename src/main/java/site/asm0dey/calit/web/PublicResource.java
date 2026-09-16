@@ -737,6 +737,7 @@ public class PublicResource {
 
     @POST
     @Path("/booking/{manageToken}/erase")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance erase(@PathParam("manageToken") String manageToken) {
         var m = messages.forLocale(activeLocale.current());

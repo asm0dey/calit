@@ -58,6 +58,11 @@ class InviteeErasureRouteTest {
         for (String path : new String[] {"/manage", "/invite.ics", "/cancel", "/erase"}) {
             given().when().get("/booking/" + token + path).then().statusCode(404);
         }
+        // The mutating POST routes too — a stale tab or a crafted POST must 404, not silently
+        // act on (or re-erase) a booking whose data is already gone.
+        for (String path : new String[] {"/cancel", "/reschedule", "/edit-details", "/erase"}) {
+            given().when().post("/booking/" + token + path).then().statusCode(404);
+        }
     }
 
     @Test

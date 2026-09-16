@@ -880,8 +880,11 @@ public class BookingService {
     public Booking reschedule(
             String manageToken, Instant newStartUtc, List<String> guestEmails, boolean byOwner, Long initiatorOwnerId) {
         Booking booking = Booking.findByManageToken(manageToken);
-        if (booking == null || booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
-            throw new NotFoundException("No active booking for token " + manageToken);
+        if (booking == null
+                || booking.status == BookingStatus.CANCELLED
+                || booking.status == BookingStatus.DECLINED
+                || booking.isErased()) {
+            throw new NotFoundException("No active booking for that token");
         }
 
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
@@ -1066,8 +1069,11 @@ public class BookingService {
     public Booking updateDetails(
             String manageToken, String title, String description, List<String> guestEmails, boolean byOwner) {
         Booking booking = Booking.findByManageToken(manageToken);
-        if (booking == null || booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
-            throw new NotFoundException("No active booking for token " + manageToken);
+        if (booking == null
+                || booking.status == BookingStatus.CANCELLED
+                || booking.status == BookingStatus.DECLINED
+                || booking.isErased()) {
+            throw new NotFoundException("No active booking for that token");
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         guestEmails = guestsFor(type, guestEmails);
@@ -1274,8 +1280,8 @@ public class BookingService {
     @Transactional
     public void cancel(String manageToken, boolean byOwner) {
         Booking booking = Booking.findByManageToken(manageToken);
-        if (booking == null) {
-            throw new NotFoundException("No booking for token " + manageToken);
+        if (booking == null || booking.isErased()) {
+            throw new NotFoundException("No booking for that token");
         }
         if (booking.groupId == null) {
             cancelSingle(booking, byOwner);

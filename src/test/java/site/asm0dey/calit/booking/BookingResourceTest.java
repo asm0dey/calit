@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -25,12 +26,17 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.privacy.ErasureFixtures;
+import site.asm0dey.calit.privacy.PrivacyService;
 
 @QuarkusTest
 class BookingResourceTest {
 
     @InjectMock
     CalendarPort calendarPort;
+
+    @Inject
+    PrivacyService privacy;
 
     // Owner tz Europe/Amsterdam. Derive a future weekday from now() so the slot is never in the past.
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
@@ -212,6 +218,24 @@ class BookingResourceTest {
                 .post("/api/bookings")
                 .then()
                 .statusCode(201);
+    }
+
+    @Test
+    void erasedBookingIs404FromApiRescheduleAndCancel() {
+        // SEC-AUTHZ-02: the JSON API is a second entry point keyed by the same manage token as the
+        // web routes -- it must observe the same "erased booking behaves like an unknown token"
+        // invariant PublicResource enforces, not just the web form (calit fix round 1, Finding 1).
+        var token = ErasureFixtures.seedPastBooking();
+        privacy.eraseByManageToken(token);
+
+        given().contentType("application/json")
+                .body("{\"newStartUtc\":\"" + SLOT_09_UTC + "\"}")
+                .when()
+                .post("/api/bookings/" + token + "/reschedule")
+                .then()
+                .statusCode(404);
+
+        given().when().delete("/api/bookings/" + token).then().statusCode(404);
     }
 
     @Test
