@@ -10,6 +10,10 @@ Meeting types define what your invitees can schedule. Each type gets its own pub
 
 All meeting-type management lives in your owner console at `/me`. From there you can create, edit, activate, deactivate, or delete meeting types.
 
+### Deleting a meeting type
+
+A meeting type with upcoming pending or confirmed bookings cannot be deleted, including bookings that sit on a co-host's calendar. Cancel them first, or deactivate the type to stop new bookings. Once only past or cancelled bookings remain, **Delete** removes the type together with all of its bookings.
+
 ![Meeting type editor](/calit/img/meeting-type-detail.png)
 
 ## Public URLs

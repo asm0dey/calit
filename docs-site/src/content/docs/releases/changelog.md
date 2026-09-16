@@ -7,6 +7,61 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- Migration `V34` adds `booking.erased_at`, `owner_settings.booking_retention_days` and
+  cascading booking/owner links on `email_outbox`. No backfill; existing rows are untouched.
+  ([#223](https://github.com/asm0dey/calit/pull/223))
+- `V34` also makes `booking.meeting_type_id` cascade on delete explicitly. ([#223](https://github.com/asm0dey/calit/pull/223))
+- The booking manage link now offers **Download my data**, a JSON file of that booking, including
+  answers and guests, at `/booking/{token}/data`. ([#223](https://github.com/asm0dey/calit/pull/223))
+- Invitees can erase their data at `/booking/{token}/erase`: an upcoming booking is cancelled
+  first, then anonymised; the host keeps the booking row, marked as erased. ([#223](https://github.com/asm0dey/calit/pull/223))
+- Erasure covers only the booking whose link was used; bookings are not linked by email. The
+  confirm and done pages say so and state how long other links keep working. ([#223](https://github.com/asm0dey/calit/pull/223))
+- After erasure every route for that token returns 404, including `/api/bookings/{token}` and
+  `/api/bookings/{token}/reschedule`. ([#223](https://github.com/asm0dey/calit/pull/223))
+- The erase pages list what erasure cannot reach: Google's ~30-day trash, delivered chat
+  notifications and email, and `.ics` files already in calendars. ([#223](https://github.com/asm0dey/calit/pull/223))
+- `INVITEE_ERASURE=false` replaces the erase button with `PRIVACY_CONTACT_EMAIL` and makes
+  `/erase` return 404; the download stays. ([#223](https://github.com/asm0dey/calit/pull/223))
+- Users can delete their account at `/me/settings/delete`; site admins can delete others from
+  `/me/users`. The last enabled admin is refused. Google grants are not revoked. ([#223](https://github.com/asm0dey/calit/pull/223))
+- Migration `V35` adds `deleted_username`: a hash of every deleted username is kept permanently, so
+  signup, invites, setup and Google/SSO provisioning refuse that name. ([#223](https://github.com/asm0dey/calit/pull/223))
+- Account deletion first cancels upcoming bookings on the account's meeting types, co-hosts' copies
+  included, so invitees, guests and co-hosts are notified. ([#223](https://github.com/asm0dey/calit/pull/223))
+- Admins delete another account through a confirm page, `/me/users/{id}/delete`, by typing its
+  username. ([#223](https://github.com/asm0dey/calit/pull/223))
+- A meeting type with upcoming pending or confirmed bookings can no longer be deleted; deleting one
+  removes its past bookings. ([#223](https://github.com/asm0dey/calit/pull/223))
+- `GET /me/export` returns the whole account as JSON, built in the database. Password hashes and
+  OAuth tokens are excluded; notification-channel URLs are redacted. ([#223](https://github.com/asm0dey/calit/pull/223))
+- `BOOKING_RETENTION_DAYS` anonymises bookings that many days after they end; unset keeps them
+  forever. Each host may set their own window; values are capped at 36500. ([#223](https://github.com/asm0dey/calit/pull/223))
+- The retention sweep runs daily on every replica in batches of 200 until done or five minutes pass,
+  and does not delete Google Calendar events. ([#223](https://github.com/asm0dey/calit/pull/223))
+- Queued emails are deleted about 30 days after they are sent (or queued, if never sent);
+  password-reset, invitation and sign-in tokens about a day after they expire. Not configurable. ([#223](https://github.com/asm0dey/calit/pull/223))
+- `/privacy` now describes the running deployment: Google sections only when configured, the real
+  retention window, and a deletion claim the software backs. ([#223](https://github.com/asm0dey/calit/pull/223))
+- `/privacy` names the recipients actually in use: Google, the SMTP host, notification-channel
+  services, the OIDC provider and Cloudflare Turnstile. ([#223](https://github.com/asm0dey/calit/pull/223))
+- `PRIVACY_POLICY_PATH` and `TERMS_PATH` serve an operator's own HTML fragment in place of the
+  shipped `/privacy` and `/terms` bodies. ([#223](https://github.com/asm0dey/calit/pull/223))
+- The booking-fields editor warns against collecting sensitive data; answers are stored as plain
+  text. ([#223](https://github.com/asm0dey/calit/pull/223))
+- German and Hebrew ship with every new interface string; the `/privacy` and `/terms` bodies stay
+  English-only. ([#223](https://github.com/asm0dey/calit/pull/223))
+- New Compliance docs: [GDPR operator guide](/calit/compliance/operator-guide/), Art. 30 starter,
+  sub-processor list, DPA template, breach checklist and custom legal pages. ([#223](https://github.com/asm0dey/calit/pull/223))
+
+Upgrade: nothing to do. Retention stays off until you set `BOOKING_RETENTION_DAYS` or a host sets a
+window. Email queued before `V34` is cleared only by the 30-day purge, not by erasure. Deleted
+usernames can never be reused.
+
 ## 1.25.1
 
 Telegram and ntfy channel URLs in the shape the docs gave could never deliver; the shapes are
