@@ -109,6 +109,25 @@ class InviteeErasureRouteTest {
                 .body(containsString("stop working 30 days"));
     }
 
+    /** Task 11b: the erasure copy ships in Hebrew, including the {days} placeholder. */
+    @Test
+    void confirmPageRendersInHebrew() {
+        var token = seedToken();
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(ErasureFixtures.OWNER);
+            s.bookingRetentionDays = 30;
+        });
+
+        given().header("Accept-Language", "he")
+                .when()
+                .get("/booking/" + token + "/erase")
+                .then()
+                .statusCode(200)
+                .body(containsString("למחוק את הנתונים שלך מהזמנה זו?"))
+                .body(containsString("מפסיקים לעבוד 30 ימים"))
+                .body(not(containsString("Erase your data from this booking?")));
+    }
+
     @Test
     void donePageAlsoStatesTheNotLinkedBoundary() {
         var token = seedToken();

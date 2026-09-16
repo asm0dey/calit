@@ -22,83 +22,14 @@ import org.junit.jupiter.api.Test;
  */
 class MultiHostMessageParityTest {
 
-    /**
-     * Keys whose Hebrew translation is deliberately deferred by the GDPR/privacy epic
-     * (calit-l3fk, Task 5 onward): the copy is legal-adjacent and nobody in the review loop can
-     * check Hebrew nuance, so each task ships the English {@code @Message} default plus German
-     * only. Task 12 of that epic files a tracking issue ("i18n(he): Hebrew translations for the
-     * GDPR/privacy copy") for this gap; until it's resolved a Hebrew viewer sees the English
-     * default for these keys — never a missing/blank string. German parity is NOT exempted: every
-     * key below still needs a {@code de=} line, checked the same as any other key.
-     */
-    private static final Set<String> HE_DEFERRED_APP_KEYS = Set.of(
-            "pub_erase_confirm_title",
-            "pub_erase_confirm_h1",
-            "pub_erase_confirm_desc",
-            "pub_erase_confirm_cancels_first",
-            "pub_erase_not_linked",
-            "pub_erase_links_expire",
-            "pub_erase_links_forever",
-            "pub_erase_boundary_h2",
-            "pub_erase_boundary_google",
-            "pub_erase_boundary_channels",
-            "pub_erase_boundary_mail",
-            "pub_erase_confirm_btn",
-            "pub_erase_keep_btn",
-            "pub_erased_title",
-            "pub_erased_h1",
-            "pub_erased_desc",
-            "pub_erased_local_ok",
-            "pub_erased_google_removed",
-            "pub_erased_google_unreachable",
-            "pub_erased_google_none",
-            "pub_erased_channels",
-            "pub_erased_mail",
-            "pub_erased_contact",
-            "pub_erased_btn",
-            "pub_erase_disabled_notice",
-            "pub_erase_disabled_notice_no_contact",
-            "pub_manage_download_data");
-
-    private static final Set<String> HE_DEFERRED_ADMIN_KEYS = Set.of(
-            "adm_booking_invitee_erased",
-            "adm_settings_export_link",
-            "adm_delete_account_link",
-            "adm_delete_account_title",
-            "adm_delete_account_desc",
-            "adm_delete_account_google_note",
-            "adm_delete_account_password_label",
-            "adm_delete_account_username_label",
-            "adm_delete_account_btn",
-            "adm_delete_account_cancel",
-            "adm_delete_account_error_mismatch",
-            "adm_delete_account_error_last_admin",
-            "adm_users_delete",
-            "adm_users_error_last_admin_delete",
-            "adm_users_error_delete_self",
-            "adm_settings_label_retention",
-            "adm_settings_retention_hint_with_default",
-            "adm_settings_retention_hint_forever",
-            "adm_fields_sensitive_warning");
-
     @Test
     void everyAppMessageKeyHasGermanAndHebrewTranslation() {
-        assertParity(
-                AppMessages.class,
-                "messages/msg_de.properties",
-                Set.of(),
-                "messages/msg_he.properties",
-                HE_DEFERRED_APP_KEYS);
+        assertParity(AppMessages.class, "messages/msg_de.properties", "messages/msg_he.properties");
     }
 
     @Test
     void everyAdminMessageKeyHasGermanAndHebrewTranslation() {
-        assertParity(
-                AdminMessages.class,
-                "messages/adm_de.properties",
-                Set.of(),
-                "messages/adm_he.properties",
-                HE_DEFERRED_ADMIN_KEYS);
+        assertParity(AdminMessages.class, "messages/adm_de.properties", "messages/adm_he.properties");
     }
 
     @Test
@@ -111,34 +42,29 @@ class MultiHostMessageParityTest {
         assertNoOrphans(AdminMessages.class, "messages/adm_de.properties", "messages/adm_he.properties");
     }
 
-    private static void assertParity(
-            Class<?> bundle, String deResource, Set<String> deExemptions, String heResource, Set<String> heExemptions) {
+    private static void assertParity(Class<?> bundle, String... localeResources) {
         Set<String> methodNames = messageMethodNames(bundle);
         assertTrue(!methodNames.isEmpty(), "Expected at least one @Message method on " + bundle.getSimpleName());
 
         var failures = new StringBuilder();
-        appendMissing(failures, deResource, methodNames, deExemptions);
-        appendMissing(failures, heResource, methodNames, heExemptions);
+        for (String resource : localeResources) {
+            var props = loadProperties(resource);
+            Set<String> missing = methodNames.stream()
+                    .filter(name -> !props.containsKey(name))
+                    .collect(Collectors.toCollection(TreeSet::new));
+            if (!missing.isEmpty()) {
+                failures.append("\n  ")
+                        .append(resource)
+                        .append(" is missing ")
+                        .append(missing.size())
+                        .append(" key(s): ")
+                        .append(missing);
+            }
+        }
 
         assertTrue(
                 failures.isEmpty(),
                 "Missing translations for " + bundle.getSimpleName() + " @Message keys:" + failures);
-    }
-
-    private static void appendMissing(
-            StringBuilder failures, String resource, Set<String> methodNames, Set<String> exemptions) {
-        var props = loadProperties(resource);
-        Set<String> missing = methodNames.stream()
-                .filter(name -> !props.containsKey(name) && !exemptions.contains(name))
-                .collect(Collectors.toCollection(TreeSet::new));
-        if (!missing.isEmpty()) {
-            failures.append("\n  ")
-                    .append(resource)
-                    .append(" is missing ")
-                    .append(missing.size())
-                    .append(" key(s): ")
-                    .append(missing);
-        }
     }
 
     private static void assertNoOrphans(Class<?> bundle, String... localeResources) {
