@@ -9,6 +9,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.Response;
+import java.net.URI;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -17,6 +19,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestForm;
+import site.asm0dey.calit.audit.AuditLog;
 import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.booking.*;
 import site.asm0dey.calit.domain.*;
@@ -34,8 +37,11 @@ import site.asm0dey.calit.notify.ChannelRejected;
 import site.asm0dey.calit.notify.ChannelRow;
 import site.asm0dey.calit.notify.NotificationChannel;
 import site.asm0dey.calit.notify.NotificationChannelMeetingType;
+import site.asm0dey.calit.privacy.PrivacyService;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
+import site.asm0dey.calit.user.PasswordHasher;
+import site.asm0dey.calit.user.Usernames;
 
 @Path("/me")
 @RolesAllowed("user")
@@ -158,6 +164,9 @@ public class AdminResource {
                 Long pendingCount,
                 boolean isAdmin,
                 String title);
+
+        public static native TemplateInstance deleteAccount(
+                String title, Long pendingCount, boolean isAdmin, boolean hasPassword, String username, String error);
     }
 
     /**
@@ -203,6 +212,12 @@ public class AdminResource {
 
     final ChannelAdmin channelAdmin;
 
+    final PrivacyService privacy;
+
+    final PasswordHasher passwordHasher;
+
+    final AuditLog audit;
+
     @Inject
     public AdminResource(
             BookingService bookingService,
@@ -215,6 +230,9 @@ public class AdminResource {
             ActiveLocale activeLocale,
             MailHealth mailHealth,
             ChannelAdmin channelAdmin,
+            PrivacyService privacy,
+            PasswordHasher passwordHasher,
+            AuditLog audit,
             @ConfigProperty(name = "app.base-url") String baseUrl,
             @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440") int reminderLeadMinutes) {
         this.bookingService = bookingService;
@@ -227,6 +245,9 @@ public class AdminResource {
         this.activeLocale = activeLocale;
         this.mailHealth = mailHealth;
         this.channelAdmin = channelAdmin;
+        this.privacy = privacy;
+        this.passwordHasher = passwordHasher;
+        this.audit = audit;
         this.baseUrl = baseUrl;
         this.reminderLeadMinutes = reminderLeadMinutes;
     }
@@ -1551,6 +1572,50 @@ public class AdminResource {
                 channelRows(),
                 channelError,
                 channelNotice);
+    }
+
+    @GET
+    @Path("/settings/delete")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance deleteAccountConfirm() {
+        return deleteAccountPage(null);
+    }
+
+    /**
+     * Art. 17 for the owner. Re-authentication is deliberate: a session left open on a shared
+     * machine must not be one click away from destroying an account. An OIDC- or Google-only
+     * account has no password to re-enter, so it types its username instead — the same friction
+     * without asking for a credential it does not have.
+     */
+    @POST
+    @Path("/settings/delete")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public Response deleteAccount(@RestForm String confirmation) {
+        AppUser me = AppUser.findById(currentOwner.id());
+        boolean ok = me.passwordHash != null
+                ? passwordHasher.verify(confirmation, me.passwordHash)
+                : me.username.equals(Usernames.normalize(confirmation == null ? "" : confirmation));
+        if (!ok) {
+            return Response.ok(deleteAccountPage(m().adm_delete_account_error_mismatch()))
+                    .build();
+        }
+        try {
+            privacy.deleteAccount(me.id);
+        } catch (IllegalStateException e) {
+            return Response.ok(deleteAccountPage(m().adm_delete_account_error_last_admin()))
+                    .build();
+        }
+        audit.event(me.username, "delete-account", "user:" + me.id, null);
+        // The session now points at a row that no longer exists; send the browser through logout
+        // so the credential cookie is cleared rather than left dangling.
+        return Response.seeOther(URI.create("/logout")).build();
+    }
+
+    private TemplateInstance deleteAccountPage(String error) {
+        AppUser me = AppUser.findById(currentOwner.id());
+        return Templates.deleteAccount(
+                m().adm_delete_account_title(), pendingCount(), isAdmin(), me.passwordHash != null, me.username, error);
     }
 
     /**

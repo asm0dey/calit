@@ -17,8 +17,10 @@ import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.email.EmailOutbox;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.notify.NotificationChannel;
+import site.asm0dey.calit.user.AppUser;
 
 /**
  * Every read and write that treats personal data AS personal data: erasure, export, account
@@ -255,5 +257,41 @@ public class PrivacyService {
         out.put("invitee", invitee);
         out.put("guests", guests);
         return out;
+    }
+
+    /** Admins who can still log in. Driving this to zero locks everyone out with no in-app recovery. */
+    public boolean isLastEnabledAdmin(Long userId) {
+        AppUser u = AppUser.findById(userId);
+        return u != null && u.isAdmin && u.enabled && AppUser.count("isAdmin = true and enabled = true") <= 1;
+    }
+
+    /**
+     * Art. 17 for an owner: the account row goes, and every {@code owner_id} cascade takes the
+     * subtree with it — settings, meeting types, availability, bookings, guests, Google credentials
+     * and calendars, notification channels, reset tokens, login tickets.
+     *
+     * <p>{@code email_outbox} is purged explicitly first even though V34 gave it a cascading {@code
+     * owner_id}: rows enqueued BEFORE V34 carry a null link and would otherwise outlive the account.
+     * The explicit delete is a no-op for those, so the 30-day age purge remains their only route —
+     * which is why the operator guide names that window.
+     *
+     * <p>No Google revoke: {@code GooglePageResource.disconnect} never called Google's revoke
+     * endpoint either, so deleting the credential rows removes calit's copy of the tokens without
+     * withdrawing the grant at Google. The privacy copy and the operator guide both say so.
+     *
+     * <p>No "your account was deleted" email — the mailbox may be the thing being erased.
+     */
+    @Transactional
+    public void deleteAccount(Long userId) {
+        if (isLastEnabledAdmin(userId)) {
+            throw new IllegalStateException("last-admin");
+        }
+        AppUser u = AppUser.findById(userId);
+        if (u == null) {
+            return;
+        }
+        EmailOutbox.deleteForOwner(userId);
+        u.delete();
+        Log.infof("PRIVACY account-deleted user=%d", userId);
     }
 }

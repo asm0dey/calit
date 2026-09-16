@@ -8,6 +8,8 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -20,6 +22,7 @@ import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailService;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AdminMessageResolver;
+import site.asm0dey.calit.privacy.PrivacyService;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
 import site.asm0dey.calit.user.PasswordResetService;
@@ -54,6 +57,8 @@ public class UsersResource {
 
     final EmailService emailService;
 
+    final PrivacyService privacy;
+
     @Inject
     public UsersResource(
             CurrentOwner currentOwner,
@@ -63,6 +68,7 @@ public class UsersResource {
             ActiveLocale activeLocale,
             PasswordResetService resetService,
             EmailService emailService,
+            PrivacyService privacy,
             @ConfigProperty(name = "app.base-url") String baseUrl) {
         this.currentOwner = currentOwner;
         this.identity = identity;
@@ -71,6 +77,7 @@ public class UsersResource {
         this.activeLocale = activeLocale;
         this.resetService = resetService;
         this.emailService = emailService;
+        this.privacy = privacy;
         this.baseUrl = baseUrl;
     }
 
@@ -272,5 +279,34 @@ public class UsersResource {
                 now.plus(Duration.ofHours(48)),
                 activeLocale.current());
         return render(null);
+    }
+
+    /**
+     * Site-admin deletion of another account — the operator's route for an Art. 17 request that
+     * arrives by mail. Same last-admin guard as revoke/lock: there is no in-app recovery from zero
+     * enabled admins (SEC-AUTHZ-01).
+     *
+     * <p>An admin deleting their OWN account through this route is sent through {@code /logout} —
+     * same as self-serve deletion in {@code AdminResource} — instead of re-rendering the users page:
+     * the session it would render with is one whose backing row no longer exists, and the next
+     * request would be rejected anyway once {@code EnabledUserAugmentor} re-checks it. Clearing the
+     * credential cookie now is cleaner than leaving a dangling session for the browser to discover.
+     */
+    @POST
+    @Path("/{id}/delete")
+    @Produces(MediaType.TEXT_HTML)
+    public Response deleteUser(@PathParam("id") Long id) {
+        var m = adminMsgs.forLocale(activeLocale.current());
+        var self = isSelf(id);
+        try {
+            privacy.deleteAccount(id);
+        } catch (IllegalStateException e) {
+            return Response.ok(render(m.adm_users_error_last_admin_delete())).build();
+        }
+        audit.event(identity.getPrincipal().getName(), "delete-user", USER_TARGET + id, null);
+        if (self) {
+            return Response.seeOther(URI.create("/logout")).build();
+        }
+        return Response.ok(render(null)).build();
     }
 }

@@ -1,0 +1,31 @@
+{@java.lang.String title}
+{@java.lang.Long pendingCount}
+{@java.lang.Boolean isAdmin}
+{@java.lang.Boolean hasPassword}
+{@java.lang.String username}
+{@java.lang.String error}
+{#include adminBase title=title pendingCount=pendingCount active="settings" isAdmin=isAdmin}
+  <!-- CALIT_DELETE_ACCOUNT -->
+  <div class="card bg-base-100 border border-error/40 shadow-sm max-w-2xl">
+    <div class="card-body items-start gap-3">
+      <h1 class="text-2xl font-bold text-error">{adm:adm_delete_account_title}</h1>
+      <p class="text-base-content/70">{adm:adm_delete_account_desc}</p>
+      <p class="text-base-content/70">{adm:adm_delete_account_google_note}</p>
+      {#if error}<div class="alert alert-error">{error}</div>{/if}
+      <form method="post" action="/me/settings/delete" class="w-full">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        {#if hasPassword}
+        <label class="label" for="del-confirm">{adm:adm_delete_account_password_label}</label>
+        <input id="del-confirm" class="input w-full" type="password" name="confirmation" required autocomplete="current-password">
+        {#else}
+        <label class="label" for="del-confirm">{adm:adm_delete_account_username_label}</label>
+        <input id="del-confirm" class="input w-full" type="text" name="confirmation" required placeholder="{username}">
+        {/if}
+        <div class="flex gap-2 mt-3">
+          <button type="submit" class="btn btn-error">{adm:adm_delete_account_btn}</button>
+          <a class="btn btn-ghost" href="/me/settings">{adm:adm_delete_account_cancel}</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{/include}

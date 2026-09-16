@@ -920,6 +920,41 @@ public interface AdminMessages {
             + " enable it on the meeting types that should use it.")
     String adm_settings_channels_hint();
 
+    // ---- Account deletion (Task 7) ----
+
+    @Message("Delete my account")
+    String adm_delete_account_link();
+
+    @Message("Delete your account?")
+    String adm_delete_account_title();
+
+    @Message("This permanently removes your account, your meeting types and availability, every booking "
+            + "on your calendar, your connected Google accounts and your notification channels. "
+            + "It can't be undone.")
+    String adm_delete_account_desc();
+
+    @Message(
+            "Disconnecting Google here removes calit's copy of the tokens. Revoke calit's access in your Google account to withdraw the grant itself.")
+    String adm_delete_account_google_note();
+
+    @Message("Enter your password to confirm")
+    String adm_delete_account_password_label();
+
+    @Message("Type your username to confirm")
+    String adm_delete_account_username_label();
+
+    @Message("Delete my account permanently")
+    String adm_delete_account_btn();
+
+    @Message("Cancel")
+    String adm_delete_account_cancel();
+
+    @Message("That didn't match. Your account was not deleted.")
+    String adm_delete_account_error_mismatch();
+
+    @Message("You are the last enabled admin. Grant admin to another account first.")
+    String adm_delete_account_error_last_admin();
+
     // ---- Per-meeting-type channel routing ----
 
     @Message("Notifications")
@@ -1064,6 +1099,12 @@ public interface AdminMessages {
 
     @Message("Resend invite")
     String users_btn_resend_invite();
+
+    @Message("Delete")
+    String adm_users_delete();
+
+    @Message("Cannot delete the last enabled admin.")
+    String adm_users_error_last_admin_delete();
 
     // ---- Me setup wizard ----
 

@@ -5,7 +5,7 @@ status: in-progress
 type: epic
 priority: normal
 created_at: 2026-09-12T19:03:30Z
-updated_at: 2026-09-16T13:35:28Z
+updated_at: 2026-09-16T15:42:43Z
 ---
 
 Design + implement what calit needs so a deployment can be GDPR-compliant. Brainstorming in progress; scope TBD.
@@ -24,7 +24,7 @@ data subject, so a switch would remove the tools without removing the obligation
 - [x] `privacy/PersonalData` inventory + `PersonalDataInventoryTest` schema guard (calit-1okc)
 - [ ] Invitee erasure + per-booking JSON export on the manage link (`INVITEE_ERASURE`, default true)
 - [ ] Erasure boundary reporting (Google / channels / delivered mail) on confirm + done pages
-- [ ] Account deletion: self-serve in `/me/settings`, admin in `/me/users`, last-admin guard
+- [x] Account deletion: self-serve in `/me/settings`, admin in `/me/users`, last-admin guard (calit-20wc)
 - [ ] `GET /me/export` owner JSON export, secrets redacted
 - [ ] `RetentionScheduler` + `BOOKING_RETENTION_DAYS` + per-owner override
 - [ ] Hygiene purges: `email_outbox` 30d, reset/login tokens 24h past expiry

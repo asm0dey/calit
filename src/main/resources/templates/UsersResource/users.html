@@ -42,6 +42,7 @@
           {#if u.passwordHash == null && u.googleSub == null}
           <form method="post" action="/me/users/{u.id}/resend-invite"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs">{adm:users_btn_resend_invite}</button></form>
           {/if}
+          <form method="post" action="/me/users/{u.id}/delete"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-ghost btn-xs text-error">{adm:adm_users_delete}</button></form>
         </td>
       </tr>
       {/for}

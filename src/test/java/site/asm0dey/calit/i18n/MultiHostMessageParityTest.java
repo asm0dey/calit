@@ -57,7 +57,20 @@ class MultiHostMessageParityTest {
             "pub_erase_disabled_notice_no_contact",
             "pub_manage_download_data");
 
-    private static final Set<String> HE_DEFERRED_ADMIN_KEYS = Set.of("adm_booking_invitee_erased");
+    private static final Set<String> HE_DEFERRED_ADMIN_KEYS = Set.of(
+            "adm_booking_invitee_erased",
+            "adm_delete_account_link",
+            "adm_delete_account_title",
+            "adm_delete_account_desc",
+            "adm_delete_account_google_note",
+            "adm_delete_account_password_label",
+            "adm_delete_account_username_label",
+            "adm_delete_account_btn",
+            "adm_delete_account_cancel",
+            "adm_delete_account_error_mismatch",
+            "adm_delete_account_error_last_admin",
+            "adm_users_delete",
+            "adm_users_error_last_admin_delete");
 
     @Test
     void everyAppMessageKeyHasGermanAndHebrewTranslation() {
