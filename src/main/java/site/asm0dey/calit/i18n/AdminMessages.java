@@ -920,6 +920,11 @@ public interface AdminMessages {
             + " enable it on the meeting types that should use it.")
     String adm_settings_channels_hint();
 
+    // ---- Owner data export (Task 8) ----
+
+    @Message("Download all my data")
+    String adm_settings_export_link();
+
     // ---- Account deletion (Task 7) ----
 
     @Message("Delete my account")

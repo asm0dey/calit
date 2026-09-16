@@ -1574,6 +1574,21 @@ public class AdminResource {
                 channelNotice);
     }
 
+    /**
+     * Art. 15/20 for the owner: their whole subtree as one JSON file. Owner-scoped by {@code
+     * currentOwner.id()} like every other /me query — never a parameter. {@link
+     * PrivacyService#exportOwner} returns raw JSON text (R14); Quarkus's Jackson writer special-
+     * cases {@link String} and writes it byte-for-byte, so this serves it verbatim.
+     */
+    @GET
+    @Path("/export")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response export() {
+        return Response.ok(privacy.exportOwner(currentOwner.id()))
+                .header("Content-Disposition", "attachment; filename=\"calit-export.json\"")
+                .build();
+    }
+
     @GET
     @Path("/settings/delete")
     @Produces(MediaType.TEXT_HTML)

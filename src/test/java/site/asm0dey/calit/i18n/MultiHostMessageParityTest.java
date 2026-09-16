@@ -59,6 +59,7 @@ class MultiHostMessageParityTest {
 
     private static final Set<String> HE_DEFERRED_ADMIN_KEYS = Set.of(
             "adm_booking_invitee_erased",
+            "adm_settings_export_link",
             "adm_delete_account_link",
             "adm_delete_account_title",
             "adm_delete_account_desc",
