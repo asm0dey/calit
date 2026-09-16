@@ -44,7 +44,7 @@
           <form method="post" action="/me/users/{u.id}/resend-invite"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs">{adm:users_btn_resend_invite}</button></form>
           {/if}
           {#if u.id != currentUserId}
-          <form method="post" action="/me/users/{u.id}/delete"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-ghost btn-xs text-error">{adm:adm_users_delete}</button></form>
+          <a href="/me/users/{u.id}/delete" class="btn btn-ghost btn-xs text-error">{adm:adm_users_delete}</a>
           {/if}
         </td>
       </tr>

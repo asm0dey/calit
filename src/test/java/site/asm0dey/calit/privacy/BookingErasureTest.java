@@ -3,11 +3,13 @@ package site.asm0dey.calit.privacy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.NotFoundException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -151,6 +153,31 @@ class BookingErasureTest {
             assertTrue(row.answers.isEmpty());
             assertNotNull(row.erasedAt);
         }
+    }
+
+    /**
+     * Retention measures each host's row against that host's own window, so a group can be partly
+     * erased. The erased row's token must still reach the co-host copy: export reads from it and
+     * erasure finishes the job; only a fully erased group 404s.
+     */
+    @Test
+    void aPartlyErasedGroupIsStillExportableAndErasableThroughTheErasedRowsToken() {
+        var groupId = seedGroupBooking();
+        List<Booking> rows = QuarkusTransaction.requiringNew().call(() -> Booking.group(groupId));
+        Booking erasedRow = rows.get(0);
+        privacy.anonymise(List.of(erasedRow.id)); // as a retention sweep would: this row only
+
+        String exported = privacy.exportBooking(erasedRow.manageToken);
+        assertTrue(exported.contains("Dana Vogel"), "the co-host row still holds the invitee's data: " + exported);
+
+        privacy.eraseByManageToken(erasedRow.manageToken);
+
+        QuarkusTransaction.requiringNew()
+                .run(() -> Booking.<Booking>group(groupId)
+                        .forEach(r -> assertTrue(r.isErased(), "row " + r.id + " must be erased")));
+        assertThrows(NotFoundException.class, () -> privacy.exportBooking(erasedRow.manageToken));
+        assertThrows(NotFoundException.class, () -> privacy.eraseByManageToken(erasedRow.manageToken));
+        assertThrows(NotFoundException.class, () -> privacy.exportBooking(rows.get(1).manageToken));
     }
 
     @Test

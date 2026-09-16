@@ -6,7 +6,6 @@ import jakarta.inject.Named;
 import java.util.Optional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.booking.CaptchaProviderConfig;
-import site.asm0dey.calit.notify.NotificationChannel;
 
 /**
  * What THIS deployment actually does, exposed to Qute as {@code {inject:privacy.*}} so the shipped
@@ -84,14 +83,5 @@ public class PrivacyFacts {
     /** Instance retention window in days, or null when bookings are kept indefinitely. */
     public Integer getRetentionDays() {
         return config.bookingRetentionDays().orElse(null);
-    }
-
-    /**
-     * Whether ANY owner on this instance has an outbound notification channel. A live count, not
-     * config: channels are per-owner rows, and the policy has to disclose the category of recipient
-     * as soon as one exists.
-     */
-    public boolean isAnyChannelConfigured() {
-        return NotificationChannel.count() > 0;
     }
 }

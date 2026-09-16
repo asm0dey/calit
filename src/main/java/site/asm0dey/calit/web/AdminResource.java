@@ -745,11 +745,24 @@ public class AdminResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance deleteMeetingType(@PathParam("id") Long id) {
-        QuarkusTransaction.requiringNew().run(() -> {
+        boolean deleted = QuarkusTransaction.requiringNew().call(() -> {
             requireType(id);
+            // booking.meeting_type_id cascades (V34), so deleting a type deletes its bookings -- every
+            // host's row of a group booking included. An upcoming one would vanish with no mail to
+            // anyone and its Google event left behind, so refuse until it is cancelled. Counted across
+            // all owners on purpose: co-hosts' rows carry this (creator's) type id too.
+            if (Booking.count(
+                            "meetingTypeId = ?1 and endUtc > ?2 and status in ?3",
+                            id,
+                            Instant.now(),
+                            List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED))
+                    > 0) {
+                return false;
+            }
             MeetingType.deleteById(id);
+            return true;
         });
-        return renderMeetingTypes();
+        return deleted ? renderMeetingTypes() : renderMeetingTypes(m().adm_meetingTypes_error_delete_upcoming());
     }
 
     /** Date overrides scoped to one meeting type, each with its (transient) windows loaded. */
@@ -1616,6 +1629,7 @@ public class AdminResource {
     public Response export() {
         return Response.ok(privacy.exportOwner(currentOwner.id()))
                 .header("Content-Disposition", "attachment; filename=\"calit-export.json\"")
+                .header("Cache-Control", "no-store") // personal data: never kept by a shared cache
                 .build();
     }
 

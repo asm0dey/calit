@@ -549,7 +549,7 @@ public class PublicResource {
     public TemplateInstance manage(@PathParam("manageToken") String manageToken) {
         Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
         if (booking == null || booking.isErased()) {
-            throw new NotFoundException("No booking for token " + manageToken); // unknown token → 404
+            throw new NotFoundException("No booking for that token"); // unknown token → 404
         }
         return renderManage(booking);
     }
@@ -566,11 +566,11 @@ public class PublicResource {
     public Response inviteIcs(@PathParam("manageToken") String manageToken) {
         Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
         if (booking == null || booking.isErased()) {
-            throw new NotFoundException("No booking for token " + manageToken);
+            throw new NotFoundException("No booking for that token");
         }
         byte[] ics = emailService
                 .inviteeIcs(booking.id)
-                .orElseThrow(() -> new NotFoundException("No calendar entry for token " + manageToken));
+                .orElseThrow(() -> new NotFoundException("No calendar entry for that token"));
         return Response.ok(ics)
                 .header("Content-Disposition", "attachment; filename=\"invite.ics\"")
                 .build();
@@ -586,6 +586,7 @@ public class PublicResource {
     public Response bookingData(@PathParam("manageToken") String manageToken) {
         return Response.ok(privacy.exportBooking(manageToken))
                 .header("Content-Disposition", "attachment; filename=\"booking-data.json\"")
+                .header("Cache-Control", "no-store") // personal data: never kept by a shared cache
                 .build();
     }
 
@@ -669,7 +670,7 @@ public class PublicResource {
         // Authenticated solely by the unguessable manage token. Re-renders the Manage hub with fresh values.
         Booking existing = Booking.findByManageToken(manageToken);
         if (existing == null || existing.isErased()) {
-            throw new NotFoundException("No booking for token " + manageToken);
+            throw new NotFoundException("No booking for that token");
         }
         if (hostInactive(existing)) {
             // The rendered page hides this form for a disabled host, so reaching here means a stale
@@ -690,7 +691,7 @@ public class PublicResource {
     public TemplateInstance rescheduleBooking(@PathParam("manageToken") String manageToken, @RestForm String startUtc) {
         Booking existing = Booking.findByManageToken(manageToken);
         if (existing == null || existing.isErased()) {
-            throw new NotFoundException("No booking for token " + manageToken);
+            throw new NotFoundException("No booking for that token");
         }
         if (hostInactive(existing)) {
             // Same guard as edit-details: refuse to put a NEW time on a departed host's calendar.
@@ -711,7 +712,7 @@ public class PublicResource {
         var m = messages.forLocale(activeLocale.current());
         Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
         if (booking == null || booking.isErased()) {
-            throw new NotFoundException("No booking for token " + manageToken);
+            throw new NotFoundException("No booking for that token");
         }
         if (booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
             // Already gone -> the same terminal page the POST cancel renders.
@@ -730,7 +731,7 @@ public class PublicResource {
         var m = messages.forLocale(activeLocale.current());
         Booking existing = Booking.findByManageToken(manageToken);
         if (existing == null || existing.isErased()) {
-            throw new NotFoundException("No booking for token " + manageToken);
+            throw new NotFoundException("No booking for that token");
         }
         bookingService.cancel(manageToken); // keyed by the token
         return Templates.cancelled(m.pub_cancelled_title());
@@ -794,15 +795,16 @@ public class PublicResource {
     /**
      * The booking behind an erasure request, or 404. Covers three cases with one answer: an unknown
      * token, an already-erased booking (its data is gone, so there is nothing to confirm or repeat),
-     * and the operator having switched invitee erasure off.
+     * and the operator having switched invitee erasure off. A group booking counts as erased only
+     * once every host's row is — see {@link Booking#findLiveForPrivacy}.
      */
     private Booking requireErasableBooking(String manageToken) {
         if (!privacyConfig.inviteeErasureEnabled()) {
             throw new NotFoundException("Invitee erasure is disabled on this deployment");
         }
-        Booking booking = Booking.findByManageToken(manageToken);
-        if (booking == null || booking.isErased()) {
-            throw new NotFoundException("No booking for token " + manageToken);
+        Booking booking = Booking.findLiveForPrivacy(manageToken);
+        if (booking == null) {
+            throw new NotFoundException("No booking for that token");
         }
         return booking;
     }
@@ -814,7 +816,7 @@ public class PublicResource {
         var m = messages.forLocale(activeLocale.current());
         BookingGuest guest = BookingGuest.findByDeclineToken(declineToken); // unguessable key
         if (guest == null) {
-            throw new NotFoundException("No guest for token " + declineToken);
+            throw new NotFoundException("No guest for that token");
         }
         if (guest.status != GuestStatus.INVITED) {
             return Templates.guestDeclined(m.pub_guest_declined_title()); // already declined/removed

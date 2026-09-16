@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.util.Optional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import site.asm0dey.calit.notify.NotificationChannel;
 
 /**
  * Public privacy policy and terms pages. Required for Google OAuth verification: the consent
@@ -31,7 +32,8 @@ public class LegalResource {
     public static class Templates {
         private Templates() {}
 
-        public static native TemplateInstance privacy(String title, OgCard og, RawString override);
+        public static native TemplateInstance privacy(
+                String title, OgCard og, RawString override, boolean anyChannelConfigured);
 
         public static native TemplateInstance terms(String title, OgCard og, RawString override);
     }
@@ -56,7 +58,13 @@ public class LegalResource {
     @Path("/privacy")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance privacy() {
-        return Templates.privacy("Privacy Policy", ogCards.product("/privacy"), fragment(privacyPolicyPath));
+        // Counted once per render and passed in: the template tests it in two places, and an
+        // {inject:} getter would run the count query for each.
+        return Templates.privacy(
+                "Privacy Policy",
+                ogCards.product("/privacy"),
+                fragment(privacyPolicyPath),
+                NotificationChannel.count() > 0);
     }
 
     @GET

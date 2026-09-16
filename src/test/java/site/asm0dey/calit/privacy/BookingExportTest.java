@@ -21,6 +21,7 @@ class BookingExportTest {
                 .statusCode(200)
                 .contentType(containsString("application/json"))
                 .header("Content-Disposition", containsString("attachment"))
+                .header("Cache-Control", containsString("no-store"))
                 .body("invitee.name", equalTo("Dana Vogel"))
                 .body("invitee.email", equalTo("dana@example.com"))
                 .body("invitee.answers.why", equalTo("annual review"))

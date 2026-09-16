@@ -17,7 +17,9 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.user.PasswordHasher;
 
 @QuarkusTest
 class OwnerExportTest {
@@ -46,6 +48,7 @@ class OwnerExportTest {
                 .statusCode(200)
                 .contentType(containsString("application/json"))
                 .header("Content-Disposition", containsString("attachment"))
+                .header("Cache-Control", containsString("no-store"))
                 .body("exportedAt", notNullValue())
                 .body("account", notNullValue())
                 .body("settings", notNullValue())
@@ -57,6 +60,18 @@ class OwnerExportTest {
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void noSecretsLeaveTheBuilding() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            AppUser admin = AppUser.findById(1L);
+            admin.passwordHash = new PasswordHasher().hash("Known-admin-pw-9f3");
+            var cred = new GoogleCredential();
+            cred.ownerId = 1L;
+            cred.googleSub = "export-sub";
+            cred.accountEmail = "export@example.com";
+            cred.accessToken = "ya29.KNOWN-ACCESS-TOKEN-VALUE";
+            cred.refreshToken = "1//KNOWN-REFRESH-TOKEN-VALUE";
+            cred.accessTokenExpiry = Instant.now().plus(1, ChronoUnit.HOURS);
+            cred.persist();
+        });
         String body = given().when()
                 .get("/me/export")
                 .then()
@@ -69,6 +84,14 @@ class OwnerExportTest {
         org.junit.jupiter.api.Assertions.assertFalse(
                 body.contains("accessToken") || body.contains("refreshToken"),
                 "Google OAuth tokens must never appear in an export");
+        org.junit.jupiter.api.Assertions.assertFalse(
+                body.contains("KNOWN-ACCESS-TOKEN-VALUE") || body.contains("KNOWN-REFRESH-TOKEN-VALUE"),
+                "a stored Google token value must never appear in an export");
+        org.junit.jupiter.api.Assertions.assertFalse(
+                body.contains("$argon2") || body.contains("Known-admin-pw-9f3"),
+                "no password hash (or password) may appear in an export");
+        org.junit.jupiter.api.Assertions.assertTrue(
+                body.contains("export@example.com"), "precondition: the seeded Google account is exported");
     }
 
     @Test

@@ -200,6 +200,10 @@ public interface AdminMessages {
     @Message("Delete")
     String adm_meetingTypes_btn_delete();
 
+    @Message("This meeting type still has upcoming bookings. Cancel them first, then delete the meeting type. "
+            + "Deleting it also removes its past bookings.")
+    String adm_meetingTypes_error_delete_upcoming();
+
     @Message("Create meeting type")
     String adm_meetingTypes_create_h2();
 
@@ -976,6 +980,10 @@ public interface AdminMessages {
     @Message("You are the last enabled admin. Grant admin to another account first.")
     String adm_delete_account_error_last_admin();
 
+    @Message("Upcoming bookings on your meeting types are cancelled first, so invitees, guests and co-hosts "
+            + "get the usual cancellation email.")
+    String adm_delete_account_upcoming_note();
+
     // ---- Per-meeting-type channel routing ----
 
     @Message("Notifications")
@@ -1129,6 +1137,27 @@ public interface AdminMessages {
 
     @Message("You can't delete your own account here — use \"Delete my account\" in Settings.")
     String adm_users_error_delete_self();
+
+    @Message("Delete this account?")
+    String adm_users_delete_title();
+
+    @Message("This permanently removes the account {username}: its meeting types and availability, every "
+            + "booking on its calendar, its connected Google accounts and its notification channels. "
+            + "It can't be undone.")
+    String adm_users_delete_desc(String username);
+
+    @Message("Upcoming bookings on the account's meeting types are cancelled first, so invitees, guests and "
+            + "co-hosts get the usual cancellation email.")
+    String adm_users_delete_upcoming_note();
+
+    @Message("Type the account's username to confirm")
+    String adm_users_delete_username_label();
+
+    @Message("Delete this account permanently")
+    String adm_users_delete_btn();
+
+    @Message("That didn't match the username. The account was not deleted.")
+    String adm_users_delete_error_mismatch();
 
     // ---- Me setup wizard ----
 

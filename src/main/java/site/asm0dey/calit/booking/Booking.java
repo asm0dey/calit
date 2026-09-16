@@ -147,6 +147,28 @@ public class Booking extends PanacheEntityBase {
         return find("manageToken", manageToken).firstResult();
     }
 
+    /**
+     * The row a privacy request keyed by {@code manageToken} should act on, or null when nothing is
+     * left to act on: the token's own row while it is not erased, otherwise any not-erased row of
+     * the same group. Retention measures each host's row against THAT host's window, so a group can
+     * be partly erased while a co-host's row still holds the invitee's data — the token still proves
+     * control of the booking, and must still reach that copy.
+     */
+    public static Booking findLiveForPrivacy(String manageToken) {
+        var own = findByManageToken(manageToken);
+        if (own == null) {
+            return null;
+        }
+        if (!own.isErased()) {
+            return own;
+        }
+        if (own.groupId == null) {
+            return null;
+        }
+        return find("groupId = ?1 and erasedAt is null order by id", own.groupId)
+                .firstResult();
+    }
+
     /** True once the invitee's data has been anonymised — see {@link #erasedAt}. */
     public boolean isErased() {
         return erasedAt != null;

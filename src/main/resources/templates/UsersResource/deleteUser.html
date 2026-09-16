@@ -1,0 +1,25 @@
+{@java.lang.String title}
+{@java.lang.Long pendingCount}
+{@java.lang.Long userId}
+{@java.lang.String username}
+{@java.lang.String error}
+{#include adminBase title=title pendingCount=pendingCount active="users" isAdmin=true}
+  <!-- CALIT_DELETE_USER -->
+  <div class="card bg-base-100 border border-error/40 shadow-sm max-w-2xl">
+    <div class="card-body items-start gap-3">
+      <h1 class="text-2xl font-bold text-error">{adm:adm_users_delete_title}</h1>
+      <p class="text-base-content/70">{adm:adm_users_delete_desc(username)}</p>
+      <p class="text-base-content/70">{adm:adm_users_delete_upcoming_note}</p>
+      {#if error}<div class="alert alert-error">{error}</div>{/if}
+      <form method="post" action="/me/users/{userId}/delete" class="w-full">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <label class="label" for="del-user-confirm">{adm:adm_users_delete_username_label}</label>
+        <input id="del-user-confirm" class="input w-full" type="text" name="confirmation" required autocomplete="off" placeholder="{username}">
+        <div class="flex gap-2 mt-3">
+          <button type="submit" class="btn btn-error">{adm:adm_users_delete_btn}</button>
+          <a class="btn btn-ghost" href="/me/users">{adm:adm_delete_account_cancel}</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{/include}

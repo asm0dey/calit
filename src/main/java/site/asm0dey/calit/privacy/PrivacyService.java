@@ -10,10 +10,14 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailOutbox;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.notify.NotificationChannel;
@@ -128,53 +132,61 @@ public class PrivacyService {
      * The invitee's own erasure, keyed by the manage token that already proves control of the
      * booking — no new identity verification is introduced.
      *
-     * <p>An UPCOMING booking is cancelled first, through the ordinary cancel path, so the Google
-     * event is deleted and the owner gets the normal cancellation mail. A past booking is
-     * anonymised directly: there is nothing left to cancel, so a stored Google event id (the owner's
-     * copy the spec still lists as reachable while connected) gets its own best-effort delete here.
+     * <p>The token resolves through {@link Booking#findLiveForPrivacy}: a group whose token row was
+     * already erased by one host's retention window is still reachable while any co-host row holds
+     * the invitee's data, and 404s only once every row is erased. Every remaining row of the group
+     * is erased.
      *
-     * <p>{@code TxType.NEVER}: this method runs two separate {@code @Transactional} steps below —
-     * cancel, then anonymise — that must commit as two separate transactions. If a caller wrapped
-     * this call inside its own ambient transaction, both steps would join that one transaction
-     * instead, and the {@code BookingCancelled} {@code AFTER_SUCCESS} mail observer would not fire
-     * until BOTH steps committed — i.e. after anonymise had already blanked the invitee's name,
-     * parking a cancellation mail addressed to "" that survives the outbox purge below it. Refusing
-     * an ambient transaction forces cancel's commit (and its mail, addressed while the name is still
-     * real) to land before anonymise begins.
+     * <p>An UPCOMING booking is cancelled first, through the ordinary cancel path, so the Google
+     * event is deleted and the owner gets the normal cancellation mail — in its Google-tolerant
+     * variant: an unreachable Google must not block the invitee's erasure, so a failed delete is
+     * logged, the cancellation still commits, and the report says UNREACHABLE. A past booking is
+     * anonymised directly: there is nothing left to cancel, so a stored Google event id (the owner's
+     * copy the spec still lists as reachable while connected) gets its own best-effort delete here,
+     * and the row's event refs are cleared in the anonymising transaction either way — same rule as
+     * cancel (calit-ek26): an erased row must not keep pointing at the owner's event.
+     *
+     * <p>{@code TxType.NEVER}: this method runs two separate transactions below — cancel, then
+     * anonymise — that must commit separately. If a caller wrapped this call inside its own ambient
+     * transaction, both steps would join that one transaction instead, and the {@code
+     * BookingCancelled} {@code AFTER_SUCCESS} mail observer would not fire until BOTH steps
+     * committed — i.e. after anonymise had already blanked the invitee's name, parking a
+     * cancellation mail addressed to "" that survives the outbox purge below it. Refusing an ambient
+     * transaction forces cancel's commit (and its mail, addressed while the name is still real) to
+     * land before anonymise begins.
      */
     @Transactional(Transactional.TxType.NEVER)
     public ErasureReport eraseByManageToken(String manageToken) {
-        Booking b = QuarkusTransaction.requiringNew().call(() -> Booking.<Booking>findByManageToken(manageToken));
-        if (b == null || b.isErased()) {
+        Booking live = QuarkusTransaction.requiringNew().call(() -> Booking.findLiveForPrivacy(manageToken));
+        if (live == null) {
             throw new NotFoundException("No booking for that token");
         }
 
-        List<Booking> rows = b.groupId == null
-                ? List.of(b)
-                : QuarkusTransaction.requiringNew().call(() -> Booking.group(b.groupId));
+        List<Booking> rows = live.groupId == null
+                ? List.of(live)
+                : QuarkusTransaction.requiringNew().call(() -> Booking.group(live.groupId));
+        List<Long> ids = rows.stream().map(r -> r.id).toList();
         // The shared Google event lives on whichever row created it (the group's chosen organizer --
         // BookingService.createGroupGoogleEvent), not necessarily this row: look across the group.
         Booking eventRow =
                 rows.stream().filter(r -> r.googleEventId != null).findFirst().orElse(null);
 
-        boolean upcoming = isUpcomingAndHeld(b);
         ErasureReport.GoogleOutcome google;
-        if (eventRow == null) {
-            google = ErasureReport.GoogleOutcome.NOT_APPLICABLE;
-        } else if (upcoming) {
-            // cancel() below does the actual delete, gated on the same isConnected check
-            // BookingService.cancelSingle/deleteGroupGoogleEvent use -- counted as "ran" per that call.
-            google = calendarPort.isConnected(eventRow.ownerId)
-                    ? ErasureReport.GoogleOutcome.REMOVED
-                    : ErasureReport.GoogleOutcome.UNREACHABLE;
+        if (isUpcomingAndHeld(live)) {
+            // Deletes the Google event (best effort) and mails the owner, committed before anonymise.
+            boolean deleted = bookingService.cancelToleratingGoogleFailure(live.manageToken, false);
+            google = googleOutcome(eventRow, deleted);
         } else {
-            google = bestEffortGoogleDelete(eventRow);
+            google = eventRow == null ? ErasureReport.GoogleOutcome.NOT_APPLICABLE : bestEffortGoogleDelete(eventRow);
         }
 
-        if (upcoming) {
-            bookingService.cancel(manageToken); // deletes the Google event, mails the owner
-        }
-        anonymise(b.id);
+        QuarkusTransaction.requiringNew().run(() -> {
+            anonymise(ids);
+            if (eventRow != null) {
+                Booking.update(
+                        "googleEventId = null, googleCalendarId = null, googleCredentialId = null where id in ?1", ids);
+            }
+        });
 
         List<Long> ownerIds = rows.stream().map(r -> r.ownerId).distinct().toList();
         var channelsWereUsed = NotificationChannel.count("ownerId in ?1", ownerIds) > 0;
@@ -183,8 +195,15 @@ public class PrivacyService {
         // table until an operator actually needs an audit trail (ponytail).
         Log.infof(
                 "PRIVACY erasure booking=%d google=%s channels=%s mail=%s",
-                b.id, report.google(), report.channelsWereUsed(), report.mailWasDelivered());
+                live.id, report.google(), report.channelsWereUsed(), report.mailWasDelivered());
         return report;
+    }
+
+    private static ErasureReport.GoogleOutcome googleOutcome(Booking eventRow, boolean deleted) {
+        if (eventRow == null) {
+            return ErasureReport.GoogleOutcome.NOT_APPLICABLE;
+        }
+        return deleted ? ErasureReport.GoogleOutcome.REMOVED : ErasureReport.GoogleOutcome.UNREACHABLE;
     }
 
     /**
@@ -227,9 +246,11 @@ public class PrivacyService {
      * bearer credential, and echoing it back would put it in logs/error pages for no benefit.
      *
      * <p>Built as ONE native {@code json_build_object}/{@code json_agg} query (R14), keyed by the
-     * manage token with {@code erased_at IS NULL} standing in for the old {@code b.isErased()}
-     * check. {@code meetingType} reproduces {@link Booking#effectiveTitle} in SQL: the booking's own
-     * {@code title} wins when it is non-null and non-blank, else the meeting type's name. Returned as
+     * manage token. The exported row is the token's own row while it is not erased, else any
+     * not-erased row of the same group (see {@link Booking#findLiveForPrivacy} for why a group can
+     * be partly erased); 404 only when no such row is left. {@code meetingType} reproduces {@link
+     * Booking#effectiveTitle} in SQL: the booking's own {@code title} wins when it is non-null and
+     * non-blank, else the meeting type's name. Returned as
      * raw JSON text — see {@link #exportOwner} for why that is safe for a route to serve verbatim as
      * {@code application/json}.
      */
@@ -261,9 +282,12 @@ public class PrivacyService {
                                 FROM booking_guest g WHERE g.booking_id = b.id
                             ), '[]'::json)
                         )::text
-                        FROM booking b
+                        FROM booking t
+                        JOIN booking b ON b.id = t.id OR (t.group_id IS NOT NULL AND b.group_id = t.group_id)
                         JOIN meeting_type mt ON mt.id = b.meeting_type_id
-                        WHERE b.manage_token = :token AND b.erased_at IS NULL
+                        WHERE t.manage_token = :token AND b.erased_at IS NULL
+                        ORDER BY (b.id = t.id) DESC, b.id
+                        LIMIT 1
                         """).setParameter("token", manageToken).getResultList();
         if (rows.isEmpty()) {
             throw new NotFoundException("No booking for that token");
@@ -391,10 +415,35 @@ public class PrivacyService {
      * subtree with it — settings, meeting types, availability, bookings, guests, Google credentials
      * and calendars, notification channels, reset tokens, login tickets.
      *
-     * <p>{@code email_outbox} is purged explicitly first even though V34 gave it a cascading {@code
-     * owner_id}: rows enqueued BEFORE V34 carry a null link and would otherwise outlive the account.
-     * The explicit delete is a no-op for those, so the 30-day age purge remains their only route —
-     * which is why the operator guide names that window.
+     * <p>Upcoming bookings on the account's OWN meeting types are cancelled first. The {@code
+     * meeting_type_id} cascade would otherwise delete them silently — including co-hosts' rows of a
+     * group booking, which carry the creator's type — with no mail to the invitee or co-hosts and
+     * the Google event left behind. Each is cancelled through {@link
+     * BookingService#cancelToleratingGoogleFailure} (a Google outage must not block deletion), one
+     * group once, each in its own committed transaction, so the {@code AFTER_SUCCESS} cancellation
+     * observers render their mails from real rows and send them before anything is deleted. Parked
+     * copies of those cancellation notices would die with the account — the invitee's and guests'
+     * copies are tagged with this owner and the booking, the co-hosts' with their own cascading
+     * booking row — so the final transaction drops those booking links first (a co-host copy keeps
+     * its co-host owner link; the rest fall to the 30-day age purge, like a pre-V34 row). The
+     * deleted owner's own copy stays tagged and is purged with the account.
+     *
+     * <p>{@code TxType.NEVER} for the same reason as {@link #eraseByManageToken}: inside an ambient
+     * transaction the cancellation mails would fire only after the rows they read were deleted.
+     *
+     * <p>The last-admin rule is checked twice: an advisory read before anything is cancelled, so the
+     * common refusal leaves the account's bookings alone, and again under a pessimistic lock in the
+     * final transaction, which is the real guard. Two concurrent deletions of the last two enabled
+     * admins can both pass the advisory read and cancel their bookings; the lock then refuses one of
+     * them, which keeps its account but not its cancelled bookings. That is the accepted price of
+     * sending the notices from committed data.
+     *
+     * <p>The final transaction is atomic: the locked admin check, the outbox purge, the username
+     * tombstone and the row delete commit together or not at all. {@code email_outbox} is purged
+     * explicitly even though V34 gave it a cascading {@code owner_id}: rows enqueued BEFORE V34 carry
+     * a null link and would otherwise outlive the account. The explicit delete is a no-op for those,
+     * so the 30-day age purge remains their only route — which is why the operator guide names that
+     * window.
      *
      * <p>The username is tombstoned ({@link DeletedUsername}, R16) BEFORE the row is deleted, in the
      * same transaction: form-auth's persistent-login cookie carries only a username and keeps
@@ -407,9 +456,53 @@ public class PrivacyService {
      * withdrawing the grant at Google. The privacy copy and the operator guide both say so.
      *
      * <p>No "your account was deleted" email — the mailbox may be the thing being erased.
+     *
+     * @throws IllegalStateException {@code "last-admin"} when this is the last enabled admin
      */
-    @Transactional
+    @Transactional(Transactional.TxType.NEVER)
     public void deleteAccount(Long userId) {
+        boolean exists = QuarkusTransaction.requiringNew().call(() -> {
+            if (AppUser.findById(userId) == null) {
+                return false;
+            }
+            if (isLastEnabledAdmin(userId)) {
+                throw new IllegalStateException("last-admin");
+            }
+            return true;
+        });
+        if (!exists) {
+            return;
+        }
+
+        long outboxMarker = QuarkusTransaction.requiringNew()
+                .call(() -> ((Number) em.createNativeQuery("SELECT coalesce(max(id), 0) FROM email_outbox")
+                                .getSingleResult())
+                        .longValue());
+        List<Booking> held = QuarkusTransaction.requiringNew()
+                .call(() -> Booking.<Booking>list(
+                        "meetingTypeId in (select t.id from MeetingType t where t.ownerId = ?1) "
+                                + "and endUtc > ?2 and status in ?3 and erasedAt is null order by id",
+                        userId,
+                        Instant.now(),
+                        List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)));
+        Set<UUID> groupsDone = new HashSet<>();
+        for (Booking b : held) {
+            if (b.groupId != null && !groupsDone.add(b.groupId)) {
+                continue; // the whole group was cancelled through its first row
+            }
+            try {
+                bookingService.cancelToleratingGoogleFailure(b.manageToken, true);
+            } catch (NotFoundException e) {
+                // erased between the read and the cancel: nothing left to notify about
+            }
+        }
+        List<Long> cancelledIds = held.stream().map(b -> b.id).toList();
+
+        QuarkusTransaction.requiringNew().run(() -> deleteAccountRow(userId, outboxMarker, cancelledIds));
+    }
+
+    /** The atomic half of {@link #deleteAccount}: locked admin check, outbox, tombstone, delete. */
+    private void deleteAccountRow(Long userId, long outboxMarker, List<Long> cancelledIds) {
         AppUser u = AppUser.findById(userId);
         if (u == null) {
             return;
@@ -417,17 +510,31 @@ public class PrivacyService {
         if (u.isAdmin && u.enabled) {
             // Pessimistic lock on every enabled-admin row before counting: closes the race where
             // two concurrent deletions of two DIFFERENT enabled admins could each read "more than
-            // one enabled admin" and both proceed, leaving zero.
-            List<AppUser> enabledAdmins = AppUser.<AppUser>find("isAdmin = true and enabled = true")
+            // one enabled admin" and both proceed, leaving zero. Ordered so concurrent lockers take
+            // the rows in the same order and cannot deadlock each other.
+            List<AppUser> enabledAdmins = AppUser.<AppUser>find("isAdmin = true and enabled = true order by id")
                     .withLock(LockModeType.PESSIMISTIC_WRITE)
                     .list();
             if (enabledAdmins.size() <= 1) {
                 throw new IllegalStateException("last-admin");
             }
         }
+        if (!cancelledIds.isEmpty()) {
+            OwnerSettings settings = OwnerSettings.forOwner(userId);
+            em.createNativeQuery("UPDATE email_outbox SET booking_id = NULL, "
+                            + "owner_id = CASE WHEN owner_id = :uid THEN NULL ELSE owner_id END "
+                            + "WHERE id > :marker AND booking_id IN (:ids) "
+                            + "AND NOT (owner_id IS NOT DISTINCT FROM :uid AND recipient = :ownerEmail)")
+                    .setParameter("uid", userId)
+                    .setParameter("marker", outboxMarker)
+                    .setParameter("ids", cancelledIds)
+                    .setParameter(
+                            "ownerEmail", settings == null || settings.ownerEmail == null ? "" : settings.ownerEmail)
+                    .executeUpdate();
+        }
         EmailOutbox.deleteForOwner(userId);
         DeletedUsername.tombstone(u.username);
         u.delete();
-        Log.infof("PRIVACY account-deleted user=%d", userId);
+        Log.infof("PRIVACY account-deleted user=%d cancelled-booking-rows=%d", userId, cancelledIds.size());
     }
 }

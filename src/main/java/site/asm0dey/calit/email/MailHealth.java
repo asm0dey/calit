@@ -93,11 +93,11 @@ public class MailHealth {
      * True when this deployment still owes mail to {@code recipient}: a parked row that has not been
      * sent, whether it is still retrying or was given up on.
      * <p>
-     * ponytail: keyed by address, not booking -- {@code email_outbox} has no booking column and
-     * adding one means a migration plus threading an id through the generic MailSender seam. The
-     * cost is that a guest who books twice during an outage sees the warning on both, which reads as
-     * "we have undelivered mail for you" and is true. Add the column only if per-booking precision
-     * is ever actually needed.
+     * ponytail: keyed by address, not booking. {@code email_outbox} has had a {@code booking_id}
+     * column since V34, but it is null on rows parked before V34 and on mail that is about no
+     * booking, so matching on it would miss mail this recipient is still owed. The cost of the
+     * address match is that a guest who books twice during an outage sees the warning on both,
+     * which reads as "we have undelivered mail for you" and is true.
      */
     public boolean undeliveredFor(String recipient) {
         if (recipient == null || recipient.isBlank()) {

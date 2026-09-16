@@ -155,7 +155,9 @@ class AccountDeletionRoutesTest {
             roles = {"user", "admin"})
     void adminDeletesAnotherUser() {
         var id = seedOwnerWithPassword("carol", "Carol-pw-12345");
-        given().when()
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("confirmation", "carol")
+                .when()
                 .post("/me/users/" + id + "/delete")
                 .then()
                 .statusCode(200)
@@ -181,7 +183,9 @@ class AccountDeletionRoutesTest {
             user = "admin",
             roles = {"user", "admin"})
     void adminCannotDeleteThemselvesViaUsersRoute() {
-        given().when()
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("confirmation", "admin")
+                .when()
                 .post("/me/users/1/delete")
                 .then()
                 .statusCode(200)
@@ -196,7 +200,68 @@ class AccountDeletionRoutesTest {
             user = "admin",
             roles = {"user", "admin"})
     void adminDeleteOfUnknownUserReturns404() {
-        given().when().post("/me/users/999999/delete").then().statusCode(404);
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("confirmation", "nobody")
+                .when()
+                .post("/me/users/999999/delete")
+                .then()
+                .statusCode(404);
+        given().when().get("/me/users/999999/delete").then().statusCode(404);
+    }
+
+    /** The users list links to a confirm page naming the account, instead of deleting on one click. */
+    @Test
+    @TestSecurity(
+            user = "admin",
+            roles = {"user", "admin"})
+    void adminDeleteShowsAConfirmPageFirst() {
+        var id = seedOwnerWithPassword("frank", "Frank-pw-12345");
+        given().when()
+                .get("/me/users")
+                .then()
+                .statusCode(200)
+                .body(containsString("href=\"/me/users/" + id + "/delete\""));
+        given().when()
+                .get("/me/users/" + id + "/delete")
+                .then()
+                .statusCode(200)
+                .body(containsString("CALIT_DELETE_USER"))
+                .body(containsString("frank"))
+                .body(containsString("name=\"confirmation\""));
+        assertEquals(1, AppUser.count("id", id), "showing the confirm page deletes nothing");
+    }
+
+    @Test
+    @TestSecurity(
+            user = "admin",
+            roles = {"user", "admin"})
+    void adminDeleteWithTheWrongUsernameDeletesNothing() {
+        var id = seedOwnerWithPassword("grace", "Grace-pw-12345");
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("confirmation", "gracie")
+                .when()
+                .post("/me/users/" + id + "/delete")
+                .then()
+                .statusCode(200)
+                .body(containsString("CALIT_DELETE_USER"))
+                .body(containsString("The account was not deleted"));
+        assertEquals(1, AppUser.count("id", id), "a mismatched username must not delete the account");
+    }
+
+    @Test
+    @TestSecurity(
+            user = "bob",
+            roles = {"user"})
+    void nonAdminCannotReachTheAdminDeleteRoutes() {
+        var id = seedOwnerWithPassword("heidi", "Heidi-pw-12345");
+        given().when().get("/me/users/" + id + "/delete").then().statusCode(403);
+        given().contentType("application/x-www-form-urlencoded")
+                .formParam("confirmation", "heidi")
+                .when()
+                .post("/me/users/" + id + "/delete")
+                .then()
+                .statusCode(403);
+        assertEquals(1, AppUser.count("id", id), "a non-admin must not delete anyone");
     }
 
     /**
@@ -229,7 +294,7 @@ class AccountDeletionRoutesTest {
         given().cookie("quarkus-credential", cookie).when().get("/me").then().statusCode(200);
 
         Long erinId = AppUser.findByUsername("erin").id;
-        QuarkusTransaction.requiringNew().run(() -> privacy.deleteAccount(erinId));
+        privacy.deleteAccount(erinId); // TxType.NEVER: runs its own transactions
 
         // (a) the tombstoned username can never be re-registered, through any username-choosing path.
         given().cookie("quarkus-credential", FormAuth.login())

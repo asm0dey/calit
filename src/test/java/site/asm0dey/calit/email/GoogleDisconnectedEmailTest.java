@@ -21,14 +21,21 @@ class GoogleDisconnectedEmailTest {
 
     @Test
     void sendsReconnectLinkToOwner() {
-        emailService.sendGoogleDisconnected("owner@example.com", "work@gmail.com", Locale.ENGLISH);
+        emailService.sendGoogleDisconnected(1L, "owner@example.com", "work@gmail.com", Locale.ENGLISH);
 
         ArgumentCaptor<String> to = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> subject = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
-        // 5-arg send(fromName, to, subject, html, ics) is the no-deadline overload; fromName is null for system mails.
+        // 6-arg send(fromName, to, subject, html, ics, tag) is the no-deadline overload; fromName is null for
+        // system mails, and the tag names the owner so account deletion can clear a parked copy.
         Mockito.verify(mailSender)
-                .send(Mockito.isNull(), to.capture(), subject.capture(), body.capture(), Mockito.isNull());
+                .send(
+                        Mockito.isNull(),
+                        to.capture(),
+                        subject.capture(),
+                        body.capture(),
+                        Mockito.isNull(),
+                        Mockito.eq(MailTag.forOwner(1L)));
 
         org.junit.jupiter.api.Assertions.assertEquals("owner@example.com", to.getValue());
         assertTrue(subject.getValue().toLowerCase().contains("reconnect"));
@@ -39,11 +46,17 @@ class GoogleDisconnectedEmailTest {
     @Test
     void germanLocaleProducesGermanSubject() {
         emailService.sendGoogleDisconnected(
-                "owner@example.com", "work@gmail.com", java.util.Locale.forLanguageTag("de"));
+                1L, "owner@example.com", "work@gmail.com", java.util.Locale.forLanguageTag("de"));
 
         ArgumentCaptor<String> subject = ArgumentCaptor.forClass(String.class);
         Mockito.verify(mailSender)
-                .send(Mockito.isNull(), Mockito.any(), subject.capture(), Mockito.any(), Mockito.isNull());
+                .send(
+                        Mockito.isNull(),
+                        Mockito.any(),
+                        subject.capture(),
+                        Mockito.any(),
+                        Mockito.isNull(),
+                        Mockito.any(MailTag.class));
 
         String deSubject = subject.getValue();
         org.junit.jupiter.api.Assertions.assertFalse(

@@ -72,43 +72,71 @@ public class EmailService {
      * Sends a password-reset link. Caller has already resolved the destination address.
      * {@code expiresAt} is the reset token's expiry: if the mail can't be sent now and has to fall
      * back to the outbox, retries stop at that instant so a dead-link email is never delivered.
-     * {@code locale} drives any {msg:} keys rendered in the template body.
+     * {@code locale} drives any {msg:} keys rendered in the template body. {@code ownerId} tags a
+     * parked copy so deleting that account also clears it.
      */
-    public void sendPasswordReset(String toEmail, String resetUrl, Instant expiresAt, Locale locale) {
+    public void sendPasswordReset(Long ownerId, String toEmail, String resetUrl, Instant expiresAt, Locale locale) {
         String body = Templates.passwordReset(locale.getLanguage(), resetUrl)
                 .setLocale(locale)
                 .render();
         mailSender.send(
-                null, toEmail, messages.forLocale(locale).email_password_reset_subject(), body, null, expiresAt);
+                null,
+                toEmail,
+                messages.forLocale(locale).email_password_reset_subject(),
+                body,
+                null,
+                expiresAt,
+                MailTag.forOwner(ownerId));
     }
 
     /**
      * Sends an account-invite email carrying a set-password activation link (same single-use token
      * machinery as a password reset). {@code inviter} is the admin's display email, {@code host} the
      * app base URL, {@code expiresAt} the token expiry (retries stop there so no dead link is sent).
-     * {@code locale} drives the {msg:} keys in the body.
+     * {@code locale} drives the {msg:} keys in the body. {@code ownerId} is the invited account, so a
+     * parked copy goes with it if the account is deleted.
      */
     public void sendInvite(
-            String toEmail, String activationUrl, String inviter, String host, Instant expiresAt, Locale locale) {
+            Long ownerId,
+            String toEmail,
+            String activationUrl,
+            String inviter,
+            String host,
+            Instant expiresAt,
+            Locale locale) {
         String body = Templates.invite(locale.getLanguage(), activationUrl, inviter, host)
                 .setLocale(locale)
                 .render();
-        mailSender.send(null, toEmail, messages.forLocale(locale).email_invite_subject(), body, null, expiresAt);
+        mailSender.send(
+                null,
+                toEmail,
+                messages.forLocale(locale).email_invite_subject(),
+                body,
+                null,
+                expiresAt,
+                MailTag.forOwner(ownerId));
     }
 
     /**
      * Critical operational alert: the owner's Google account is disconnected and their booking page
      * is paused. Sent regardless of {@code ownerNotificationsEnabled} (that flag governs only routine
      * booking notifications). Links to the Google settings page so the owner can reconnect.
-     * {@code locale} drives any {msg:} keys rendered in the template body.
+     * {@code locale} drives any {msg:} keys rendered in the template body. {@code ownerId} tags a
+     * parked copy so deleting that account also clears it.
      */
-    public void sendGoogleDisconnected(String toEmail, String accountEmail, Locale locale) {
+    public void sendGoogleDisconnected(Long ownerId, String toEmail, String accountEmail, Locale locale) {
         var reconnectUrl = baseUrl + "/me/google";
         String body = Templates.googleDisconnected(
                         locale.getLanguage(), accountEmail == null ? "your account" : accountEmail, reconnectUrl)
                 .setLocale(locale)
                 .render();
-        mailSender.send(null, toEmail, messages.forLocale(locale).email_google_disconnected_subject(), body, null);
+        mailSender.send(
+                null,
+                toEmail,
+                messages.forLocale(locale).email_google_disconnected_subject(),
+                body,
+                null,
+                MailTag.forOwner(ownerId));
     }
 
     // basePath = "email": @Location on individual @CheckedTemplate native methods is NOT honored by

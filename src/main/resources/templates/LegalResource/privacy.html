@@ -1,6 +1,7 @@
 {@java.lang.String title}
 {@site.asm0dey.calit.web.OgCard og}
 {@io.quarkus.qute.RawString override}
+{@java.lang.Boolean anyChannelConfigured}
 {#include base title=title og=og}
 {#if override}
 <div class="max-w-3xl mx-auto">{override}</div>
@@ -36,13 +37,13 @@
 
   <h2 class="text-xl font-semibold mt-6">Data sharing</h2>
   <p class="mt-2">calit does not sell or share your data.</p>
-  {#if inject:privacy.googleConfigured || inject:privacy.smtpHost || inject:privacy.anyChannelConfigured || inject:privacy.oidcConfigured || inject:privacy.turnstileConfigured}
+  {#if inject:privacy.googleConfigured || inject:privacy.smtpHost || anyChannelConfigured || inject:privacy.oidcConfigured || inject:privacy.turnstileConfigured}
   <p class="mt-2">This deployment sends data to:</p>
   <ul class="list-disc ps-6 mt-2">
     {#if inject:privacy.googleConfigured}<li>Google, for the calendar operations above.</li>{/if}
     {#if inject:privacy.oidcConfigured}<li>The single sign-on identity provider configured by the operator, when you sign in with it.</li>{/if}
     {#if inject:privacy.smtpHost}<li>The SMTP server <code>{inject:privacy.smtpHost}</code>, which delivers booking and notification emails.</li>{/if}
-    {#if inject:privacy.anyChannelConfigured}<li>The chat or push services hosts have configured as notification channels (for example Telegram, Slack, Discord or ntfy). Messages already delivered there cannot be recalled.</li>{/if}
+    {#if anyChannelConfigured}<li>The chat or push services hosts have configured as notification channels (for example Telegram, Slack, Discord or ntfy). Messages already delivered there cannot be recalled.</li>{/if}
     {#if inject:privacy.turnstileConfigured}<li>Cloudflare Turnstile, which checks booking requests for abuse.</li>{/if}
   </ul>
   {#else}
