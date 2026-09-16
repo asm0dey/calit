@@ -65,7 +65,7 @@
     <!-- CALIT_RETENTION_FOREVER -->
     <li>This deployment sets no automatic retention window, so booking details are kept until removed by the host or the operator. A host may still set their own window, up to 36,500 days.</li>
     {/if}
-    <li>Emails queued for sending are deleted within 30 days of being queued or sent. Password-reset and sign-in tokens are deleted within a day of expiring.</li>
+    <li>Emails queued for sending are deleted about 30 days after they are sent (or after they were queued, if never sent). Password-reset, invitation and sign-in tokens are deleted about a day after they expire.</li>
   </ul>
 
   <h2 class="text-xl font-semibold mt-6">Security</h2>
