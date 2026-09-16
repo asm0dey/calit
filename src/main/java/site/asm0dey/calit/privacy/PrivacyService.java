@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.BookingService;
@@ -44,6 +45,12 @@ public class PrivacyService {
      * also means the per-email abuse cap ({@code idx_booking_email_created}) can never match an
      * erased row against a real address.
      *
+     * <p>Group bookings ({@code groupId != null}) write one row per co-host, each carrying its own
+     * copy of the invitee's name, email and answers (see {@code BookingService.bookGroup}). Erasing
+     * only the row named by {@code bookingId} would leave every other host's row holding that data
+     * indefinitely, so a group booking erases every row sharing that {@code groupId} — mirroring how
+     * {@code BookingService.cancel} already treats a group as one unit.
+     *
      * <p>Idempotent: an already-erased booking is left exactly as it was, so the retention
      * scheduler cannot restamp a row the invitee erased last week.
      */
@@ -53,6 +60,20 @@ public class PrivacyService {
         if (b == null || b.isErased()) {
             return;
         }
+        if (b.groupId == null) {
+            anonymiseRow(b);
+            return;
+        }
+        for (Booking row : Booking.group(b.groupId)) {
+            anonymiseRow(row);
+        }
+    }
+
+    /** Blanks and stamps one row. Guarded again per-row: a group can never end up half-erased. */
+    private static void anonymiseRow(Booking b) {
+        if (b.isErased()) {
+            return;
+        }
         b.inviteeName = "";
         b.inviteeEmail = "";
         b.answers = new HashMap<>();
@@ -60,10 +81,10 @@ public class PrivacyService {
         b.title = null; // invitee-writable free text; falls back to the meeting type's name
         b.description = null;
         b.erasedAt = Instant.now();
-        BookingGuest.delete("bookingId", bookingId);
-        Reminder.delete("bookingId = ?1 and sentAt is null", bookingId);
-        EmailOutbox.deleteForBooking(bookingId);
-        Log.infof("PRIVACY erasure booking=%d", bookingId);
+        BookingGuest.delete("bookingId", b.id);
+        Reminder.delete("bookingId = ?1 and sentAt is null", b.id);
+        EmailOutbox.deleteForBooking(b.id);
+        Log.infof("PRIVACY erasure booking=%d", b.id);
     }
 
     /**
@@ -72,32 +93,86 @@ public class PrivacyService {
      *
      * <p>An UPCOMING booking is cancelled first, through the ordinary cancel path, so the Google
      * event is deleted and the owner gets the normal cancellation mail. A past booking is
-     * anonymised directly: there is nothing left to cancel.
+     * anonymised directly: there is nothing left to cancel, so a stored Google event id (the owner's
+     * copy the spec still lists as reachable while connected) gets its own best-effort delete here.
+     *
+     * <p>{@code TxType.NEVER}: this method runs two separate {@code @Transactional} steps below —
+     * cancel, then anonymise — that must commit as two separate transactions. If a caller wrapped
+     * this call inside its own ambient transaction, both steps would join that one transaction
+     * instead, and the {@code BookingCancelled} {@code AFTER_SUCCESS} mail observer would not fire
+     * until BOTH steps committed — i.e. after anonymise had already blanked the invitee's name,
+     * parking a cancellation mail addressed to "" that survives the outbox purge below it. Refusing
+     * an ambient transaction forces cancel's commit (and its mail, addressed while the name is still
+     * real) to land before anonymise begins.
      */
+    @Transactional(Transactional.TxType.NEVER)
     public ErasureReport eraseByManageToken(String manageToken) {
         Booking b = QuarkusTransaction.requiringNew().call(() -> Booking.<Booking>findByManageToken(manageToken));
         if (b == null || b.isErased()) {
-            throw new NotFoundException("No booking for token " + manageToken);
+            throw new NotFoundException("No booking for that token");
         }
-        var hadGoogleEvent = b.googleEventId != null;
-        var googleReachable = hadGoogleEvent && calendarPort.isConnected(b.ownerId);
 
-        if (isUpcomingAndHeld(b)) {
+        List<Booking> rows = b.groupId == null
+                ? List.of(b)
+                : QuarkusTransaction.requiringNew().call(() -> Booking.group(b.groupId));
+        // The shared Google event lives on whichever row created it (the group's chosen organizer --
+        // BookingService.createGroupGoogleEvent), not necessarily this row: look across the group.
+        Booking eventRow =
+                rows.stream().filter(r -> r.googleEventId != null).findFirst().orElse(null);
+
+        boolean upcoming = isUpcomingAndHeld(b);
+        ErasureReport.GoogleOutcome google;
+        if (eventRow == null) {
+            google = ErasureReport.GoogleOutcome.NOT_APPLICABLE;
+        } else if (upcoming) {
+            // cancel() below does the actual delete, gated on the same isConnected check
+            // BookingService.cancelSingle/deleteGroupGoogleEvent use -- counted as "ran" per that call.
+            google = calendarPort.isConnected(eventRow.ownerId)
+                    ? ErasureReport.GoogleOutcome.REMOVED
+                    : ErasureReport.GoogleOutcome.UNREACHABLE;
+        } else {
+            google = bestEffortGoogleDelete(eventRow);
+        }
+
+        if (upcoming) {
             bookingService.cancel(manageToken); // deletes the Google event, mails the owner
         }
         anonymise(b.id);
 
-        var google = !hadGoogleEvent
-                ? ErasureReport.GoogleOutcome.NOT_APPLICABLE
-                : googleReachable ? ErasureReport.GoogleOutcome.REMOVED : ErasureReport.GoogleOutcome.UNREACHABLE;
-        var report = new ErasureReport(
-                google, NotificationChannel.count("ownerId", b.ownerId) > 0, /* mail already delivered */ true);
+        List<Long> ownerIds = rows.stream().map(r -> r.ownerId).distinct().toList();
+        var channelsWereUsed = NotificationChannel.count("ownerId in ?1", ownerIds) > 0;
+        var report = new ErasureReport(google, channelsWereUsed, /* mail already delivered */ true);
         // Proof of handling: one log line, booking id plus per-destination outcome. No erasure_log
         // table until an operator actually needs an audit trail (ponytail).
         Log.infof(
                 "PRIVACY erasure booking=%d google=%s channels=%s mail=%s",
                 b.id, report.google(), report.channelsWereUsed(), report.mailWasDelivered());
         return report;
+    }
+
+    /**
+     * Past bookings are never cancelled, so nothing else calls {@code CalendarPort.deleteEvent} for
+     * them; a stored event id still means the owner's Google copy exists, and the spec lists it as
+     * reachable while connected. Mirrors {@code BookingService.cancelSingle}'s connected-gated
+     * delete, but — unlike cancel, which lets a Google failure roll back the whole cancellation —
+     * catches rather than propagates: the invitee's own erasure of calit's copy must still complete
+     * even when the remote call fails.
+     */
+    private ErasureReport.GoogleOutcome bestEffortGoogleDelete(Booking eventRow) {
+        if (!calendarPort.isConnected(eventRow.ownerId)) {
+            return ErasureReport.GoogleOutcome.UNREACHABLE;
+        }
+        try {
+            calendarPort.deleteEvent(eventRow.ownerId, eventRow.calendarRef(), eventRow.googleEventId);
+            return ErasureReport.GoogleOutcome.REMOVED;
+        } catch (RuntimeException e) {
+            Log.warnf(
+                    e,
+                    "PRIVACY erasure booking=%d could not delete Google event %s",
+                    eventRow.id,
+                    eventRow.googleEventId);
+            return ErasureReport.GoogleOutcome.UNREACHABLE;
+        }
     }
 
     private static boolean isUpcomingAndHeld(Booking b) {
