@@ -90,6 +90,7 @@
       {#else}
       <p class="text-sm text-base-content/70">{#if contactEmail}{msg:pub_erase_disabled_notice(contactEmail)}{#else}{msg:pub_erase_disabled_notice_no_contact}{/if}</p>
       {/if}
+      <a class="btn btn-ghost btn-sm" href="/booking/{booking.manageToken}/data">{msg:pub_manage_download_data}</a>
       {tzScript.raw}
       {calScript.raw}
     </div>

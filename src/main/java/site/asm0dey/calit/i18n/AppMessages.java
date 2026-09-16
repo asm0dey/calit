@@ -514,6 +514,9 @@ public interface AppMessages {
     @Message("Cancel this booking")
     String pub_manage_btn_cancel();
 
+    @Message("Download my data")
+    String pub_manage_download_data();
+
     // ---- Unavailable page (unavailable.html) ----
 
     @Message("Scheduling temporarily unavailable")

@@ -54,7 +54,8 @@ class MultiHostMessageParityTest {
             "pub_erased_contact",
             "pub_erased_btn",
             "pub_erase_disabled_notice",
-            "pub_erase_disabled_notice_no_contact");
+            "pub_erase_disabled_notice_no_contact",
+            "pub_manage_download_data");
 
     private static final Set<String> HE_DEFERRED_ADMIN_KEYS = Set.of("adm_booking_invitee_erased");
 

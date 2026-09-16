@@ -569,6 +569,19 @@ public class PublicResource {
                 .build();
     }
 
+    /**
+     * Art. 15 access for the invitee: everything calit holds about THIS booking, as a JSON
+     * attachment. Keyed by the manage token, same as every other invitee route.
+     */
+    @GET
+    @Path("/booking/{manageToken}/data")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response bookingData(@PathParam("manageToken") String manageToken) {
+        return Response.ok(privacy.exportBooking(manageToken))
+                .header("Content-Disposition", "attachment; filename=\"booking-data.json\"")
+                .build();
+    }
+
     /** Render the invitee's Manage hub (shared by GET manage and POST edit-details). */
     private TemplateInstance renderManage(Booking booking) {
         var m = messages.forLocale(activeLocale.current());

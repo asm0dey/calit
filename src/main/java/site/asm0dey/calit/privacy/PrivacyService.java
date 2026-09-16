@@ -8,11 +8,14 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.email.EmailOutbox;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.notify.NotificationChannel;
@@ -178,5 +181,48 @@ public class PrivacyService {
     private static boolean isUpcomingAndHeld(Booking b) {
         return b.endUtc.isAfter(Instant.now())
                 && (b.status == BookingStatus.PENDING || b.status == BookingStatus.CONFIRMED);
+    }
+
+    /**
+     * Everything calit holds about ONE booking, from the invitee's side of it: the times, the
+     * meeting, their own name/email/answers, and their guest list. Art. 15 access, scoped to what
+     * the manage token authorizes — it proves control of this booking and nothing else, so this is
+     * not a search across every booking that shares an address.
+     *
+     * <p>The 404 message deliberately omits the token: unlike a booking id, the manage token is a
+     * bearer credential, and echoing it back would put it in logs/error pages for no benefit.
+     */
+    public Map<String, Object> exportBooking(String manageToken) {
+        Booking b = Booking.findByManageToken(manageToken);
+        if (b == null || b.isErased()) {
+            throw new NotFoundException("No booking for that token");
+        }
+        MeetingType type = MeetingType.findById(b.meetingTypeId);
+        var booking = new LinkedHashMap<String, Object>();
+        booking.put("id", b.id);
+        booking.put("meetingType", b.effectiveTitle(type));
+        booking.put("title", b.title);
+        booking.put("description", b.description);
+        booking.put("startUtc", b.startUtc.toString());
+        booking.put("endUtc", b.endUtc.toString());
+        booking.put("status", b.status.name());
+        booking.put("locale", b.locale);
+        booking.put("createdAt", b.createdAt.toString());
+
+        var invitee = new LinkedHashMap<String, Object>();
+        invitee.put("name", b.inviteeName);
+        invitee.put("email", b.inviteeEmail);
+        invitee.put("answers", b.answers);
+
+        var guests = BookingGuest.allForBooking(b.id).stream()
+                .map(g -> Map.<String, Object>of("email", g.email, "status", g.status.name()))
+                .toList();
+
+        var out = new LinkedHashMap<String, Object>();
+        out.put("exportedAt", Instant.now().toString());
+        out.put("booking", booking);
+        out.put("invitee", invitee);
+        out.put("guests", guests);
+        return out;
     }
 }
