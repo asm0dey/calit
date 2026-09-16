@@ -76,6 +76,17 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Compliance',
+          items: [
+            { label: 'GDPR operator guide', slug: 'compliance/operator-guide' },
+            { label: 'Records of processing (Art. 30)', slug: 'compliance/records-of-processing' },
+            { label: 'Sub-processors', slug: 'compliance/sub-processors' },
+            { label: 'Customising the legal pages', slug: 'compliance/custom-legal-pages' },
+            { label: 'DPA template', slug: 'compliance/dpa-template' },
+            { label: 'Breach checklist', slug: 'compliance/breach-checklist' },
+          ],
+        },
+        {
           label: 'Releases',
           items: [
             { label: 'Changelog', slug: 'releases/changelog' },

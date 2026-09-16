@@ -3,20 +3,31 @@ title: Privacy Policy
 description: How calit handles your data, including Google user data.
 ---
 
-<!-- Canonical privacy policy. The app serves the same text at ${APP_BASE_URL}/privacy
-     (rendered by src/main/resources/templates/LegalResource/privacy.html on the main branch).
-     When editing this policy, mirror the changes into that template so the two stay in sync. -->
+<!-- REFERENCE copy, not a mirror. The app page at ${APP_BASE_URL}/privacy
+     (src/main/resources/templates/LegalResource/privacy.html on main) is authoritative for a
+     running instance: it renders from what that deployment actually does. This page describes the
+     software with every optional feature enabled, for someone evaluating calit. Do not re-establish
+     a line-by-line mirror; update the shared prose by hand when the software's behaviour changes. -->
+
+:::caution[This is the reference copy]
+Your deployment's actual privacy policy is served by your own instance at
+`${APP_BASE_URL}/privacy`. It describes only what that deployment really does — a deployment
+without Google connected does not claim Google processing, and the retention section reflects the
+window you configured. This page describes the software with every optional feature enabled, for
+evaluation. Link the instance URL, not this one, from your OAuth consent screen.
+:::
 
 :::note[For operators]
 calit is **self-hosted**: each deployment is run and controlled by whoever
 installs it, and that operator is the data controller for their instance. This
-page documents how the calit software handles data so it can serve as the
-privacy policy for a deployment (e.g. the URL you submit for Google OAuth
-verification). Adapt the contact details below to your deployment, and review
-with your own legal requirements before relying on it.
+page documents how the calit software handles data. Your instance serves its own
+policy, naming you through `OPERATOR_NAME` and `PRIVACY_CONTACT_EMAIL`; see the
+[GDPR operator guide](/calit/compliance/operator-guide/) and
+[Customising the legal pages](/calit/compliance/custom-legal-pages/). Review it
+against your own legal requirements before relying on it.
 :::
 
-_Last updated: 2026-06-15_
+_Last updated: 2026-09-16_
 
 ## What calit is
 
@@ -32,12 +43,12 @@ deployment's database.
 - **Scheduling data** — your meeting types, availability rules, and the
   bookings made by invitees (invitee name, email, and any answers to custom
   booking questions you configure).
-- **Google account data** — when you connect Google Calendar (optional): the
+- **Google account data** — when the deployment has Google configured and you connect Google Calendar: the
   Google account's email and stable subject identifier (from the OpenID
   id_token), and the OAuth access and refresh tokens. **Tokens are encrypted at
   rest** in the deployment's database.
 
-## How Google user data is used
+## How Google user data is used (when Google is configured)
 
 When you connect a Google account, calit requests the Google Calendar scope and
 uses it **only** to provide scheduling:
@@ -62,17 +73,42 @@ for security, to comply with law, or with your explicit consent.
 
 ## Data sharing
 
-calit does not sell or share your data. The only external party a deployment
-communicates with for core functionality is Google (and only for the calendar
-operations above), plus the SMTP server the operator configures for sending
-booking and notification emails.
+calit does not sell or share your data. A deployment sends data only to the
+services its operator has configured, and its own `/privacy` page lists exactly
+which ones:
+
+- **Google** (when configured), for the calendar operations above.
+- **A single sign-on identity provider** (when configured), when you sign in with it.
+- **The SMTP server** the operator configures, which delivers booking and
+  notification emails.
+- **Chat or push services** (when a host has configured notification channels,
+  for example Telegram, Slack, Discord or ntfy). Messages already delivered
+  there cannot be recalled.
+- **Cloudflare Turnstile** (when configured), which checks booking requests for
+  abuse.
 
 ## Retention and deletion
 
-- Disconnecting a Google account in **Settings → Google** deletes that account's
-  stored tokens and calendar selections from the database.
-- Deleting a user account removes that user's scheduling data.
-- Booking records are retained until removed by the account owner or operator.
+- Disconnecting a Google account in **Settings → Google** (when Google is
+  configured) deletes that account's stored tokens and calendar selections. It
+  does not withdraw the grant at Google — revoke calit's access in your Google
+  account to do that.
+- Deleting your account at **Settings → Delete my account** (`/me/settings/delete`)
+  removes your account, settings, meeting types, availability, bookings,
+  connected Google accounts and notification channels. It does **not** revoke
+  the grant at Google either.
+- A hash of a deleted account's username is kept permanently, so that name can
+  never be re-registered and used to take over a stale login.
+- If you booked a meeting, the manage link in your confirmation email lets you
+  download your data or erase it from that booking. Bookings are not linked to
+  each other by email address, so erasure reaches only the booking whose manage
+  link you used. An operator may turn self-service erasure off; the instance
+  then tells you whom to contact instead.
+- Booking details are anonymised a set number of days after the meeting ends
+  (when the operator or host has configured a retention window). Without one,
+  bookings are kept until removed by the host or the operator.
+- Emails queued for sending are deleted within 30 days of being queued or sent.
+  Password-reset and sign-in tokens are deleted within a day of expiring.
 
 ## Security
 

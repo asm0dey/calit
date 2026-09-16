@@ -16,6 +16,7 @@ From there, admins can:
 - Create a new user by invitation (see below).
 - Lock or unlock an account — see [Locking an account](#locking-an-account).
 - Promote or demote the admin role on existing accounts.
+- Delete an account — see [Deleting an account](#deleting-an-account).
 
 ## Locking an account
 
@@ -31,6 +32,17 @@ Unlocking restores all of it.
 :::caution[Existing bookings are not cancelled]
 Locking an account does not cancel the bookings it already has. They stay on the books, and each invitee can still cancel from the link they were emailed. If the person has left for good, cancel their upcoming bookings before locking so the invitees are told.
 :::
+
+## Deleting an account
+
+Any user can delete their own account from **Settings → Delete my account** (`/me/settings/delete`), confirming with their password, or with their username if they sign in only through Google or SSO. A site admin can delete another account with the **Delete** button in `/me/users`; there is no separate confirmation page.
+
+- Deletion removes the account, its settings, meeting types, availability, bookings, connected Google accounts and notification channels. No email is sent.
+- The last enabled admin cannot be deleted. An admin deletes their own account from Settings, not from `/me/users`.
+- It does not revoke calit's access at Google; the user does that in their Google account.
+- The username can never be used again: calit keeps a hash of it so a stale login cookie cannot attach to a new account.
+
+Before deleting, a user can download everything calit holds about their account as JSON with **Download all my data** in Settings (`/me/export`). In the same place, **Delete booking details after (days)** sets how long their bookings keep invitee details; leave it blank to use the site default. See the [GDPR operator guide](/calit/compliance/operator-guide/).
 
 ## Inviting a user
 

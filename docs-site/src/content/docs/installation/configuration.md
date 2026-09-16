@@ -136,7 +136,7 @@ Register **both** derived redirect URIs in your Google OAuth client even if you 
 
 ## Public site & legal pages (optional)
 
-These let a hosted instance pass Google OAuth verification. calit serves a privacy policy at `/privacy` and terms at `/terms`; each deployment is its own data controller, so the operator details are configurable. All three are optional and the feature is off/safe when unset.
+These let a hosted instance pass Google OAuth verification. calit serves a privacy policy at `/privacy` and terms at `/terms`; each deployment is its own data controller, so the operator details are configurable. All three are optional and the feature is off/safe when unset. To replace the page bodies entirely, see `PRIVACY_POLICY_PATH` and `TERMS_PATH` under [Privacy](#privacy).
 
 | Variable | Description | Default |
 |---|---|---|
@@ -145,6 +145,23 @@ These let a hosted instance pass Google OAuth verification. calit serves a priva
 | `PRIVACY_CONTACT_EMAIL` | Contact address shown on `/privacy` for privacy/data requests. Hidden when blank. | *(blank — line hidden)* |
 
 See [Google OAuth setup → OAuth verification](/calit/installation/google-oauth/#oauth-verification) for when these are needed.
+
+## Privacy
+
+calit ships its data-protection tools switched on; see the
+[GDPR operator guide](/calit/compliance/operator-guide/) for what they do and where they stop.
+
+| Variable | Description | Default |
+|---|---|---|
+| `INVITEE_ERASURE` | Invitee self-service erasure on the booking manage link. `false` replaces the button with `PRIVACY_CONTACT_EMAIL` and makes `/booking/{token}/erase` return 404; the download stays, and your obligation to answer erasure requests does not go away. | `true` |
+| `BOOKING_RETENTION_DAYS` | Anonymise bookings this many days after they end. Each host may set their own window in their settings, which takes precedence. Values above `36500` are capped. | *(blank — keep forever)* |
+| `PRIVACY_POLICY_PATH` | Path, inside the container, to an HTML fragment that replaces the shipped `/privacy` body. See [Customising the legal pages](/calit/compliance/custom-legal-pages/). | *(blank — shipped page)* |
+| `TERMS_PATH` | Path, inside the container, to an HTML fragment that replaces the shipped `/terms` body. | *(blank — shipped page)* |
+
+Two clean-ups are always on and not configurable: queued email is deleted 30 days after it was
+queued, whether sent or abandoned (mail still waiting for a retry is kept), and password-reset and
+sign-in tokens are deleted a day after they expire. Both this purge and the retention sweep run
+once a day on every replica.
 
 ## CAPTCHA / bot protection (optional)
 
