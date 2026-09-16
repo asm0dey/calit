@@ -107,4 +107,54 @@ class AdminSettingsTest {
                 .then()
                 .statusCode(200);
     }
+
+    /** Reads {@code bookingRetentionDays} straight from the DB, bypassing the test thread's first-level cache. */
+    @Transactional
+    Integer readRetentionDays() {
+        em.clear();
+        return site.asm0dey.calit.domain.OwnerSettings.forOwner(1L).bookingRetentionDays;
+    }
+
+    /**
+     * Blank/zero/negative/unparseable all mean "no override" (null); an in-range value is stored
+     * as-is; anything above {@code PrivacyConfig.MAX_RETENTION_DAYS} (36500) is clamped down to it
+     * rather than rejected (R20) — see {@code AdminResource.parseRetentionDays}. The last case also
+     * confirms the settings page pre-fills the saved value.
+     */
+    @Test
+    void updateSettingsParsesAndClampsRetentionDays() {
+        assertRetentionStores("", null);
+        assertRetentionStores("0", null);
+        assertRetentionStores("-3", null);
+        assertRetentionStores("abc", null);
+        assertRetentionStores("99999999", 36500);
+        assertRetentionStores("30", 30);
+
+        given().cookie("quarkus-credential", FormAuth.login())
+                .when()
+                .get("/me/settings")
+                .then()
+                .statusCode(200)
+                .body(containsString("name=\"bookingRetentionDays\" value=\"30\""));
+    }
+
+    /** POSTs the full settings form (every field {@code updateSettings} reads) with one retention value. */
+    private void assertRetentionStores(String posted, Integer expected) {
+        given().cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("ownerName", "New Owner")
+                .formParam("ownerEmail", "new@example.com")
+                .formParam("timezone", "Europe/Berlin")
+                .formParam("locale", "en")
+                .formParam("timeFormat", "auto")
+                .formParam("ownerNotificationsEnabled", "on")
+                .formParam("bookingRetentionDays", posted)
+                .when()
+                .post("/me/settings")
+                .then()
+                .statusCode(200);
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                expected, readRetentionDays(), "posting bookingRetentionDays=\"" + posted + "\"");
+    }
 }

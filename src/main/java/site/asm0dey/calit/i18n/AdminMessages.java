@@ -843,8 +843,12 @@ public interface AdminMessages {
     String adm_settings_label_retention();
 
     @Message(
+            "Leave blank to use the site default of {days} days. Invitee name, email and answers are removed; the time slot record stays.")
+    String adm_settings_retention_hint_with_default(int days);
+
+    @Message(
             "Leave blank to keep bookings indefinitely. Invitee name, email and answers are removed; the time slot record stays.")
-    String adm_settings_retention_hint();
+    String adm_settings_retention_hint_forever();
 
     @Message("Save")
     String adm_settings_btn_save();

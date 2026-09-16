@@ -1,5 +1,6 @@
 package site.asm0dey.calit.scheduler;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -8,10 +9,15 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.privacy.ErasureFixtures;
+import site.asm0dey.calit.user.AppUser;
 
 /**
  * Default config: {@code calit.retention.booking-days} unset. The instance-default case lives in
@@ -82,5 +88,95 @@ class RetentionSchedulerTest {
         scheduler.sweep();
 
         assertEquals(firstStamp, erasedAt(id), "a second sweep must not touch an already-erased booking");
+    }
+
+    /**
+     * R20: an unclamped huge window makes Postgres' {@code make_interval}/{@code timestamp}
+     * arithmetic raise "timestamp out of range" — and since one sweep tick is one transaction, that
+     * would stop retention for every owner that tick. The scheduler's SQL clamps via
+     * {@code LEAST(..., :cap)}, so this must not throw, and — clamped to ~100 years — a 30-day-old
+     * booking stays well inside the window and is not erased.
+     */
+    @Test
+    void aHugeOwnerRetentionValueIsClampedAndDoesNotThrow() {
+        Long id = ErasureFixtures.seedPastBookingId();
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            s.bookingRetentionDays = 99_999_999;
+        });
+
+        assertDoesNotThrow(scheduler::sweep, "a huge retention window must not blow up interval arithmetic");
+
+        assertFalse(erased(id), "clamped to ~100 years, a 30-day-old booking is still well inside the window");
+    }
+
+    /** A booking whose window has not yet elapsed must be kept — the mirror of the 7-day-catches case. */
+    @Test
+    void aBookingStillInsideItsWindowIsKept() {
+        Long id = ErasureFixtures.seedPastBookingId(); // ends ~30 days ago
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            s.bookingRetentionDays = 60; // window longer than the booking's age
+        });
+        scheduler.sweep();
+        assertFalse(erased(id), "a 60-day window must keep a booking that ended only 30 days ago");
+    }
+
+    /**
+     * Each row is measured against ITS OWN owner's window — one sweep must erase only the owner
+     * whose window has elapsed, never the other, even though both bookings ended around the same
+     * time.
+     */
+    @Test
+    void twoOwnersWithDifferentWindowsOnlyErasesTheOnePastItsOwnWindow() {
+        Long ownerOneBookingId = ErasureFixtures.seedPastBookingId(); // owner 1, ends ~30 days ago
+        QuarkusTransaction.requiringNew().run(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            s.bookingRetentionDays = 7; // shorter than 30 -> must be erased
+        });
+
+        Long ownerTwoBookingId = QuarkusTransaction.requiringNew().call(() -> {
+            var u = new AppUser();
+            u.username = "retention-owner-two";
+            u.passwordHash = "x";
+            u.roles = "user";
+            u.enabled = true;
+            u.isAdmin = false;
+            u.createdAt = Instant.now();
+            u.persist();
+
+            var s = new OwnerSettings();
+            s.ownerId = u.id;
+            s.ownerName = "Owner Two";
+            s.ownerEmail = "owner-two@example.com";
+            s.timezone = "UTC";
+            s.bookingRetentionDays = 365; // much longer -> must be kept
+            s.persist();
+
+            var t = new MeetingType();
+            t.ownerId = u.id;
+            t.name = "Owner Two's type";
+            t.slug = "retention-owner-two-type";
+            t.durationMinutes = 30;
+            t.persist();
+
+            var b = new Booking();
+            b.ownerId = u.id;
+            b.meetingTypeId = t.id;
+            b.inviteeName = "Other Invitee";
+            b.inviteeEmail = "other@example.com";
+            b.startUtc = Instant.now().minus(30, ChronoUnit.DAYS);
+            b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
+            b.status = BookingStatus.CONFIRMED;
+            b.createdAt = Instant.now().minus(31, ChronoUnit.DAYS);
+            b.manageToken = UUID.randomUUID().toString();
+            b.persist();
+            return b.id;
+        });
+
+        scheduler.sweep();
+
+        assertTrue(erased(ownerOneBookingId), "owner 1's 7-day window must catch its 30-day-old booking");
+        assertFalse(erased(ownerTwoBookingId), "owner 2's 365-day window must keep its 30-day-old booking");
     }
 }

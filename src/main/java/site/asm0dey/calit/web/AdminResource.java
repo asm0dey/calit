@@ -37,6 +37,7 @@ import site.asm0dey.calit.notify.ChannelRejected;
 import site.asm0dey.calit.notify.ChannelRow;
 import site.asm0dey.calit.notify.NotificationChannel;
 import site.asm0dey.calit.notify.NotificationChannelMeetingType;
+import site.asm0dey.calit.privacy.PrivacyConfig;
 import site.asm0dey.calit.privacy.PrivacyService;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
@@ -119,7 +120,8 @@ public class AdminResource {
                 String title,
                 List<ChannelRow> channels,
                 String channelError,
-                String channelNotice);
+                String channelNotice,
+                Integer retentionInstanceDefault);
 
         public static native TemplateInstance bookingFields(
                 List<BookingField> fields, FieldType[] fieldTypes, Long pendingCount, boolean isAdmin, String title);
@@ -214,6 +216,8 @@ public class AdminResource {
 
     final PrivacyService privacy;
 
+    final PrivacyConfig privacyConfig;
+
     final PasswordHasher passwordHasher;
 
     final AuditLog audit;
@@ -231,6 +235,7 @@ public class AdminResource {
             MailHealth mailHealth,
             ChannelAdmin channelAdmin,
             PrivacyService privacy,
+            PrivacyConfig privacyConfig,
             PasswordHasher passwordHasher,
             AuditLog audit,
             @ConfigProperty(name = "app.base-url") String baseUrl,
@@ -246,6 +251,7 @@ public class AdminResource {
         this.mailHealth = mailHealth;
         this.channelAdmin = channelAdmin;
         this.privacy = privacy;
+        this.privacyConfig = privacyConfig;
         this.passwordHasher = passwordHasher;
         this.audit = audit;
         this.baseUrl = baseUrl;
@@ -1554,17 +1560,25 @@ public class AdminResource {
                 m().adm_settings_title(),
                 channelRows(),
                 null,
-                null);
+                null,
+                privacyConfig.bookingRetentionDays().orElse(null));
     }
 
-    /** Blank, zero, negative and unparseable all mean "no override" — fall back to the instance default. */
+    /**
+     * Blank, zero, negative and unparseable all mean "no override" — fall back to the instance
+     * default. Anything above {@link PrivacyConfig#MAX_RETENTION_DAYS} is clamped, not rejected —
+     * see that constant for why an unclamped huge value can't reach the column.
+     */
     private static Integer parseRetentionDays(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
         }
         try {
             var days = Integer.parseInt(raw.trim());
-            return days > 0 ? days : null;
+            if (days <= 0) {
+                return null;
+            }
+            return Math.min(days, PrivacyConfig.MAX_RETENTION_DAYS);
         } catch (NumberFormatException e) {
             return null;
         }
@@ -1586,7 +1600,8 @@ public class AdminResource {
                 m().adm_settings_title(),
                 channelRows(),
                 channelError,
-                channelNotice);
+                channelNotice,
+                privacyConfig.bookingRetentionDays().orElse(null));
     }
 
     /**

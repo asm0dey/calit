@@ -8,6 +8,7 @@
 {@java.util.List<site.asm0dey.calit.notify.ChannelRow> channels}
 {@java.lang.String channelError}
 {@java.lang.String channelNotice}
+{@java.lang.Integer retentionInstanceDefault}
 {#include adminBase title=title pendingCount=pendingCount active="settings" isAdmin=isAdmin}
   <h1 class="text-2xl font-bold mb-4">{adm:adm_settings_h1}</h1>
   <form method="post" action="/me/settings" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-2xl">
@@ -31,8 +32,8 @@
       <input type="checkbox" name="ownerNotificationsEnabled" class="checkbox checkbox-sm"{#if settings && settings.ownerNotificationsEnabled} checked{/if}>
       {adm:adm_settings_label_notifications}</label>
     <label class="label" for="set-retention">{adm:adm_settings_label_retention}</label>
-    <input id="set-retention" class="input w-full" type="number" min="1" name="bookingRetentionDays" value="{#if settings && settings.bookingRetentionDays}{settings.bookingRetentionDays}{/if}">
-    <p class="text-sm text-base-content/70">{adm:adm_settings_retention_hint}</p>
+    <input id="set-retention" class="input w-full" type="number" min="1" max="36500" name="bookingRetentionDays" value="{#if settings && settings.bookingRetentionDays}{settings.bookingRetentionDays}{/if}">
+    <p class="text-sm text-base-content/70">{#if retentionInstanceDefault}{adm:adm_settings_retention_hint_with_default(retentionInstanceDefault)}{#else}{adm:adm_settings_retention_hint_forever}{/if}</p>
     <button type="submit" class="btn btn-primary mt-2">{adm:adm_settings_btn_save}</button>
   </form>
 

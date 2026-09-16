@@ -13,6 +13,16 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @ApplicationScoped
 public class PrivacyConfig {
 
+    /**
+     * Retention windows longer than this are clamped — here, in {@code RetentionScheduler}'s SQL,
+     * and in {@code AdminResource.parseRetentionDays}. An unclamped huge value (however it got into
+     * the column — the settings form, or a row written before this cap existed) makes {@code now()
+     * - make_interval(days => ...)} raise "timestamp out of range" in Postgres; since one sweep tick
+     * is one transaction, that single poison window would stop retention for EVERY owner every day.
+     * ~100 years is effectively unbounded for any real deployment.
+     */
+    public static final int MAX_RETENTION_DAYS = 36500;
+
     final boolean inviteeErasure;
 
     final Optional<Integer> retentionDays;
@@ -30,8 +40,11 @@ public class PrivacyConfig {
         return inviteeErasure;
     }
 
-    /** Instance-wide retention window. Empty = keep bookings forever, which is the default. */
+    /**
+     * Instance-wide retention window. Empty = keep bookings forever, which is the default. Clamped
+     * to {@link #MAX_RETENTION_DAYS}.
+     */
     public Optional<Integer> bookingRetentionDays() {
-        return retentionDays.filter(d -> d > 0);
+        return retentionDays.filter(d -> d > 0).map(d -> Math.min(d, MAX_RETENTION_DAYS));
     }
 }
