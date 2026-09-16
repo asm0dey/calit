@@ -204,7 +204,7 @@ public final class PersonalData {
             new Classified(
                     "login_ticket",
                     Set.of("expires_at", "id", "token_hash", "user_id"),
-                    Set.of("user_id"),
+                    Set.of("user_id", "token_hash"),
                     Subject.OWNER,
                     EraseRoute.AGE_PURGE),
             // --- remaining owner-configuration tables: no free text of their own besides what is
