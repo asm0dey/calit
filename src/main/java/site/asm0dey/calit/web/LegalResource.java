@@ -11,6 +11,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.util.Optional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -68,17 +69,19 @@ public class LegalResource {
     /**
      * The operator's replacement body for a legal page, or null to render the shipped one. Read on
      * every request rather than cached at startup: an operator editing the file should see the
-     * change without a restart, and these two pages are not hot. An unreadable path logs and falls
-     * back to the shipped copy — a missing file must never take /privacy down, because the Google
-     * consent screen links it.
+     * change without a restart, and these two pages are not hot. An unreadable path — missing file,
+     * or a malformed path string ({@link InvalidPathException}) — logs and falls back to the shipped
+     * copy — a missing file must never take /privacy down, because the Google consent screen links
+     * it. The warning carries the exception's message, not its stack trace: an operator typo in a
+     * config value is not an application error worth a trace dump on every request.
      */
     private RawString fragment(Optional<String> path) {
         return path.filter(p -> !p.isBlank())
                 .map(p -> {
                     try {
                         return new RawString(Files.readString(java.nio.file.Path.of(p)));
-                    } catch (IOException e) {
-                        Log.warnf(e, "Could not read legal fragment %s; serving the shipped copy", p);
+                    } catch (IOException | InvalidPathException e) {
+                        Log.warnf("Could not read legal fragment %s (%s); serving the shipped copy", p, e.getMessage());
                         return null;
                     }
                 })

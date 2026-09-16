@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import java.util.Optional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import site.asm0dey.calit.booking.CaptchaProviderConfig;
 import site.asm0dey.calit.notify.NotificationChannel;
 
 /**
@@ -23,7 +24,9 @@ public class PrivacyFacts {
 
     final Optional<String> smtpHost;
 
-    final boolean signupOpen;
+    final boolean mailerMocked;
+
+    final CaptchaProviderConfig captchaProviderConfig;
 
     final PrivacyConfig config;
 
@@ -32,12 +35,14 @@ public class PrivacyFacts {
             @ConfigProperty(name = "google.oauth.client-id") Optional<String> googleClientId,
             @ConfigProperty(name = "calit.oidc.enabled", defaultValue = "false") boolean oidcEnabled,
             @ConfigProperty(name = "quarkus.mailer.host") Optional<String> smtpHost,
-            @ConfigProperty(name = "calit.signup.enabled", defaultValue = "false") boolean signupOpen,
+            @ConfigProperty(name = "quarkus.mailer.mock", defaultValue = "false") boolean mailerMocked,
+            CaptchaProviderConfig captchaProviderConfig,
             PrivacyConfig config) {
         this.googleConfigured = googleClientId.filter(s -> !s.isBlank()).isPresent();
         this.oidcConfigured = oidcEnabled;
         this.smtpHost = smtpHost;
-        this.signupOpen = signupOpen;
+        this.mailerMocked = mailerMocked;
+        this.captchaProviderConfig = captchaProviderConfig;
         this.config = config;
     }
 
@@ -49,13 +54,27 @@ public class PrivacyFacts {
         return oidcConfigured;
     }
 
-    /** The SMTP relay this deployment hands mail to — a sub-processor the operator must name. */
+    /**
+     * The SMTP relay this deployment hands mail to — a sub-processor the operator must name. Null
+     * (no bullet) when mail is mocked ({@code quarkus.mailer.mock=true}, the %dev/%test default):
+     * {@code quarkus.mailer.host} carries a non-blank {@code @WithDefault("localhost")} even when
+     * mocked, so the mock flag — not blankness — is the real signal that no mail, and therefore no
+     * host, is actually reached.
+     */
     public String getSmtpHost() {
+        if (mailerMocked) {
+            return null;
+        }
         return smtpHost.filter(s -> !s.isBlank()).orElse(null);
     }
 
-    public boolean isSignupOpen() {
-        return signupOpen;
+    /**
+     * Whether this deployment routes booking-form submissions through Cloudflare Turnstile — the
+     * only {@link CaptchaProviderConfig#provider()} value that sends invitee data to a third party.
+     * {@code altcha} is self-hosted proof-of-work and {@code none} sends nothing anywhere.
+     */
+    public boolean isTurnstileConfigured() {
+        return "turnstile".equals(captchaProviderConfig.provider());
     }
 
     public boolean isInviteeErasureEnabled() {

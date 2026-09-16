@@ -35,26 +35,37 @@
   {/if}
 
   <h2 class="text-xl font-semibold mt-6">Data sharing</h2>
-  <p class="mt-2">calit does not sell or share your data. This deployment sends data to:</p>
+  <p class="mt-2">calit does not sell or share your data.</p>
+  {#if inject:privacy.googleConfigured || inject:privacy.smtpHost || inject:privacy.anyChannelConfigured || inject:privacy.oidcConfigured || inject:privacy.turnstileConfigured}
+  <p class="mt-2">This deployment sends data to:</p>
   <ul class="list-disc ps-6 mt-2">
     {#if inject:privacy.googleConfigured}<li>Google, for the calendar operations above.</li>{/if}
+    {#if inject:privacy.oidcConfigured}<li>The single sign-on identity provider configured by the operator, when you sign in with it.</li>{/if}
     {#if inject:privacy.smtpHost}<li>The SMTP server <code>{inject:privacy.smtpHost}</code>, which delivers booking and notification emails.</li>{/if}
     {#if inject:privacy.anyChannelConfigured}<li>The chat or push services hosts have configured as notification channels (for example Telegram, Slack, Discord or ntfy). Messages already delivered there cannot be recalled.</li>{/if}
+    {#if inject:privacy.turnstileConfigured}<li>Cloudflare Turnstile, which checks booking requests for abuse.</li>{/if}
   </ul>
+  {#else}
+  <p class="mt-2">This deployment does not send your data to any third party.</p>
+  {/if}
 
   <h2 class="text-xl font-semibold mt-6">Retention and deletion</h2>
   <ul class="list-disc ps-6 mt-2">
     {#if inject:privacy.googleConfigured}<li>Disconnecting a Google account in <a class="link" href="/me/google">Settings → Google</a> deletes that account's stored tokens and calendar selections from this site. It does not withdraw the grant at Google — revoke calit's access in your Google account to do that.</li>{/if}
     <li>Deleting your account at <a class="link" href="/me/settings/delete">Settings → Delete my account</a> removes your account, settings, meeting types, availability, bookings, connected Google accounts and notification channels.</li>
-    <li>A one-way hash of a deleted account's username is kept permanently, so that name can never be re-registered and used to take over a stale login.</li>
-    {#if inject:privacy.inviteeErasureEnabled}<li>If you booked a meeting here, the manage link in your confirmation email lets you download your data or erase it from that booking. Bookings are not linked to each other by email address, so erasure reaches only the booking whose manage link you used — not any other booking you may have made.</li>{/if}
+    <li>A hash of a deleted account's username is kept permanently, so that name can never be re-registered and used to take over a stale login.</li>
+    {#if inject:privacy.inviteeErasureEnabled}
+    <li>If you booked a meeting here, the manage link in your confirmation email lets you download your data or erase it from that booking. Bookings are not linked to each other by email address, so erasure reaches only the booking whose manage link you used — not any other booking you may have made.</li>
+    {#else}
+    <li>If you booked a meeting here, the manage link in your confirmation email lets you download your data from that booking. This deployment has disabled self-service erasure; to have a booking erased, contact the operator.</li>
+    {/if}
     {#if inject:privacy.retentionDays}
     <li>Booking details are anonymised {inject:privacy.retentionDays} days after the meeting ends by default on this deployment. Each host may set their own retention window instead, up to 36,500 days.</li>
     {#else}
     <!-- CALIT_RETENTION_FOREVER -->
     <li>This deployment sets no automatic retention window, so booking details are kept until removed by the host or the operator. A host may still set their own window, up to 36,500 days.</li>
     {/if}
-    <li>Emails parked for retry are deleted 30 days after they are sent or abandoned. Password-reset and sign-in links are deleted a day after they expire.</li>
+    <li>Emails queued for sending are deleted within 30 days of being queued or sent. Password-reset and sign-in tokens are deleted within a day of expiring.</li>
   </ul>
 
   <h2 class="text-xl font-semibold mt-6">Security</h2>

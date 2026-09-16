@@ -41,6 +41,21 @@ class PrivacyPolicyGoogleUnconfiguredTest {
                 .body(not(containsString("How Google user data is used")));
     }
 
+    /**
+     * With Google unconfigured, mail mocked (default {@code %test}), no notification-channel rows,
+     * OIDC off ({@code %test} default) and Turnstile off (default), NOTHING sends invitee data to a
+     * third party — the fallback sentence must render instead of an empty {@code <ul>}.
+     */
+    @Test
+    void dataSharingFallsBackToTheNoThirdPartySentenceWhenNothingIsConfigured() {
+        given().when()
+                .get("/privacy")
+                .then()
+                .statusCode(200)
+                .body(containsString("does not send your data to any third party"))
+                .body(not(containsString("This deployment sends data to:")));
+    }
+
     public static class BlankGoogleClientId implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
