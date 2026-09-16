@@ -7,15 +7,16 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.26.0
 
-Merged but not yet in a tagged release.
+GDPR tooling for operators: invitees can download or erase their booking data, owners can export
+or delete their account, and bookings can be anonymised after a retention window.
 
 - Migration `V34` adds `booking.erased_at`, `owner_settings.booking_retention_days` and
   cascading booking/owner links on `email_outbox`. No backfill; existing rows are untouched.
   ([#223](https://github.com/asm0dey/calit/pull/223))
 - `V34` also makes `booking.meeting_type_id` cascade on delete explicitly. ([#223](https://github.com/asm0dey/calit/pull/223))
-- The booking manage link now offers **Download my data**, a JSON file of that booking, including
+- The booking manage link now offers a Download my data link, a JSON file of that booking, including
   answers and guests, at `/booking/{token}/data`. ([#223](https://github.com/asm0dey/calit/pull/223))
 - Invitees can erase their data at `/booking/{token}/erase`: an upcoming booking is cancelled
   first, then anonymised; the host keeps the booking row, marked as erased. ([#223](https://github.com/asm0dey/calit/pull/223))
@@ -59,8 +60,9 @@ Merged but not yet in a tagged release.
   sub-processor list, DPA template, breach checklist and custom legal pages. ([#223](https://github.com/asm0dey/calit/pull/223))
 
 Upgrade: nothing to do. Retention stays off until you set `BOOKING_RETENTION_DAYS` or a host sets a
-window. Email queued before `V34` is cleared only by the 30-day purge, not by erasure. Deleted
-usernames can never be reused.
+window. Deleting a meeting type is now refused while it has upcoming bookings, and deleting one
+removes its past bookings. Email queued before `V34` is cleared only by the 30-day purge, not by
+erasure. Deleted usernames can never be reused.
 
 ## 1.25.1
 
