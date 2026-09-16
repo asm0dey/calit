@@ -5,7 +5,7 @@ status: completed
 type: task
 priority: normal
 created_at: 2026-09-16T18:24:38Z
-updated_at: 2026-09-16T18:33:45Z
+updated_at: 2026-09-16T18:51:02Z
 parent: calit-l3fk
 ---
 
@@ -89,3 +89,16 @@ Task 11: PrivacyFacts, LegalResource fragment overrides, conditional policy copy
   `MultiHostMessageParityTest` (4) — 13/13 passing, output pristine (the unreadable-fragment test's
   expected WARN log is the assertion, not noise).
 - Full suite: `mvn test` — 1229 tests, 0 failures, 0 errors, BUILD SUCCESS, 3:36 min.
+
+## Fix round 1 (task review "Needs fixes" — commit 8582b2c6)
+
+- Finding 1 (R24): added OIDC bullet (wired unused isOidcConfigured), added
+  PrivacyFacts.isTurnstileConfigured (via CaptchaProviderConfig.provider()=="turnstile"),
+  removed unused isSignupOpen, added empty-recipient-list fallback sentence.
+- Finding 2 (R24): quarkus.mailer.host has @WithDefault("localhost") (verified via sources jar) so
+  the Optional was never empty; getSmtpHost() now keys off quarkus.mailer.mock instead.
+- R25 minors: terms.html last-admin exception, privacy.html erasure-disabled download+contact
+  wording, LegalResource.fragment catches InvalidPathException + logs without stack trace, purge
+  wording matches PurgeScheduler constants exactly (30 days mail, 1 day tokens — not 2), "a hash of
+  your username" replaces "one-way hash".
+- 5 new/expanded test classes, 31/31 focused tests passing, full suite 1236/1236 green.
