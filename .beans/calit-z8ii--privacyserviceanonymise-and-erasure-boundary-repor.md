@@ -5,7 +5,7 @@ status: completed
 type: task
 priority: normal
 created_at: 2026-09-16T14:00:09Z
-updated_at: 2026-09-16T14:06:11Z
+updated_at: 2026-09-16T14:22:24Z
 parent: calit-l3fk
 ---
 
@@ -25,3 +25,9 @@ Task 4: PrivacyService.anonymise, PrivacyService.eraseByManageToken, ErasureRepo
   for owner 1. DatabaseResetCallback only seeds the admin app_user row, so the helper now
   seeds a minimal MeetingType on demand when none exists.
 - Full suite: `mvn test` -> 1162 tests, 0 failures, 0 errors, BUILD SUCCESS.
+
+
+## Fix round 1 (task review: Needs fixes)
+
+Addressed Findings 1 and 2 (Important) plus the three controller-promoted small fixes. See
+task-4-report.md "Fix round 1" section for full detail. Full suite green (1164/1164) after the fix.
