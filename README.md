@@ -19,7 +19,9 @@ Features: per-type buffers, min-notice / booking-horizon, date-specific availabi
 approval workflow, custom booking-form fields, reminder emails, multi-user tenancy with per-user
 owner-scoping (argon2id passwords), site-admin user management, optional **Google Calendar** sync,
 optional **OIDC / SSO** login, and public-form abuse protection (Cloudflare Turnstile **or**
-self-hosted ALTCHA, plus honeypot + per-email daily cap). UI localised to **en / de / he**.
+self-hosted ALTCHA, plus honeypot + per-email daily cap), and GDPR tooling (invitee data download and
+erasure, account export and deletion, an optional retention window, a privacy policy that describes
+the running deployment). UI localised to **en / de / he**.
 
 ## 📖 Documentation
 
@@ -62,6 +64,12 @@ Prebuilt multi-arch images are published to **`ghcr.io/asm0dey/calit`** (tags: `
 cp .env.example .env    # set at least DB_PASSWORD, SESSION_ENCRYPTION_KEY, APP_BASE_URL, MAIL_*
 docker compose up -d    # pulls the image; Flyway migrates on boot
 ```
+
+Privacy knobs, all optional: `INVITEE_ERASURE` (default `true`: invitee self-service erasure on the
+manage link), `BOOKING_RETENTION_DAYS` (unset = keep bookings forever; otherwise anonymise them that
+many days after they end), and `PRIVACY_POLICY_PATH` / `TERMS_PATH` (an HTML fragment replacing the
+shipped `/privacy` / `/terms` body). See the
+[GDPR operator guide](https://asm0dey.github.io/calit/compliance/operator-guide/).
 
 Full self-hosting instructions (compose file, required/optional env vars, reverse proxy, scaling,
 upgrade notes) → **[Installation docs](https://asm0dey.github.io/calit/)**.
