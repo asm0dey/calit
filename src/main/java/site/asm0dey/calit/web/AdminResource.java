@@ -1517,7 +1517,8 @@ public class AdminResource {
             @RestForm String timezone,
             @RestForm String locale,
             @RestForm String ownerNotificationsEnabled,
-            @RestForm String timeFormat) {
+            @RestForm String timeFormat,
+            @RestForm String bookingRetentionDays) {
         // Persist in its own tx that commits before the settings render (#75); return the (now
         // detached) row so the render below reads its committed field values with no connection held.
         OwnerSettings s = QuarkusTransaction.requiringNew().call(() -> {
@@ -1537,6 +1538,7 @@ public class AdminResource {
             row.timeFormat = timeFormat != null && OwnerSettings.HOUR_CYCLES.contains(timeFormat) ? timeFormat : "auto";
             // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
             row.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
+            row.bookingRetentionDays = parseRetentionDays(bookingRetentionDays);
             row.persist();
             return row;
         });
@@ -1553,6 +1555,19 @@ public class AdminResource {
                 channelRows(),
                 null,
                 null);
+    }
+
+    /** Blank, zero, negative and unparseable all mean "no override" — fall back to the instance default. */
+    private static Integer parseRetentionDays(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            var days = Integer.parseInt(raw.trim());
+            return days > 0 ? days : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /** This owner's channel rows, timestamps formatted in their own timezone. */

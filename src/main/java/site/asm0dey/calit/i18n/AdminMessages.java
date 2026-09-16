@@ -839,6 +839,13 @@ public interface AdminMessages {
     @Message("Send me (the owner) email notifications for bookings")
     String adm_settings_label_notifications();
 
+    @Message("Delete booking details after (days)")
+    String adm_settings_label_retention();
+
+    @Message(
+            "Leave blank to keep bookings indefinitely. Invitee name, email and answers are removed; the time slot record stays.")
+    String adm_settings_retention_hint();
+
     @Message("Save")
     String adm_settings_btn_save();
 

@@ -87,6 +87,35 @@ public final class ErasureFixtures {
         });
     }
 
+    /**
+     * A CONFIRMED booking in the FUTURE — same shape as {@link #seedPastBookingId()} minus the
+     * guest/reminder/mail dependents, which retention tests don't need. Proves retention measures
+     * from {@code end_utc}: a booking that has not ended must never be swept, however short the
+     * window. Shares {@link #SEED_OFFSET} with {@link #seedPastBookingId()} so repeated calls never
+     * collide with each other under {@code booking_no_overlap_held} — future and past windows are
+     * ~30 days apart, so cross-type collision is not a concern either.
+     */
+    public static Long seedUpcomingBookingId() {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            var b = new Booking();
+            b.ownerId = OWNER;
+            b.meetingTypeId = firstMeetingTypeId();
+            b.inviteeName = "Dana Vogel";
+            b.inviteeEmail = "dana@example.com";
+            b.answers = new HashMap<>(Map.of("why", "annual review"));
+            b.title = "Dana's upcoming slot";
+            b.description = "notes from Dana";
+            b.meetLink = "https://meet.google.com/abc-defg-hij";
+            b.startUtc = Instant.now().plus(30, ChronoUnit.DAYS).plus(SEED_OFFSET.getAndIncrement(), ChronoUnit.HOURS);
+            b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
+            b.status = BookingStatus.CONFIRMED;
+            b.createdAt = Instant.now();
+            b.manageToken = UUID.randomUUID().toString();
+            b.persist();
+            return b.id;
+        });
+    }
+
     /** Same seed as {@link #seedPastBookingId()}, returning the manage token instead of the id. */
     public static String seedPastBooking() {
         var id = seedPastBookingId();

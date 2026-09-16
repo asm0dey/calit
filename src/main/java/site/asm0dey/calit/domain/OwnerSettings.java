@@ -50,6 +50,16 @@ public class OwnerSettings extends PanacheEntityBase {
     @Column(name = "booking_retention_days")
     public Integer bookingRetentionDays;
 
+    /**
+     * This owner's effective retention window in days, or null for "keep forever". The owner's own
+     * value wins in BOTH directions — a longer window is as legitimate a choice as a shorter one,
+     * and silently capping it at the instance default would be a deletion the operator did not ask
+     * for.
+     */
+    public Integer retentionDaysOrDefault(Integer instanceDefault) {
+        return bookingRetentionDays != null ? bookingRetentionDays : instanceDefault;
+    }
+
     /** Returns this owner's settings row, or null if not yet configured. */
     public static OwnerSettings forOwner(Long ownerId) {
         return find("ownerId", ownerId).firstResult();

@@ -30,6 +30,9 @@
     <label class="label cursor-pointer justify-start gap-2 mt-2">
       <input type="checkbox" name="ownerNotificationsEnabled" class="checkbox checkbox-sm"{#if settings && settings.ownerNotificationsEnabled} checked{/if}>
       {adm:adm_settings_label_notifications}</label>
+    <label class="label" for="set-retention">{adm:adm_settings_label_retention}</label>
+    <input id="set-retention" class="input w-full" type="number" min="1" name="bookingRetentionDays" value="{#if settings && settings.bookingRetentionDays}{settings.bookingRetentionDays}{/if}">
+    <p class="text-sm text-base-content/70">{adm:adm_settings_retention_hint}</p>
     <button type="submit" class="btn btn-primary mt-2">{adm:adm_settings_btn_save}</button>
   </form>
 
