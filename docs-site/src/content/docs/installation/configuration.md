@@ -89,7 +89,7 @@ Booking and password-reset flows therefore never fail just because SMTP is unava
 
 ## Language
 
-No configuration is required. English and German are built in and always available. See [Language & localization](/calit/usage/languages/) for how visitors and account owners select their preferred language.
+No configuration is required. English, German and Hebrew are built in and always available. See [Language & localization](/calit/usage/languages/) for how visitors and account owners select their preferred language.
 
 ## Health probes
 
@@ -154,13 +154,17 @@ calit ships its data-protection tools switched on; see the
 | Variable | Description | Default |
 |---|---|---|
 | `INVITEE_ERASURE` | Invitee self-service erasure on the booking manage link. `false` replaces the button with `PRIVACY_CONTACT_EMAIL` and makes `/booking/{token}/erase` return 404; the download stays, and your obligation to answer erasure requests does not go away. | `true` |
-| `BOOKING_RETENTION_DAYS` | Anonymise bookings this many days after they end. Each host may set their own window in their settings, which takes precedence. Values above `36500` are capped. | *(blank — keep forever)* |
+| `BOOKING_RETENTION_DAYS` | Anonymise bookings this many days after they end. Each host may set their own window in their settings, which takes precedence. `0` or a negative value counts as unset; values above `36500` are capped. | *(blank — keep forever)* |
 | `PRIVACY_POLICY_PATH` | Path, inside the container, to an HTML fragment that replaces the shipped `/privacy` body. See [Customising the legal pages](/calit/compliance/custom-legal-pages/). | *(blank — shipped page)* |
 | `TERMS_PATH` | Path, inside the container, to an HTML fragment that replaces the shipped `/terms` body. | *(blank — shipped page)* |
 
-Two clean-ups are always on and not configurable: queued email is deleted 30 days after it was
-queued, whether sent or abandoned (mail still waiting for a retry is kept), and password-reset and
-sign-in tokens are deleted a day after they expire. Both this purge and the retention sweep run
+The per-host **Delete booking details after (days)** field follows the same rules: blank, `0`, a
+negative number or anything that is not a number means "use the site default", and values above
+`36500` are capped.
+
+Two clean-ups are always on and not configurable: queued email is deleted about 30 days after it is
+sent (or after it was queued, if never sent; mail still waiting for a retry is kept), and
+password-reset, invitation and sign-in tokens are deleted about a day after they expire. Both this purge and the retention sweep run
 once a day on every replica.
 
 ## CAPTCHA / bot protection (optional)

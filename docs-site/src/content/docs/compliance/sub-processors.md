@@ -11,7 +11,7 @@ Fill in one row per service you actually run. Delete the rows that do not apply.
 
 | Sub-processor | Used when | Data sent | Purpose | Location | DPA link |
 |---|---|---|---|---|---|
-| Google (Calendar API, and Google sign-in) | `GOOGLE_OAUTH_CLIENT_ID` is set and a host connects Google | Booking times, meeting title and description, invitee and guest email addresses; the host's Google identity | _[operator]_ | _[operator]_ | _[operator]_ |
+| Google (Calendar API, and Google sign-in) | `GOOGLE_OAUTH_CLIENT_ID` is set and a host connects Google | A calendar event per booking: title (the booking's or meeting type's name plus "with" and the invitee's name), description (the booking's or meeting type's), start and end time, attendees (invitee, host(s) and active guests by email address), and the meeting type's location text or a generated Meet link. Booking-field answers are not sent. Google sign-in also exchanges the host's Google identity | _[operator]_ | _[operator]_ | _[operator]_ |
 | Your SMTP provider (`MAIL_HOST`) | Always | Every email calit sends: recipient, subject, body, `.ics` invite | _[operator]_ | _[operator]_ | _[operator]_ |
 | Notification-channel provider (Telegram, Slack, Discord, ntfy, Gotify, webhook, …) — one row each | A host has configured that channel | Booking event messages, which name the invitee | _[operator]_ | _[operator]_ | _[operator]_ |
 | SSO identity provider (`OIDC_ISSUER_URL`) | `OIDC_ENABLED=true` | The sign-in exchange for hosts who use SSO | _[operator]_ | _[operator]_ | _[operator]_ |

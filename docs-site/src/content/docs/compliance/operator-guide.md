@@ -48,8 +48,9 @@ server, so the tools below are on by default, and only two of them are configura
 - **Retention sweep.** With `BOOKING_RETENTION_DAYS` set, or a host's own **Delete booking details
   after (days)** setting, bookings are anonymised that many days after they end. See
   [Configuration](/calit/installation/configuration/#privacy).
-- **Automatic purges.** Queued email is deleted 30 days after it was queued, and expired
-  password-reset and sign-in tokens a day after they lapse. Neither is configurable.
+- **Automatic purges.** Queued email is deleted about 30 days after it is sent (or after it was
+  queued, if never sent), and password-reset, invitation and sign-in tokens about a day after they
+  expire. Neither is configurable.
 
 ## What only you can do
 
@@ -81,10 +82,10 @@ reach, the done page shows your `PRIVACY_CONTACT_EMAIL`, when set.
 
 Two more consequences of the erasure order:
 
-- An upcoming booking is cancelled before it is anonymised, so the host's cancellation notice is
-  queued first. If it has not been delivered by the time the anonymisation runs, the anonymisation
-  deletes it with the rest of that booking's queued email. The host still sees the booking marked
-  as erased.
+- An upcoming booking is cancelled before it is anonymised, and the cancellation emails are sent
+  directly. If the direct send failed and a notice is parked in `email_outbox` for retry, the
+  erasure deletes it with the rest of that booking's queued email, so neither the host's nor the
+  invitee's copy is delivered. The host still sees the booking marked as erased.
 - Retention sweeps do not touch Google events. A booking anonymised by retention keeps its event on
   the host's calendar.
 
@@ -107,6 +108,12 @@ Deletion removes the account, its settings, meeting types, availability, booking
 accounts, notification channels, queued email, and reset and sign-in tokens. No "your account was
 deleted" email is sent. The last enabled admin cannot be deleted, and an admin cannot delete their
 own account from `/me/users`.
+
+:::caution[Upcoming bookings are not cancelled]
+Deleting an account does not cancel its upcoming bookings, notify their invitees, or delete their
+Google Calendar events. Invitees and guests keep the invites for meetings whose host is gone. If the
+person has upcoming meetings, cancel them first so everyone is told.
+:::
 
 - **Google grants are not revoked.** Deletion removes calit's copy of the OAuth tokens. It does not
   withdraw the grant at Google; the user does that in their own Google account settings.

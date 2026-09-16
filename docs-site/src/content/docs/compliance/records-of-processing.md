@@ -30,7 +30,7 @@ People who book a meeting through a public booking page.
 | Purpose | Scheduling the meeting and sending confirmations, reminders and changes |
 | Lawful basis | _[operator]_ |
 | Recipients | The host; Google Calendar when the host connected Google; the SMTP provider; any notification channel the host configured; Cloudflare Turnstile when enabled. See [sub-processors](/calit/compliance/sub-processors/) |
-| Retention | `BOOKING_RETENTION_DAYS` or the host's own window, measured from the meeting's end: _[operator: your window, or "kept until removed"]_. Queued email: 30 days after it was queued |
+| Retention | `BOOKING_RETENTION_DAYS` or the host's own window, measured from the meeting's end: _[operator: your window, or "kept until removed"]_. Queued email: about 30 days after it is sent, or after it was queued if never sent |
 | Erasure route | Self-service from the manage link: the `booking` row is anonymised in place, its queued email deleted. Email queued before migration `V34` is cleared only by the 30-day purge. See the [operator guide](/calit/compliance/operator-guide/#where-erasure-stops) |
 
 ## Invitees' guests
@@ -58,8 +58,8 @@ Users with an account on the deployment.
 | Purpose | Running the host's scheduling page and signing them in |
 | Lawful basis | _[operator]_ |
 | Recipients | Google when connected; the SSO identity provider when `OIDC_ENABLED` is on; the SMTP provider; the host's own notification channels |
-| Retention | For the life of the account. Password-reset and sign-in tokens: a day after they expire. `deleted_username`: permanently |
-| Erasure route | Account deletion (`/me/settings/delete`, or `/me/users` for a site admin) deletes `app_user`, and every other table cascades away with it. `deleted_username` keeps a SHA-256 hash of the username permanently, so the name can never be re-registered |
+| Retention | For the life of the account. Password-reset, invitation and sign-in tokens: about a day after they expire. `deleted_username`: permanently |
+| Erasure route | Account deletion (`/me/settings/delete`, or `/me/users` for a site admin) deletes `app_user`, and every other table cascades away with it. `deleted_username` keeps a SHA-256 hash of the username permanently, so the name can never be re-registered. `email_outbox` rows queued before migration `V34` have no owner link, so they survive deletion until the age purge |
 
 Tables with no personal data of their own (`reminder`, `meeting_type_host`, `availability_rule`,
 `date_override`, `date_override_window`, `notification_channel_meeting_type`,

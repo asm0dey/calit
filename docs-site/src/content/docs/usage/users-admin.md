@@ -42,6 +42,10 @@ Any user can delete their own account from **Settings → Delete my account** (`
 - It does not revoke calit's access at Google; the user does that in their Google account.
 - The username can never be used again: calit keeps a hash of it so a stale login cookie cannot attach to a new account.
 
+:::caution[Upcoming bookings are not cancelled]
+Deleting an account does not cancel its upcoming bookings, notify their invitees, or delete their Google Calendar events. Invitees and guests keep the invites for meetings whose host is gone. Cancel the person's upcoming bookings first so everyone is told.
+:::
+
 Before deleting, a user can download everything calit holds about their account as JSON with **Download all my data** in Settings (`/me/export`). In the same place, **Delete booking details after (days)** sets how long their bookings keep invitee details; leave it blank to use the site default. See the [GDPR operator guide](/calit/compliance/operator-guide/).
 
 ## Inviting a user

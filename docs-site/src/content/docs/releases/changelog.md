@@ -14,12 +14,11 @@ Merged but not yet in a tagged release.
 - Migration `V34` adds `booking.erased_at`, `owner_settings.booking_retention_days` and
   cascading booking/owner links on `email_outbox`. No backfill; existing rows are untouched.
   ([#TBD](https://github.com/asm0dey/calit/pulls))
-- `V34` also makes `booking.meeting_type_id` cascade on delete explicitly; owner deletion already
-  removed both through separate cascades. ([#TBD](https://github.com/asm0dey/calit/pulls))
+- `V34` also makes `booking.meeting_type_id` cascade on delete explicitly. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - The booking manage link now offers **Download my data**, a JSON file of that booking, including
   answers and guests, at `/booking/{token}/data`. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - Invitees can erase their data at `/booking/{token}/erase`: an upcoming booking is cancelled
-  first, then anonymised; the host keeps the slot, marked as erased. ([#TBD](https://github.com/asm0dey/calit/pulls))
+  first, then anonymised; the host keeps the booking row, marked as erased. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - Erasure covers only the booking whose link was used; bookings are not linked by email. The
   confirm and done pages say so and state how long other links keep working. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - After erasure every route for that token returns 404, including `/api/bookings/{token}` and
@@ -38,8 +37,8 @@ Merged but not yet in a tagged release.
   forever. Each host may set their own window; values are capped at 36500. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - The retention sweep runs daily on every replica, up to 200 bookings per run, and does not delete
   Google Calendar events. ([#TBD](https://github.com/asm0dey/calit/pulls))
-- Queued emails are deleted 30 days after they were queued, and expired password-reset and sign-in
-  tokens a day after they lapse. Neither is configurable. ([#TBD](https://github.com/asm0dey/calit/pulls))
+- Queued emails are deleted about 30 days after they are sent (or queued, if never sent);
+  password-reset, invitation and sign-in tokens about a day after they expire. Not configurable. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - `/privacy` now describes the running deployment: Google sections only when configured, the real
   retention window, and a deletion claim the software backs. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - `/privacy` names the recipients actually in use: Google, the SMTP host, notification-channel

@@ -55,7 +55,6 @@ The confirmation email includes unique links the invitee can use to:
 - **Reschedule** — pick a new available slot; the old slot is released.
 - **Edit name & description** — rename the meeting, set or clear its description, and add or remove guests, without moving the time.
 - **Cancel** — open a confirmation page, then release the slot and notify both parties. A direct **Cancel this booking** link is included right in the email.
-
 - **Download my data** — a JSON file with this booking's details, the invitee's answers and its guests.
 - **Erase my data** — after a confirmation page that lists what erasure cannot reach, cancels the booking if it is still upcoming and then removes the invitee's name, email, answers and guests from it. Only this booking is erased; bookings are not linked by email address. The host keeps a record that the slot was taken, marked "(erased at the invitee's request)", and the link stops working. An operator can turn erasure off with `INVITEE_ERASURE=false`; see the [GDPR operator guide](/calit/compliance/operator-guide/).
 

@@ -107,8 +107,9 @@ which ones:
 - Booking details are anonymised a set number of days after the meeting ends
   (when the operator or host has configured a retention window). Without one,
   bookings are kept until removed by the host or the operator.
-- Emails queued for sending are deleted within 30 days of being queued or sent.
-  Password-reset and sign-in tokens are deleted within a day of expiring.
+- Emails queued for sending are deleted about 30 days after they are sent (or
+  after they were queued, if never sent). Password-reset, invitation and sign-in
+  tokens are deleted about a day after they expire.
 
 ## Security
 
