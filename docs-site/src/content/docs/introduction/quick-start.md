@@ -3,8 +3,6 @@ title: Quick start
 description: Run calit with Docker Compose and create your first admin user.
 ---
 
-This page walks you through the shortest path to a running calit instance.
-
 ## Prerequisites
 
 - **Docker and Docker Compose** installed on the host.
