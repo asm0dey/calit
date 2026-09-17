@@ -7,6 +7,14 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## 1.26.1
+
+A dependency refresh; no behaviour changes.
+
+- Updates Quarkus to 3.39.4. ([#227](https://github.com/asm0dey/calit/pull/227))
+
+Upgrade: nothing to do.
+
 ## 1.26.0
 
 GDPR tooling for operators: invitees can download or erase their booking data, owners can export
