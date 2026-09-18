@@ -78,7 +78,9 @@ landing, and a redirect there would remove that entirely.
   `docs/adr/0010-personal-data-is-a-hand-written-inventory-guarded-by-a-schema-test.md`) is what
   forced that classification the moment the migration landed.
 - The admin shell brand in `adminBase.html` becomes an `<a href="/calit">` instead of a `<div>`,
-  giving `/me` a link back out that did not exist before.
+  giving `/me` a link back out that did not exist before -- above the 47.99rem breakpoint, where
+  `.admin-brand` renders (`input.css:386` hides it below that width); on phones the escape hatch is
+  still a typed URL.
 - `/me/settings` gets the opt-out checkbox, translated to `de` and `he` like every other
   user-facing string.
 - Out of scope: what `/me` itself renders, and the `/{username}` landing — this decision only

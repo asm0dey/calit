@@ -230,7 +230,10 @@ public class PublicResource {
     public Response index() {
         // Root is the instance entrance -- NOT any owner's landing. A signed-in visitor goes to
         // their dashboard unless they opted out; the product page keeps its own URL at /calit.
+        // Null-principal guard mirrors MeOwnerFilter's defence-in-depth shape: a non-anonymous
+        // identity with no principal falls through to the product page instead of 500-ing /.
         if (!identity.isAnonymous()
+                && identity.getPrincipal() != null
                 && homeRedirectEnabled(identity.getPrincipal().getName())) {
             return Response.seeOther(URI.create("/me"))
                     .header("Cache-Control", "no-store") // per-identity: never cached and replayed
@@ -242,6 +245,16 @@ public class PublicResource {
     /**
      * False when the user opted out -- and also when they have no settings row yet, which fails
      * toward today's behaviour rather than bouncing someone mid-bootstrap.
+     *
+     * <p>Caveat: {@link site.asm0dey.calit.user.EnabledUserAugmentor#augment} deliberately leaves
+     * the transient OIDC authorization-code-flow identity non-anonymous with an IdP-subject
+     * principal that is NOT a calit username (that identity only ever reaches /api/oidc/login,
+     * which bridges to an enabled-checked form-auth session). If that principal were ever fed to
+     * this method, {@code findByUsername} would not match it against a real account, so this stays
+     * bounded: the only observable is either no redirect (findByUsername returns null -> false), or
+     * -- in the unlikely case the subject collides with a real username -- a 303 to /me, which
+     * re-authorizes independently on the follow-up request and rejects an identity that isn't a
+     * valid form-auth session. Not a leak; no short-circuit needed here.
      */
     private boolean homeRedirectEnabled(String username) {
         AppUser u = AppUser.findByUsername(username);

@@ -48,4 +48,21 @@ class ProductPageTest {
     void productPageDeclaresTheHomePageAsCanonical() {
         given().when().get("/calit").then().statusCode(200).body(containsString("rel=\"canonical\" href=\"/\""));
     }
+
+    /**
+     * /calit's own "calit" brand anchors are its only "go home" control. For a signed-in visitor
+     * they must point back at /calit itself, not at / -- since / 303s a signed-in visitor straight
+     * back to /me, a brand anchor pointing at / would bounce them off the page they just landed on.
+     * Anonymous visitors keep the canonical / so the shareable URL stays the bare domain.
+     */
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void signedInVisitorsBrandAnchorsPointBackAtProductPage() {
+        given().when().get("/calit").then().statusCode(200).body(containsString("class=\"lp-brand\" href=\"/calit\""));
+    }
+
+    @Test
+    void anonymousVisitorsBrandAnchorsPointAtHome() {
+        given().when().get("/calit").then().statusCode(200).body(containsString("class=\"lp-brand\" href=\"/\""));
+    }
 }

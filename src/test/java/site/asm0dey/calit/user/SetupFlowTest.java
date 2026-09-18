@@ -86,6 +86,21 @@ class SetupFlowTest {
     }
 
     @Test
+    void productPageStaysOpenWhenNoUsers() {
+        // /calit renders the same content as / and carries the same pre-bootstrap exemption
+        // (FirstRunRedirectFilter:44) — it must render even before the instance is bootstrapped,
+        // not 302 to /setup.
+        deleteAllUsers();
+        given().redirects()
+                .follow(false)
+                .when()
+                .get("/calit")
+                .then()
+                .statusCode(200)
+                .body(containsString("actually own"));
+    }
+
+    @Test
     void setupCreatesFirstAdminUserThenRedirectsToLogin() {
         deleteAllUsers();
         given().redirects()
