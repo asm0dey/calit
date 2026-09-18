@@ -161,6 +161,7 @@ public final class PersonalData {
                     "owner_settings",
                     Set.of(
                             "booking_retention_days",
+                            "home_redirect_enabled",
                             "id",
                             "locale",
                             "owner_email",

@@ -9,6 +9,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
+import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -227,9 +228,28 @@ public class PublicResource {
     @GET
     @Produces(MediaType.TEXT_HTML)
     public Response index() {
-        // Root is the instance entrance -- NOT any owner's landing. Per-owner landings live at
-        // /{user}, and the product page has its own permanent URL at /calit.
+        // Root is the instance entrance -- NOT any owner's landing. A signed-in visitor goes to
+        // their dashboard unless they opted out; the product page keeps its own URL at /calit.
+        if (!identity.isAnonymous()
+                && homeRedirectEnabled(identity.getPrincipal().getName())) {
+            return Response.seeOther(URI.create("/me"))
+                    .header("Cache-Control", "no-store") // per-identity: never cached and replayed
+                    .build();
+        }
         return productPageResponse();
+    }
+
+    /**
+     * False when the user opted out -- and also when they have no settings row yet, which fails
+     * toward today's behaviour rather than bouncing someone mid-bootstrap.
+     */
+    private boolean homeRedirectEnabled(String username) {
+        AppUser u = AppUser.findByUsername(username);
+        if (u == null) {
+            return false;
+        }
+        OwnerSettings s = OwnerSettings.forOwner(u.id);
+        return s != null && s.homeRedirectEnabled;
     }
 
     @GET
