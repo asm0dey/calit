@@ -6,6 +6,7 @@ import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
@@ -236,7 +237,7 @@ public class PublicResource {
                 && identity.getPrincipal() != null
                 && homeRedirectEnabled(identity.getPrincipal().getName())) {
             return Response.seeOther(URI.create("/me"))
-                    .header("Cache-Control", "no-store") // per-identity: never cached and replayed
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store") // per-identity: never cached and replayed
                     .build();
         }
         return productPageResponse();
@@ -285,7 +286,7 @@ public class PublicResource {
         var authenticated = !identity.isAnonymous();
         String username = authenticated ? identity.getPrincipal().getName() : null;
         return Response.ok(Templates.index(m.pub_index_title(), authenticated, username, ogCards.product("/")))
-                .header("Cache-Control", "private")
+                .header(HttpHeaders.CACHE_CONTROL, "private")
                 .build();
     }
 
@@ -640,7 +641,7 @@ public class PublicResource {
     public Response bookingData(@PathParam("manageToken") String manageToken) {
         return Response.ok(privacy.exportBooking(manageToken))
                 .header("Content-Disposition", "attachment; filename=\"booking-data.json\"")
-                .header("Cache-Control", "no-store") // personal data: never kept by a shared cache
+                .header(HttpHeaders.CACHE_CONTROL, "no-store") // personal data: never kept by a shared cache
                 .build();
     }
 
