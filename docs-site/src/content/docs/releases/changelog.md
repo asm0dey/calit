@@ -7,6 +7,21 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- Signing in and visiting `/` now goes to your dashboard; the product page moved to `/calit`, which
+  never redirects. ([#230](https://github.com/asm0dey/calit/pull/230))
+- Migration `V36` adds `owner_settings.home_redirect_enabled`, on for existing owners; a checkbox on
+  `/me/settings` turns it off. ([#230](https://github.com/asm0dey/calit/pull/230))
+- `/` and `/calit` now send `Cache-Control: private` and the redirect `no-store`, so a reverse proxy
+  cannot serve one visitor's page to another. ([#230](https://github.com/asm0dey/calit/pull/230))
+
+Upgrade: existing owners get the redirect on. Turn it off on `/me/settings`, or use `/calit` for a
+single visit. The admin brand links to `/calit` but is hidden below the mobile breakpoint, so on
+phones it is a typed URL.
+
 ## 1.26.1
 
 A dependency refresh; no behaviour changes.
