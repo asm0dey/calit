@@ -226,13 +226,34 @@ public class PublicResource {
 
     @GET
     @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance index() {
-        // Root is a generic product page — NOT any owner's landing. Per-owner landings live at /{user}.
-        // Auth-aware: a logged-in visitor sees Settings/Log out + their dashboard, not "Sign in".
+    public Response index() {
+        // Root is the instance entrance -- NOT any owner's landing. Per-owner landings live at
+        // /{user}, and the product page has its own permanent URL at /calit.
+        return productPageResponse();
+    }
+
+    @GET
+    @Path("/calit")
+    @Produces(MediaType.TEXT_HTML)
+    public Response productPage() {
+        // The product page's permanent home, and the escape hatch for a signed-in user whose /
+        // now goes to /me. Never redirects. "calit" is already in Usernames.RESERVED, so this
+        // literal path can never shadow a real user's /{username} landing.
+        return productPageResponse();
+    }
+
+    /**
+     * The marketing/product page, served identically at / and /calit. Auth-aware: a logged-in
+     * visitor sees Settings/Log out and their dashboard, not "Sign in" -- which is exactly why the
+     * response must never be stored by a shared cache.
+     */
+    private Response productPageResponse() {
         var m = messages.forLocale(activeLocale.current());
         var authenticated = !identity.isAnonymous();
         String username = authenticated ? identity.getPrincipal().getName() : null;
-        return Templates.index(m.pub_index_title(), authenticated, username, ogCards.product("/"));
+        return Response.ok(Templates.index(m.pub_index_title(), authenticated, username, ogCards.product("/")))
+                .header("Cache-Control", "private")
+                .build();
     }
 
     @GET
