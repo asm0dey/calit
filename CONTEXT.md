@@ -129,3 +129,23 @@ _Avoid_: default write target (that is the write target itself, addressed for a 
 Running with no Google configured or connected at all. Every scheduling feature works; only
 mirroring is absent.
 _Avoid_: no-Google mode, offline mode
+
+### Routing
+
+**Home**:
+`/`. Belongs to the instance, not to any user. A signed-in visitor is sent to their dashboard from
+here unless they opted out.
+_Avoid_: landing (that is `/{username}`), index
+
+**Landing**:
+`/{username}`. That owner's public booking page. Never redirects: checking your own page as a guest
+sees it is the main reason to visit it.
+_Avoid_: home, profile
+
+**Product page**:
+`/calit`. The marketing pitch, at a permanent URL. Rendered identically at `/` for anonymous
+visitors, which is why `/` is the canonical of the pair.
+_Avoid_: marketing page, index, about
+
+Being signed in never redirects you away from a page that belongs to someone. Home belongs to the
+instance, so it may redirect; a landing belongs to an owner and never does.
