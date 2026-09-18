@@ -41,6 +41,7 @@ public class FirstRunRedirectFilter {
         // redirects to /setup (first-user creation) like every other app path. /j_security_check stays
         // exempt so the redirect target is reachable; it no-ops with no users.
         return path.equals("/") // public marketing landing stays open pre-bootstrap
+                || path.equals("/calit") // same content as "/" -- same pre-bootstrap exemption
                 || path.startsWith("/img/") // ...and its screenshots
                 || path.equals("/setup")
                 || path.equals("/privacy") // public legal pages must be reachable pre-bootstrap

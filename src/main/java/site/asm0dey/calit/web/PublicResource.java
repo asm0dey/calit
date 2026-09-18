@@ -6,9 +6,11 @@ import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
+import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -226,13 +228,70 @@ public class PublicResource {
 
     @GET
     @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance index() {
-        // Root is a generic product page — NOT any owner's landing. Per-owner landings live at /{user}.
-        // Auth-aware: a logged-in visitor sees Settings/Log out + their dashboard, not "Sign in".
+    public Response index() {
+        // Root is the instance entrance -- NOT any owner's landing. A signed-in visitor goes to
+        // their dashboard unless they opted out; the product page keeps its own URL at /calit.
+        // Null-principal guard mirrors MeOwnerFilter's defence-in-depth shape: a non-anonymous
+        // identity with no principal falls through to the product page instead of 500-ing /.
+        if (!identity.isAnonymous()
+                && identity.getPrincipal() != null
+                && homeRedirectEnabled(identity.getPrincipal().getName())) {
+            return Response.seeOther(URI.create("/me"))
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store") // per-identity: never cached and replayed
+                    .build();
+        }
+        return productPageResponse();
+    }
+
+    /**
+     * False when the user opted out -- and also when they have no settings row yet, which fails
+     * toward today's behaviour rather than bouncing someone mid-bootstrap.
+     *
+     * <p>Caveat: {@link site.asm0dey.calit.user.EnabledUserAugmentor#augment} deliberately leaves
+     * the transient OIDC authorization-code-flow identity non-anonymous with an IdP-subject
+     * principal that is NOT a calit username (that identity only ever reaches /api/oidc/login,
+     * which bridges to an enabled-checked form-auth session). If that principal were ever fed to
+     * this method, the username subquery below would not match it against a real account, so this
+     * stays bounded: the only observable is either no redirect (no row -> false), or
+     * -- in the unlikely case the subject collides with a real username -- a 303 to /me, which
+     * re-authorizes independently on the follow-up request and rejects an identity that isn't a
+     * valid form-auth session. Not a leak; no short-circuit needed here.
+     */
+    private boolean homeRedirectEnabled(String username) {
+        // One query, not two. Resolving the account and then reading its settings row cost a round
+        // trip each on the instance's front door, on top of the app_user read EnabledUserAugmentor
+        // already does for every authenticated request. The subquery keeps the join in the database.
+        // Normalizing here matches AppUser.findByUsername, which is how the column is written.
+        // The subquery lives here rather than on OwnerSettings because domain/ deliberately imports
+        // nothing from user/.
+        OwnerSettings s = OwnerSettings.find(
+                        "ownerId in (select u.id from AppUser u where u.username = ?1)", Usernames.normalize(username))
+                .firstResult();
+        return s != null && s.homeRedirectEnabled;
+    }
+
+    @GET
+    @Path("/calit")
+    @Produces(MediaType.TEXT_HTML)
+    public Response productPage() {
+        // The product page's permanent home, and the escape hatch for a signed-in user whose /
+        // now goes to /me. Never redirects. "calit" is already in Usernames.RESERVED, so this
+        // literal path can never shadow a real user's /{username} landing.
+        return productPageResponse();
+    }
+
+    /**
+     * The marketing/product page, served identically at / and /calit. Auth-aware: a logged-in
+     * visitor sees Settings/Log out and their dashboard, not "Sign in" -- which is exactly why the
+     * response must never be stored by a shared cache.
+     */
+    private Response productPageResponse() {
         var m = messages.forLocale(activeLocale.current());
         var authenticated = !identity.isAnonymous();
         String username = authenticated ? identity.getPrincipal().getName() : null;
-        return Templates.index(m.pub_index_title(), authenticated, username, ogCards.product("/"));
+        return Response.ok(Templates.index(m.pub_index_title(), authenticated, username, ogCards.product("/")))
+                .header(HttpHeaders.CACHE_CONTROL, "private")
+                .build();
     }
 
     @GET
@@ -586,7 +645,7 @@ public class PublicResource {
     public Response bookingData(@PathParam("manageToken") String manageToken) {
         return Response.ok(privacy.exportBooking(manageToken))
                 .header("Content-Disposition", "attachment; filename=\"booking-data.json\"")
-                .header("Cache-Control", "no-store") // personal data: never kept by a shared cache
+                .header(HttpHeaders.CACHE_CONTROL, "no-store") // personal data: never kept by a shared cache
                 .build();
     }
 

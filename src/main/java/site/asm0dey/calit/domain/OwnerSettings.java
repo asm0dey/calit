@@ -45,6 +45,13 @@ public class OwnerSettings extends PanacheEntityBase {
     public boolean ownerNotificationsEnabled = true;
 
     /**
+     * Signed-in GET / 303s to /me. Opt-out, so it defaults on. The product page stays at /calit,
+     * which never redirects. Named "home", not "landing": "landing" means /{username} here.
+     */
+    @Column(name = "home_redirect_enabled", nullable = false)
+    public boolean homeRedirectEnabled = true;
+
+    /**
      * This owner's booking-retention window in days. NULL = fall back to the instance default
      * ({@code calit.retention.booking-days}), which is itself unset by default = keep forever.
      */

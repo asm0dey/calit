@@ -848,6 +848,12 @@ public interface AdminMessages {
     @Message("Send me (the owner) email notifications for bookings")
     String adm_settings_label_notifications();
 
+    @Message("Go straight to my dashboard from the home page")
+    String adm_settings_label_home_redirect();
+
+    @Message("The product page stays at /calit.")
+    String adm_settings_home_redirect_hint();
+
     @Message("Delete booking details after (days)")
     String adm_settings_label_retention();
 
