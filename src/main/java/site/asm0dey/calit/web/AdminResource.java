@@ -1536,6 +1536,7 @@ public class AdminResource {
             @RestForm String timezone,
             @RestForm String locale,
             @RestForm String ownerNotificationsEnabled,
+            @RestForm String homeRedirectEnabled,
             @RestForm String timeFormat,
             @RestForm String bookingRetentionDays) {
         // Persist in its own tx that commits before the settings render (#75); return the (now
@@ -1557,6 +1558,8 @@ public class AdminResource {
             row.timeFormat = timeFormat != null && OwnerSettings.HOUR_CYCLES.contains(timeFormat) ? timeFormat : "auto";
             // Unchecked checkbox sends no value → notifications OFF (owner opt-out).
             row.ownerNotificationsEnabled = "on".equals(ownerNotificationsEnabled);
+            // Unchecked checkbox sends no value → the owner opted out of the / → /me redirect.
+            row.homeRedirectEnabled = "on".equals(homeRedirectEnabled);
             row.bookingRetentionDays = parseRetentionDays(bookingRetentionDays);
             row.persist();
             return row;

@@ -31,6 +31,10 @@
     <label class="label cursor-pointer justify-start gap-2 mt-2">
       <input type="checkbox" name="ownerNotificationsEnabled" class="checkbox checkbox-sm"{#if settings && settings.ownerNotificationsEnabled} checked{/if}>
       {adm:adm_settings_label_notifications}</label>
+    <label class="label cursor-pointer justify-start gap-2 mt-2">
+      <input type="checkbox" name="homeRedirectEnabled" class="checkbox checkbox-sm"{#if settings && settings.homeRedirectEnabled} checked{/if}>
+      {adm:adm_settings_label_home_redirect}</label>
+    <p class="text-sm text-base-content/70">{adm:adm_settings_home_redirect_hint}</p>
     <label class="label" for="set-retention">{adm:adm_settings_label_retention}</label>
     <input id="set-retention" class="input w-full" type="number" min="1" max="36500" name="bookingRetentionDays" value="{#if settings && settings.bookingRetentionDays}{settings.bookingRetentionDays}{/if}">
     <p class="text-sm text-base-content/70">{#if retentionInstanceDefault}{adm:adm_settings_retention_hint_with_default(retentionInstanceDefault)}{#else}{adm:adm_settings_retention_hint_forever}{/if}</p>
