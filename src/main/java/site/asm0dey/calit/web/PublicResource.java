@@ -251,18 +251,22 @@ public class PublicResource {
      * the transient OIDC authorization-code-flow identity non-anonymous with an IdP-subject
      * principal that is NOT a calit username (that identity only ever reaches /api/oidc/login,
      * which bridges to an enabled-checked form-auth session). If that principal were ever fed to
-     * this method, {@code findByUsername} would not match it against a real account, so this stays
-     * bounded: the only observable is either no redirect (findByUsername returns null -> false), or
+     * this method, the username subquery below would not match it against a real account, so this
+     * stays bounded: the only observable is either no redirect (no row -> false), or
      * -- in the unlikely case the subject collides with a real username -- a 303 to /me, which
      * re-authorizes independently on the follow-up request and rejects an identity that isn't a
      * valid form-auth session. Not a leak; no short-circuit needed here.
      */
     private boolean homeRedirectEnabled(String username) {
-        AppUser u = AppUser.findByUsername(username);
-        if (u == null) {
-            return false;
-        }
-        OwnerSettings s = OwnerSettings.forOwner(u.id);
+        // One query, not two. Resolving the account and then reading its settings row cost a round
+        // trip each on the instance's front door, on top of the app_user read EnabledUserAugmentor
+        // already does for every authenticated request. The subquery keeps the join in the database.
+        // Normalizing here matches AppUser.findByUsername, which is how the column is written.
+        // The subquery lives here rather than on OwnerSettings because domain/ deliberately imports
+        // nothing from user/.
+        OwnerSettings s = OwnerSettings.find(
+                        "ownerId in (select u.id from AppUser u where u.username = ?1)", Usernames.normalize(username))
+                .firstResult();
         return s != null && s.homeRedirectEnabled;
     }
 

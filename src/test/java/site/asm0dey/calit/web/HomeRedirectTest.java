@@ -47,6 +47,21 @@ class HomeRedirectTest {
     }
 
     @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void signedInVisitorWithNoSettingsRowIsNotRedirected() {
+        // Deliberately NOT seeded: a user with no OwnerSettings row fails toward today's behaviour
+        // rather than being bounced mid-bootstrap. The preference lookup is a single subquery over
+        // app_user, so this is the branch that would break if that query ever matched too broadly.
+        given().redirects()
+                .follow(false)
+                .when()
+                .get("/")
+                .then()
+                .statusCode(200)
+                .body(containsString("Self-hosted scheduling"));
+    }
+
+    @Test
     void anonymousVisitorStillGetsTheProductPage() {
         given().redirects()
                 .follow(false)
