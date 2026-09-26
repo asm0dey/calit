@@ -362,11 +362,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository }}
+          # Same tags on both registries; imagetools copies the GHCR digests to Docker Hub, no rebuild.
+          images: |
+            ghcr.io/${{ github.repository }}
+            docker.io/${{ github.repository }}
           # Empty suffix for jvm (tags unchanged); "-native" for the GraalVM variant
           # => edge-native, 1.10.0-native, 1.10-native, sha-<sha>-native.
           # onlatest=true makes the auto ":latest" tag (emitted on semver git tags) carry the
@@ -411,3 +420,19 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
+
+      - name: Absolutise README links for Docker Hub
+        # Hub renders the README out of repo context: point relative images at raw/, other links at blob/.
+        run: |
+          sed -E -e 's#!\[([^]]*)\]\(([^):#]+)\)#![\1](https://github.com/${{ github.repository }}/raw/main/\2)#g' \
+                 -e 's#\]\(([^):#]+)\)#](https://github.com/${{ github.repository }}/blob/main/\1)#g' \
+                 README.md > "$RUNNER_TEMP/README.hub.md"
+
+      - name: Sync Docker Hub description
+        uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          short-description: Self-hosted, multi-user Calendly alternative (Quarkus, Postgres)
+          readme-filepath: ${{ runner.temp }}/README.hub.md
