@@ -7,6 +7,16 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- Images are also published to `docker.io/asm0dey/calit`, with the same tags and digests as
+  `ghcr.io/asm0dey/calit`; releases sync the README to the Docker Hub page
+  ([#235](https://github.com/asm0dey/calit/pull/235)).
+
+Upgrade: nothing to do; GHCR image references keep working.
+
 ## 1.27.0
 
 Signed-in visitors land on their dashboard, `/lang` handles encoded return paths, and

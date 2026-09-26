@@ -51,6 +51,7 @@ You don't need to clone the repository — save the file above as `docker-compos
 | What | Why it matters |
 |---|---|
 | `image: ghcr.io/asm0dey/calit:latest` | Pulls the published multi-arch image from GitHub Container Registry — no local build. A [smaller native variant](#native-image-lower-footprint) and a [build-from-source option](#build-from-source) are below. |
+| `docker.io/asm0dey/calit` | The same images, with identical tags, are also on [Docker Hub](https://hub.docker.com/r/asm0dey/calit). Swap the registry prefix if you prefer pulling from there. |
 | `depends_on: condition: service_healthy` | The app starts only after Postgres passes its `pg_isready` healthcheck, so Flyway migrations never race a cold DB. |
 | `env_file: .env` | All secrets are loaded from `.env`. Marked `required: false` so `docker compose config` works on a fresh checkout without an `.env` file present. |
 | `DB_URL` (derived) | `jdbc:postgresql://db:5432/${DB_NAME:-calit}` is injected automatically — your `.env` only needs to carry `DB_PASSWORD`. |
