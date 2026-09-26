@@ -12,7 +12,7 @@ COPY src/main/resources/templates/ src/main/resources/templates/
 RUN bun run css:build
 # Output: /app/src/main/resources/META-INF/resources/calit.css
 
-# --- Build stage: BellSoft Liberica JDK 25 + the Maven wrapper (no Maven in the image) ---
+# --- Build stage: BellSoft Liberica JDK 26 + the Maven wrapper (no Maven in the image) ---
 FROM bellsoft/liberica-runtime-container:jdk-26-musl@sha256:8fa267a9dfc1d5cf6a00748f4904886b61c7276e2e4dce044a98955c42cdae44 AS build
 WORKDIR /build
 

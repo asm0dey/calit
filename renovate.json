@@ -21,5 +21,21 @@
       ],
       "groupName": "all non-major dependencies"
     }
+  ],
+  "customManagers": [
+    {
+      "description": "Keep the Quarkus version quoted in README.md (badge) and CLAUDE.md in step with quarkus.platform.version in pom.xml.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^README\\.md$/",
+        "/^CLAUDE\\.md$/"
+      ],
+      "matchStrings": [
+        "badge/Quarkus-(?<currentValue>\\d+\\.\\d+\\.\\d+)-",
+        "on Quarkus (?<currentValue>\\d+\\.\\d+\\.\\d+) /"
+      ],
+      "depNameTemplate": "io.quarkus.platform:quarkus-bom",
+      "datasourceTemplate": "maven"
+    }
   ]
 }

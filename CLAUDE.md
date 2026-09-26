@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**calit** — self-hosted, multi-user Calendly alternative on Quarkus 3.38 / Java 25. Each user get isolated scheduling page at `/<username>/<slug>`: own meeting types, availability, bookings, settings, Google account. Server-rendered HTML via Qute; **progressive enhancement** — every feature works without JavaScript; JS is optional, kept minimal and simple, and only enhances (e.g. a small inline typeahead over a plain input that already submits fine on its own). Stateless — run as N identical replicas; all shared state in Postgres.
+**calit** — self-hosted, multi-user Calendly alternative on Quarkus 3.39.5 / Java 25. Each user get isolated scheduling page at `/<username>/<slug>`: own meeting types, availability, bookings, settings, Google account. Server-rendered HTML via Qute; **progressive enhancement** — every feature works without JavaScript; JS is optional, kept minimal and simple, and only enhances (e.g. a small inline typeahead over a plain input that already submits fine on its own). Stateless — run as N identical replicas; all shared state in Postgres.
 
 ## Library source / javadocs
 
@@ -137,7 +137,7 @@ Flyway migrations in `src/main/resources/db/migration/`, applied at boot (`quark
 
 ## Docker / CI
 
-`Dockerfile` multi-stage: Bun compiles CSS → BellSoft **Liberica JDK 26** builds → **Liberica JRE 26 (musl)** runs. Tests skipped in image — run `mvn test` on host (with Docker) before building. CI is `.github/workflows/ci.yml` (test/build/merge/release, native multi-arch images to `ghcr.io/asm0dey/calit`). Dependency updates via **Renovate** (`renovate.json`), not Dependabot. The `changes` job gates the image matrix: a push to `main` that touched only `.beans/**`, root-level markdown (`README.md`, `CLAUDE.md`, …), `docs/**`, `.agents/**`, `.claude/**` or `LICENSE` builds no image and publishes no `edge`/`sha-*` tag — that is intentional, not a broken run. `v*` tag pushes always build.
+`Dockerfile` multi-stage: Bun compiles CSS → BellSoft **Liberica JDK 26** builds → BellSoft **hardened distroless Liberica JRE (musl)** runs. Tests skipped in image — run `mvn test` on host (with Docker) before building. CI is `.github/workflows/ci.yml` (test/build/merge/release; multi-arch JVM images plus `-native`-suffixed GraalVM images from `Dockerfile.native`, pushed to `ghcr.io/asm0dey/calit` and mirrored to `docker.io/asm0dey/calit`). Dependency updates via **Renovate** (`renovate.json`), not Dependabot. A `customManagers` regex also bumps the Quarkus version quoted in `README.md` (badge) and at the top of this file — keep both in the full `X.Y.Z` form or the regex stops matching. The `changes` job gates the image matrix: a push to `main` that touched only `.beans/**`, root-level markdown (`README.md`, `CLAUDE.md`, …), `docs/**`, `.agents/**`, `.claude/**` or `LICENSE` builds no image and publishes no `edge`/`sha-*` tag — that is intentional, not a broken run. `v*` tag pushes always build.
 
 ## Documentation
 
