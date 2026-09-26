@@ -3,6 +3,7 @@
 [![CI](https://github.com/asm0dey/calit/actions/workflows/ci.yml/badge.svg)](https://github.com/asm0dey/calit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/asm0dey/calit?sort=semver)](https://github.com/asm0dey/calit/releases/latest)
 [![Container](https://img.shields.io/badge/ghcr.io-asm0dey%2Fcalit-2496ED?logo=docker&logoColor=white)](https://github.com/asm0dey/calit/pkgs/container/calit)
+[![Docker Hub](https://img.shields.io/badge/docker.io-asm0dey%2Fcalit-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/asm0dey/calit)
 [![Docs](https://img.shields.io/badge/docs-asm0dey.github.io%2Fcalit-3b82f6)](https://asm0dey.github.io/calit/)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Quarkus](https://img.shields.io/badge/Quarkus-3.38-4695EB?logo=quarkus&logoColor=white)](https://quarkus.io)
@@ -57,7 +58,8 @@ site is the source of truth.
 
 ## Run it
 
-Prebuilt multi-arch images are published to **`ghcr.io/asm0dey/calit`** (tags: `latest`, `1.27.0`,
+Prebuilt multi-arch images are published to **`ghcr.io/asm0dey/calit`** and, with identical tags,
+**`docker.io/asm0dey/calit`** (tags: `latest`, `1.27.0`,
 `1.27.0-native`). The fastest path is Docker Compose:
 
 ```bash
