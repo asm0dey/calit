@@ -49,10 +49,13 @@ public class LangResource {
                     || uri.getUserInfo() != null
                     || path == null
                     || !path.startsWith("/")
-                    || path.startsWith("//")) {
+                    || path.startsWith("//")
+                    || path.indexOf('\\') >= 0) {
                 return "/";
             }
-            var local = new StringBuilder(path);
+            // Checks run on the decoded path; the redirect keeps the raw (still-encoded) one, since the
+            // decoded form can hold characters URI.create rejects (e.g. "/a%20b" -> "/a b" -> 500).
+            var local = new StringBuilder(uri.getRawPath());
             if (uri.getRawQuery() != null) {
                 local.append('?').append(uri.getRawQuery());
             }

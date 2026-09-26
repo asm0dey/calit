@@ -68,4 +68,30 @@ class LangResourceTest {
             .statusCode(303)
             .header("Location", endsWith("/"));
     }
+
+    @Test
+    void keepsPercentEncodedReturnPath() {
+        given()
+            .redirects()
+            .follow(false)
+            .queryParam("return", "/a%20b")
+            .when()
+            .get("/lang/de")
+            .then()
+            .statusCode(303)
+            .header("Location", endsWith("/a%20b"));
+    }
+
+    @Test
+    void rejectsEncodedBackslashReturn() {
+        given()
+            .redirects()
+            .follow(false)
+            .queryParam("return", "/%5Cevil.com")
+            .when()
+            .get("/lang/de")
+            .then()
+            .statusCode(303)
+            .header("Location", endsWith("/"));
+    }
 }
