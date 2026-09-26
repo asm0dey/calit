@@ -39,6 +39,9 @@ class EmailServiceFallbackTest {
         });
     }
 
+    // Lambda, not EmailOutbox::count: a method reference binds to PanacheEntityBase.count, which Panache
+    // does not rewrite, and throws "did you forget to annotate your entity with @Entity?".
+    @SuppressWarnings("java:S1612")
     @Test
     void declinedWithSmtpDownQueuesInsteadOfThrowing() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
@@ -49,7 +52,9 @@ class EmailServiceFallbackTest {
         // Must not throw.
         emailService.handleDeclined(new BookingDeclined(bookingId));
 
-        long queued = QuarkusTransaction.requiringNew().call(EmailOutbox::count);
+        long queued = QuarkusTransaction
+            .requiringNew()
+            .call(() -> EmailOutbox.count());
         // declined notifies invitee + owner -> 2 parked mails.
         assertTrue(queued >= 2, "both recipients' mail parked in outbox, got " + queued);
     }
