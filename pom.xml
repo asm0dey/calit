@@ -318,7 +318,7 @@
               <include>src/test/java/**/*.java</include>
             </includes>
             <toggleOffOn />
-            <!-- CleanThat refactors first, palantir formats the result. -->
+            <!-- CleanThat refactors first, Prince of Space formats the result. -->
             <cleanthat>
               <!-- Pinned: CleanThat 2.23-2.25 crashed in UseDiamondOperator on nested records
                    (solven-eu/cleanthat#954); fixed in 2.26, which spotless 3.7.0 does not yet bundle. -->
@@ -347,10 +347,11 @@
                 <mutator>UseTextBlocks</mutator>
               </mutators>
             </cleanthat>
-            <palantirJavaFormat>
-              <version>2.94.0</version>
-              <style>PALANTIR</style>
-            </palantirJavaFormat>
+            <princeOfSpace>
+              <version>2.2.0</version>
+              <lineLength>120</lineLength>
+              <javaLanguageLevel>25</javaLanguageLevel>
+            </princeOfSpace>
             <formatAnnotations />
             <removeUnusedImports />
           </java>

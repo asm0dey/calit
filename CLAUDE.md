@@ -83,7 +83,7 @@ that is what makes the green run mean something.
 
 ## Formatting
 
-- **Java**: **Spotless + palantir-java-format** (PALANTIR) + curated **CleanThat** mutators (diamond operator, `var`, method refs, redundant-code cleanup). Config in `pom.xml` (`spotless-maven-plugin`).
+- **Java**: **Spotless + Prince of Space** (in-process `<princeOfSpace>` step, 120 cols, Java 25 level) + curated **CleanThat** mutators (diamond operator, `var`, method refs, redundant-code cleanup). Config in `pom.xml` (`spotless-maven-plugin`).
 - **JS/CSS**: **Prettier** (`.prettierignore` skips the generated `calit.css`). Qute `.html` templates are deliberately **not** formatted — Prettier mangles `{#if}`/`{msg:}` tags.
 
 ```bash
@@ -92,7 +92,8 @@ mvn spotless:check   # verify Java (bound to `verify` phase → CI gate)
 ```
 
 - **Pre-commit auto-format** (`lefthook.yml`, re-staged via `stage_fixed`): staged `*.java` → `./mvnw spotless:apply -DspotlessFiles=…` (Maven directly); staged `*.{js,ts,css}` → `bunx prettier --write`. Hooks are wired automatically by `bun install` (package.json `prepare` → `lefthook install`); run `bun install` once after cloning.
-- Pin palantir **≥ 2.71.0** (we use 2.94.0): older versions hit `NoSuchMethodError: …DeferredDiagnosticHandler.getDiagnostics()` and crash under **JDK 25/26** (in-process javac internals; the build JDK is Liberica 26). 2.71.0+ also parses Java 25 unnamed variables (`_`) fine.
+- Prince of Space parses at `javaLanguageLevel` 25 — `26` is unsupported (bundled JavaParser lacks it); keep it at 25 even though the build JDK is Liberica 26. It does not organise imports; `removeUnusedImports` does. Needs Spotless ≥ 3.9.0 (the in-process step; before that it was a JVM-per-file `nativeCmd`, ~4 min per full format).
+- **JDK imports are module imports** (JEP 511): `import module java.base;` (plus `java.net.http` / `java.desktop` where used) instead of single-type `java.*`/`javax.*` imports. Nothing enforces this — IDE auto-import adds single-type imports back, so fold them in by hand. When two imported modules export the same simple name (`java.awt.List` vs `java.util.List`, `java.text.Annotation` vs `java.lang.annotation.Annotation`), keep one single-type import for it; single-type imports shadow module imports.
 - `verify` (hence CI) fails on unformatted code. `mvn test` is unaffected (test phase < verify).
 
 ## Architecture
