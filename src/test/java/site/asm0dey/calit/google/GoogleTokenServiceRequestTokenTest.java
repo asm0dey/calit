@@ -64,7 +64,7 @@ class GoogleTokenServiceRequestTokenTest {
         var svc = new TransportStubbedService(
                 respondingWith(
                         400,
-                        "{\\\"error\\\":\\\"invalid_grant\\\",\\\"error_description\\\":\\\"Token has " + "been expired\\\"}"
+                        "{\"error\":\"invalid_grant\",\"error_description\":\"Token has " + "been expired\"}"
                 )
         );
 
@@ -78,10 +78,7 @@ class GoogleTokenServiceRequestTokenTest {
     @Test
     void otherOauthErrorsCarryGoogleErrorAndDescription() {
         var svc = new TransportStubbedService(
-                respondingWith(
-                        401,
-                        "{\\\"error\\\":\\\"invalid_client\\\",\\\"error_description\\\":" + "\\\"Unauthorized\\\"}"
-                )
+                respondingWith(401, "{\"error\":\"invalid_client\",\"error_description\":" + "\"Unauthorized\"}")
         );
 
         var thrown = assertThrows(IllegalStateException.class, () -> svc.requestToken(
@@ -99,10 +96,7 @@ class GoogleTokenServiceRequestTokenTest {
     @Test
     void badRequestThatIsNotInvalidGrantIsNotTreatedAsADeadGrant() {
         var svc = new TransportStubbedService(
-                respondingWith(
-                        400,
-                        "{\\\"error\\\":\\\"invalid_client\\\",\\\"error_description\\\":\\\"Bad client " + "secret\\\"}"
-                )
+                respondingWith(400, "{\"error\":\"invalid_client\",\"error_description\":\"Bad client " + "secret\"}")
         );
 
         var thrown = assertThrows(IllegalStateException.class, () -> svc.requestToken(
@@ -132,10 +126,7 @@ class GoogleTokenServiceRequestTokenTest {
         // Pins the OTHER half of the guard: a 5xx that happens to echo invalid_grant is a blip, and
         // treating it as a dead grant would permanently flag a healthy account needsReconnect.
         var svc = new TransportStubbedService(
-                respondingWith(
-                        503,
-                        "{\\\"error\\\":\\\"invalid_grant\\\",\\\"error_description\\\":\\\"Backend " + "error\\\"}"
-                )
+                respondingWith(503, "{\"error\":\"invalid_grant\",\"error_description\":\"Backend " + "error\"}")
         );
 
         var thrown = assertThrows(IllegalStateException.class, () -> svc.requestToken(
@@ -174,7 +165,7 @@ class GoogleTokenServiceRequestTokenTest {
         var svc = new TransportStubbedService(
                 respondingWith(
                         200,
-                        "{\\\"access_token\\\":\\\"fresh-token\\\",\\\"expires_in\\\":3600,\\\"token_" + "type\\\":\\\"Bearer\\\"}"
+                        "{\"access_token\":\"fresh-token\",\"expires_in\":3600,\"token_" + "type\":\"Bearer\"}"
                 )
         );
 

@@ -58,12 +58,9 @@ class ProductPageTest {
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void signedInVisitorsBrandAnchorsPointBackAtProductPage() {
-        given()
-            .when()
-            .get("/calit")
-            .then()
-            .statusCode(200)
-            .body(containsString("class=\\\"lp-brand\\\" " + "href=\\\"/calit\\\""));
+        given().when().get("/calit").then().statusCode(200).body(
+                containsString("class=\"lp-brand\" " + "href=\"/calit\"")
+        );
     }
 
     @Test

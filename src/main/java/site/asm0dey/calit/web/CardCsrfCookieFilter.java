@@ -39,7 +39,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  */
 public class CardCsrfCookieFilter {
     private static final Pattern CARD_PATH =
-            Pattern.compile("^/og\\\\.png$|^/og/[^/]+\\\\.png$|^/og/[^/]+/[^/]+\\\\." + "png$");
+            Pattern.compile("^/og\\.png$|^/og/[^/]+\\.png$|^/og/[^/]+/[^/]+\\." + "png$");
     @ConfigProperty(name = "quarkus.rest-csrf.cookie-name", defaultValue = "csrf-token")
     String csrfCookieName;
 

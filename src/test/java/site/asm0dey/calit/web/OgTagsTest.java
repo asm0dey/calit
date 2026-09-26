@@ -64,11 +64,8 @@ class OgTagsTest {
             .then()
             .statusCode(200)
             .body(containsString("property=\"og:title\" content=\"Coffee chat · Ada Lovelace\""))
-            .body(
-                    containsString(
-                            "property=\\\"og:image\\\" content=\\\"http://localhost:8080/og/admin/og-public." + "png\\\""
-                    )
-            )
+            .body(containsString("property=\"og:image\" content=\"http://localhost:8080/og/admin/og-public."
+                    + "png\""))
             .body(containsString("property=\"og:url\" content=\"http://localhost:8080/admin/og-public\""))
             .body(containsString("name=\"twitter:card\" content=\"summary_large_image\""))
             .body(containsString("content=\"en_US\""))
