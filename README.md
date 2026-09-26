@@ -6,7 +6,7 @@
 [![Docker Hub](https://img.shields.io/badge/docker.io-asm0dey%2Fcalit-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/asm0dey/calit)
 [![Docs](https://img.shields.io/badge/docs-asm0dey.github.io%2Fcalit-3b82f6)](https://asm0dey.github.io/calit/)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
-[![Quarkus](https://img.shields.io/badge/Quarkus-3.38-4695EB?logo=quarkus&logoColor=white)](https://quarkus.io)
+[![Quarkus](https://img.shields.io/badge/Quarkus-3.39.5-4695EB?logo=quarkus&logoColor=white)](https://quarkus.io)
 [![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)](https://bell-sw.com/libericajdk/)
 
 **calit** is a self-hosted, multi-user scheduling app — a Calendly alternative built on Quarkus. Every
