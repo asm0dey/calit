@@ -1,7 +1,6 @@
 package site.asm0dey.calit.email;
 
-import java.time.ZoneId;
-import java.util.List;
+import module java.base;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
@@ -18,4 +17,5 @@ public record BookingSnapshot(
         OwnerSettings owner,
         ZoneId zone,
         List<EmailService.AnswerLine> answers,
-        List<HostDelivery> hostDeliveries) {}
+        List<HostDelivery> hostDeliveries
+) {}

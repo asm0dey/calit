@@ -1,10 +1,10 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
-import java.util.Map;
 import site.asm0dey.calit.health.SmtpHealthCheck;
 
 /**
@@ -25,17 +25,20 @@ import site.asm0dey.calit.health.SmtpHealthCheck;
 @Named("mailHealth")
 @ApplicationScoped
 public class MailHealth {
-
-    /** Long enough that page renders never probe; short enough that a fixed SMTP box clears fast. */
+    /**
+     * Long enough that page renders never probe; short enough that a fixed SMTP box clears fast.
+     */
     static final long PROBE_TTL_MS = 60_000L;
-
-    /** Values published by {@link SmtpHealthCheck} under {@code data.state}. Pinned by a test. */
+    /**
+     * Values published by {@link SmtpHealthCheck} under {@code data.state}. Pinned by a test.
+     */
     static final String STATE_REACHABLE = "reachable";
-
     static final String STATE_UNREACHABLE = "unreachable";
 
-    /** How mail delivery is doing. {@code UNCONFIGURED} and {@code UNREACHABLE} are different
-     *  operator problems: nobody set SMTP up, versus SMTP is set up and the host won't answer. */
+    /**
+     * How mail delivery is doing. {@code UNCONFIGURED} and {@code UNREACHABLE} are different
+     *  operator problems: nobody set SMTP up, versus SMTP is set up and the host won't answer.
+     */
     public enum State {
         OK,
         UNCONFIGURED,
@@ -76,15 +79,18 @@ public class MailHealth {
     }
 
     private volatile State cachedState;
-
     private volatile long probedAtMs;
 
-    /** Cached reachability + a live dead-letter count. Safe to call from a page render. */
+    /**
+     * Cached reachability + a live dead-letter count. Safe to call from a page render.
+     */
     public Status status() {
         return new Status(state(), deadLetters());
     }
 
-    /** Convenience for {@code {cdi:mailHealth.degraded}} in fragments that take no parameters. */
+    /**
+     * Convenience for {@code {cdi:mailHealth.degraded}} in fragments that take no parameters.
+     */
     public boolean degraded() {
         return state() != State.OK;
     }
@@ -106,7 +112,9 @@ public class MailHealth {
         return EmailOutbox.count("recipient = ?1 and sentAt is null", recipient) > 0;
     }
 
-    /** Rows we gave up on: dead ({@code nextAttemptAt} null) and never delivered. */
+    /**
+     * Rows we gave up on: dead ({@code nextAttemptAt} null) and never delivered.
+     */
     long deadLetters() {
         return EmailOutbox.count("nextAttemptAt is null and sentAt is null");
     }
@@ -123,7 +131,8 @@ public class MailHealth {
         // probe instead of racing it -- one slow request per minute instead of N.
         synchronized (this) {
             var now = System.currentTimeMillis();
-            var recheck = cachedState; // another thread may have refreshed while we waited
+            // another thread may have refreshed while we waited
+            var recheck = cachedState;
             if (recheck != null && now - probedAtMs < PROBE_TTL_MS) {
                 return recheck;
             }

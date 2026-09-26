@@ -2,7 +2,6 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
@@ -11,25 +10,26 @@ import org.junit.jupiter.api.Test;
 // so MailHealth is UNCONFIGURED and the degraded variant is what these pages should render.
 @QuarkusTest
 class AdminCopyToastTest {
-
     @Test
     void meetingTypesPageCarriesTheDegradedToastCopy() {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(containsString("data-mail-degraded=\"true\""))
-                .body(containsString("will get no confirmation"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .body(containsString("data-mail-degraded=\"true\""))
+            .body(containsString("will get no confirmation"));
     }
 
     @Test
     void sharedPageCarriesTheDegradedToastCopy() {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared")
-                .then()
-                .statusCode(200)
-                .body(containsString("data-mail-degraded=\"true\""));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared")
+            .then()
+            .statusCode(200)
+            .body(containsString("data-mail-degraded=\"true\""));
     }
 }

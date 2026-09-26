@@ -1,15 +1,12 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -19,16 +16,16 @@ import site.asm0dey.calit.web.CommonFeaturesProfile;
 @QuarkusTest
 @TestProfile(CommonFeaturesProfile.class)
 class ReminderGraceWindowTest {
-
     @Inject
     ReminderScheduler scheduler;
 
     @Test
     void dispatchSendsRemindersDueWithinGraceWindow() {
         var bookingId = seedBooking();
-        var withinGrace =
-                persistReminder(bookingId, Instant.now().plus(60, ChronoUnit.SECONDS)); // +60s, grace=120s -> due
-        var beyondGrace = persistReminder(bookingId, Instant.now().plus(1, ChronoUnit.HOURS)); // +1h -> not due
+        var // +60s, grace=120s -> due
+        withinGrace = persistReminder(bookingId, Instant.now().plus(60, ChronoUnit.SECONDS));
+        // +1h -> not due
+        var beyondGrace = persistReminder(bookingId, Instant.now().plus(1, ChronoUnit.HOURS));
 
         scheduler.dispatchDueReminders();
 
@@ -73,6 +70,8 @@ class ReminderGraceWindowTest {
     }
 
     private Instant reloadSentAt(Long id) {
-        return QuarkusTransaction.requiringNew().call(() -> ((Reminder) Reminder.findById(id)).sentAt);
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> ((Reminder) Reminder.findById(id)).sentAt);
     }
 }

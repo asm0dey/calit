@@ -2,7 +2,6 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
@@ -22,38 +21,39 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class AuthI18nTest {
-
     // ---- Login page ----
-
     @Test
     void loginPageRendersGermanViaCookie() {
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/login")
-                .then()
-                .statusCode(200)
-                .body(containsString("<html lang=\"de\""))
-                .body(containsString("Anmelden"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/login")
+            .then()
+            .statusCode(200)
+            .body(containsString("<html lang=\"de\""))
+            .body(containsString("Anmelden"));
     }
 
     @Test
     void loginPageRendersEnglishByDefault() {
-        given().when()
-                .get("/login")
-                .then()
-                .statusCode(200)
-                .body(containsString("<html lang=\"en\""))
-                .body(containsString("Sign in"));
+        given()
+            .when()
+            .get("/login")
+            .then()
+            .statusCode(200)
+            .body(containsString("<html lang=\"en\""))
+            .body(containsString("Sign in"));
     }
 
     @Test
     void loginPageGermanTitle() {
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/login")
-                .then()
-                .statusCode(200)
-                .body(containsString("<title>Anmelden — calit</title>"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/login")
+            .then()
+            .statusCode(200)
+            .body(containsString("<title>Anmelden — calit</title>"));
     }
 
     @Test
@@ -63,121 +63,130 @@ class AuthI18nTest {
 
     @Test
     void loginPageGermanLabels() {
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/login")
-                .then()
-                .statusCode(200)
-                .body(containsString("Benutzername"))
-                .body(containsString("Passwort"))
-                .body(containsString("Passwort vergessen?"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/login")
+            .then()
+            .statusCode(200)
+            .body(containsString("Benutzername"))
+            .body(containsString("Passwort"))
+            .body(containsString("Passwort vergessen?"));
     }
 
     @Test
     void loginPageGermanGoogleNotice() {
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/login?notice=google_signup_disabled")
-                .then()
-                .statusCode(200)
-                .body(containsString("Registrierungen sind deaktiviert"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/login?notice=google_signup_disabled")
+            .then()
+            .statusCode(200)
+            .body(containsString("Registrierungen sind deaktiviert"));
     }
 
     @Test
     void loginPageGermanGenericGoogleNotice() {
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/login?notice=google")
-                .then()
-                .statusCode(200)
-                .body(containsString("Google-Anmeldung konnte nicht abgeschlossen werden"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/login?notice=google")
+            .then()
+            .statusCode(200)
+            .body(containsString("Google-Anmeldung konnte nicht abgeschlossen werden"));
     }
 
     // ---- Forgot password page ----
-
     @Test
     void forgotPageRendersGermanViaCookie() {
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/forgot-password")
-                .then()
-                .statusCode(200)
-                .body(containsString("<html lang=\"de\""))
-                .body(containsString("Passwort vergessen"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/forgot-password")
+            .then()
+            .statusCode(200)
+            .body(containsString("<html lang=\"de\""))
+            .body(containsString("Passwort vergessen"));
     }
 
     @Test
     void forgotPageRendersEnglishByDefault() {
-        given().when()
-                .get("/forgot-password")
-                .then()
-                .statusCode(200)
-                .body(containsString("<html lang=\"en\""))
-                .body(containsString("Forgot password"));
+        given()
+            .when()
+            .get("/forgot-password")
+            .then()
+            .statusCode(200)
+            .body(containsString("<html lang=\"en\""))
+            .body(containsString("Forgot password"));
     }
 
     @Test
     void forgotPageGermanTitle() {
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/forgot-password")
-                .then()
-                .statusCode(200)
-                .body(containsString("<title>Passwort vergessen — calit</title>"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/forgot-password")
+            .then()
+            .statusCode(200)
+            .body(containsString("<title>Passwort vergessen — calit</title>"));
     }
 
     @Test
     void forgotPageGermanSubmitButton() {
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/forgot-password")
-                .then()
-                .statusCode(200)
-                .body(containsString("Zurücksetzen-Link senden"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/forgot-password")
+            .then()
+            .statusCode(200)
+            .body(containsString("Zurücksetzen-Link senden"));
     }
 
     // ---- Reset password page ----
-
     @Test
     void resetPageRendersGermanViaCookie() {
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/reset-password?token=sometoken")
-                .then()
-                .statusCode(200)
-                .body(containsString("<html lang=\"de\""))
-                .body(containsString("Passwort zurücksetzen"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/reset-password?token=sometoken")
+            .then()
+            .statusCode(200)
+            .body(containsString("<html lang=\"de\""))
+            .body(containsString("Passwort zurücksetzen"));
     }
 
     @Test
     void resetPageRendersEnglishByDefault() {
-        given().when()
-                .get("/reset-password?token=sometoken")
-                .then()
-                .statusCode(200)
-                .body(containsString("<html lang=\"en\""))
-                .body(containsString("Reset password"));
+        given()
+            .when()
+            .get("/reset-password?token=sometoken")
+            .then()
+            .statusCode(200)
+            .body(containsString("<html lang=\"en\""))
+            .body(containsString("Reset password"));
     }
 
     @Test
     void resetPageGermanTitle() {
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/reset-password?token=sometoken")
-                .then()
-                .statusCode(200)
-                .body(containsString("<title>Passwort zurücksetzen — calit</title>"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/reset-password?token=sometoken")
+            .then()
+            .statusCode(200)
+            .body(containsString("<title>Passwort zurücksetzen — calit</title>"));
     }
 
     @Test
     void resetPageInvalidLinkGerman() {
         // No token → expired/invalid branch
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/reset-password")
-                .then()
-                .statusCode(200)
-                .body(containsString("ungültig oder abgelaufen"))
-                .body(containsString("Neuen Link anfordern"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/reset-password")
+            .then()
+            .statusCode(200)
+            .body(containsString("ungültig oder abgelaufen"))
+            .body(containsString("Neuen Link anfordern"));
     }
 }

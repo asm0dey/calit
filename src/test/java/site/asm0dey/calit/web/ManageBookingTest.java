@@ -1,20 +1,16 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingService;
@@ -28,14 +24,14 @@ import site.asm0dey.calit.google.CreatedEvent;
 
 @QuarkusTest
 class ManageBookingTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @Inject
     BookingService bookingService;
 
-    /** Seeds an AUTO booking and returns its unguessable manageToken (NOT the numeric id). */
+    /**
+     * Seeds an AUTO booking and returns its unguessable manageToken (NOT the numeric id).
+     */
     @Transactional
     String seedBooking() {
         // Idempotent across the multiple seedBooking() calls in this class (committed tx).
@@ -79,7 +75,8 @@ class ManageBookingTest {
                 "",
                 "",
                 "en",
-                List.of());
+                List.of()
+        );
         return b.manageToken;
     }
 
@@ -94,7 +91,9 @@ class ManageBookingTest {
     String seedMultiDurationBooking() {
         Booking.delete("meetingTypeId in (select id from MeetingType where slug = ?1)", "manage-multi-duration");
         MeetingTypeDuration.delete(
-                "meetingTypeId in (select id from MeetingType where slug = ?1)", "manage-multi-duration");
+                "meetingTypeId in (select id from MeetingType where slug = ?1)",
+                "manage-multi-duration"
+        );
         MeetingType.delete("slug", "manage-multi-duration");
         OwnerSettings s = OwnerSettings.forOwner(1L);
         if (s == null) {
@@ -128,9 +127,7 @@ class ManageBookingTest {
             r.meetingTypeId = null;
             r.persist();
         }
-        var slot = bookingService
-                .availableSlots(t, now(), now().plusDays(30), Set.of(), 120)
-                .getFirst();
+        var slot = bookingService.availableSlots(t, now(), now().plusDays(30), Set.of(), 120).getFirst();
         Booking b = bookingService.book(
                 1L,
                 "manage-multi-duration",
@@ -143,7 +140,8 @@ class ManageBookingTest {
                 "",
                 "en",
                 List.of(),
-                120);
+                120
+        );
         return b.manageToken;
     }
 
@@ -152,18 +150,13 @@ class ManageBookingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-m4", "https://meet.google.com/manage-link4", "h", null));
+            .thenReturn(new CreatedEvent("evt-m4", "https://meet.google.com/manage-link4", "h", null));
         var token = seedMultiDurationBooking();
-
         // "16:30" is a valid start ONLY at the type's 30-minute default, never at the booking's
         // actual 120-minute length (last 120-min start in a 9:00-17:00 window is 15:00). Its
         // presence anywhere in the page would mean the reschedule grid was computed at the wrong
         // length.
-        given().when()
-                .get("/booking/" + token + "/manage")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("16:30")));
+        given().when().get("/booking/" + token + "/manage").then().statusCode(200).body(not(containsString("16:30")));
     }
 
     @Test
@@ -171,31 +164,29 @@ class ManageBookingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-m", "https://meet.google.com/manage-link", "h", null));
+            .thenReturn(new CreatedEvent("evt-m", "https://meet.google.com/manage-link", "h", null));
         var token = seedBooking();
 
-        given().when()
-                .get("/booking/" + token + "/manage")
-                .then()
-                .statusCode(200)
-                .body(containsString("Reschedule"))
-                .body(containsString("Cancel"))
-                // All action URLs are keyed by the token, never a numeric id.
-                .body(containsString("/booking/" + token + "/reschedule"))
-                .body(containsString("/booking/" + token + "/cancel"))
-                // Viewer-local machinery on the manage page: data-utc instants + picker + script + label.
-                .body(containsString("data-utc=\""))
-                .body(containsString("id=\"tz-picker\""))
-                .body(containsString("CALIT_TZ_REFORMAT"))
-                .body(containsString("Times shown in:"));
+        given()
+            .when()
+            .get("/booking/" + token + "/manage")
+            .then()
+            .statusCode(200)
+            .body(containsString("Reschedule"))
+            .body(containsString("Cancel"))
+            // All action URLs are keyed by the token, never a numeric id.
+            .body(containsString("/booking/" + token + "/reschedule"))
+            .body(containsString("/booking/" + token + "/cancel"))
+            // Viewer-local machinery on the manage page: data-utc instants + picker + script + label.
+            .body(containsString("data-utc=\""))
+            .body(containsString("id=\"tz-picker\""))
+            .body(containsString("CALIT_TZ_REFORMAT"))
+            .body(containsString("Times shown in:"));
     }
 
     @Test
     void managePageReturns404ForUnknownToken() {
-        given().when()
-                .get("/booking/00000000-0000-0000-0000-000000000000/manage")
-                .then()
-                .statusCode(404);
+        given().when().get("/booking/00000000-0000-0000-0000-000000000000/manage").then().statusCode(404);
     }
 
     @Test
@@ -203,29 +194,30 @@ class ManageBookingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-m3", "https://meet.google.com/manage-link3", "h", null));
+            .thenReturn(new CreatedEvent("evt-m3", "https://meet.google.com/manage-link3", "h", null));
         var token = seedBooking();
-
         // Pull a reschedule slot's absolute UTC instant from the manage page's radio value,
         // submit it, and assert the confirmation echoes the SAME instant as a data-utc — the
         // viewer's display zone is purely cosmetic and never changes the booked instant.
-        String manage = given().when()
-                .get("/booking/" + token + "/manage")
-                .then()
-                .statusCode(200)
-                .extract()
-                .asString();
+        String manage = given()
+            .when()
+            .get("/booking/" + token + "/manage")
+            .then()
+            .statusCode(200)
+            .extract()
+            .asString();
         var startUtc =
                 manage.substring(manage.indexOf("name=\"startUtc\" value=\"") + "name=\"startUtc\" value=\"".length());
         startUtc = startUtc.substring(0, startUtc.indexOf('"'));
 
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", startUtc)
-                .when()
-                .post("/booking/" + token + "/reschedule")
-                .then()
-                .statusCode(200)
-                .body(containsString("data-utc=\"" + startUtc + "\""));
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", startUtc)
+            .when()
+            .post("/booking/" + token + "/reschedule")
+            .then()
+            .statusCode(200)
+            .body(containsString("data-utc=\"" + startUtc + "\""));
     }
 
     @Test
@@ -233,14 +225,15 @@ class ManageBookingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-m2", "https://meet.google.com/manage-link2", "h", null));
+            .thenReturn(new CreatedEvent("evt-m2", "https://meet.google.com/manage-link2", "h", null));
         var token = seedBooking();
 
-        given().contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/booking/" + token + "/cancel")
-                .then()
-                .statusCode(200)
-                .body(containsString("cancelled"));
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/booking/" + token + "/cancel")
+            .then()
+            .statusCode(200)
+            .body(containsString("cancelled"));
     }
 }

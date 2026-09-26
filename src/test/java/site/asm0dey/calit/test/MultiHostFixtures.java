@@ -11,7 +11,8 @@ import site.asm0dey.calit.user.AppUser;
  * need (YAGNI); later multi-host tasks add more helpers here rather than inlining per test class.
  */
 public final class MultiHostFixtures {
-    private MultiHostFixtures() {}
+    private MultiHostFixtures() {
+    }
 
     public static MeetingType meetingType(long ownerId, String slug, int durationMinutes) {
         MeetingType t = new MeetingType();
@@ -38,7 +39,9 @@ public final class MultiHostFixtures {
         return c;
     }
 
-    /** Enabled, onboarded (settingsComplete) user — the minimum shape for a co-host candidate. */
+    /**
+     * Enabled, onboarded (settingsComplete) user — the minimum shape for a co-host candidate.
+     */
     public static AppUser enabledUser(String username) {
         AppUser u = AppUser.create(username, "x", false);
         u.settingsComplete = true;
@@ -72,7 +75,12 @@ public final class MultiHostFixtures {
      * still seeds {@code OwnerSettings}/rules/windows separately via {@link #settings} / {@link #rule}.
      */
     public static MeetingType acceptedTwoHostType(
-            long creatorId, long cohostId, String slug, int durationMinutes, boolean requiresApproval) {
+            long creatorId,
+            long cohostId,
+            String slug,
+            int durationMinutes,
+            boolean requiresApproval
+    ) {
         MeetingType t = new MeetingType();
         t.ownerId = creatorId;
         t.name = slug;
@@ -81,18 +89,22 @@ public final class MultiHostFixtures {
         t.horizonDays = 50000;
         t.requiresApproval = requiresApproval;
         t.persist();
-        site.asm0dey.calit.domain.MeetingTypeHost.of(
-                        t.id,
-                        creatorId,
-                        site.asm0dey.calit.domain.MeetingTypeHost.CREATOR,
-                        site.asm0dey.calit.domain.MeetingTypeHost.ACCEPTED)
-                .persist();
-        site.asm0dey.calit.domain.MeetingTypeHost.of(
-                        t.id,
-                        cohostId,
-                        site.asm0dey.calit.domain.MeetingTypeHost.COHOST,
-                        site.asm0dey.calit.domain.MeetingTypeHost.ACCEPTED)
-                .persist();
+        site.asm0dey.calit.domain.MeetingTypeHost
+            .of(
+                    t.id,
+                    creatorId,
+                    site.asm0dey.calit.domain.MeetingTypeHost.CREATOR,
+                    site.asm0dey.calit.domain.MeetingTypeHost.ACCEPTED
+            )
+            .persist();
+        site.asm0dey.calit.domain.MeetingTypeHost
+            .of(
+                    t.id,
+                    cohostId,
+                    site.asm0dey.calit.domain.MeetingTypeHost.COHOST,
+                    site.asm0dey.calit.domain.MeetingTypeHost.ACCEPTED
+            )
+            .persist();
         return t;
     }
 }

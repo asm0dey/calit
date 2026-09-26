@@ -1,7 +1,6 @@
 package site.asm0dey.calit.google;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -14,7 +13,6 @@ import site.asm0dey.calit.web.CommonFeaturesProfile;
 @QuarkusTest
 @TestProfile(CommonFeaturesProfile.class)
 class GoogleSignInProvisionTest {
-
     @Inject
     GoogleSignInService signIn;
 

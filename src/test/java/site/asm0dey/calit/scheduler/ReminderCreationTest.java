@@ -1,14 +1,11 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -16,20 +13,19 @@ import site.asm0dey.calit.domain.MeetingType;
 
 @QuarkusTest
 class ReminderCreationTest {
-
     @Inject
     ReminderScheduler scheduler;
 
     // Lead time default is 1440 min (24h).
-
     @Test
     void scheduleReminderInsertsRowOneLeadBeforeStart() {
         Long id = seedBooking(Instant.now().plus(48, ChronoUnit.HOURS), BookingStatus.CONFIRMED);
 
         scheduler.scheduleReminder(id);
 
-        Reminder r = QuarkusTransaction.requiringNew()
-                .call(() -> Reminder.find("bookingId", id).firstResult());
+        Reminder r = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Reminder.find("bookingId", id).firstResult());
         assertEquals(Reminder.KIND_REMINDER, r.kind);
         // start in 48h, lead 24h -> sendAt ~ 24h from now (well in the future).
         assertTrue(r.sendAt.isAfter(Instant.now().plus(23, ChronoUnit.HOURS)));
@@ -43,7 +39,9 @@ class ReminderCreationTest {
 
         scheduler.scheduleReminder(id);
 
-        long count = QuarkusTransaction.requiringNew().call(() -> Reminder.count("bookingId", id));
+        long count = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Reminder.count("bookingId", id));
         assertEquals(0, count);
     }
 
@@ -52,10 +50,13 @@ class ReminderCreationTest {
         Long id = seedBooking(Instant.now().plus(72, ChronoUnit.HOURS), BookingStatus.CONFIRMED);
 
         scheduler.scheduleReminder(id);
-        scheduler.scheduleReminder(id); // re-confirm: must NOT create a second unsent row
+        // re-confirm: must NOT create a second unsent row
+        scheduler.scheduleReminder(id);
 
         long count =
-                QuarkusTransaction.requiringNew().call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
+                QuarkusTransaction
+            .requiringNew()
+            .call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
         assertEquals(1, count);
     }
 
@@ -67,7 +68,9 @@ class ReminderCreationTest {
         scheduler.onCancelledOrDeclined(id);
 
         long count =
-                QuarkusTransaction.requiringNew().call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
+                QuarkusTransaction
+            .requiringNew()
+            .call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
         assertEquals(0, count);
     }
 

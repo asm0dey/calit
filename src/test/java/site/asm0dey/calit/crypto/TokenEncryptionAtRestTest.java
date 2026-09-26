@@ -1,21 +1,18 @@
 package site.asm0dey.calit.crypto;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.google.GoogleCredential;
 
 @QuarkusTest
 class TokenEncryptionAtRestTest {
-
     @Inject
     EntityManager em;
-
     @Inject
     site.asm0dey.calit.crypto.TokenBackfill backfill;
 
@@ -31,9 +28,10 @@ class TokenEncryptionAtRestTest {
         c.persist();
         c.flush();
 
-        Object raw = em.createNativeQuery("select refresh_token from google_credential where id = :id")
-                .setParameter("id", c.id)
-                .getSingleResult();
+        Object raw = em
+            .createNativeQuery("select refresh_token from google_credential where id = :id")
+            .setParameter("id", c.id)
+            .getSingleResult();
         assertTrue(raw.toString().startsWith("enc:v1:"), "stored token must be encrypted");
         assertFalse(raw.toString().contains("super-secret-refresh"), "plaintext must not be at rest");
 
@@ -45,15 +43,19 @@ class TokenEncryptionAtRestTest {
     @Test
     @Transactional
     void backfillEncryptsLegacyPlaintextRow() {
-        em.createNativeQuery("insert into google_credential "
-                        + "(owner_id, refresh_token, access_token, google_sub, needs_reconnect) "
-                        + "values (1, 'legacy-plain-refresh', 'legacy-plain-access', 'sub-legacy', false)")
-                .executeUpdate();
+        em
+            .createNativeQuery(
+                    "insert into google_credential "
+                    + "(owner_id, refresh_token, access_token, google_sub, needs_reconnect) "
+                    + "values (1, 'legacy-plain-refresh', 'legacy-plain-access', 'sub-legacy', false)"
+            )
+            .executeUpdate();
 
         backfill.encryptLegacy();
 
-        Object raw = em.createNativeQuery("select refresh_token from google_credential where google_sub = 'sub-legacy'")
-                .getSingleResult();
+        Object raw = em
+            .createNativeQuery("select refresh_token from google_credential where google_sub = 'sub-legacy'")
+            .getSingleResult();
         assertTrue(raw.toString().startsWith("enc:v1:"), "legacy row must be encrypted after backfill");
     }
 }

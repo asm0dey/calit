@@ -1,19 +1,15 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -34,17 +30,14 @@ import site.asm0dey.calit.test.MultiHostFixtures;
  */
 @QuarkusTest
 class MultiHostEmailFanoutTest {
-
     private static final String INVITEE_EMAIL = "invitee@example.com";
-    private static final long CREATOR_ID = 1L; // DatabaseResetCallback baseline admin
+    // DatabaseResetCallback baseline admin
+    private static final long CREATOR_ID = 1L;
     private static final long COHOST_ID = 2L;
-
     @Inject
     EmailService emailService;
-
     @Inject
     MockMailbox mailbox;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -63,7 +56,9 @@ class MultiHostEmailFanoutTest {
         });
     }
 
-    /** One row per host, sharing a groupId; returns the lead (creator's) row id. */
+    /**
+     * One row per host, sharing a groupId; returns the lead (creator's) row id.
+     */
     private long seedGroup(MeetingType type, BookingStatus status, boolean withApprovalTokens) {
         var groupId = UUID.randomUUID();
         var start = Instant.parse("2026-06-08T09:00:00Z");
@@ -125,25 +120,28 @@ class MultiHostEmailFanoutTest {
         assertEquals(
                 1,
                 mailbox.getMailsSentTo("Cohost@x.com").size(),
-                "opted-out co-host still gets the approval-needed mail (actionable, not suppressible)");
+                "opted-out co-host still gets the approval-needed mail (actionable, not suppressible)"
+        );
         assertEquals(3, mailbox.getTotalMessagesSent());
-
         // Each host's mail must link to THEIR OWN group row (id + approvalToken), never the lead's --
         // a regression that hands every host the lead's token would still contain "/me/bookings/"
         // (weak substring check) but must fail this exact-link assertion.
         record RowTokens(long id, String approvalToken) {}
         RowTokens[] rows = QuarkusTransaction.requiringNew().call(() -> {
             List<Booking> group = Booking.group(Booking.<Booking>findById(leadId).groupId);
-            Booking cohostRow = group.stream()
-                    .filter(b -> b.ownerId.equals(COHOST_ID))
-                    .findFirst()
-                    .orElseThrow();
-            Booking leadRow = group.stream()
-                    .filter(b -> b.ownerId.equals(CREATOR_ID))
-                    .findFirst()
-                    .orElseThrow();
+            Booking cohostRow = group
+                .stream()
+                .filter(b -> b.ownerId.equals(COHOST_ID))
+                .findFirst()
+                .orElseThrow();
+            Booking leadRow = group
+                .stream()
+                .filter(b -> b.ownerId.equals(CREATOR_ID))
+                .findFirst()
+                .orElseThrow();
             return new RowTokens[] {
-                new RowTokens(cohostRow.id, cohostRow.approvalToken), new RowTokens(leadRow.id, leadRow.approvalToken)
+                    new RowTokens(cohostRow.id, cohostRow.approvalToken),
+                    new RowTokens(leadRow.id, leadRow.approvalToken)
             };
         });
         var cohostRow = rows[0];
@@ -154,7 +152,8 @@ class MultiHostEmailFanoutTest {
         assertTrue(cohostMail.getHtml().contains(cohostExpectedLink), "carries this host's OWN approve link");
         assertFalse(
                 cohostMail.getHtml().contains("/me/bookings/" + leadRow.id() + "/approve?t="),
-                "must NOT carry the lead's approve link");
+                "must NOT carry the lead's approve link"
+        );
 
         Mail creatorMail = mailbox.getMailsSentTo("Creator@x.com").getFirst();
         var leadExpectedLink = "/me/bookings/" + leadRow.id() + "/approve?t=" + leadRow.approvalToken();
@@ -179,7 +178,6 @@ class MultiHostEmailFanoutTest {
         long leadId = seedGroup(type, BookingStatus.CONFIRMED, false);
 
         emailService.handleConfirmed(new BookingConfirmed(leadId));
-
         // seedGroup starts the booking at 2026-06-08T09:00:00Z; with both hosts on UTC that's
         // 09:00 local -> 24h renders "09:00", 12h renders "9:00 AM".
         String leadHtml = mailbox.getMailsSentTo("Creator@x.com").getFirst().getHtml();
@@ -189,7 +187,8 @@ class MultiHostEmailFanoutTest {
         assertTrue(cohostHtml.contains("09:00"), "co-host chose auto (24h); got: " + cohostHtml);
         assertFalse(
                 cohostHtml.contains("9:00 AM"),
-                "lead host's h12 preference must not leak into the co-host's copy; got: " + cohostHtml);
+                "lead host's h12 preference must not leak into the co-host's copy; got: " + cohostHtml
+        );
     }
 
     @Test

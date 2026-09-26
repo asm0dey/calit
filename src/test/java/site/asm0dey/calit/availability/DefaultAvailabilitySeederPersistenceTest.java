@@ -1,18 +1,14 @@
 package site.asm0dey.calit.availability;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 
 @QuarkusTest
 class DefaultAvailabilitySeederPersistenceTest {
-
     @Transactional
     int seed(Long ownerId) {
         return DefaultAvailabilitySeeder.seedGlobalDefaults(ownerId);
@@ -25,7 +21,8 @@ class DefaultAvailabilitySeederPersistenceTest {
 
     @Test
     void seedsFiveOwnerStampedWeekdayRules() {
-        assertEquals(5, seed(1L)); // admin is always id 1 (DatabaseResetCallback)
+        // admin is always id 1 (DatabaseResetCallback)
+        assertEquals(5, seed(1L));
         assertEquals(5, globalCount(1L));
 
         List<AvailabilityRule> monday = AvailabilityRule.globalForOwner(1L, DayOfWeek.MONDAY);

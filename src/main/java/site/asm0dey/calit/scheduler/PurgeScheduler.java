@@ -1,11 +1,10 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-import java.time.Duration;
-import java.time.Instant;
 import site.asm0dey.calit.email.EmailOutbox;
 import site.asm0dey.calit.user.LoginTicket;
 import site.asm0dey.calit.user.PasswordResetToken;
@@ -28,11 +27,13 @@ import site.asm0dey.calit.user.PasswordResetToken;
  */
 @ApplicationScoped
 public class PurgeScheduler {
-
-    /** How long a delivered or dead mail is kept for operational inspection before it goes. */
+    /**
+     * How long a delivered or dead mail is kept for operational inspection before it goes.
+     */
     private static final Duration MAIL_RETENTION = Duration.ofDays(30);
-
-    /** Grace past an auth token's own expiry, so a just-expired link still explains itself. */
+    /**
+     * Grace past an auth token's own expiry, so a just-expired link still explains itself.
+     */
     private static final Duration TOKEN_GRACE = Duration.ofDays(1);
 
     @Scheduled(cron = "0 37 3 * * ?")
@@ -59,7 +60,11 @@ public class PurgeScheduler {
         if (sent + dead + resets + tickets > 0) {
             Log.infof(
                     "PRIVACY purge: outbox sent=%d dead=%d, reset-tokens=%d, login-tickets=%d",
-                    sent, dead, resets, tickets);
+                    sent,
+                    dead,
+                    resets,
+                    tickets
+            );
         }
     }
 }

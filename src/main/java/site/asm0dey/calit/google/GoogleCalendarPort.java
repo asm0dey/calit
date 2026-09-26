@@ -1,5 +1,6 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.Calendar;
@@ -7,13 +8,6 @@ import com.google.api.services.calendar.model.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import site.asm0dey.calit.domain.OwnerSettings;
 
 /**
@@ -22,7 +16,6 @@ import site.asm0dey.calit.domain.OwnerSettings;
  */
 @ApplicationScoped
 public class GoogleCalendarPort implements CalendarPort {
-
     private final GoogleTokenService tokens;
     private final GoogleCalendarClientFactory clientFactory;
 
@@ -56,26 +49,31 @@ public class GoogleCalendarPort implements CalendarPort {
                 // Fail-CLOSED: a busy-feeding account that is gone or known-broken means we cannot see
                 // its events. Refuse to produce an availability picture rather than hide the conflict.
                 throw new CalendarUnavailableException(
-                        "Google account " + e.getKey() + " is disconnected; availability unavailable");
+                        "Google account " + e.getKey() + " is disconnected; availability unavailable"
+                );
             }
             FreeBusyRequest request = new FreeBusyRequest()
-                    .setTimeMin(new DateTime(from.toEpochMilli()))
-                    .setTimeMax(new DateTime(to.toEpochMilli()))
-                    .setItems(e.getValue().stream()
-                            .map(c -> new FreeBusyRequestItem().setId(c.googleCalendarId))
-                            .toList());
+                .setTimeMin(new DateTime(from.toEpochMilli()))
+                .setTimeMax(new DateTime(to.toEpochMilli()))
+                .setItems(e
+                    .getValue()
+                    .stream()
+                    .map(c -> new FreeBusyRequestItem().setId(c.googleCalendarId))
+                    .toList());
             try {
-                FreeBusyResponse response =
-                        client(cred).freebusy().query(request).execute();
+                FreeBusyResponse response = client(cred).freebusy().query(request).execute();
                 Map<String, FreeBusyCalendar> calendars = response.getCalendars();
                 if (calendars != null) {
                     for (FreeBusyCalendar cal : calendars.values()) {
                         List<TimePeriod> busy = cal.getBusy();
                         if (busy != null) {
                             for (TimePeriod p : busy) {
-                                raw.add(new BusyInterval(
-                                        Instant.ofEpochMilli(p.getStart().getValue()),
-                                        Instant.ofEpochMilli(p.getEnd().getValue())));
+                                raw.add(
+                                        new BusyInterval(
+                                                Instant.ofEpochMilli(p.getStart().getValue()),
+                                                Instant.ofEpochMilli(p.getEnd().getValue())
+                                        )
+                                );
                             }
                         }
                     }
@@ -85,8 +83,9 @@ public class GoogleCalendarPort implements CalendarPort {
                 // already committed needs_reconnect=true (it flags on ANY refresh failure, transient or
                 // auth). The hourly probe re-validates and clears a transient flag before any reconnect
                 // email is sent, so a blip won't false-alarm. Either way we refuse a misleading list.
-                org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class)
-                        .warnf(ex, "freeBusy failed for credential %d; failing closed", cred.id);
+                org.jboss.logging.Logger
+                    .getLogger(GoogleCalendarPort.class)
+                    .warnf(ex, "freeBusy failed for credential %d; failing closed", cred.id);
                 throw new CalendarUnavailableException("Could not read Google free/busy for credential " + cred.id, ex);
             }
         }
@@ -104,7 +103,8 @@ public class GoogleCalendarPort implements CalendarPort {
             Instant end,
             List<String> attendeeEmails,
             boolean createMeetLink,
-            String locationText) {
+            String locationText
+    ) {
         var ctx = writeContext(ownerId, target);
         GoogleCalendar targetCalendar = ctx.target();
         GoogleCredential cred = ctx.cred();
@@ -115,7 +115,8 @@ public class GoogleCalendarPort implements CalendarPort {
                 eventTime(ownerId, end),
                 attendeeEmails,
                 createMeetLink,
-                locationText);
+                locationText
+        );
 
         try {
             Event created = insert(cred, targetCalendar, event, createMeetLink);
@@ -124,7 +125,8 @@ public class GoogleCalendarPort implements CalendarPort {
                     created.getId(),
                     meetLink,
                     created.getHtmlLink(),
-                    new CalendarRef(cred.id, targetCalendar.googleCalendarId));
+                    new CalendarRef(cred.id, targetCalendar.googleCalendarId)
+            );
         } catch (GoogleJsonResponseException e) {
             return handleCreateFailure(e, cred, targetCalendar, event, createMeetLink);
         } catch (IOException e) {
@@ -132,7 +134,9 @@ public class GoogleCalendarPort implements CalendarPort {
         }
     }
 
-    /** Assemble the Google {@link Event}: summary/description/time, optional attendees, and either a Meet conference or a location. */
+    /**
+     * Assemble the Google {@link Event}: summary/description/time, optional attendees, and either a Meet conference or a location.
+     */
     private Event buildEvent(
             String summary,
             String description,
@@ -140,25 +144,29 @@ public class GoogleCalendarPort implements CalendarPort {
             EventDateTime endTime,
             List<String> attendeeEmails,
             boolean createMeetLink,
-            String locationText) {
+            String locationText
+    ) {
         Event event = new Event()
-                .setSummary(summary)
-                .setDescription(description)
-                .setStart(startTime)
-                .setEnd(endTime);
+            .setSummary(summary)
+            .setDescription(description)
+            .setStart(startTime)
+            .setEnd(endTime);
 
         if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
-            event.setAttendees(attendeeEmails.stream()
-                    .map(email -> new EventAttendee().setEmail(email))
-                    .toList());
+            event.setAttendees(attendeeEmails
+                .stream()
+                .map(email -> new EventAttendee().setEmail(email))
+                .toList());
         }
 
         if (createMeetLink) {
             // GOOGLE_MEET type: request a fresh Google Meet conference for this event only.
             event.setConferenceData(new ConferenceData()
-                    .setCreateRequest(new CreateConferenceRequest()
-                            .setRequestId(UUID.randomUUID().toString())
-                            .setConferenceSolutionKey(new ConferenceSolutionKey().setType("hangoutsMeet"))));
+                .setCreateRequest(new CreateConferenceRequest()
+                    .setRequestId(UUID.randomUUID().toString())
+                    .setConferenceSolutionKey(new ConferenceSolutionKey().setType("hangoutsMeet"))
+                )
+            );
         } else if (locationText != null) {
             // PHONE/IN_PERSON/CUSTOM type: no conference; carry the per-type location text instead.
             event.setLocation(locationText);
@@ -166,13 +174,16 @@ public class GoogleCalendarPort implements CalendarPort {
         return event;
     }
 
-    /** Map a failed insert to a recovery (Meet-incapable calendar) or the right exception (deleted target / generic). */
+    /**
+     * Map a failed insert to a recovery (Meet-incapable calendar) or the right exception (deleted target / generic).
+     */
     private CreatedEvent handleCreateFailure(
             GoogleJsonResponseException e,
             GoogleCredential cred,
             GoogleCalendar target,
             Event event,
-            boolean createMeetLink) {
+            boolean createMeetLink
+    ) {
         if (createMeetLink && isInvalidConferenceType(e)) {
             return retryWithoutConference(cred, target, event);
         }
@@ -180,7 +191,9 @@ public class GoogleCalendarPort implements CalendarPort {
             // The write-target calendar was deleted on Google since the owner selected it.
             clearDeletedWriteTarget(target, cred);
             throw new IllegalStateException(
-                    "Write-target calendar no longer exists on Google; re-select a write target.", e);
+                    "Write-target calendar no longer exists on Google; re-select a write target.",
+                    e
+            );
         }
         throw new UncheckedIOException("createEvent failed", e);
     }
@@ -192,16 +205,23 @@ public class GoogleCalendarPort implements CalendarPort {
      * event, no link.
      */
     private CreatedEvent retryWithoutConference(GoogleCredential cred, GoogleCalendar target, Event event) {
-        org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class)
-                .warnf(
-                        "Write-target calendar %s rejected a Meet conference; creating event without one",
-                        target.googleCalendarId);
-        target.supportsMeet = false; // managed entity; flushes with the booking transaction
+        org.jboss.logging.Logger
+            .getLogger(GoogleCalendarPort.class)
+            .warnf(
+                    "Write-target calendar %s rejected a Meet conference; creating event without one",
+                    target.googleCalendarId
+            );
+        // managed entity; flushes with the booking transaction
+        target.supportsMeet = false;
         event.setConferenceData(null);
         try {
             Event created = insert(cred, target, event, false);
             return new CreatedEvent(
-                    created.getId(), null, created.getHtmlLink(), new CalendarRef(cred.id, target.googleCalendarId));
+                    created.getId(),
+                    null,
+                    created.getHtmlLink(),
+                    new CalendarRef(cred.id, target.googleCalendarId)
+            );
         } catch (IOException ex) {
             throw new UncheckedIOException("createEvent failed", ex);
         }
@@ -215,38 +235,43 @@ public class GoogleCalendarPort implements CalendarPort {
      */
     private void clearDeletedWriteTarget(GoogleCalendar target, GoogleCredential cred) {
         Long targetId = target.id, credId = cred.id;
-        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
-            GoogleCalendar t = GoogleCalendar.findById(targetId);
-            if (t != null) {
-                t.writeTarget = false;
-                t.persist();
-            }
-            GoogleCredential c2 = GoogleCredential.findById(credId);
-            if (c2 != null) {
-                c2.needsReconnect = true;
-                c2.persist();
-            }
-        });
+        io.quarkus.narayana.jta.QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                GoogleCalendar t = GoogleCalendar.findById(targetId);
+                if (t != null) {
+                    t.writeTarget = false;
+                    t.persist();
+                }
+                GoogleCredential c2 = GoogleCredential.findById(credId);
+                if (c2 != null) {
+                    c2.needsReconnect = true;
+                    c2.persist();
+                }
+            });
     }
 
     @Override
     @Transactional
     public void updateEvent(
-            Long ownerId, CalendarRef ref, String eventId, Instant start, Instant end, List<String> attendeeEmails) {
+            Long ownerId,
+            CalendarRef ref,
+            String eventId,
+            Instant start,
+            Instant end,
+            List<String> attendeeEmails
+    ) {
         var addr = writeAddress(ownerId, ref);
         Event patch = new Event().setStart(eventTime(ownerId, start)).setEnd(eventTime(ownerId, end));
         if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
-            patch.setAttendees(attendeeEmails.stream()
-                    .map(email -> new EventAttendee().setEmail(email))
-                    .toList());
+            patch.setAttendees(attendeeEmails
+                .stream()
+                .map(email -> new EventAttendee().setEmail(email))
+                .toList());
         }
         try {
             // sendUpdates=all so Google emails attendees the new time and notifies anyone added/removed.
-            client(addr.cred())
-                    .events()
-                    .patch(addr.calendarId(), eventId, patch)
-                    .setSendUpdates("all")
-                    .execute();
+            client(addr.cred()).events().patch(addr.calendarId(), eventId, patch).setSendUpdates("all").execute();
         } catch (IOException e) {
             throw new UncheckedIOException("updateEvent failed", e);
         }
@@ -260,20 +285,18 @@ public class GoogleCalendarPort implements CalendarPort {
             String eventId,
             String summary,
             String description,
-            List<String> attendeeEmails) {
+            List<String> attendeeEmails
+    ) {
         var addr = writeAddress(ownerId, ref);
         Event patch = new Event().setSummary(summary).setDescription(description);
         if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
-            patch.setAttendees(attendeeEmails.stream()
-                    .map(email -> new EventAttendee().setEmail(email))
-                    .toList());
+            patch.setAttendees(attendeeEmails
+                .stream()
+                .map(email -> new EventAttendee().setEmail(email))
+                .toList());
         }
         try {
-            client(addr.cred())
-                    .events()
-                    .patch(addr.calendarId(), eventId, patch)
-                    .setSendUpdates("all")
-                    .execute();
+            client(addr.cred()).events().patch(addr.calendarId(), eventId, patch).setSendUpdates("all").execute();
         } catch (IOException e) {
             throw new UncheckedIOException("updateEventDetails failed", e);
         }
@@ -285,11 +308,7 @@ public class GoogleCalendarPort implements CalendarPort {
         var addr = writeAddress(ownerId, ref);
         try {
             // sendUpdates=all so Google emails the attendees the cancellation.
-            client(addr.cred())
-                    .events()
-                    .delete(addr.calendarId(), eventId)
-                    .setSendUpdates("all")
-                    .execute();
+            client(addr.cred()).events().delete(addr.calendarId(), eventId).setSendUpdates("all").execute();
         } catch (GoogleJsonResponseException e) {
             // 410 Gone / 404 Not Found: the event was already deleted on Google (e.g. by the owner,
             // directly in Google Calendar). The end state we wanted already holds, so deleting is
@@ -298,14 +317,16 @@ public class GoogleCalendarPort implements CalendarPort {
             if (e.getStatusCode() != 410 && e.getStatusCode() != 404) {
                 throw new UncheckedIOException("deleteEvent failed", e);
             }
-            org.jboss.logging.Logger.getLogger(GoogleCalendarPort.class)
-                    .infof(
-                            "Google event %s on calendar %s (owner %d, address %s) was already deleted (HTTP %d); treating delete as done",
-                            eventId,
-                            addr.calendarId(),
-                            ownerId,
-                            addr.stored() ? "stored" : "write-target",
-                            e.getStatusCode());
+            org.jboss.logging.Logger
+                .getLogger(GoogleCalendarPort.class)
+                .infof(
+                        "Google event %s on calendar %s (owner %d, address %s) was already deleted (HTTP %d); treating delete as done",
+                        eventId,
+                        addr.calendarId(),
+                        ownerId,
+                        addr.stored() ? "stored" : "write-target",
+                        e.getStatusCode()
+                );
         } catch (IOException e) {
             throw new UncheckedIOException("deleteEvent failed", e);
         }
@@ -319,7 +340,9 @@ public class GoogleCalendarPort implements CalendarPort {
         return target;
     }
 
-    /** The write-target calendar plus its (non-null) owning credential, or fail clearly. */
+    /**
+     * The write-target calendar plus its (non-null) owning credential, or fail clearly.
+     */
     private record WriteContext(GoogleCalendar target, GoogleCredential cred) {}
 
     private WriteContext writeContext(Long ownerId) {
@@ -350,7 +373,9 @@ public class GoogleCalendarPort implements CalendarPort {
         return writeContext(ownerId);
     }
 
-    /** A calendar id to write on plus the credential that authenticates it. */
+    /**
+     * A calendar id to write on plus the credential that authenticates it.
+     */
     private record WriteAddress(String calendarId, GoogleCredential cred, boolean stored) {}
 
     /**
@@ -380,26 +405,25 @@ public class GoogleCalendarPort implements CalendarPort {
      */
     private EventDateTime eventTime(Long ownerId, Instant instant) {
         String ownerZoneId = OwnerSettings.forOwner(ownerId).timezone;
-        return new EventDateTime()
-                .setDateTime(new DateTime(instant.toEpochMilli()))
-                .setTimeZone(ownerZoneId);
+        return new EventDateTime().setDateTime(new DateTime(instant.toEpochMilli())).setTimeZone(ownerZoneId);
     }
 
     /**
      * Insert the event. setConferenceDataVersion(1) is required so Google honors a createRequest
      * (harmless at 0 when there's no conference); setSendUpdates("all") emails the attendees the invite.
      */
-    private Event insert(GoogleCredential cred, GoogleCalendar target, Event event, boolean withMeet)
-            throws IOException {
+    private Event insert(GoogleCredential cred, GoogleCalendar target, Event event, boolean withMeet) throws IOException {
         return client(cred)
-                .events()
-                .insert(target.googleCalendarId, event)
-                .setConferenceDataVersion(withMeet ? 1 : 0)
-                .setSendUpdates("all")
-                .execute();
+            .events()
+            .insert(target.googleCalendarId, event)
+            .setConferenceDataVersion(withMeet ? 1 : 0)
+            .setSendUpdates("all")
+            .execute();
     }
 
-    /** Google's 400 when the calendar doesn't allow the requested conference solution (e.g. Meet off). */
+    /**
+     * Google's 400 when the calendar doesn't allow the requested conference solution (e.g. Meet off).
+     */
     private static boolean isInvalidConferenceType(GoogleJsonResponseException e) {
         if (e.getStatusCode() != 400) {
             return false;
@@ -408,18 +432,22 @@ public class GoogleCalendarPort implements CalendarPort {
         return msg != null && msg.toLowerCase(java.util.Locale.ROOT).contains("conference type");
     }
 
-    /** Prefer the top-level hangoutLink; fall back to the first video conference entry point. */
+    /**
+     * Prefer the top-level hangoutLink; fall back to the first video conference entry point.
+     */
     private static String extractMeetLink(Event event) {
         if (event.getHangoutLink() != null) {
             return event.getHangoutLink();
         }
         ConferenceData cd = event.getConferenceData();
         if (cd != null && cd.getEntryPoints() != null) {
-            return cd.getEntryPoints().stream()
-                    .filter(ep -> "video".equals(ep.getEntryPointType()))
-                    .map(EntryPoint::getUri)
-                    .findFirst()
-                    .orElse(null);
+            return cd
+                .getEntryPoints()
+                .stream()
+                .filter(ep -> "video".equals(ep.getEntryPointType()))
+                .map(EntryPoint::getUri)
+                .findFirst()
+                .orElse(null);
         }
         return null;
     }

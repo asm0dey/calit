@@ -1,12 +1,10 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.test.MultiHostFixtures;
@@ -20,10 +18,8 @@ import site.asm0dey.calit.test.MultiHostFixtures;
  */
 @QuarkusTest
 class ChannelRouterTest {
-
     private static final long HOST_A = 1L;
     private static final long HOST_B = 2L;
-
     @Inject
     ChannelRouter router;
 
@@ -69,8 +65,9 @@ class ChannelRouterTest {
         var phone = channel(HOST_A, "phone");
         channel(HOST_A, "slack");
         MeetingType type = sharedType();
-        QuarkusTransaction.requiringNew()
-                .run(() -> NotificationChannelMeetingType.replaceLinks(type.id, List.of(phone), List.of(phone)));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> NotificationChannelMeetingType.replaceLinks(type.id, List.of(phone), List.of(phone)));
 
         List<NotificationChannel> picked = router.channelsFor(HOST_A, type.id);
 
@@ -87,8 +84,9 @@ class ChannelRouterTest {
         channel(HOST_A, "a-slack");
         channel(HOST_B, "b-phone");
         channel(HOST_B, "b-slack");
-        QuarkusTransaction.requiringNew()
-                .run(() -> NotificationChannelMeetingType.replaceLinks(type.id, List.of(aPhone), List.of(aPhone)));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> NotificationChannelMeetingType.replaceLinks(type.id, List.of(aPhone), List.of(aPhone)));
 
         assertEquals(1, router.channelsFor(HOST_A, type.id).size(), "host A narrowed to their override");
         assertEquals(2, router.channelsFor(HOST_B, type.id).size(), "host B still inherits all of theirs");
@@ -127,8 +125,9 @@ class ChannelRouterTest {
         channel(HOST_A, "phone");
         var pager = channel(HOST_A, "pager", false);
         MeetingType type = sharedType();
-        QuarkusTransaction.requiringNew()
-                .run(() -> NotificationChannelMeetingType.replaceLinks(type.id, List.of(pager), List.of(pager)));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> NotificationChannelMeetingType.replaceLinks(type.id, List.of(pager), List.of(pager)));
 
         List<NotificationChannel> picked = router.channelsFor(HOST_A, type.id);
 

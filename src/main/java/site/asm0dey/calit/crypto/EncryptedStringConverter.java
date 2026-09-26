@@ -11,7 +11,6 @@ import jakarta.persistence.Converter;
  */
 @Converter(autoApply = false)
 public class EncryptedStringConverter implements AttributeConverter<String, String> {
-
     @Inject
     TokenCipher cipher;
 

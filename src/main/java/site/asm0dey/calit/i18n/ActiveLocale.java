@@ -1,10 +1,12 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import jakarta.enterprise.context.RequestScoped;
-import java.util.Locale;
 
-/** Holds the active locale for the current request. Set by LocaleResolutionFilter,
- *  read by the template initializer and by booking/email code. */
+/**
+ * Holds the active locale for the current request. Set by LocaleResolutionFilter,
+ *  read by the template initializer and by booking/email code.
+ */
 @RequestScoped
 public class ActiveLocale {
     private Locale locale;

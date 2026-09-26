@@ -1,9 +1,9 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import io.quarkus.qute.i18n.Localized;
 import io.quarkus.qute.i18n.MessageBundles;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.util.Locale;
 
 /**
  * Locale-specific AppMessages for Java code (e.g. email subjects).
@@ -16,7 +16,6 @@ import java.util.Locale;
  */
 @ApplicationScoped
 public class AppMessageResolver {
-
     public AppMessages forLocale(Locale locale) {
         Locale l = locale != null ? locale : AppLocales.DEFAULT;
         if (l.getLanguage().equals(AppLocales.DEFAULT.getLanguage())) {

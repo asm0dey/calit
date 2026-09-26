@@ -1,17 +1,14 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.time.DayOfWeek;
-import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 
 class DisplayExtensionsTest {
-
     @Test
     void humanizesUpperSnakeEnums() {
         assertEquals("Google Meet", DisplayExtensions.display(LocationType.GOOGLE_MEET));
@@ -51,15 +48,15 @@ class DisplayExtensionsTest {
         // ZoneId.of throws a different exception per input: ZoneRulesException for an unknown id,
         // DateTimeException for blank, NullPointerException for null. assertAll reports every
         // failing input in one run rather than stopping at the first.
-        assertAll(
-                () -> assertTrue(
-                        DisplayExtensions.when(i, "Not/AZone").contains("(UTC)"),
-                        "unknown zone id must fall back to UTC; got: " + DisplayExtensions.when(i, "Not/AZone")),
-                () -> assertTrue(
-                        DisplayExtensions.when(i, "").contains("(UTC)"),
-                        "blank zone id must fall back to UTC; got: " + DisplayExtensions.when(i, "")),
-                () -> assertTrue(
-                        DisplayExtensions.when(i, null).contains("(UTC)"),
-                        "null zone id must fall back to UTC; got: " + DisplayExtensions.when(i, null)));
+        assertAll(() -> assertTrue(
+                DisplayExtensions.when(i, "Not/AZone").contains("(UTC)"),
+                "unknown zone id must fall back to UTC; got: " + DisplayExtensions.when(i, "Not/AZone")
+        ), () -> assertTrue(
+                DisplayExtensions.when(i, "").contains("(UTC)"),
+                "blank zone id must fall back to UTC; got: " + DisplayExtensions.when(i, "")
+        ), () -> assertTrue(
+                DisplayExtensions.when(i, null).contains("(UTC)"),
+                "null zone id must fall back to UTC; got: " + DisplayExtensions.when(i, null)
+        ));
     }
 }

@@ -1,19 +1,14 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import site.asm0dey.calit.booking.Booking;
@@ -26,13 +21,10 @@ import site.asm0dey.calit.google.CalendarPort;
 
 @QuarkusTest
 class UpdatedEmailTest {
-
     @Inject
     BookingService bookingService;
-
     @InjectMock
     CalendarPort calendarPort;
-
     @InjectMock
     MailSender mailSender;
 
@@ -65,11 +57,19 @@ class UpdatedEmailTest {
             r.meetingTypeId = null;
             r.persist();
         }
-        var slot = bookingService
-                .availableSlots(t, LocalDate.now(), LocalDate.now().plusDays(14))
-                .getFirst();
+        var slot = bookingService.availableSlots(t, LocalDate.now(), LocalDate.now().plusDays(14)).getFirst();
         return bookingService.book(
-                1L, slug, slot.start().toInstant(), "Pat", "pat@example.com", Map.of(), "", "", "en", List.of());
+                1L,
+                slug,
+                slot.start().toInstant(),
+                "Pat",
+                "pat@example.com",
+                Map.of(),
+                "",
+                "",
+                "en",
+                List.of()
+        );
     }
 
     @Test
@@ -83,12 +83,26 @@ class UpdatedEmailTest {
         ArgumentCaptor<String> to = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> subject = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
-        verify(mailSender, atLeast(2))
-                .send(any(), to.capture(), subject.capture(), body.capture(), any(), any(MailTag.class));
+        verify(mailSender, atLeast(2)).send(
+                any(),
+                to.capture(),
+                subject.capture(),
+                body.capture(),
+                any(),
+                any(MailTag.class)
+        );
         assertTrue(to.getAllValues().contains("pat@example.com"), "invitee notified");
         assertTrue(to.getAllValues().contains("owner@example.com"), "owner notified");
-        assertTrue(subject.getAllValues().stream().anyMatch(su -> su.contains("Roadmap sync")), "subject has new name");
+        assertTrue(subject
+            .getAllValues()
+            .stream()
+            .anyMatch(su -> su.contains("Roadmap sync")), "subject has new name");
         assertTrue(
-                body.getAllValues().stream().anyMatch(bo -> bo.contains("Q3 planning agenda")), "body has description");
+                body
+                    .getAllValues()
+                    .stream()
+                    .anyMatch(bo -> bo.contains("Q3 planning agenda")),
+                "body has description"
+        );
     }
 }

@@ -1,18 +1,15 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -27,17 +24,13 @@ import site.asm0dey.calit.google.CalendarPort;
 
 @QuarkusTest
 class EmailServiceGuestTest {
-
     private static final String OWNER_EMAIL = "owner@example.com";
     private static final String INVITEE_EMAIL = "invitee@example.com";
     private static final String GUEST_EMAIL = "guest@example.com";
-
     @Inject
     EmailService emailService;
-
     @Inject
     MockMailbox mailbox;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -52,12 +45,16 @@ class EmailServiceGuestTest {
         });
     }
 
-    /** Seeds a CONFIRMED booking (icsSequence 0) with one guest of the given status; returns the booking id. */
+    /**
+     * Seeds a CONFIRMED booking (icsSequence 0) with one guest of the given status; returns the booking id.
+     */
     private long seedWithGuest(GuestStatus guestStatus) {
         return seedWithGuest(guestStatus, BookingStatus.CONFIRMED, 0);
     }
 
-    /** Seeds a booking with the given status + icsSequence and one guest; returns the booking id. */
+    /**
+     * Seeds a booking with the given status + icsSequence and one guest; returns the booking id.
+     */
     private long seedWithGuest(GuestStatus guestStatus, BookingStatus bookingStatus, int icsSequence) {
         return QuarkusTransaction.requiringNew().call(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);
@@ -247,17 +244,18 @@ class EmailServiceGuestTest {
 
     @Test
     void guestDeclinedNotifiesInviteeAndCancelsThatGuest() {
-        long bookingId = seedWithGuest(GuestStatus.DECLINED); // already declined in the DB
+        // already declined in the DB
+        long bookingId = seedWithGuest(GuestStatus.DECLINED);
         Long guestId = BookingGuest.<BookingGuest>find("bookingId", bookingId).firstResult().id;
 
         emailService.handleGuestDeclined(new GuestDeclined(bookingId, guestId));
-
         // Guest gets a cancel notice; invitee gets a "guest declined, you may want to reschedule" notice.
         // Google connected -> Google natively cancels the removed guest, so calit attaches no .ics.
         assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "departing guest gets a cancel notice");
         assertTrue(
                 mailbox.getMailsSentTo(GUEST_EMAIL).getFirst().getAttachments().isEmpty(),
-                "no .ics when Google connected (Google cancels the removed attendee)");
+                "no .ics when Google connected (Google cancels the removed attendee)"
+        );
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee notified of the decline");
         assertTrue(toInvitee.getFirst().getHtml().contains("/manage"), "invitee notice links to reschedule");
@@ -282,11 +280,7 @@ class EmailServiceGuestTest {
         emailService.handleDeclined(new BookingDeclined(bookingId));
 
         assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "previously-invited guest gets a cancel");
-        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL)
-                .getFirst()
-                .getSubject()
-                .toLowerCase()
-                .contains("cancel"));
+        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL).getFirst().getSubject().toLowerCase().contains("cancel"));
     }
 
     @Test

@@ -1,10 +1,8 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.junit.QuarkusTest;
-import java.util.List;
-import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -17,7 +15,6 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class AppLocalesDiscoveryTest {
-
     @Test
     void supportedContainsEnglishGermanAndHebrew() {
         List<Locale> supported = AppLocales.supported();

@@ -1,15 +1,14 @@
 package site.asm0dey.calit.web.og;
 
+import module java.desktop;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.awt.Font;
+// java.desktop's module import would otherwise bind List to java.awt.List
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class TextRunsTest {
-
     static final CardFonts FONTS = new CardFonts();
 
     @Test

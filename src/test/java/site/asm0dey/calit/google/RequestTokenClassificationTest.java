@@ -1,11 +1,9 @@
 package site.asm0dey.calit.google;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import org.junit.jupiter.api.Test;
 
 class RequestTokenClassificationTest {
-
     @Test
     void invalidGrantExceptionIsAnIllegalStateException() {
         // Subclassing IllegalStateException keeps every existing broad catch(RuntimeException)

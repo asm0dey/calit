@@ -1,7 +1,6 @@
 package site.asm0dey.calit.user;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.request.TrustedAuthenticationRequest;
 import io.quarkus.test.junit.QuarkusTest;
@@ -17,7 +16,6 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class AppUserTrustedIdentityProviderTest {
-
     @Inject
     AppUserTrustedIdentityProvider provider;
 

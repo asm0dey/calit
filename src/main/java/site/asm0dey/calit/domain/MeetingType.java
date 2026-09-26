@@ -1,14 +1,12 @@
 package site.asm0dey.calit.domain;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "meeting_type")
 public class MeetingType extends PanacheEntityBase {
-
     public enum LocationType {
         GOOGLE_MEET,
         PHONE,
@@ -16,7 +14,9 @@ public class MeetingType extends PanacheEntityBase {
         CUSTOM
     }
 
-    /** How a built-in invitee field is presented on the booking form. */
+    /**
+     * How a built-in invitee field is presented on the booking form.
+     */
     public enum FieldMode {
         REQUIRED,
         OPTIONAL,
@@ -26,65 +26,64 @@ public class MeetingType extends PanacheEntityBase {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
-
     @Column(name = "owner_id", nullable = false)
     public Long ownerId;
-
     @Column(nullable = false)
     public String name;
-
     @Column(nullable = false)
     public String slug;
-
     @Column(name = "duration_minutes", nullable = false)
     public int durationMinutes;
-
     @Column(name = "buffer_before_minutes", nullable = false)
     public int bufferBeforeMinutes = 0;
-
     @Column(name = "buffer_after_minutes", nullable = false)
     public int bufferAfterMinutes = 0;
-
     @Column(columnDefinition = "text")
     public String description;
-
     @Column(nullable = false)
     public boolean active = true;
-
-    /** Secret types are hidden from the public list but remain bookable via their direct slug/link. */
+    /**
+     * Secret types are hidden from the public list but remain bookable via their direct slug/link.
+     */
     @Column(nullable = false)
     public boolean secret = false;
-
-    /** Minimum scheduling notice (minutes from "now"). Stored here; enforced as a slot filter in Plan 3. */
+    /**
+     * Minimum scheduling notice (minutes from "now"). Stored here; enforced as a slot filter in Plan 3.
+     */
     @Column(name = "min_notice_minutes", nullable = false)
     public int minNoticeMinutes = 0;
-
-    /** Booking horizon: how many days into the future are bookable. Stored here; filtered in Plan 3. */
+    /**
+     * Booking horizon: how many days into the future are bookable. Stored here; filtered in Plan 3.
+     */
     @Column(name = "horizon_days", nullable = false)
     public int horizonDays = 60;
-
-    /** Where the meeting happens. Only GOOGLE_MEET triggers a Meet conference link (Plan 2). */
+    /**
+     * Where the meeting happens. Only GOOGLE_MEET triggers a Meet conference link (Plan 2).
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "location_type", nullable = false, length = 16)
     public LocationType locationType = LocationType.GOOGLE_MEET;
-
-    /** Free-text detail for non-Meet locations (phone number, address, custom instructions). */
+    /**
+     * Free-text detail for non-Meet locations (phone number, address, custom instructions).
+     */
     @Column(name = "location_detail", columnDefinition = "text")
     public String locationDetail;
-
-    /** When true, bookings start PENDING and need owner approval (Plan 3 workflow). */
+    /**
+     * When true, bookings start PENDING and need owner approval (Plan 3 workflow).
+     */
     @Column(name = "requires_approval", nullable = false)
     public boolean requiresApproval = false;
-
     @Column(name = "slot_interval_minutes")
     public Integer slotIntervalMinutes;
-
-    /** The invitee's name on the booking form (GH #130). Email is always required and has no mode. */
+    /**
+     * The invitee's name on the booking form (GH #130). Email is always required and has no mode.
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "name_mode", nullable = false, length = 16)
     public FieldMode nameMode = FieldMode.REQUIRED;
-
-    /** The guests field on the booking form: OPTIONAL or HIDDEN, never REQUIRED (GH #130). */
+    /**
+     * The guests field on the booking form: OPTIONAL or HIDDEN, never REQUIRED (GH #130).
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "guests_mode", nullable = false, length = 16)
     public FieldMode guestsMode = FieldMode.OPTIONAL;
@@ -99,8 +98,9 @@ public class MeetingType extends PanacheEntityBase {
      */
     @Column(name = "google_calendar_id", columnDefinition = "text")
     public String googleCalendarId;
-
-    /** The connected account {@link #googleCalendarId} belongs to; nulled when that account is disconnected. */
+    /**
+     * The connected account {@link #googleCalendarId} belongs to; nulled when that account is disconnected.
+     */
     @Column(name = "google_credential_id")
     public Long googleCredentialId;
 
@@ -108,17 +108,23 @@ public class MeetingType extends PanacheEntityBase {
         return find("ownerId = ?1 and slug = ?2", ownerId, slug).firstResult();
     }
 
-    /** Active, non-secret types for this owner — what their public landing page lists. */
+    /**
+     * Active, non-secret types for this owner — what their public landing page lists.
+     */
     public static List<MeetingType> listPublic(Long ownerId) {
         return list("ownerId = ?1 and active = true and secret = false", ownerId);
     }
 
-    /** Every type for this owner, including secret/inactive — the management listing. */
+    /**
+     * Every type for this owner, including secret/inactive — the management listing.
+     */
     public static List<MeetingType> listForOwner(Long ownerId) {
         return list("ownerId", ownerId);
     }
 
-    /** True when this owner already has a *different* type using this slug. */
+    /**
+     * True when this owner already has a *different* type using this slug.
+     */
     public static boolean slugUsedByOwner(Long ownerId, String slug, Long excludeTypeId) {
         if (excludeTypeId == null) {
             return count("ownerId = ?1 and slug = ?2", ownerId, slug) > 0;
@@ -141,15 +147,15 @@ public class MeetingType extends PanacheEntityBase {
                 "ownerId = ?1 and role = ?2 and status = ?3",
                 urlOwnerId,
                 MeetingTypeHost.COHOST,
-                MeetingTypeHost.ACCEPTED);
+                MeetingTypeHost.ACCEPTED
+        );
         if (cohostRows.isEmpty()) {
             return null;
         }
         // One query filtered by slug instead of findById-per-cohost-row (each candidate slug is
         // free in its own namespace, so at most one matches).
         List<Long> typeIds = cohostRows.stream().map(h -> h.meetingTypeId).toList();
-        return MeetingType.<MeetingType>find("id in ?1 and slug = ?2", typeIds, slug)
-                .firstResult();
+        return MeetingType.<MeetingType>find("id in ?1 and slug = ?2", typeIds, slug).firstResult();
     }
 
     /**
@@ -163,7 +169,8 @@ public class MeetingType extends PanacheEntityBase {
                 "ownerId = ?1 and role = ?2 and status = ?3",
                 ownerId,
                 MeetingTypeHost.COHOST,
-                MeetingTypeHost.ACCEPTED);
+                MeetingTypeHost.ACCEPTED
+        );
         if (!cohostRows.isEmpty()) {
             // One query for all co-hosted types instead of findById per co-host row.
             List<Long> typeIds = cohostRows.stream().map(h -> h.meetingTypeId).toList();

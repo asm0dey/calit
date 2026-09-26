@@ -1,17 +1,13 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -29,13 +25,13 @@ import site.asm0dey.calit.user.AppUser;
 @QuarkusTest
 @TestProfile(RetentionSchedulerInstanceDefaultTest.WithInstanceDefault.class)
 class RetentionSchedulerInstanceDefaultTest {
-
     @Inject
     RetentionScheduler scheduler;
 
     private static boolean erased(Long id) {
-        return QuarkusTransaction.requiringNew()
-                .call(() -> Booking.<Booking>findById(id).isErased());
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(id).isErased());
     }
 
     @Test
@@ -78,17 +74,21 @@ class RetentionSchedulerInstanceDefaultTest {
             b.persist();
             return b.id;
         });
-        QuarkusTransaction.requiringNew().run(() -> {
-            OwnerSettings s = OwnerSettings.forOwner(1L);
-            s.bookingRetentionDays = 5; // shorter than the 14-day instance default
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                OwnerSettings s = OwnerSettings.forOwner(1L);
+                // shorter than the 14-day instance default
+                s.bookingRetentionDays = 5;
+            });
 
         scheduler.sweep();
 
         assertTrue(
                 erased(id),
                 "a 5-day owner window (shorter than the 14-day instance default) must catch a "
-                        + "10-day-old booking the default alone would miss");
+                + "10-day-old booking the default alone would miss"
+        );
     }
 
     /**
@@ -98,37 +98,38 @@ class RetentionSchedulerInstanceDefaultTest {
      */
     @Test
     void anOwnerWithNoSettingsRowStillGetsTheInstanceDefault() {
-        Long id = QuarkusTransaction.requiringNew().call(() -> {
-            var u = new AppUser();
-            u.username = "retention-no-settings";
-            u.passwordHash = "x";
-            u.roles = "user";
-            u.enabled = true;
-            u.isAdmin = false;
-            u.createdAt = Instant.now();
-            u.persist();
-            // Deliberately no OwnerSettings row for this owner.
+        Long id = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                var u = new AppUser();
+                u.username = "retention-no-settings";
+                u.passwordHash = "x";
+                u.roles = "user";
+                u.enabled = true;
+                u.isAdmin = false;
+                u.createdAt = Instant.now();
+                u.persist();
+                // Deliberately no OwnerSettings row for this owner.
+                var t = new MeetingType();
+                t.ownerId = u.id;
+                t.name = "No settings row type";
+                t.slug = "retention-no-settings-type";
+                t.durationMinutes = 30;
+                t.persist();
 
-            var t = new MeetingType();
-            t.ownerId = u.id;
-            t.name = "No settings row type";
-            t.slug = "retention-no-settings-type";
-            t.durationMinutes = 30;
-            t.persist();
-
-            var b = new Booking();
-            b.ownerId = u.id;
-            b.meetingTypeId = t.id;
-            b.inviteeName = "Other Invitee";
-            b.inviteeEmail = "other@example.com";
-            b.startUtc = Instant.now().minus(30, ChronoUnit.DAYS);
-            b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
-            b.status = BookingStatus.CONFIRMED;
-            b.createdAt = Instant.now().minus(31, ChronoUnit.DAYS);
-            b.manageToken = UUID.randomUUID().toString();
-            b.persist();
-            return b.id;
-        });
+                var b = new Booking();
+                b.ownerId = u.id;
+                b.meetingTypeId = t.id;
+                b.inviteeName = "Other Invitee";
+                b.inviteeEmail = "other@example.com";
+                b.startUtc = Instant.now().minus(30, ChronoUnit.DAYS);
+                b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
+                b.status = BookingStatus.CONFIRMED;
+                b.createdAt = Instant.now().minus(31, ChronoUnit.DAYS);
+                b.manageToken = UUID.randomUUID().toString();
+                b.persist();
+                return b.id;
+            });
 
         scheduler.sweep();
 

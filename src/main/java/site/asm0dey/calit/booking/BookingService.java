@@ -1,5 +1,6 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -8,12 +9,6 @@ import jakarta.inject.Inject;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.hibernate.exception.ConstraintViolationException;
 import site.asm0dey.calit.availability.SlotService;
@@ -36,7 +31,6 @@ import site.asm0dey.calit.i18n.AppLocales;
 
 @ApplicationScoped
 public class BookingService {
-
     // Collaborators + config are constructor-injected (immutable, fail-fast, plain-unit testable,
     // consistent with the Plan 2 google package). The six CDI Event<> emitters below stay as @Inject
     // fields: they are framework plumbing and would otherwise bloat the constructor to ten args.
@@ -46,7 +40,6 @@ public class BookingService {
     private final MeetingHosts meetingHosts;
     private final WriteTargetResolver writeTargets;
     private final long perEmailDailyCap;
-
     /**
      * Max guests an invitee may attach to one booking. ponytail: a constant, not a config knob.
      */
@@ -59,7 +52,8 @@ public class BookingService {
             CaptchaVerifier captchaVerifier,
             MeetingHosts meetingHosts,
             WriteTargetResolver writeTargets,
-            @ConfigProperty(name = "calit.abuse.per-email-daily-cap", defaultValue = "10") long perEmailDailyCap) {
+            @ConfigProperty(name = "calit.abuse.per-email-daily-cap", defaultValue = "10") long perEmailDailyCap
+    ) {
         this.slotService = slotService;
         this.calendarPort = calendarPort;
         this.captchaVerifier = captchaVerifier;
@@ -70,28 +64,20 @@ public class BookingService {
 
     @Inject
     Event<BookingRequested> bookingRequestedEvent;
-
     @Inject
     Event<BookingConfirmed> bookingConfirmedEvent;
-
     @Inject
     Event<BookingApproved> bookingApprovedEvent;
-
     @Inject
     Event<BookingDeclined> bookingDeclinedEvent;
-
     @Inject
     Event<BookingRescheduled> bookingRescheduledEvent;
-
     @Inject
     Event<BookingCancelled> bookingCancelledEvent;
-
     @Inject
     Event<GuestDeclined> guestDeclinedEvent;
-
     @Inject
     Event<GuestRemoved> guestRemovedEvent;
-
     @Inject
     Event<BookingDetailsChanged> bookingDetailsChangedEvent;
 
@@ -129,7 +115,12 @@ public class BookingService {
      * itself does not validate it, since it is also used to list slots for a not-yet-chosen length.
      */
     public List<TimeSlot> availableSlots(
-            MeetingType type, LocalDate from, LocalDate to, Set<Long> excludeBookingIds, int durationMinutes) {
+            MeetingType type,
+            LocalDate from,
+            LocalDate to,
+            Set<Long> excludeBookingIds,
+            int durationMinutes
+    ) {
         if (!meetingHosts.bookable(type)) {
             return List.of();
         }
@@ -137,7 +128,6 @@ public class BookingService {
         var now = Instant.now();
         Instant earliest = now.plusSeconds(60L * type.minNoticeMinutes);
         Instant latest = now.plus(type.horizonDays, ChronoUnit.DAYS);
-
         // Per-host free set, keyed by slot-start instant; a slot survives only if free for ALL hosts.
         // Single-host keeps the pre-multi-host contract of letting CalendarUnavailableException
         // propagate (the web layer renders the "temporarily unavailable" page for it); only the
@@ -151,19 +141,39 @@ public class BookingService {
             Map<Instant, TimeSlot> hostFree;
             if (singleHost) {
                 hostFree = hostFreeSlots(
-                        type, hostId, from, to, excludeBookingIds, earliest, latest, latticeZone, durationMinutes);
+                        type,
+                        hostId,
+                        from,
+                        to,
+                        excludeBookingIds,
+                        earliest,
+                        latest,
+                        latticeZone,
+                        durationMinutes
+                );
             } else {
                 try {
                     hostFree = hostFreeSlots(
-                            type, hostId, from, to, excludeBookingIds, earliest, latest, latticeZone, durationMinutes);
+                            type,
+                            hostId,
+                            from,
+                            to,
+                            excludeBookingIds,
+                            earliest,
+                            latest,
+                            latticeZone,
+                            durationMinutes
+                    );
                 } catch (CalendarUnavailableException _) {
-                    return List.of(); // any host's calendar unverifiable (multi-host) -> offer nothing
+                    // any host's calendar unverifiable (multi-host) -> offer nothing
+                    return List.of();
                 }
             }
             if (candidate == null) {
                 candidate = hostFree;
             } else {
-                candidate.keySet().retainAll(hostFree.keySet()); // intersection by start instant
+                // intersection by start instant
+                candidate.keySet().retainAll(hostFree.keySet());
             }
             if (candidate.isEmpty()) {
                 return List.of();
@@ -192,7 +202,8 @@ public class BookingService {
             Instant earliest,
             Instant latest,
             ZoneId latticeZone,
-            int durationMinutes) {
+            int durationMinutes
+    ) {
         ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(OwnerSettings.forOwner(hostId).timezone));
         var fromInstant = from.atStartOfDay(zone).toInstant();
         var toInstant = to.plusDays(1).atStartOfDay(zone).toInstant();
@@ -206,9 +217,11 @@ public class BookingService {
             if (slotStart.isBefore(earliest) || slotStart.isAfter(latest)) {
                 continue;
             }
-            Interval buffered = new Interval(
-                    slotStart.minusSeconds(60L * bufBefore),
-                    slot.end().toInstant().plusSeconds(60L * bufAfter));
+            Interval buffered =
+                    new Interval(
+                            slotStart.minusSeconds(60L * bufBefore),
+                            slot.end().toInstant().plusSeconds(60L * bufAfter)
+            );
             if (!buffered.overlapsAny(busy)) {
                 hostFree.put(slotStart, slot);
             }
@@ -246,7 +259,9 @@ public class BookingService {
         return busy;
     }
 
-    /** Backward-compatible overload: no ALTCHA solution (turnstile/none paths, and all existing tests). */
+    /**
+     * Backward-compatible overload: no ALTCHA solution (turnstile/none paths, and all existing tests).
+     */
     @Transactional
     public Booking book(
             Long ownerId,
@@ -258,7 +273,8 @@ public class BookingService {
             String turnstileToken,
             String honeypot,
             String locale,
-            List<String> guestEmails) {
+            List<String> guestEmails
+    ) {
         return book(
                 ownerId,
                 meetingTypeSlug,
@@ -270,7 +286,8 @@ public class BookingService {
                 null,
                 honeypot,
                 locale,
-                guestEmails);
+                guestEmails
+        );
     }
 
     /**
@@ -294,7 +311,8 @@ public class BookingService {
             String altchaSolution,
             String honeypot,
             String locale,
-            List<String> guestEmails) {
+            List<String> guestEmails
+    ) {
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
         int duration = type == null ? 0 : type.durationMinutes;
         return book(
@@ -309,7 +327,8 @@ public class BookingService {
                 honeypot,
                 locale,
                 guestEmails,
-                duration);
+                duration
+        );
     }
 
     // S107: one param per booking input; the 11-arg overload above preserves the pre-duration-choice arity.
@@ -327,7 +346,8 @@ public class BookingService {
             String honeypot,
             String locale,
             List<String> guestEmails,
-            int durationMinutes) {
+            int durationMinutes
+    ) {
         validateInviteeEmail(inviteeEmail);
         validateInputBounds(inviteeName, answers);
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
@@ -338,23 +358,24 @@ public class BookingService {
         inviteeName = resolveInviteeName(type, inviteeName, inviteeEmail);
         guestEmails = guestsFor(type, guestEmails);
         assertDurationAllowed(type, durationMinutes);
-
         // Feature 16: all three abuse guards run first, inside book(). The Plan 5 web layer
         // just forwards the cf-turnstile-response (turnstileToken) and website (honeypot) form values.
-        captchaVerifier.verify(turnstileToken, altchaSolution); // -> AbuseException (400) on invalid CAPTCHA
-        if (honeypot != null && !honeypot.isBlank()) { // a bot filled the hidden field
-            throw new AbuseException("Honeypot field was filled."); // -> AbuseException (400)
+        // -> AbuseException (400) on invalid CAPTCHA
+        captchaVerifier.verify(turnstileToken, altchaSolution);
+        if (honeypot != null && !honeypot.isBlank()) {
+            // a bot filled the hidden field
+            // -> AbuseException (400)
+            throw new AbuseException("Honeypot field was filled.");
         }
-        enforcePerEmailDailyCap(type, inviteeEmail); // -> RateLimitException (429) over cap
+        // -> RateLimitException (429) over cap
+        enforcePerEmailDailyCap(type, inviteeEmail);
 
         Map<String, String> submitted = answers == null ? Map.of() : answers;
-
         // Feature 10: every required custom field must have a non-blank value. Built-in
         // name/email are method params, not BookingField rows, so they are not in this loop.
         validateRequiredFields(type, submitted);
 
         var endUtc = startUtc.plus(durationMinutes, ChronoUnit.MINUTES);
-
         // App-level availability re-check: nice errors + buffer/min-notice/horizon enforcement
         // (the DB constraint only guards raw-time overlap, not buffers).
         assertSlotAvailable(type, startUtc, Set.of(), durationMinutes);
@@ -381,7 +402,6 @@ public class BookingService {
         if (type.requiresApproval) {
             booking.approvalToken = UUID.randomUUID().toString();
         }
-
         // NFR cross-node guard: persist + flush now so a concurrent replica's overlapping
         // held (PENDING|CONFIRMED) row trips the `booking_no_overlap_held` exclusion constraint
         // here, surfaced as the same 409 the app-level check uses (instead of a 500).
@@ -401,7 +421,6 @@ public class BookingService {
             bookingRequestedEvent.fire(new BookingRequested(booking.id));
             return booking;
         }
-
         // Auto type: create the Google event when connected (degraded mode skips it entirely).
         // If createEvent throws, the @Transactional boundary rolls back this booking (no orphan row).
         // `createGoogleEvent` (shared with `approve`) applies the feature-13
@@ -429,7 +448,8 @@ public class BookingService {
             String inviteeEmail,
             Map<String, String> answers,
             String locale,
-            List<String> guestEmails) {
+            List<String> guestEmails
+    ) {
         var groupId = UUID.randomUUID();
         List<Long> hostIds = meetingHosts.hostOwnerIds(type);
         boolean approval = type.requiresApproval;
@@ -457,14 +477,14 @@ public class BookingService {
                     lead = b;
                 }
             }
-            Booking.getEntityManager().flush(); // surface booking_no_overlap_held now
+            // surface booking_no_overlap_held now
+            Booking.getEntityManager().flush();
         } catch (PersistenceException ex) {
             if (isNoOverlapViolation(ex)) {
                 throw new BookingConflictException("Slot " + startUtc + " is not available for " + type.slug);
             }
             throw ex;
         }
-
         // guests attach to the lead row only
         persistGuests(lead, guestEmails);
 
@@ -478,20 +498,25 @@ public class BookingService {
         return lead;
     }
 
-    /** One Google event on the chosen organizer, all other hosts + invitee + guests invited. */
+    /**
+     * One Google event on the chosen organizer, all other hosts + invitee + guests invited.
+     */
     private void createGroupGoogleEvent(MeetingType type, UUID groupId) {
         List<Long> hostIds = meetingHosts.hostOwnerIds(type);
         Long organizer = meetingHosts.chooseOrganizer(type, hostIds);
         if (organizer == null) {
-            return; // no host has Google -> calit-only booking
+            // no host has Google -> calit-only booking
+            return;
         }
         Booking lead = Booking.leadOfGroup(groupId, type.ownerId);
         Booking organizerRow = organizer.equals(type.ownerId)
                 ? lead
-                : Booking.<Booking>group(groupId).stream()
-                        .filter(r -> r.ownerId.equals(organizer))
-                        .findFirst()
-                        .orElseThrow();
+                : Booking
+            .<Booking>group(groupId)
+            .stream()
+            .filter(r -> r.ownerId.equals(organizer))
+            .findFirst()
+            .orElseThrow();
         List<String> attendees = groupAttendeeEmails(type, groupId, hostIds);
         CreatedEvent created = calendarPort.createEvent(
                 organizer,
@@ -502,7 +527,8 @@ public class BookingService {
                 lead.endUtc,
                 attendees,
                 type.locationType == LocationType.GOOGLE_MEET,
-                type.locationDetail);
+                type.locationDetail
+        );
         stampCreatedEvent(organizerRow, created);
         // propagate the meet link to the lead row too so invitee-facing views show it
         if (lead.meetLink == null) {
@@ -519,13 +545,13 @@ public class BookingService {
     private static void stampCreatedEvent(Booking row, CreatedEvent created) {
         row.googleEventId = created.googleEventId();
         row.meetLink = created.meetLink();
-        row.googleCalendarId =
-                created.calendar() == null ? null : created.calendar().googleCalendarId();
-        row.googleCredentialId =
-                created.calendar() == null ? null : created.calendar().credentialId();
+        row.googleCalendarId = created.calendar() == null ? null : created.calendar().googleCalendarId();
+        row.googleCredentialId = created.calendar() == null ? null : created.calendar().credentialId();
     }
 
-    /** Invitee + every host's OwnerSettings.ownerEmail + active guests (guests live on the lead row). */
+    /**
+     * Invitee + every host's OwnerSettings.ownerEmail + active guests (guests live on the lead row).
+     */
     private List<String> groupAttendeeEmails(MeetingType type, UUID groupId, List<Long> hostIds) {
         List<String> emails = new ArrayList<>();
         Booking lead = Booking.leadOfGroup(groupId, type.ownerId);
@@ -625,7 +651,8 @@ public class BookingService {
                 booking.endUtc,
                 attendeeEmails(booking, owner),
                 type.locationType == LocationType.GOOGLE_MEET,
-                type.locationDetail);
+                type.locationDetail
+        );
         stampCreatedEvent(booking, created);
     }
 
@@ -698,18 +725,22 @@ public class BookingService {
         for (var i = 0; i < email.length(); i++) {
             var ch = email.charAt(i);
             if (ch == ',' || Character.isWhitespace(ch)) {
-                return false; // commas and CR/LF/space/tab are injection vectors — reject
+                // commas and CR/LF/space/tab are injection vectors — reject
+                return false;
             }
         }
         var at = email.indexOf('@');
         if (at <= 0 || at != email.lastIndexOf('@') || at == email.length() - 1) {
-            return false; // need exactly one '@', neither first nor last char
+            // need exactly one '@', neither first nor last char
+            return false;
         }
         var domain = email.substring(at + 1);
         if (domain.startsWith(".") || domain.endsWith(".") || domain.contains("..")) {
-            return false; // no empty domain labels
+            // no empty domain labels
+            return false;
         }
-        return domain.indexOf('.') >= 0; // domain must have at least one dot
+        // domain must have at least one dot
+        return domain.indexOf('.') >= 0;
     }
 
     private void enforcePerEmailDailyCap(MeetingType type, String inviteeEmail) {
@@ -731,7 +762,9 @@ public class BookingService {
             if (field.required) {
                 String value = answers.get(field.fieldKey);
                 if (value == null || value.isBlank()) {
-                    throw new BookingValidationException("Required field '" + field.fieldKey + "' is missing or blank");
+                    throw new BookingValidationException("Required field '"
+                            + field.fieldKey
+                            + "' is missing or blank");
                 }
             }
         }
@@ -777,11 +810,16 @@ public class BookingService {
      * booking's own {@link #lengthOf} length.
      */
     private void assertSlotAvailable(
-            MeetingType type, Instant startUtc, Set<Long> excludeBookingIds, int durationMinutes) {
+            MeetingType type,
+            Instant startUtc,
+            Set<Long> excludeBookingIds,
+            int durationMinutes
+    ) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         var day = startUtc.atZone(zone).toLocalDate();
-        boolean ok = availableSlots(type, day, day, excludeBookingIds, durationMinutes).stream()
-                .anyMatch(s -> s.start().toInstant().equals(startUtc));
+        boolean ok = availableSlots(type, day, day, excludeBookingIds, durationMinutes)
+            .stream()
+            .anyMatch(s -> s.start().toInstant().equals(startUtc));
         if (!ok) {
             throw new BookingConflictException("Slot " + startUtc + " is not available for " + type.slug);
         }
@@ -815,7 +853,10 @@ public class BookingService {
         // shared Google event and fires the invitee-facing BookingConfirmed; earlier approvals
         // just flip that host's row and wait.
         boolean anyPending =
-                Booking.<Booking>group(booking.groupId).stream().anyMatch(r -> r.status == BookingStatus.PENDING);
+                Booking
+            .<Booking>group(booking.groupId)
+            .stream()
+            .anyMatch(r -> r.status == BookingStatus.PENDING);
         if (!anyPending) {
             createGroupGoogleEvent(type, booking.groupId);
             Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
@@ -880,7 +921,12 @@ public class BookingService {
      */
     @Transactional
     public Booking reschedule(
-            String manageToken, Instant newStartUtc, List<String> guestEmails, boolean byOwner, Long initiatorOwnerId) {
+            String manageToken,
+            Instant newStartUtc,
+            List<String> guestEmails,
+            boolean byOwner,
+            Long initiatorOwnerId
+    ) {
         Booking booking = Booking.findByManageToken(manageToken);
         if (booking == null
                 || booking.status == BookingStatus.CANCELLED
@@ -891,7 +937,6 @@ public class BookingService {
 
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         guestEmails = guestsFor(type, guestEmails);
-
         // No-op: same time and guests untouched (web callers pass null) -> nothing to do. Avoids a spurious
         // SEQUENCE bump + reschedule email when the invitee re-picks the current slot.
         if (newStartUtc.equals(booking.startUtc) && guestEmails == null) {
@@ -904,7 +949,6 @@ public class BookingService {
 
         int bookedLength = lengthOf(booking);
         var newEnd = newStartUtc.plus(bookedLength, ChronoUnit.MINUTES);
-
         // Exclude this booking so it may move freely within its own window. Re-check at the booking's
         // own length, not the type's default -- a type's default may differ from what was actually booked.
         assertSlotAvailable(type, newStartUtc, Set.of(booking.id), bookedLength);
@@ -914,7 +958,6 @@ public class BookingService {
         booking.endUtc = newEnd;
         // Bump the iTIP SEQUENCE so guest .ics updates/cancels supersede the prior event.
         booking.icsSequence = booking.icsSequence + 1;
-
         // Deliberate behavior change (Task 11): an owner-initiated reschedule of an approval type no
         // longer reverts to PENDING -- only an invitee-initiated one does. A host already knows their
         // own slot is free (they just picked it), so re-approving themselves would be theater.
@@ -929,11 +972,9 @@ public class BookingService {
             booking.googleCalendarId = null;
             booking.googleCredentialId = null;
         }
-
         // Reconcile guests (if the caller supplied a list) inside the same transaction. Collect the
         // ids of guests removed so we can fire cancel emails after commit.
         List<Long> removedGuestIds = reconcileGuests(booking, guestEmails);
-
         // NFR cross-node guard: flush so the no-overlap exclusion constraint is checked against
         // the new range; a concurrent overlap is surfaced as the same 409 as a double-book.
         try {
@@ -944,7 +985,6 @@ public class BookingService {
             }
             throw ex;
         }
-
         // Cancel emails for guests the invitee removed (fired regardless of approval/auto).
         for (Long guestId : removedGuestIds) {
             guestRemovedEvent.fire(new GuestRemoved(booking.id, guestId));
@@ -967,12 +1007,14 @@ public class BookingService {
             String priorEventId,
             CalendarRef priorRef,
             boolean reApproval,
-            boolean byOwner) {
+            boolean byOwner
+    ) {
         if (reApproval) {
             if (calendarPort.isConnected(type.ownerId) && priorEventId != null) {
                 calendarPort.deleteEvent(type.ownerId, priorRef, priorEventId);
             }
-            bookingRequestedEvent.fire(new BookingRequested(booking.id)); // re-approval request
+            // re-approval request
+            bookingRequestedEvent.fire(new BookingRequested(booking.id));
         } else {
             if (calendarPort.isConnected(type.ownerId) && booking.googleEventId != null) {
                 OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
@@ -982,7 +1024,8 @@ public class BookingService {
                         booking.googleEventId,
                         booking.startUtc,
                         booking.endUtc,
-                        attendeeEmails(booking, owner));
+                        attendeeEmails(booking, owner)
+                );
             }
             bookingRescheduledEvent.fire(new BookingRescheduled(booking.id, oldStart, byOwner));
         }
@@ -999,11 +1042,15 @@ public class BookingService {
      * {@code groupId}/{@code meetingTypeId}/{@code startUtc} are read.
      */
     private Booking rescheduleGroup(
-            Booking row, Instant newStartUtc, List<String> guestEmails, boolean byOwner, Long initiatorOwnerId) {
+            Booking row,
+            Instant newStartUtc,
+            List<String> guestEmails,
+            boolean byOwner,
+            Long initiatorOwnerId
+    ) {
         MeetingType type = MeetingType.findById(row.meetingTypeId);
         int bookedLength = lengthOf(row);
         var newEnd = newStartUtc.plus(bookedLength, ChronoUnit.MINUTES);
-
         // Re-check the intersection across all hosts at the new time (fail-closed inside availableSlots).
         // Exclude EVERY row of the group, not just `row` -- a group has one row per host, all still at
         // the OLD time until the move loop below runs, so excluding a single row left each OTHER host's
@@ -1019,8 +1066,8 @@ public class BookingService {
 
         boolean reApproval = type.requiresApproval;
         var initiator = byOwner ? initiatorOwnerId : null;
-
-        deleteGroupGoogleEvent(row.groupId); // drop the one event; recreated below only on full re-confirm
+        // drop the one event; recreated below only on full re-confirm
+        deleteGroupGoogleEvent(row.groupId);
         Instant oldStart = row.startUtc;
         moveGroupRows(row, newStartUtc, newEnd, reApproval, initiator);
 
@@ -1032,7 +1079,8 @@ public class BookingService {
         }
 
         if (reApproval) {
-            bookingRequestedEvent.fire(new BookingRequested(freshLead.id)); // hosts re-approve
+            // hosts re-approve
+            bookingRequestedEvent.fire(new BookingRequested(freshLead.id));
         } else {
             createGroupGoogleEvent(type, row.groupId);
             bookingRescheduledEvent.fire(new BookingRescheduled(freshLead.id, oldStart, byOwner));
@@ -1068,7 +1116,12 @@ public class BookingService {
      */
     @Transactional
     public Booking updateDetails(
-            String manageToken, String title, String description, List<String> guestEmails, boolean byOwner) {
+            String manageToken,
+            String title,
+            String description,
+            List<String> guestEmails,
+            boolean byOwner
+    ) {
         Booking booking = Booking.findByManageToken(manageToken);
         if (booking == null
                 || booking.status == BookingStatus.CANCELLED
@@ -1087,7 +1140,6 @@ public class BookingService {
         var newDescription = blankToNull(description);
         validateDetailBounds(newTitle, newDescription);
         List<String> wanted = normalizeGuestEmails(guestEmails, booking.inviteeEmail);
-
         // No-op guard: nothing changed → no notification storm, no SEQUENCE churn.
         if (java.util.Objects.equals(newTitle, booking.title)
                 && java.util.Objects.equals(newDescription, booking.description)
@@ -1115,7 +1167,8 @@ public class BookingService {
                     booking.googleEventId,
                     googleSummary(type, booking),
                     googleDescription(type, booking),
-                    attendeeEmails(booking, owner));
+                    attendeeEmails(booking, owner)
+            );
         }
 
         bookingDetailsChangedEvent.fire(new BookingDetailsChanged(booking.id, byOwner));
@@ -1140,7 +1193,8 @@ public class BookingService {
             String title,
             String description,
             List<String> guestEmails,
-            boolean byOwner) {
+            boolean byOwner
+    ) {
         var newTitle = blankToNull(title);
         var newDescription = blankToNull(description);
         validateDetailBounds(newTitle, newDescription);
@@ -1167,7 +1221,8 @@ public class BookingService {
                     eventRow.googleEventId,
                     googleSummary(type, lead),
                     googleDescription(type, lead),
-                    groupAttendeeEmails(type, booking.groupId, meetingHosts.hostOwnerIds(type)));
+                    groupAttendeeEmails(type, booking.groupId, meetingHosts.hostOwnerIds(type))
+            );
         }
 
         bookingDetailsChangedEvent.fire(new BookingDetailsChanged(lead.id, byOwner));
@@ -1231,14 +1286,14 @@ public class BookingService {
         }
         List<String> wanted = normalizeGuestEmails(guestEmails, booking.inviteeEmail);
         Set<String> wantedLower = new HashSet<>();
-        for (String e : wanted) wantedLower.add(e.toLowerCase());
-
+        for (String e : wanted) {
+            wantedLower.add(e.toLowerCase());
+        }
         // Existing rows for this booking, keyed by lowercase email.
         Map<String, BookingGuest> existing = new HashMap<>();
         for (BookingGuest g : BookingGuest.<BookingGuest>allForBooking(booking.id)) {
             existing.put(g.email.toLowerCase(), g);
         }
-
         // Add or re-activate wanted guests.
         for (String email : wanted) {
             BookingGuest g = existing.get(email.toLowerCase());
@@ -1252,10 +1307,10 @@ public class BookingService {
                 g.status = GuestStatus.INVITED;
                 g.persist();
             } else if (g.status != GuestStatus.INVITED) {
-                g.status = GuestStatus.INVITED; // re-invited a previously removed/declined guest
+                // re-invited a previously removed/declined guest
+                g.status = GuestStatus.INVITED;
             }
         }
-
         // Remove active guests no longer wanted.
         List<Long> removed = new ArrayList<>();
         for (BookingGuest g : existing.values()) {
@@ -1306,7 +1361,8 @@ public class BookingService {
             return cancelSingle(booking, byOwner, tolerateGoogleFailure);
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        boolean deleted = deleteGroupGoogleEvent(booking.groupId, tolerateGoogleFailure); // one shared event
+        // one shared event
+        boolean deleted = deleteGroupGoogleEvent(booking.groupId, tolerateGoogleFailure);
         for (Booking r : Booking.<Booking>group(booking.groupId)) {
             r.status = BookingStatus.CANCELLED;
         }
@@ -1380,7 +1436,9 @@ public class BookingService {
             return true;
         }
         try {
-            QuarkusTransaction.requiringNew().run(() -> calendarPort.deleteEvent(ownerId, ref, eventId));
+            QuarkusTransaction
+                .requiringNew()
+                .run(() -> calendarPort.deleteEvent(ownerId, ref, eventId));
             return true;
         } catch (RuntimeException e) {
             Log.warnf(e, "Could not delete Google event %s for booking %d; cancelling anyway", eventId, row.id);
@@ -1406,7 +1464,8 @@ public class BookingService {
                 hostOwnerId,
                 type.id,
                 Instant.now(),
-                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED));
+                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)
+        );
         Set<UUID> cancelledGroups = new HashSet<>();
         for (Booking row : rows) {
             if (cancelledGroups.add(row.groupId)) {
@@ -1422,7 +1481,8 @@ public class BookingService {
             throw new NotFoundException("No guest for that token");
         }
         if (guest.status == GuestStatus.DECLINED) {
-            return; // idempotent: a second decline click is a no-op
+            // idempotent: a second decline click is a no-op
+            return;
         }
         guest.status = GuestStatus.DECLINED;
         // Re-sync the Google attendee list (now excludes this guest, since activeForBooking returns only INVITED).
@@ -1436,7 +1496,8 @@ public class BookingService {
                     booking.googleEventId,
                     booking.startUtc,
                     booking.endUtc,
-                    attendeeEmails(booking, owner));
+                    attendeeEmails(booking, owner)
+            );
         }
         guestDeclinedEvent.fire(new GuestDeclined(guest.bookingId, guest.id));
     }

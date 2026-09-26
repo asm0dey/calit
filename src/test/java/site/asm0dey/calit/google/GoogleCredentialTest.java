@@ -1,16 +1,14 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class GoogleCredentialTest {
-
     @Test
     @TestTransaction
     void getReturnsNullWhenNotConnected() {

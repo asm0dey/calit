@@ -1,11 +1,9 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 
 /**
  * Request-scoped CDI bean that builds the list of {@link LocaleOption}s for the
@@ -19,7 +17,6 @@ import java.util.Locale;
 @RequestScoped
 @Unremovable
 public class LocaleOptions {
-
     final ActiveLocale activeLocale;
 
     @Inject

@@ -1,15 +1,10 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
@@ -18,11 +13,12 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class BookingOwnerStampTest {
-
     @Inject
     BookingService bookingService;
 
-    /** Seeds an owner with settings, a meeting type, and a wide weekly availability window. */
+    /**
+     * Seeds an owner with settings, a meeting type, and a wide weekly availability window.
+     */
     private MeetingType seedOwnerAndType(String username) {
         AppUser u = new AppUser();
         u.username = username;
@@ -64,12 +60,13 @@ class BookingOwnerStampTest {
     void bookingIsStampedWithItsMeetingTypesOwner() {
         MeetingType t = seedOwnerAndType("ownerstamp");
         // Pick a slot far enough out to clear min-notice (0) and inside the horizon.
-        var slot = ZonedDateTime.now(ZoneId.of("UTC"))
-                .plusDays(2)
-                .withHour(10)
-                .withMinute(0)
-                .withSecond(0)
-                .withNano(0);
+        var slot = ZonedDateTime
+            .now(ZoneId.of("UTC"))
+            .plusDays(2)
+            .withHour(10)
+            .withMinute(0)
+            .withSecond(0)
+            .withNano(0);
 
         Booking b = bookingService.book(
                 t.ownerId,
@@ -81,7 +78,8 @@ class BookingOwnerStampTest {
                 null,
                 null,
                 "en",
-                java.util.List.of());
+                java.util.List.of()
+        );
 
         assertEquals(t.ownerId, b.ownerId, "booking.ownerId must equal the meeting type's owner");
     }

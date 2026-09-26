@@ -1,13 +1,11 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import io.quarkus.arc.Arc;
 import io.quarkus.qute.EngineBuilder;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
 
 /**
  * Applies the active request locale to EVERY Qute template instance: sets the message-bundle
@@ -22,8 +20,9 @@ import java.util.Locale;
  */
 @ApplicationScoped
 public class LocaleTemplateInitializer implements TemplateInstance.Initializer {
-
-    /** Called once at startup by EngineProducer — registers this bean as a template initializer. */
+    /**
+     * Called once at startup by EngineProducer — registers this bean as a template initializer.
+     */
     void onEngineBuilder(@Observes EngineBuilder builder) {
         builder.addTemplateInstanceInitializer(this);
     }

@@ -7,27 +7,22 @@ import site.asm0dey.calit.privacy.PrivacyConfig;
 @Entity
 @Table(name = "owner_settings")
 public class OwnerSettings extends PanacheEntityBase {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
-
     @Column(name = "owner_id", nullable = false)
     public Long ownerId;
-
     @Column(name = "owner_name", nullable = false)
     public String ownerName;
-
     @Column(name = "owner_email", nullable = false)
     public String ownerEmail;
-
     @Column(nullable = false, length = 64)
     public String timezone;
-
-    /** BCP-47 language tag for this owner's admin UI + owner-copy emails. */
+    /**
+     * BCP-47 language tag for this owner's admin UI + owner-copy emails.
+     */
     @Column(nullable = false)
     public String locale = "en";
-
     /**
      * This owner's clock preference for their OWN surfaces: {@code auto} (the viewer's device on
      * /me, the translated pattern in email), {@code h12}, or {@code h23}. Never applied to
@@ -36,21 +31,21 @@ public class OwnerSettings extends PanacheEntityBase {
      */
     @Column(name = "time_format", nullable = false, length = 8)
     public String timeFormat = "auto";
-
-    /** The legal {@link #timeFormat} values; anything else is coerced to {@code auto} on save. */
+    /**
+     * The legal {@link #timeFormat} values; anything else is coerced to {@code auto} on save.
+     */
     public static final java.util.Set<String> HOUR_CYCLES = java.util.Set.of("auto", "h12", "h23");
-
-    /** When false, the owner suppresses their own notification emails (Plan 4 gates on this). */
+    /**
+     * When false, the owner suppresses their own notification emails (Plan 4 gates on this).
+     */
     @Column(name = "owner_notifications_enabled", nullable = false)
     public boolean ownerNotificationsEnabled = true;
-
     /**
      * Signed-in GET / 303s to /me. Opt-out, so it defaults on. The product page stays at /calit,
      * which never redirects. Named "home", not "landing": "landing" means /{username} here.
      */
     @Column(name = "home_redirect_enabled", nullable = false)
     public boolean homeRedirectEnabled = true;
-
     /**
      * This owner's booking-retention window in days. NULL = fall back to the instance default
      * ({@code calit.retention.booking-days}), which is itself unset by default = keep forever.
@@ -84,12 +79,16 @@ public class OwnerSettings extends PanacheEntityBase {
         return days == null ? null : Math.min(days, PrivacyConfig.MAX_RETENTION_DAYS);
     }
 
-    /** Returns this owner's settings row, or null if not yet configured. */
+    /**
+     * Returns this owner's settings row, or null if not yet configured.
+     */
     public static OwnerSettings forOwner(Long ownerId) {
         return find("ownerId", ownerId).firstResult();
     }
 
-    /** Every zone id the JDK knows, sorted — the source for the settings and wizard pickers. */
+    /**
+     * Every zone id the JDK knows, sorted — the source for the settings and wizard pickers.
+     */
     public static java.util.List<String> zoneIds() {
         return java.time.ZoneId.getAvailableZoneIds().stream().sorted().toList();
     }
@@ -138,8 +137,11 @@ public class OwnerSettings extends PanacheEntityBase {
         if (email == null || email.isBlank()) {
             return java.util.List.of();
         }
-        return OwnerSettings.find("lower(ownerEmail) = ?1", email.trim().toLowerCase()).<OwnerSettings>list().stream()
-                .map(s -> s.ownerId)
-                .toList();
+        return OwnerSettings
+            .find("lower(ownerEmail) = ?1", email.trim().toLowerCase())
+            .<OwnerSettings>list()
+            .stream()
+            .map(s -> s.ownerId)
+            .toList();
     }
 }

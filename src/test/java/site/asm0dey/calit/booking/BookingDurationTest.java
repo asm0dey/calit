@@ -1,25 +1,17 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.*;
 
 @QuarkusTest
 class BookingDurationTest {
-
     private static final Long OWNER = 1L;
-
     @Inject
     BookingService bookingService;
 
@@ -71,10 +63,14 @@ class BookingDurationTest {
     void bookingAtAChosenLengthSetsTheEndAccordingly() {
         MeetingType t = seed("dur-book");
         var slot = bookingService
-                .availableSlots(
-                        t, java.time.LocalDate.now(), java.time.LocalDate.now().plusDays(7), java.util.Set.of(), 120)
-                .getFirst();
-
+            .availableSlots(
+                    t,
+                    java.time.LocalDate.now(),
+                    java.time.LocalDate.now().plusDays(7),
+                    java.util.Set.of(),
+                    120
+            )
+            .getFirst();
         // 12-arg order: ownerId, slug, startUtc, name, email, answers, turnstileToken,
         // altchaSolution, honeypot, locale, guestEmails, durationMinutes.
         Booking b = bookingService.book(
@@ -89,7 +85,8 @@ class BookingDurationTest {
                 null,
                 "en",
                 List.of(),
-                120);
+                120
+        );
 
         assertEquals(120, Duration.between(b.startUtc, b.endUtc).toMinutes());
     }
@@ -98,28 +95,26 @@ class BookingDurationTest {
     void aLengthOutsideTheAllowedSetIsRejected() {
         MeetingType t = seed("dur-reject");
         var slot = bookingService
-                .availableSlots(
-                        t, java.time.LocalDate.now(), java.time.LocalDate.now().plusDays(7), java.util.Set.of(), 30)
-                .getFirst();
+            .availableSlots(t, java.time.LocalDate.now(), java.time.LocalDate.now().plusDays(7), java.util.Set.of(), 30)
+            .getFirst();
 
         long before = Booking.count();
         // Resolved outside the lambda so the only call inside it that can throw is book(...) itself.
         Instant start = slot.start().toInstant();
-        assertThrows(
-                BookingConflictException.class,
-                () -> bookingService.book(
-                        OWNER,
-                        t.slug,
-                        start,
-                        "Ada",
-                        "ada@example.test",
-                        Map.of(),
-                        null,
-                        null,
-                        null,
-                        "en",
-                        List.of(),
-                        45));
+        assertThrows(BookingConflictException.class, () -> bookingService.book(
+                OWNER,
+                t.slug,
+                start,
+                "Ada",
+                "ada@example.test",
+                Map.of(),
+                null,
+                null,
+                null,
+                "en",
+                List.of(),
+                45
+        ));
         assertEquals(before, Booking.count(), "a rejected duration must write no row");
     }
 
@@ -127,9 +122,8 @@ class BookingDurationTest {
     void theDefaultingOverloadStillBooksTheTypesOwnLength() {
         MeetingType t = seed("dur-default");
         var slot = bookingService
-                .availableSlots(
-                        t, java.time.LocalDate.now(), java.time.LocalDate.now().plusDays(7), java.util.Set.of())
-                .getFirst();
+            .availableSlots(t, java.time.LocalDate.now(), java.time.LocalDate.now().plusDays(7), java.util.Set.of())
+            .getFirst();
 
         Booking b = bookingService.book(
                 OWNER,
@@ -142,7 +136,8 @@ class BookingDurationTest {
                 null,
                 null,
                 "en",
-                List.of());
+                List.of()
+        );
 
         assertEquals(30, Duration.between(b.startUtc, b.endUtc).toMinutes());
     }

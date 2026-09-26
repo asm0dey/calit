@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -9,11 +10,6 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.EntityTag;
 import jakarta.ws.rs.core.Request;
 import jakarta.ws.rs.core.Response;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
-import java.util.List;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.OwnerSettings;
@@ -33,9 +29,7 @@ import site.asm0dey.calit.web.og.CardRenderer;
  */
 @Path("/")
 public class OgImageResource {
-
     static final int MAX_AGE_SECONDS = 3600;
-
     final CardRenderer renderer;
 
     @Inject
@@ -77,7 +71,10 @@ public class OgImageResource {
     @Path("/og/{user}/{slug}.png")
     @Produces("image/png")
     public Response meetingType(
-            @Context Request request, @PathParam("user") String user, @PathParam("slug") String slug) {
+            @Context Request request,
+            @PathParam("user") String user,
+            @PathParam("slug") String slug
+    ) {
         AppUser owner = AppUser.findByUsername(user);
         // Same enumeration-oracle guard as owner() above (calit-h8mb): a disabled owner's type
         // must fall back to the product card, not render their real name/type/duration/location.
@@ -104,10 +101,11 @@ public class OgImageResource {
 
     static String meta(MeetingType type) {
         List<Integer> durations = MeetingTypeDuration.allowedDurations(type);
-        var lengths = durations.stream()
-                .map(String::valueOf)
-                .reduce((a, b) -> a + " · " + b)
-                .orElse("");
+        var lengths = durations
+            .stream()
+            .map(String::valueOf)
+            .reduce((a, b) -> a + " · " + b)
+            .orElse("");
         return lengths + " min · " + location(type);
     }
 
@@ -128,15 +126,9 @@ public class OgImageResource {
         // literal "public" token the spec requires. Set the header text directly instead.
         var cacheControl = "public, max-age=" + MAX_AGE_SECONDS;
         if (preconditionFailed != null) {
-            return preconditionFailed
-                    .tag(etag)
-                    .header("Cache-Control", cacheControl)
-                    .build();
+            return preconditionFailed.tag(etag).header("Cache-Control", cacheControl).build();
         }
-        return Response.ok(body, "image/png")
-                .tag(etag)
-                .header("Cache-Control", cacheControl)
-                .build();
+        return Response.ok(body, "image/png").tag(etag).header("Cache-Control", cacheControl).build();
     }
 
     static String sha256(String input) {

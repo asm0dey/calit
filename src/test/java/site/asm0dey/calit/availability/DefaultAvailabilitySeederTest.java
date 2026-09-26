@@ -1,16 +1,11 @@
 package site.asm0dey.calit.availability;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.EnumSet;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 
 class DefaultAvailabilitySeederTest {
-
     @Test
     void defaultsAreMondayToFridayNineToSixGlobal() {
         List<AvailabilityRule> rules = DefaultAvailabilitySeeder.weekdayDefaults();

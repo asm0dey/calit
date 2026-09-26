@@ -2,7 +2,6 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
@@ -12,7 +11,6 @@ import site.asm0dey.calit.domain.BookingField.FieldType;
 
 @QuarkusTest
 class AdminBookingFieldsTest {
-
     /**
      * These tests COMMIT BookingField rows (form POSTs run in their own committed
      * transaction). A leaked GLOBAL required field would make every later test that
@@ -41,43 +39,48 @@ class AdminBookingFieldsTest {
     @Test
     void pageRendersExistingFieldsAndCreateForm() {
         seedField();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/booking-fields")
-                .then()
-                .statusCode(200)
-                .body(containsString("LinkedIn URL")) // existing field listed
-                .body(containsString("name=\"fieldKey\"")) // create form present
-                .body(containsString("name=\"type\"")) // type dropdown
-                .body(containsString("name=\"required\"")); // required checkbox
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/booking-fields")
+            .then()
+            .statusCode(200)
+            // existing field listed
+            .body(containsString("LinkedIn URL"))
+            // create form present
+            .body(containsString("name=\"fieldKey\""))
+            // type dropdown
+            .body(containsString("name=\"type\""))
+            // required checkbox
+            .body(containsString("name=\"required\""));
     }
 
     @Test
     void createFieldViaForm() {
         var key = "field-" + System.nanoTime();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("label", "Dietary Needs")
-                .formParam("fieldKey", key)
-                .formParam("type", "LONG_TEXT")
-                .formParam("required", "on")
-                .formParam("position", "10")
-                .formParam("meetingTypeId", "") // empty = global
-                .when()
-                .post("/me/booking-fields")
-                .then()
-                .statusCode(200)
-                .body(containsString("Dietary Needs"))
-                .body(containsString(key));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("label", "Dietary Needs")
+            .formParam("fieldKey", key)
+            .formParam("type", "LONG_TEXT")
+            .formParam("required", "on")
+            .formParam("position", "10")
+            // empty = global
+            .formParam(
+                    // empty = global
+            "meetingTypeId",
+                    "")
+            .when()
+            .post("/me/booking-fields")
+            .then()
+            .statusCode(200)
+            .body(containsString("Dietary Needs"))
+            .body(containsString(key));
     }
 
     @Test
     void bookingFieldsPageRequiresAuth() {
-        given().redirects()
-                .follow(false)
-                .when()
-                .get("/me/booking-fields")
-                .then()
-                .statusCode(302);
+        given().redirects().follow(false).when().get("/me/booking-fields").then().statusCode(302);
     }
 }

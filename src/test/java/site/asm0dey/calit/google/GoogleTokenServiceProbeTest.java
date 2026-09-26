@@ -1,21 +1,20 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.io.IOException;
-import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class GoogleTokenServiceProbeTest {
-
     @Inject
     GoogleOAuthConfig config;
 
-    /** Stub the single network call: return a token, or throw a chosen exception. */
+    /**
+     * Stub the single network call: return a token, or throw a chosen exception.
+     */
     static class StubTokenService extends GoogleTokenService {
         GoogleTokenService.TokenResponse next;
         RuntimeException toThrow;
@@ -26,7 +25,9 @@ class GoogleTokenServiceProbeTest {
 
         @Override
         protected TokenResponse requestToken(String grantType, String codeOrRefresh, Instant now) {
-            if (toThrow != null) throw toThrow;
+            if (toThrow != null) {
+                throw toThrow;
+            }
             return next;
         }
     }
@@ -36,7 +37,8 @@ class GoogleTokenServiceProbeTest {
         c.ownerId = 1L;
         c.refreshToken = "rt-" + sub;
         c.accessToken = "stale";
-        c.accessTokenExpiry = Instant.parse("2030-01-01T00:00:00Z"); // NOT expired on purpose
+        // NOT expired on purpose
+        c.accessTokenExpiry = Instant.parse("2030-01-01T00:00:00Z");
         c.googleSub = sub;
         c.needsReconnect = needsReconnect;
         c.reconnectNotifiedAt = notifiedAt;
@@ -57,9 +59,11 @@ class GoogleTokenServiceProbeTest {
 
         assertEquals(GoogleTokenService.ProbeResult.OK, r);
         GoogleCredential c = GoogleCredential.findById(id);
-        assertEquals("fresh", c.accessToken); // forced refresh ran despite non-expiry
+        // forced refresh ran despite non-expiry
+        assertEquals("fresh", c.accessToken);
         assertFalse(c.needsReconnect);
-        assertNull(c.reconnectNotifiedAt); // recovery resets the notify gate
+        // recovery resets the notify gate
+        assertNull(c.reconnectNotifiedAt);
     }
 
     @Test
@@ -75,7 +79,8 @@ class GoogleTokenServiceProbeTest {
         assertEquals(GoogleTokenService.ProbeResult.INVALID_GRANT, r);
         GoogleCredential c = GoogleCredential.findById(id);
         assertTrue(c.needsReconnect);
-        assertNull(c.reconnectNotifiedAt); // still unset -> notifier will email
+        // still unset -> notifier will email
+        assertNull(c.reconnectNotifiedAt);
     }
 
     @Test
@@ -90,7 +95,8 @@ class GoogleTokenServiceProbeTest {
 
         assertEquals(GoogleTokenService.ProbeResult.TRANSIENT, r);
         GoogleCredential c = GoogleCredential.findById(id);
-        assertFalse(c.needsReconnect); // a blip must NOT flag (no false alarm)
+        // a blip must NOT flag (no false alarm)
+        assertFalse(c.needsReconnect);
     }
 
     @Test

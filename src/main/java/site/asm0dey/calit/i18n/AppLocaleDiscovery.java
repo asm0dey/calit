@@ -1,15 +1,13 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
+// ambiguous across the module imports above; single-type import wins
+import java.lang.annotation.Annotation;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.InstanceHandle;
 import io.quarkus.arc.Unremovable;
 import io.quarkus.qute.i18n.Localized;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.TreeSet;
 import org.eclipse.microprofile.config.ConfigProvider;
 
 /**
@@ -29,9 +27,9 @@ import org.eclipse.microprofile.config.ConfigProvider;
  * always the same, and Arc is up by the time any request fires.
  */
 @ApplicationScoped
-@Unremovable // accessed via Arc.container().instance() from static AppLocales.supported()
+// accessed via Arc.container().instance() from static AppLocales.supported()
+@Unremovable
 public class AppLocaleDiscovery {
-
     // Volatile: safe lazy init — worst case two threads compute the same list once.
     private volatile List<Locale> cache;
 
@@ -40,9 +38,13 @@ public class AppLocaleDiscovery {
      * by language tag. Computed once and cached.
      */
     public List<Locale> supported() {
-        if (cache != null) return cache;
+        if (cache != null) {
+            return cache;
+        }
         synchronized (this) {
-            if (cache != null) return cache;
+            if (cache != null) {
+                return cache;
+            }
             cache = discover();
         }
         return cache;
@@ -50,7 +52,6 @@ public class AppLocaleDiscovery {
 
     private List<Locale> discover() {
         var defaultLocale = defaultLocale();
-
         // Use a TreeSet keyed on language tag for stable, deduplicated ordering.
         TreeSet<String> extras = new TreeSet<>();
 
@@ -80,9 +81,10 @@ public class AppLocaleDiscovery {
     }
 
     private static Locale defaultLocale() {
-        return ConfigProvider.getConfig()
-                .getOptionalValue("quarkus.default-locale", String.class)
-                .map(Locale::forLanguageTag)
-                .orElse(Locale.ENGLISH);
+        return ConfigProvider
+            .getConfig()
+            .getOptionalValue("quarkus.default-locale", String.class)
+            .map(Locale::forLanguageTag)
+            .orElse(Locale.ENGLISH);
     }
 }

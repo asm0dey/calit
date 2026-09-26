@@ -1,11 +1,8 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.net.InetAddress;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.Optional;
 import org.alexmond.notify4j.ChannelCatalog;
 import org.alexmond.notify4j.ChannelField;
 import org.alexmond.notify4j.FieldType;
@@ -18,7 +15,6 @@ import org.alexmond.notify4j.ParsedChannel;
  */
 @ApplicationScoped
 public class ChannelPolicy {
-
     public enum Reason {
         OK,
         UNKNOWN_SCHEME,
@@ -34,7 +30,6 @@ public class ChannelPolicy {
     }
 
     private final ChannelCatalog catalog = ChannelCatalog.standard();
-
     final NotifyConfig config;
 
     @Inject
@@ -60,17 +55,21 @@ public class ChannelPolicy {
         return new Check(Reason.OK, scheme);
     }
 
-    /** Safe for display and logs: {@code scheme://host/…}, secrets stripped by notify4j's own redactor. */
+    /**
+     * Safe for display and logs: {@code scheme://host/…}, secrets stripped by notify4j's own redactor.
+     */
     public String redact(String url) {
         return catalog.redact(url);
     }
 
-    /** "Telegram", "Slack", "Gotify" … — the label a blank input falls back to at save time. */
+    /**
+     * "Telegram", "Slack", "Gotify" … — the label a blank input falls back to at save time.
+     */
     public String defaultLabel(String url) {
-        return catalog.tryParse(url)
-                .flatMap(p -> catalog.describe(p.scheme()).map(d -> d.displayName()))
-                .orElseGet(
-                        () -> catalog.tryParse(url).map(ParsedChannel::scheme).orElse("Channel"));
+        return catalog
+            .tryParse(url)
+            .flatMap(p -> catalog.describe(p.scheme()).map(d -> d.displayName()))
+            .orElseGet(() -> catalog.tryParse(url).map(ParsedChannel::scheme).orElse("Channel"));
     }
 
     /**
@@ -86,7 +85,10 @@ public class ChannelPolicy {
      * and fails notify4j's {@code invalid_url} format check — on a perfectly good channel.
      */
     private boolean missingRequiredField(ParsedChannel parsed) {
-        return catalog.validate(parsed.scheme(), parsed.values()).stream().anyMatch(e -> "required".equals(e.code()));
+        return catalog
+            .validate(parsed.scheme(), parsed.values())
+            .stream()
+            .anyMatch(e -> "required".equals(e.code()));
     }
 
     /**
@@ -101,9 +103,10 @@ public class ChannelPolicy {
         if (parsed.cleartextHttp()) {
             return true;
         }
-        return catalog.describe(parsed.scheme())
-                .map(d -> d.fields().stream().anyMatch(ChannelPolicy::namesAHost))
-                .orElse(false);
+        return catalog
+            .describe(parsed.scheme())
+            .map(d -> d.fields().stream().anyMatch(ChannelPolicy::namesAHost))
+            .orElse(false);
     }
 
     private static boolean namesAHost(ChannelField f) {
@@ -115,7 +118,8 @@ public class ChannelPolicy {
         try {
             host = URI.create(url).getHost();
         } catch (IllegalArgumentException _) {
-            return false; // not a parseable authority; notify4j will fail it at send time
+            // not a parseable authority; notify4j will fail it at send time
+            return false;
         }
         if (host == null || host.isBlank()) {
             return false;
@@ -131,12 +135,15 @@ public class ChannelPolicy {
                 }
             }
         } catch (UnknownHostException _) {
-            return false; // cannot resolve: not our business to block, the send will fail anyway
+            // cannot resolve: not our business to block, the send will fail anyway
+            return false;
         }
         return false;
     }
 
-    /** fc00::/7 — IPv6's private range, which {@code isSiteLocalAddress()} does not cover. */
+    /**
+     * fc00::/7 — IPv6's private range, which {@code isSiteLocalAddress()} does not cover.
+     */
     private static boolean uniqueLocalIpv6(InetAddress a) {
         var b = a.getAddress();
         return b.length == 16 && (b[0] & 0xFE) == 0xFC;

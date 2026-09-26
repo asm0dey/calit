@@ -1,14 +1,13 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeHost;
@@ -21,7 +20,6 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class WriteTargetResolverTest {
-
     @Inject
     WriteTargetResolver resolver;
 
@@ -31,7 +29,6 @@ class WriteTargetResolverTest {
         MeetingType t = seedType(1L);
         t.googleCredentialId = 1L;
         t.googleCalendarId = "work@example.com";
-
         // No owner means no override to read — never a NullPointerException.
         assertNull(resolver.writeOverride(null, t));
     }
@@ -78,7 +75,6 @@ class WriteTargetResolverTest {
         h.googleCredentialId = cohostCred;
         h.googleCalendarId = "cohost-work@example.com";
         h.persistAndFlush();
-
         // The creator still writes on their own default; the co-host writes on their own override.
         assertEquals(new CalendarRef(creatorCred, "creator@example.com"), resolver.resolve(1L, t));
         assertEquals(new CalendarRef(cohostCred, "cohost-work@example.com"), resolver.resolve(cohost.id, t));
@@ -91,7 +87,8 @@ class WriteTargetResolverTest {
         seedCalendar(1L, credId, "default@example.com", true, true);
         MeetingType t = seedType(1L);
         t.googleCredentialId = credId;
-        t.googleCalendarId = "unticked@example.com"; // no GoogleCalendar row: unticked since
+        // no GoogleCalendar row: unticked since
+        t.googleCalendarId = "unticked@example.com";
         t.persistAndFlush();
 
         assertEquals(new CalendarRef(credId, "default@example.com"), resolver.resolve(1L, t));
@@ -129,15 +126,18 @@ class WriteTargetResolverTest {
     @TestTransaction
     void meetGateFollowsTheResolvedCalendar() {
         var credId = seedCredential("sub-res-meet");
-        seedCalendar(1L, credId, "default@example.com", true, false); // default cannot Meet
-        seedCalendar(1L, credId, "meet@example.com", false, true); // override can
+        // default cannot Meet
+        seedCalendar(1L, credId, "default@example.com", true, false);
+        // override can
+        seedCalendar(1L, credId, "meet@example.com", false, true);
         MeetingType t = seedType(1L);
         t.googleCredentialId = credId;
         t.googleCalendarId = "meet@example.com";
         t.persistAndFlush();
 
         assertFalse(resolver.blocksMeet(1L, t));
-        assertTrue(resolver.blocksMeet(1L, seedType(1L))); // a type with no override sees the default
+        // a type with no override sees the default
+        assertTrue(resolver.blocksMeet(1L, seedType(1L)));
     }
 
     @Test

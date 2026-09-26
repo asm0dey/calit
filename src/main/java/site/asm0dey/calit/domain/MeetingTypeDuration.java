@@ -1,15 +1,12 @@
 package site.asm0dey.calit.domain;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.Table;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * One length a meeting type may be booked at, with optional buffer overrides for that length.
@@ -24,8 +21,9 @@ import java.util.Objects;
 @Table(name = "meeting_type_duration")
 @IdClass(MeetingTypeDuration.Key.class)
 public class MeetingTypeDuration extends PanacheEntityBase {
-
-    /** Composite key mirroring the table's natural primary key. */
+    /**
+     * Composite key mirroring the table's natural primary key.
+     */
     public static class Key implements Serializable {
         public Long meetingTypeId;
         public int durationMinutes;
@@ -46,20 +44,23 @@ public class MeetingTypeDuration extends PanacheEntityBase {
     @Id
     @Column(name = "meeting_type_id", nullable = false)
     public Long meetingTypeId;
-
     @Id
     @Column(name = "duration_minutes", nullable = false)
     public int durationMinutes;
-
-    /** Null = this length imposes no buffer of its own; see ADR-0002 for how it combines. */
+    /**
+     * Null = this length imposes no buffer of its own; see ADR-0002 for how it combines.
+     */
     @Column(name = "buffer_before_minutes")
     public Integer bufferBeforeMinutes;
-
-    /** Null = this length imposes no buffer of its own; see ADR-0002 for how it combines. */
+    /**
+     * Null = this length imposes no buffer of its own; see ADR-0002 for how it combines.
+     */
     @Column(name = "buffer_after_minutes")
     public Integer bufferAfterMinutes;
 
-    /** Configured rows for a type, shortest first. Does NOT include the implicit default. */
+    /**
+     * Configured rows for a type, shortest first. Does NOT include the implicit default.
+     */
     public static List<MeetingTypeDuration> rowsFor(Long meetingTypeId) {
         return list("meetingTypeId = ?1 order by durationMinutes", meetingTypeId);
     }
@@ -80,7 +81,9 @@ public class MeetingTypeDuration extends PanacheEntityBase {
         return all;
     }
 
-    /** The cadence anchor: the shortest length on offer, which is NOT necessarily the default. */
+    /**
+     * The cadence anchor: the shortest length on offer, which is NOT necessarily the default.
+     */
     public static int shortestAllowed(MeetingType type) {
         return allowedDurations(type).getFirst();
     }
@@ -89,9 +92,10 @@ public class MeetingTypeDuration extends PanacheEntityBase {
         return allowedDurations(type).contains(durationMinutes);
     }
 
-    /** The buffer-override row for one length, or null when that length has none. */
+    /**
+     * The buffer-override row for one length, or null when that length has none.
+     */
     public static MeetingTypeDuration findRow(Long meetingTypeId, int durationMinutes) {
-        return find("meetingTypeId = ?1 and durationMinutes = ?2", meetingTypeId, durationMinutes)
-                .firstResult();
+        return find("meetingTypeId = ?1 and durationMinutes = ?2", meetingTypeId, durationMinutes).firstResult();
     }
 }

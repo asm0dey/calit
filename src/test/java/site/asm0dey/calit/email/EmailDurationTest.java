@@ -1,22 +1,17 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -34,26 +29,26 @@ import site.asm0dey.calit.google.CalendarPort;
  */
 @QuarkusTest
 class EmailDurationTest {
-
     private static final String OWNER_EMAIL = "owner-dur@example.com";
     private static final String INVITEE_EMAIL = "invitee-dur@example.com";
-
     @Inject
     EmailService emailService;
-
     @Inject
     MockMailbox mailbox;
-
     @InjectMock
     CalendarPort calendarPort;
 
     @BeforeEach
     void init() {
         mailbox.clear();
-        QuarkusTransaction.requiringNew().run(() -> Booking.deleteAll());
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> Booking.deleteAll());
     }
 
-    /** Type defaults to 30 minutes; this booking was made at 120. */
+    /**
+     * Type defaults to 30 minutes; this booking was made at 120.
+     */
     private long seed() {
         return QuarkusTransaction.requiringNew().call(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);
@@ -114,9 +109,11 @@ class EmailDurationTest {
         String inviteeHtml = toInvitee.getFirst().getHtml();
         assertTrue(
                 inviteeHtml.contains("120 minutes"),
-                "invitee copy must show the booked 120 minutes; got: " + inviteeHtml);
+                "invitee copy must show the booked 120 minutes; got: " + inviteeHtml
+        );
         assertFalse(
                 inviteeHtml.contains("30 minutes"),
-                "invitee copy must not show the type's default; got: " + inviteeHtml);
+                "invitee copy must not show the type's default; got: " + inviteeHtml
+        );
     }
 }

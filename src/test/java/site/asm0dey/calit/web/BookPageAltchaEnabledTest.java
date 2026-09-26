@@ -1,19 +1,16 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.CaptchaProviderConfig;
 import site.asm0dey.calit.domain.AvailabilityRule;
@@ -25,10 +22,8 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class BookPageAltchaEnabledTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @InjectSpy
     CaptchaProviderConfig providerConfig;
 
@@ -75,20 +70,20 @@ class BookPageAltchaEnabledTest {
         when(providerConfig.provider()).thenReturn("altcha");
         seed();
 
-        given().when()
-                .get("/carol/altcha-type")
-                .then()
-                .statusCode(200)
-                .body(containsString("<altcha-widget"))
-                // v3 widget attribute is `challenge` (a URL fetches the challenge); the pre-v3
-                // `challengeurl` name is silently ignored by altcha 3.x, so it must NOT appear.
-                .body(containsString("challenge=\"/altcha/challenge\""))
-                .body(not(containsString("challengeurl")))
-                // native form control (daisyUI-styleable, light DOM) + floating display.
-                .body(containsString("type=\"native\""))
-                .body(containsString("display=\"floating\""))
-                .body(containsString("/webjars/altcha/dist/main/altcha.i18n.min.js"))
-                // No Cloudflare widget when altcha is active.
-                .body(not(containsString("class=\"cf-turnstile\"")));
+        given()
+            .when()
+            .get("/carol/altcha-type")
+            .then()
+            .statusCode(200)
+            .body(containsString("<altcha-widget"))
+            // `challengeurl` name is silently ignored by altcha 3.x, so it must NOT appear.
+            .body(containsString("challenge=\"/altcha/challenge\""))
+            .body(not(containsString("challengeurl")))
+            // native form control (daisyUI-styleable, light DOM) + floating display.
+            .body(containsString("type=\"native\""))
+            .body(containsString("display=\"floating\""))
+            .body(containsString("/webjars/altcha/dist/main/altcha.i18n.min.js"))
+            // No Cloudflare widget when altcha is active.
+            .body(not(containsString("class=\"cf-turnstile\"")));
     }
 }

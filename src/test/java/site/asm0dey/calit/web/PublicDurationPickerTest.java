@@ -1,18 +1,15 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.*;
 
 @QuarkusTest
 class PublicDurationPickerTest {
-
     private static final Long OWNER = 1L;
 
     @Transactional
@@ -58,45 +55,49 @@ class PublicDurationPickerTest {
     @Test
     void aMultiDurationTypeRendersOneLinkPerLength() {
         seed("picker-multi", 30, 60, 120);
-        given().when()
-                .get("/" + username() + "/picker-multi")
-                .then()
-                .statusCode(200)
-                .body(containsString("?duration=30"))
-                .body(containsString("?duration=60"))
-                .body(containsString("?duration=120"));
+        given()
+            .when()
+            .get("/" + username() + "/picker-multi")
+            .then()
+            .statusCode(200)
+            .body(containsString("?duration=30"))
+            .body(containsString("?duration=60"))
+            .body(containsString("?duration=120"));
     }
 
     @Test
     void aSingleDurationTypeRendersNoPicker() {
         seed("picker-single", 30);
-        given().when()
-                .get("/" + username() + "/picker-single")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("?duration=")));
+        given()
+            .when()
+            .get("/" + username() + "/picker-single")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("?duration=")));
     }
 
     @Test
     void theChosenLengthIsCarriedIntoTheFormAsAHiddenField() {
         seed("picker-hidden", 30, 120);
-        given().when()
-                .get("/" + username() + "/picker-hidden?duration=120")
-                .then()
-                .statusCode(200)
-                .body(containsString("name=\"durationMinutes\""))
-                .body(containsString("value=\"120\""));
+        given()
+            .when()
+            .get("/" + username() + "/picker-hidden?duration=120")
+            .then()
+            .statusCode(200)
+            .body(containsString("name=\"durationMinutes\""))
+            .body(containsString("value=\"120\""));
     }
 
     @Test
     void anUnknownOrMalformedDurationFallsBackToTheDefault() {
         seed("picker-fallback", 30, 120);
         for (String bad : new String[] {"45", "abc", ""}) {
-            given().when()
-                    .get("/" + username() + "/picker-fallback?duration=" + bad)
-                    .then()
-                    .statusCode(200)
-                    .body(containsString("value=\"30\""));
+            given()
+                .when()
+                .get("/" + username() + "/picker-fallback?duration=" + bad)
+                .then()
+                .statusCode(200)
+                .body(containsString("value=\"30\""));
         }
     }
 }

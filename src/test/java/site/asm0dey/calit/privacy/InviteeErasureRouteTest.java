@@ -3,7 +3,6 @@ package site.asm0dey.calit.privacy;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -15,8 +14,9 @@ import site.asm0dey.calit.domain.OwnerSettings;
  */
 @QuarkusTest
 class InviteeErasureRouteTest {
-
-    /** Seeds a past booking and returns its manage token. Mirrors BookingErasureTest's fixture. */
+    /**
+     * Seeds a past booking and returns its manage token. Mirrors BookingErasureTest's fixture.
+     */
     private String seedToken() {
         return ErasureFixtures.seedPastBooking();
     }
@@ -24,32 +24,35 @@ class InviteeErasureRouteTest {
     @Test
     void confirmPageStatesTheBoundaryBeforeTheClick() {
         var token = seedToken();
-        given().when()
-                .get("/booking/" + token + "/erase")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_ERASE_CONFIRM"));
+        given()
+            .when()
+            .get("/booking/" + token + "/erase")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_ERASE_CONFIRM"));
     }
 
     @Test
     void manageHubOffersErasure() {
         var token = seedToken();
-        given().when()
-                .get("/booking/" + token + "/manage")
-                .then()
-                .statusCode(200)
-                .body(containsString("/booking/" + token + "/erase"));
+        given()
+            .when()
+            .get("/booking/" + token + "/manage")
+            .then()
+            .statusCode(200)
+            .body(containsString("/booking/" + token + "/erase"));
     }
 
     @Test
     void erasingRendersTheDonePageAndDropsTheName() {
         var token = seedToken();
-        given().when()
-                .post("/booking/" + token + "/erase")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_ERASED"))
-                .body(not(containsString("Dana Vogel")));
+        given()
+            .when()
+            .post("/booking/" + token + "/erase")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_ERASED"))
+            .body(not(containsString("Dana Vogel")));
     }
 
     @Test
@@ -80,13 +83,14 @@ class InviteeErasureRouteTest {
     @Test
     void confirmPageSaysLinksKeepWorkingForeverByDefault() {
         var token = seedToken();
-        given().when()
-                .get("/booking/" + token + "/erase")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_ERASE_NOT_LINKED"))
-                .body(containsString("keep working until"))
-                .body(not(containsString("stop working")));
+        given()
+            .when()
+            .get("/booking/" + token + "/erase")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_ERASE_NOT_LINKED"))
+            .body(containsString("keep working until"))
+            .body(not(containsString("stop working")));
     }
 
     /**
@@ -101,15 +105,18 @@ class InviteeErasureRouteTest {
             s.bookingRetentionDays = 30;
         });
 
-        given().when()
-                .get("/booking/" + token + "/erase")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_ERASE_NOT_LINKED"))
-                .body(containsString("stop working 30 days"));
+        given()
+            .when()
+            .get("/booking/" + token + "/erase")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_ERASE_NOT_LINKED"))
+            .body(containsString("stop working 30 days"));
     }
 
-    /** Task 11b: the erasure copy ships in Hebrew, including the {days} placeholder. */
+    /**
+     * Task 11b: the erasure copy ships in Hebrew, including the {days} placeholder.
+     */
     @Test
     void confirmPageRendersInHebrew() {
         var token = seedToken();
@@ -118,24 +125,26 @@ class InviteeErasureRouteTest {
             s.bookingRetentionDays = 30;
         });
 
-        given().header("Accept-Language", "he")
-                .when()
-                .get("/booking/" + token + "/erase")
-                .then()
-                .statusCode(200)
-                .body(containsString("למחוק את הנתונים שלך מהזמנה זו?"))
-                .body(containsString("מפסיקים לעבוד 30 ימים"))
-                .body(not(containsString("Erase your data from this booking?")));
+        given()
+            .header("Accept-Language", "he")
+            .when()
+            .get("/booking/" + token + "/erase")
+            .then()
+            .statusCode(200)
+            .body(containsString("למחוק את הנתונים שלך מהזמנה זו?"))
+            .body(containsString("מפסיקים לעבוד 30 ימים"))
+            .body(not(containsString("Erase your data from this booking?")));
     }
 
     @Test
     void donePageAlsoStatesTheNotLinkedBoundary() {
         var token = seedToken();
-        given().when()
-                .post("/booking/" + token + "/erase")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_ERASE_NOT_LINKED"));
+        given()
+            .when()
+            .post("/booking/" + token + "/erase")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_ERASE_NOT_LINKED"));
     }
 
     /**
@@ -152,12 +161,13 @@ class InviteeErasureRouteTest {
             s.bookingRetentionDays = 99_999_999;
         });
 
-        given().when()
-                .get("/booking/" + token + "/erase")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_ERASE_NOT_LINKED"))
-                .body(containsString("stop working " + PrivacyConfig.MAX_RETENTION_DAYS + " days"));
+        given()
+            .when()
+            .get("/booking/" + token + "/erase")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_ERASE_NOT_LINKED"))
+            .body(containsString("stop working " + PrivacyConfig.MAX_RETENTION_DAYS + " days"));
     }
 
     /**
@@ -168,13 +178,16 @@ class InviteeErasureRouteTest {
     @Test
     void confirmPageFallsBackToForeverWithNoOwnerSettingsRow() {
         var token = seedToken();
-        QuarkusTransaction.requiringNew().run(() -> OwnerSettings.delete("ownerId", ErasureFixtures.OWNER));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> OwnerSettings.delete("ownerId", ErasureFixtures.OWNER));
 
-        given().when()
-                .get("/booking/" + token + "/erase")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_ERASE_NOT_LINKED"))
-                .body(containsString("keep working until"));
+        given()
+            .when()
+            .get("/booking/" + token + "/erase")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_ERASE_NOT_LINKED"))
+            .body(containsString("keep working until"));
     }
 }

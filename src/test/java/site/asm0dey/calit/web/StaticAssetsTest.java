@@ -2,41 +2,43 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class StaticAssetsTest {
-
     @Test
     void customStylesheetIsServed() {
-        given().when()
-                .get("/calit.css")
-                .then()
-                .statusCode(200)
-                .contentType(containsString("css"))
-                .body(containsString("--color-base-100"));
+        given()
+            .when()
+            .get("/calit.css")
+            .then()
+            .statusCode(200)
+            .contentType(containsString("css"))
+            .body(containsString("--color-base-100"));
     }
 
     @Test
     void faviconIsServedAsSvg() {
-        given().when()
-                .get("/favicon.svg")
-                .then()
-                .statusCode(200)
-                .contentType(containsString("svg"))
-                .body(containsString("<svg"))
-                .body(containsString("#6061f8")); // brand indigo, matching the landing "c" chip
+        given()
+            .when()
+            .get("/favicon.svg")
+            .then()
+            .statusCode(200)
+            .contentType(containsString("svg"))
+            .body(containsString("<svg"))
+            // brand indigo, matching the landing "c" chip
+            .body(containsString("#6061f8"));
     }
 
     @Test
     void landingPageLinksTheFavicon() {
-        given().when()
-                .get("/")
-                .then()
-                .statusCode(200)
-                .body(containsString("rel=\"icon\""))
-                .body(containsString("/favicon.svg"));
+        given()
+            .when()
+            .get("/")
+            .then()
+            .statusCode(200)
+            .body(containsString("rel=\"icon\""))
+            .body(containsString("/favicon.svg"));
     }
 }

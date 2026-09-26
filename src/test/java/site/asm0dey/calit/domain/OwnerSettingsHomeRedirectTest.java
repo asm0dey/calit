@@ -1,7 +1,6 @@
 package site.asm0dey.calit.domain;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -15,7 +14,6 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class OwnerSettingsHomeRedirectTest {
-
     @Test
     @Transactional
     void seededOwnerHasHomeRedirectEnabled() {

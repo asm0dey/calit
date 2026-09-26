@@ -2,11 +2,9 @@ package site.asm0dey.calit.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import org.junit.jupiter.api.Test;
 
 class CaptchaProviderConfigTest {
-
     @Test
     void explicitProviderWins() {
         assertEquals("altcha", CaptchaProviderConfig.resolve("altcha", true));

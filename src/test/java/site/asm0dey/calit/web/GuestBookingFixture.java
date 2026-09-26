@@ -1,11 +1,9 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
-
 import io.restassured.response.Response;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
@@ -19,31 +17,38 @@ import site.asm0dey.calit.domain.OwnerSettings;
  * tests that just need "a booking happened" without re-deriving the seeding boilerplate.
  */
 final class GuestBookingFixture {
-
-    private GuestBookingFixture() {}
+    private GuestBookingFixture() {
+    }
 
     private static final Long OWNER_ID = 1L;
-
     private static final String OWNER_USERNAME = "admin";
 
-    /** Seeds a meeting type + availability for owner 1 and POSTs one booking. Returns the response. */
+    /**
+     * Seeds a meeting type + availability for owner 1 and POSTs one booking. Returns the response.
+     */
     static Response book(String slugSuffix) {
         var slug = "fixture-" + slugSuffix.toLowerCase().replaceAll("[^a-z0-9]+", "-");
         seed(slug);
         var startUtc = firstSlot(slug);
-        return given().contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", startUtc)
-                .formParam("inviteeName", "Guest")
-                .formParam("inviteeEmail", "guest-" + slug + "@example.com")
-                .formParam("website", "") // honeypot left blank (human)
-                .when()
-                .post("/" + OWNER_USERNAME + "/" + slug);
+        return given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", startUtc)
+            .formParam("inviteeName", "Guest")
+            .formParam("inviteeEmail", "guest-" + slug + "@example.com")
+            // honeypot left blank (human)
+            .formParam(
+                    // honeypot left blank (human)
+            "website",
+                    "")
+            .when()
+            .post("/" + OWNER_USERNAME + "/" + slug);
     }
 
-    /** Pulls the manage token out of a confirmation-page response (it links /booking/{t}/manage). */
+    /**
+     * Pulls the manage token out of a confirmation-page response (it links /booking/{t}/manage).
+     */
     static String manageTokenOf(Response r) {
-        var m = java.util.regex.Pattern.compile("/booking/([^/\"]+)/manage")
-                .matcher(r.body().asString());
+        var m = java.util.regex.Pattern.compile("/booking/([^/\"]+)/manage").matcher(r.body().asString());
         org.junit.jupiter.api.Assertions.assertTrue(m.find(), "confirmation page links the manage URL");
         return m.group(1);
     }
@@ -83,12 +88,13 @@ final class GuestBookingFixture {
     }
 
     private static String firstSlot(String slug) {
-        String html = given().when()
-                .get("/" + OWNER_USERNAME + "/" + slug)
-                .then()
-                .statusCode(200)
-                .extract()
-                .asString();
+        String html = given()
+            .when()
+            .get("/" + OWNER_USERNAME + "/" + slug)
+            .then()
+            .statusCode(200)
+            .extract()
+            .asString();
         var startUtc =
                 html.substring(html.indexOf("name=\"startUtc\" value=\"") + "name=\"startUtc\" value=\"".length());
         return startUtc.substring(0, startUtc.indexOf('"'));

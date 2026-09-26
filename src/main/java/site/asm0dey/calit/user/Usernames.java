@@ -1,18 +1,17 @@
 package site.asm0dey.calit.user;
 
-import java.util.Set;
-import java.util.function.Predicate;
-import java.util.regex.Pattern;
+import module java.base;
 
-/** Username normalization, validation, and reserved-word checks. Pure (no DB). */
+/**
+ * Username normalization, validation, and reserved-word checks. Pure (no DB).
+ */
 public final class Usernames {
-
-    private Usernames() {}
+    private Usernames() {
+    }
 
     private static final Pattern VALID = Pattern.compile("^[a-z0-9](-?[a-z0-9])*$");
     private static final int MIN_LEN = 2;
     private static final int MAX_LEN = 64;
-
     private static final Set<String> RESERVED = Set.of(
             "me",
             "login",
@@ -29,14 +28,19 @@ public final class Usernames {
             "index",
             "og",
             "privacy",
-            "terms");
+            "terms"
+    );
 
-    /** Trim + lowercase. Null-safe: null stays null. */
+    /**
+     * Trim + lowercase. Null-safe: null stays null.
+     */
     public static String normalize(String raw) {
         return raw == null ? null : raw.trim().toLowerCase();
     }
 
-    /** True when value matches the handle regex and length bounds. Operates on the raw value. */
+    /**
+     * True when value matches the handle regex and length bounds. Operates on the raw value.
+     */
     public static boolean isValid(String value) {
         if (value == null) {
             return false;
@@ -45,7 +49,9 @@ public final class Usernames {
         return len >= MIN_LEN && len <= MAX_LEN && VALID.matcher(value).matches();
     }
 
-    /** True when the normalized value is a reserved word. */
+    /**
+     * True when the normalized value is a reserved word.
+     */
     public static boolean isReserved(String value) {
         return RESERVED.contains(normalize(value));
     }
@@ -60,7 +66,8 @@ public final class Usernames {
         var norm = normalize(raw);
         if (!isValid(norm)) {
             throw new IllegalArgumentException(
-                    "Username must be 2-64 chars, lowercase letters/digits, single hyphens between.");
+                    "Username must be 2-64 chars, lowercase letters/digits, single hyphens between."
+            );
         }
         if (isReserved(norm)) {
             throw new IllegalArgumentException("That username is reserved.");
@@ -87,7 +94,9 @@ public final class Usernames {
         return isValid(cleaned) && !isReserved(cleaned) ? cleaned : "user";
     }
 
-    /** Keep only [a-z0-9-], dropping a leading hyphen and collapsing consecutive hyphens. */
+    /**
+     * Keep only [a-z0-9-], dropping a leading hyphen and collapsing consecutive hyphens.
+     */
     private static String keepHandleChars(String s) {
         var sb = new StringBuilder(s.length());
         for (var i = 0; i < s.length(); i++) {
@@ -101,7 +110,9 @@ public final class Usernames {
         return sb.toString();
     }
 
-    /** Strip leading and trailing hyphens. */
+    /**
+     * Strip leading and trailing hyphens.
+     */
     private static String trimHyphens(String s) {
         var start = 0;
         var end = s.length();

@@ -1,15 +1,12 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import site.asm0dey.calit.privacy.PrivacyConfig;
 import site.asm0dey.calit.privacy.PrivacyService;
 
@@ -32,17 +29,16 @@ import site.asm0dey.calit.privacy.PrivacyService;
  */
 @ApplicationScoped
 public class RetentionScheduler {
-
-    /** One transaction's ceiling: keeps each claim + erasure short. */
+    /**
+     * One transaction's ceiling: keeps each claim + erasure short.
+     */
     static final int BATCH = 200;
-
-    /** How long one tick may keep claiming batches before leaving the rest for the next day. */
+    /**
+     * How long one tick may keep claiming batches before leaving the rest for the next day.
+     */
     static final Duration TIME_BUDGET = Duration.ofMinutes(5);
-
     final EntityManager em;
-
     final PrivacyService privacy;
-
     final PrivacyConfig config;
 
     @Inject
@@ -109,7 +105,9 @@ public class RetentionScheduler {
         try {
             int claimed;
             do {
-                int[] counts = QuarkusTransaction.requiringNew().call(() -> sweepBatch(batch, instanceDefault));
+                int[] counts = QuarkusTransaction
+                    .requiringNew()
+                    .call(() -> sweepBatch(batch, instanceDefault));
                 claimed = counts[0];
                 total += counts[1];
             } while (claimed == batch && Instant.now().isBefore(deadline));
@@ -119,7 +117,8 @@ public class RetentionScheduler {
                     "PRIVACY retention sweep tick failed after %d booking(s) (batch=%d instanceDefault=%s)",
                     total,
                     batch,
-                    instanceDefault);
+                    instanceDefault
+            );
             throw e;
         }
         if (total > 0) {
@@ -128,22 +127,27 @@ public class RetentionScheduler {
         return total;
     }
 
-    /** One claim + erasure, in the caller's transaction. Returns {claimed, erased}. */
+    /**
+     * One claim + erasure, in the caller's transaction. Returns {claimed, erased}.
+     */
     private int[] sweepBatch(int batch, Integer instanceDefault) {
         @SuppressWarnings("unchecked")
-        List<Number> ids = em.createNativeQuery("SELECT b.id FROM booking b "
-                        + "LEFT JOIN owner_settings os ON os.owner_id = b.owner_id "
-                        + "WHERE b.erased_at IS NULL "
-                        + "  AND COALESCE(os.booking_retention_days, :instanceDefault) IS NOT NULL "
-                        + "  AND b.end_utc < now() - make_interval("
-                        + "        days => LEAST(COALESCE(os.booking_retention_days, :instanceDefault), :cap)) "
-                        + "ORDER BY b.end_utc "
-                        + "FOR UPDATE OF b SKIP LOCKED "
-                        + "LIMIT :batch")
-                .setParameter("instanceDefault", instanceDefault)
-                .setParameter("cap", PrivacyConfig.MAX_RETENTION_DAYS)
-                .setParameter("batch", batch)
-                .getResultList();
+        List<Number> ids = em
+            .createNativeQuery(
+                    "SELECT b.id FROM booking b "
+                    + "LEFT JOIN owner_settings os ON os.owner_id = b.owner_id "
+                    + "WHERE b.erased_at IS NULL "
+                    + "  AND COALESCE(os.booking_retention_days, :instanceDefault) IS NOT NULL "
+                    + "  AND b.end_utc < now() - make_interval("
+                    + "        days => LEAST(COALESCE(os.booking_retention_days, :instanceDefault), :cap)) "
+                    + "ORDER BY b.end_utc "
+                    + "FOR UPDATE OF b SKIP LOCKED "
+                    + "LIMIT :batch"
+            )
+            .setParameter("instanceDefault", instanceDefault)
+            .setParameter("cap", PrivacyConfig.MAX_RETENTION_DAYS)
+            .setParameter("batch", batch)
+            .getResultList();
 
         List<Long> claimed = new ArrayList<>();
         ids.forEach(n -> claimed.add(n.longValue()));

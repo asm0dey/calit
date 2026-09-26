@@ -1,6 +1,6 @@
 package site.asm0dey.calit.oidc;
 
-import java.util.Set;
+import module java.base;
 
 /**
  * The claims we read from a verified OIDC id_token. {@code groups} is the id_token "groups" claim

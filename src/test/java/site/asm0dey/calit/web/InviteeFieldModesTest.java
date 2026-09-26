@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -8,15 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -30,13 +26,13 @@ import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.user.AppUser;
 
-/** GH #130: per-type name/guests field modes on the booking form, enforced server-side. */
+/**
+ * GH #130: per-type name/guests field modes on the booking form, enforced server-side.
+ */
 @QuarkusTest
 class InviteeFieldModesTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @Inject
     BookingService bookingService;
 
@@ -88,21 +84,17 @@ class InviteeFieldModesTest {
     }
 
     private String firstSlot() {
-        String html = given().when()
-                .get("/modes/modes")
-                .then()
-                .statusCode(200)
-                .extract()
-                .asString();
+        String html = given().when().get("/modes/modes").then().statusCode(200).extract().asString();
         var s = html.substring(html.indexOf("name=\"startUtc\" value=\"") + "name=\"startUtc\" value=\"".length());
         return s.substring(0, s.indexOf('"'));
     }
 
     private int post(String name, String guests) {
-        var req = given().contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", firstSlot())
-                .formParam("inviteeEmail", "sam@example.com")
-                .formParam("website", "");
+        var req = given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", firstSlot())
+            .formParam("inviteeEmail", "sam@example.com")
+            .formParam("website", "");
         if (name != null) {
             req.formParam("inviteeName", name);
         }
@@ -121,34 +113,37 @@ class InviteeFieldModesTest {
     @Test
     void defaultsRenderRequiredNameAndGuests() {
         seed(FieldMode.REQUIRED, FieldMode.OPTIONAL);
-        given().when()
-                .get("/modes/modes")
-                .then()
-                .statusCode(200)
-                .body(containsString("name=\"inviteeName\" required"))
-                .body(containsString("name=\"guests\""));
+        given()
+            .when()
+            .get("/modes/modes")
+            .then()
+            .statusCode(200)
+            .body(containsString("name=\"inviteeName\" required"))
+            .body(containsString("name=\"guests\""));
     }
 
     @Test
     void hiddenModesDropBothInputs() {
         seed(FieldMode.HIDDEN, FieldMode.HIDDEN);
-        given().when()
-                .get("/modes/modes")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("name=\"inviteeName\"")))
-                .body(not(containsString("name=\"guests\"")));
+        given()
+            .when()
+            .get("/modes/modes")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("name=\"inviteeName\"")))
+            .body(not(containsString("name=\"guests\"")));
     }
 
     @Test
     void optionalNameRendersWithoutRequired() {
         seed(FieldMode.OPTIONAL, FieldMode.OPTIONAL);
-        given().when()
-                .get("/modes/modes")
-                .then()
-                .statusCode(200)
-                .body(containsString("name=\"inviteeName\">"))
-                .body(not(containsString("name=\"inviteeName\" required")));
+        given()
+            .when()
+            .get("/modes/modes")
+            .then()
+            .statusCode(200)
+            .body(containsString("name=\"inviteeName\">"))
+            .body(not(containsString("name=\"inviteeName\" required")));
     }
 
     @Test
@@ -186,47 +181,50 @@ class InviteeFieldModesTest {
     }
 
     private String apiBody(String name) {
-        return "{\"user\":\"modes\",\"slug\":\"modes\",\"startUtc\":\"" + firstSlot() + "\","
-                + "\"inviteeName\":\"" + name + "\",\"inviteeEmail\":\"sam@example.com\","
+        return "{\"user\":\"modes\",\"slug\":\"modes\",\"startUtc\":\""
+                + firstSlot()
+                + "\","
+                + "\"inviteeName\":\""
+                + name
+                + "\",\"inviteeEmail\":\"sam@example.com\","
                 + "\"turnstileToken\":\"tok\",\"honeypot\":\"\"}";
     }
 
     @Test
     void apiBlankNameOnOptionalTypeBooksWithEmailLocalPart() {
         seed(FieldMode.OPTIONAL, FieldMode.OPTIONAL);
-        given().contentType("application/json")
-                .body(apiBody(""))
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(201)
-                .body("inviteeName", org.hamcrest.Matchers.is("sam"));
+        given()
+            .contentType("application/json")
+            .body(apiBody(""))
+            .when()
+            .post("/api/bookings")
+            .then()
+            .statusCode(201)
+            .body("inviteeName", org.hamcrest.Matchers.is("sam"));
     }
 
     @Test
     void apiBlankNameOnRequiredTypeIs422() {
         seed(FieldMode.REQUIRED, FieldMode.OPTIONAL);
-        given().contentType("application/json")
-                .body(apiBody(""))
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(422);
+        given().contentType("application/json").body(apiBody("")).when().post("/api/bookings").then().statusCode(422);
         assertEquals(0, Booking.count("inviteeEmail", "sam@example.com"));
     }
 
     @Test
     void hostManageHubDropsGuestsForHiddenType() {
         Long bookingId = seedOwnerBooking(FieldMode.HIDDEN);
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/bookings/" + bookingId + "/manage")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("name=\"guests\"")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/bookings/" + bookingId + "/manage")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("name=\"guests\"")));
     }
 
-    /** A CONFIRMED booking on the admin's (owner 1) own type, so the host hub at /me can render it. */
+    /**
+     * A CONFIRMED booking on the admin's (owner 1) own type, so the host hub at /me can render it.
+     */
     @Transactional
     Long seedOwnerBooking(FieldMode guestsMode) {
         OwnerSettings s = OwnerSettings.forOwner(1L);
@@ -255,21 +253,19 @@ class InviteeFieldModesTest {
             r.endTime = LocalTime.of(23, 59);
             r.persist();
         }
-        var slot = bookingService
-                .availableSlots(t, LocalDate.now(), LocalDate.now().plusDays(14))
-                .getFirst();
+        var slot = bookingService.availableSlots(t, LocalDate.now(), LocalDate.now().plusDays(14)).getFirst();
         return bookingService.book(
-                        1L,
-                        slug,
-                        slot.start().toInstant(),
-                        "Pat",
-                        "pat@example.com",
-                        java.util.Map.of(),
-                        "",
-                        "",
-                        "en",
-                        List.of())
-                .id;
+                1L,
+                slug,
+                slot.start().toInstant(),
+                "Pat",
+                "pat@example.com",
+                java.util.Map.of(),
+                "",
+                "",
+                "en",
+                List.of()
+        ).id;
     }
 
     @Test
@@ -279,18 +275,20 @@ class InviteeFieldModesTest {
         Booking b = booked();
         flipGuestsMode(b.meetingTypeId, FieldMode.HIDDEN);
 
-        given().when()
-                .get("/booking/" + b.manageToken + "/manage")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("name=\"guests\"")));
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("title", "Renamed")
-                .formParam("description", "")
-                .when()
-                .post("/booking/" + b.manageToken + "/edit-details")
-                .then()
-                .statusCode(200);
+        given()
+            .when()
+            .get("/booking/" + b.manageToken + "/manage")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("name=\"guests\"")));
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("title", "Renamed")
+            .formParam("description", "")
+            .when()
+            .post("/booking/" + b.manageToken + "/edit-details")
+            .then()
+            .statusCode(200);
         // No guests field was posted, which used to mean "remove every guest"; a HIDDEN type leaves them alone.
         assertEquals(1, BookingGuest.activeForBooking(b.id).size());
     }
@@ -298,51 +296,54 @@ class InviteeFieldModesTest {
     @Test
     void adminFormsPersistTheModes() {
         var slug = "modes-" + System.nanoTime();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Modes")
-                .formParam("slug", slug)
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "PHONE")
-                .formParam("nameMode", "OPTIONAL")
-                .formParam("guestsMode", "HIDDEN")
-                .when()
-                .post("/me/meeting-types")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Modes")
+            .formParam("slug", slug)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "PHONE")
+            .formParam("nameMode", "OPTIONAL")
+            .formParam("guestsMode", "HIDDEN")
+            .when()
+            .post("/me/meeting-types")
+            .then()
+            .statusCode(200);
         MeetingType t = MeetingType.findBySlug(1L, slug);
         assertNotNull(t);
         assertEquals(FieldMode.OPTIONAL, t.nameMode);
         assertEquals(FieldMode.HIDDEN, t.guestsMode);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types/" + t.id)
-                .then()
-                .statusCode(200)
-                .body(containsString("value=\"OPTIONAL\" selected"))
-                .body(containsString("value=\"HIDDEN\" selected"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types/" + t.id)
+            .then()
+            .statusCode(200)
+            .body(containsString("value=\"OPTIONAL\" selected"))
+            .body(containsString("value=\"HIDDEN\" selected"));
     }
 
     @Test
     void craftedModesFallBackInsteadOf500() {
         var slug = "modes-crafted-" + System.nanoTime();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Crafted")
-                .formParam("slug", slug)
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "PHONE")
-                .formParam("nameMode", "BOGUS")
-                .formParam("guestsMode", "REQUIRED")
-                .when()
-                .post("/me/meeting-types")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Crafted")
+            .formParam("slug", slug)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "PHONE")
+            .formParam("nameMode", "BOGUS")
+            .formParam("guestsMode", "REQUIRED")
+            .when()
+            .post("/me/meeting-types")
+            .then()
+            .statusCode(200);
         MeetingType t = MeetingType.findBySlug(1L, slug);
         assertNotNull(t);
         assertEquals(FieldMode.REQUIRED, t.nameMode);

@@ -1,16 +1,12 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 
 class WeekRowTest {
-
     private static AvailabilityRule rule(DayOfWeek day, String start, String end) {
         AvailabilityRule r = new AvailabilityRule();
         r.dayOfWeek = day;
@@ -33,14 +29,17 @@ class WeekRowTest {
         List<WeekRow> rows = WeekRow.fromRules(List.of(
                 rule(DayOfWeek.MONDAY, "13:00", "17:00"),
                 rule(DayOfWeek.MONDAY, "09:00", "12:00"),
-                rule(DayOfWeek.WEDNESDAY, "10:00", "11:00")));
+                rule(DayOfWeek.WEDNESDAY, "10:00", "11:00")
+        ));
 
         WeekRow monday = rows.getFirst();
         assertEquals(2, monday.frames().size());
-        assertEquals(LocalTime.parse("09:00"), monday.frames().getFirst().startTime); // sorted
+        // sorted
+        assertEquals(LocalTime.parse("09:00"), monday.frames().getFirst().startTime);
         assertEquals(LocalTime.parse("13:00"), monday.frames().get(1).startTime);
-
-        assertTrue(rows.get(1).frames().isEmpty()); // TUESDAY
-        assertEquals(1, rows.get(2).frames().size()); // WEDNESDAY
+        // TUESDAY
+        assertTrue(rows.get(1).frames().isEmpty());
+        // WEDNESDAY
+        assertEquals(1, rows.get(2).frames().size());
     }
 }

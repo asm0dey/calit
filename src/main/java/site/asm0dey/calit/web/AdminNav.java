@@ -16,7 +16,6 @@ import site.asm0dey.calit.user.CurrentOwner;
 @Named("nav")
 @RequestScoped
 public class AdminNav {
-
     final CurrentOwner currentOwner;
 
     @Inject

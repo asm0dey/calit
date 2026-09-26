@@ -1,8 +1,7 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import io.quarkus.arc.Arc;
-import java.util.List;
-import java.util.Locale;
 
 /**
  * Supported-locale list + negotiation utilities.
@@ -22,16 +21,17 @@ import java.util.Locale;
  * {@code src/main/resources/messages/}.  No config, no endonym map, no Java edits needed.
  */
 public final class AppLocales {
+    private AppLocales() {
+    }
 
-    private AppLocales() {}
-
-    /** The hard-coded application default — used as last-resort fallback. */
+    /**
+     * The hard-coded application default — used as last-resort fallback.
+     */
     public static final Locale DEFAULT = Locale.ENGLISH;
 
     // -------------------------------------------------------------------------
     // Locale discovery (delegates to the CDI bean; lazy via Arc)
     // -------------------------------------------------------------------------
-
     /**
      * Returns the auto-discovered supported-locale list: default locale first,
      * then each additional locale found from {@code @Localized} message-bundle beans,
@@ -47,7 +47,6 @@ public final class AppLocales {
     // -------------------------------------------------------------------------
     // Endonym label
     // -------------------------------------------------------------------------
-
     /**
      * Returns the endonym (self-name) for the given BCP-47 language code.
      * Uses the JDK: {@code Locale.forLanguageTag(code).getDisplayLanguage(thatLocale)}.
@@ -55,10 +54,14 @@ public final class AppLocales {
      * No hardcoded map — works for any language the JDK locale data covers.
      */
     public static String labelFor(String langCode) {
-        if (langCode == null || langCode.isBlank()) return langCode;
+        if (langCode == null || langCode.isBlank()) {
+            return langCode;
+        }
         var locale = Locale.forLanguageTag(langCode.trim());
         var display = locale.getDisplayLanguage(locale);
-        if (display.isBlank()) return langCode;
+        if (display.isBlank()) {
+            return langCode;
+        }
         // Capitalize first letter (some JDK locales already do; this is a no-op for those).
         return Character.toUpperCase(display.charAt(0)) + display.substring(1);
     }
@@ -66,12 +69,17 @@ public final class AppLocales {
     // -------------------------------------------------------------------------
     // Pure static helpers (accept explicit list — unit-testable without CDI)
     // -------------------------------------------------------------------------
-
-    /** Whether {@code tag} matches (by language) any locale in the given list. */
+    /**
+     * Whether {@code tag} matches (by language) any locale in the given list.
+     */
     public static boolean isSupported(String tag, List<Locale> supported) {
-        if (tag == null || tag.isBlank()) return false;
+        if (tag == null || tag.isBlank()) {
+            return false;
+        }
         var want = Locale.forLanguageTag(tag.trim());
-        return supported.stream().anyMatch(l -> l.getLanguage().equals(want.getLanguage()));
+        return supported
+            .stream()
+            .anyMatch(l -> l.getLanguage().equals(want.getLanguage()));
     }
 
     /**
@@ -79,12 +87,15 @@ public final class AppLocales {
      * Null/blank/unsupported tags all fall back to {@link #DEFAULT}.
      */
     public static Locale pick(String tag, List<Locale> supported) {
-        if (tag == null || tag.isBlank()) return DEFAULT;
+        if (tag == null || tag.isBlank()) {
+            return DEFAULT;
+        }
         var want = Locale.forLanguageTag(tag.trim());
-        return supported.stream()
-                .filter(l -> l.getLanguage().equals(want.getLanguage()))
-                .findFirst()
-                .orElse(DEFAULT);
+        return supported
+            .stream()
+            .filter(l -> l.getLanguage().equals(want.getLanguage()))
+            .findFirst()
+            .orElse(DEFAULT);
     }
 
     /**
@@ -92,7 +103,9 @@ public final class AppLocales {
      * falls back to {@link #DEFAULT} when no match or the header is absent/malformed.
      */
     public static Locale fromAcceptLanguage(String header, List<Locale> supported) {
-        if (header == null || header.isBlank()) return DEFAULT;
+        if (header == null || header.isBlank()) {
+            return DEFAULT;
+        }
         try {
             List<Locale.LanguageRange> ranges = Locale.LanguageRange.parse(header);
             var best = Locale.lookup(ranges, supported);
@@ -105,18 +118,23 @@ public final class AppLocales {
     // -------------------------------------------------------------------------
     // Public no-arg convenience wrappers (delegate to pure overloads + supported())
     // -------------------------------------------------------------------------
-
-    /** @see #isSupported(String, List) */
+    /**
+     * @see #isSupported(String, List)
+     */
     public static boolean isSupported(String tag) {
         return isSupported(tag, supported());
     }
 
-    /** @see #pick(String, List) */
+    /**
+     * @see #pick(String, List)
+     */
     public static Locale pick(String tag) {
         return pick(tag, supported());
     }
 
-    /** @see #fromAcceptLanguage(String, List) */
+    /**
+     * @see #fromAcceptLanguage(String, List)
+     */
     public static Locale fromAcceptLanguage(String header) {
         return fromAcceptLanguage(header, supported());
     }

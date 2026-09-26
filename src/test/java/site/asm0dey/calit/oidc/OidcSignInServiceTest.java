@@ -1,12 +1,11 @@
 package site.asm0dey.calit.oidc;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
@@ -15,7 +14,6 @@ import site.asm0dey.calit.web.CommonFeaturesProfile;
 @QuarkusTest
 @TestProfile(CommonFeaturesProfile.class)
 class OidcSignInServiceTest {
-
     @Inject
     OidcSignInService service;
 
@@ -48,7 +46,8 @@ class OidcSignInServiceTest {
     @Transactional
     void secondLoginRevokesOidcAdmin_whenGroupRemoved() {
         service.resolveOrProvision(id("sub-rev", "rev@example.com", true, "calit-admins"));
-        AppUser after = service.resolveOrProvision(id("sub-rev", "rev@example.com", true)); // no groups now
+        // no groups now
+        AppUser after = service.resolveOrProvision(id("sub-rev", "rev@example.com", true));
         assertFalse(after.oidcAdmin);
         assertEquals("user", after.roles);
     }

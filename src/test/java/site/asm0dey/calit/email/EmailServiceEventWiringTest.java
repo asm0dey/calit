@@ -1,17 +1,15 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -24,16 +22,12 @@ import site.asm0dey.calit.google.CalendarPort;
 
 @QuarkusTest
 class EmailServiceEventWiringTest {
-
     private static final String OWNER_EMAIL = "owner@example.com";
     private static final String INVITEE_EMAIL = "invitee@example.com";
-
     @Inject
     Event<BookingConfirmed> confirmedEvent;
-
     @Inject
     MockMailbox mailbox;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -42,12 +36,15 @@ class EmailServiceEventWiringTest {
         mailbox.clear();
         // Clear prior HELD bookings so the seeded CONFIRMED row does not collide with the DB
         // exclusion constraint (booking_no_overlap_held) on overlapping HELD time ranges.
-        QuarkusTransaction.requiringNew().run(() -> Booking.deleteAll());
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> Booking.deleteAll());
     }
 
     @Test
     void firingConfirmedInCommittedTxTriggersObserverAndSendsTwoMails() {
-        when(calendarPort.isConnected(anyLong())).thenReturn(false); // disconnected -> invitee fallback fires
+        // disconnected -> invitee fallback fires
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
 
         QuarkusTransaction.requiringNew().run(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);

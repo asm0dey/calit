@@ -2,7 +2,6 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import org.junit.jupiter.api.Test;
@@ -20,28 +19,30 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class OwnerLocaleSettingTest {
-
-    /** Test A: save de → GET /me/settings shows de selected + "Sprache" label. */
+    /**
+     * Test A: save de → GET /me/settings shows de selected + "Sprache" label.
+     */
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void savingGermanPersistsLocaleAndRendersGerman() {
         // POST with locale=de (CSRF is OFF in %test — bare form POST is accepted)
-        given().formParam("ownerName", "Admin")
-                .formParam("ownerEmail", "admin@example.com")
-                .formParam("timezone", "UTC")
-                .formParam("locale", "de")
-                .when()
-                .post("/me/settings")
-                .then()
-                .statusCode(200);
-
+        given()
+            .formParam("ownerName", "Admin")
+            .formParam("ownerEmail", "admin@example.com")
+            .formParam("timezone", "UTC")
+            .formParam("locale", "de")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(200);
         // GET should show <option value="de" selected> and "Sprache" (adm_settings_language in German)
-        given().when()
-                .get("/me/settings")
-                .then()
-                .statusCode(200)
-                .body(containsString("value=\"de\" selected"))
-                .body(containsString("Sprache"));
+        given()
+            .when()
+            .get("/me/settings")
+            .then()
+            .statusCode(200)
+            .body(containsString("value=\"de\" selected"))
+            .body(containsString("Sprache"));
     }
 
     /**
@@ -53,22 +54,24 @@ class OwnerLocaleSettingTest {
     @TestSecurity(user = "admin", roles = "user")
     void ownerLocaleOverridesCookie() {
         // Save owner locale to de
-        given().formParam("ownerName", "Admin")
-                .formParam("ownerEmail", "admin@example.com")
-                .formParam("timezone", "UTC")
-                .formParam("locale", "de")
-                .when()
-                .post("/me/settings")
-                .then()
-                .statusCode(200);
-
+        given()
+            .formParam("ownerName", "Admin")
+            .formParam("ownerEmail", "admin@example.com")
+            .formParam("timezone", "UTC")
+            .formParam("locale", "de")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(200);
         // GET with calit_lang=en cookie — owner locale de must still win
-        given().cookie("calit_lang", "en")
-                .when()
-                .get("/me/settings")
-                .then()
-                .statusCode(200)
-                .body(containsString("Sprache")); // German wins over en cookie
+        given()
+            .cookie("calit_lang", "en")
+            .when()
+            .get("/me/settings")
+            .then()
+            .statusCode(200)
+            // German wins over en cookie
+            .body(containsString("Sprache"));
     }
 
     /**
@@ -79,22 +82,26 @@ class OwnerLocaleSettingTest {
     @TestSecurity(user = "admin", roles = "user")
     void settingsPageRendersLocaleOptionsWithDeSelected() {
         // Save locale=de
-        given().formParam("ownerName", "Admin")
-                .formParam("ownerEmail", "admin@example.com")
-                .formParam("timezone", "UTC")
-                .formParam("locale", "de")
-                .when()
-                .post("/me/settings")
-                .then()
-                .statusCode(200);
-
+        given()
+            .formParam("ownerName", "Admin")
+            .formParam("ownerEmail", "admin@example.com")
+            .formParam("timezone", "UTC")
+            .formParam("locale", "de")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(200);
         // Settings page must render both locale options and mark de as selected
-        given().when()
-                .get("/me/settings")
-                .then()
-                .statusCode(200)
-                .body(containsString("value=\"en\"")) // English option present
-                .body(containsString("value=\"de\"")) // German option present
-                .body(containsString("value=\"de\" selected")); // German is selected
+        given()
+            .when()
+            .get("/me/settings")
+            .then()
+            .statusCode(200)
+            // English option present
+            .body(containsString("value=\"en\""))
+            // German option present
+            .body(containsString("value=\"de\""))
+            // German is selected
+            .body(containsString("value=\"de\" selected"));
     }
 }

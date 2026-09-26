@@ -1,12 +1,12 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import com.sun.net.httpserver.HttpServer;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
@@ -14,13 +14,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,10 +36,10 @@ import site.asm0dey.calit.test.MultiHostFixtures;
  */
 @QuarkusTest
 class ChannelAllowlistDeliveryTest {
-
-    /** Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide. */
+    /**
+     * Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide.
+     */
     static int port;
-
     static HttpServer server;
     static CountDownLatch hit;
 
@@ -65,15 +58,15 @@ class ChannelAllowlistDeliveryTest {
 
     @AfterAll
     static void stopStub() {
-        if (server != null) server.stop(0);
+        if (server != null) {
+            server.stop(0);
+        }
     }
 
     @Inject
     Event<BookingConfirmed> confirmed;
-
     @InjectSpy
     NotifyConfig config;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -91,7 +84,9 @@ class ChannelAllowlistDeliveryTest {
         // Operator tightens the allowlist afterwards.
         when(config.schemeAllowed("ntfy")).thenReturn(false);
 
-        QuarkusTransaction.requiringNew().run(() -> confirmed.fire(new BookingConfirmed(bookingId)));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> confirmed.fire(new BookingConfirmed(bookingId)));
 
         assertFalse(hit.await(2, TimeUnit.SECONDS), "a channel whose scheme left the allowlist must not be delivered");
         NotificationChannel c = awaitFailureStamp(channelId);
@@ -100,8 +95,9 @@ class ChannelAllowlistDeliveryTest {
     }
 
     private Long seedChannel() {
-        return QuarkusTransaction.requiringNew()
-                .call(() -> MultiHostFixtures.channel(1L, "ntfy+http://localhost:" + port + "/calit", "Stub").id);
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> MultiHostFixtures.channel(1L, "ntfy+http://localhost:" + port + "/calit", "Stub").id);
     }
 
     private Long seedBooking() {
@@ -129,8 +125,12 @@ class ChannelAllowlistDeliveryTest {
     private NotificationChannel awaitFailureStamp(Long channelId) throws InterruptedException {
         for (var i = 0; i < 100; i++) {
             NotificationChannel c =
-                    QuarkusTransaction.requiringNew().call(() -> NotificationChannel.findById(channelId));
-            if (c.lastFailureAt != null) return c;
+                    QuarkusTransaction
+                .requiringNew()
+                .call(() -> NotificationChannel.findById(channelId));
+            if (c.lastFailureAt != null) {
+                return c;
+            }
             Thread.sleep(50);
         }
         fail("the policy skip was never stamped as a failure");

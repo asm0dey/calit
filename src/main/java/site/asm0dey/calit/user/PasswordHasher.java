@@ -1,9 +1,7 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.util.Base64;
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 
@@ -16,14 +14,13 @@ import org.bouncycastle.crypto.params.Argon2Parameters;
  */
 @ApplicationScoped
 public class PasswordHasher {
-
     private static final int MEMORY_KIB = 19456;
     private static final int ITERATIONS = 2;
     private static final int PARALLELISM = 1;
     private static final int SALT_LEN = 16;
     private static final int HASH_LEN = 32;
-    private static final int VERSION = Argon2Parameters.ARGON2_VERSION_13; // 0x13 == 19
-
+    // 0x13 == 19
+    private static final int VERSION = Argon2Parameters.ARGON2_VERSION_13;
     // Non-static so it is not captured into the GraalVM native image heap with a frozen seed
     // (SecureRandom extends Random; build-time init is rejected). This is a runtime-built bean.
     private final SecureRandom RNG = new SecureRandom();
@@ -34,9 +31,16 @@ public class PasswordHasher {
         var salt = new byte[SALT_LEN];
         RNG.nextBytes(salt);
         var out = derive(raw, salt);
-        return "$argon2id$v=19$m=" + MEMORY_KIB + ",t=" + ITERATIONS + ",p=" + PARALLELISM
-                + "$" + B64.encodeToString(salt)
-                + "$" + B64.encodeToString(out);
+        return "$argon2id$v=19$m="
+                + MEMORY_KIB
+                + ",t="
+                + ITERATIONS
+                + ",p="
+                + PARALLELISM
+                + "$"
+                + B64.encodeToString(salt)
+                + "$"
+                + B64.encodeToString(out);
     }
 
     public boolean verify(String raw, String encoded) {
@@ -65,12 +69,12 @@ public class PasswordHasher {
 
     private byte[] derive(String raw, byte[] salt, int outLen) {
         Argon2Parameters params = new Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
-                .withVersion(VERSION)
-                .withMemoryAsKB(MEMORY_KIB)
-                .withIterations(ITERATIONS)
-                .withParallelism(PARALLELISM)
-                .withSalt(salt)
-                .build();
+            .withVersion(VERSION)
+            .withMemoryAsKB(MEMORY_KIB)
+            .withIterations(ITERATIONS)
+            .withParallelism(PARALLELISM)
+            .withSalt(salt)
+            .build();
         Argon2BytesGenerator gen = new Argon2BytesGenerator();
         gen.init(params);
         var out = new byte[outLen];

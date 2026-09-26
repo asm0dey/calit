@@ -1,18 +1,16 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
 import com.google.api.client.googleapis.json.GoogleJsonError;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.HttpHeaders;
 import com.google.api.client.http.HttpResponseException;
 import com.google.api.services.calendar.Calendar;
 import io.quarkus.test.junit.QuarkusTest;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.user.CurrentOwner;
 
@@ -24,8 +22,9 @@ import site.asm0dey.calit.user.CurrentOwner;
  */
 @QuarkusTest
 class GoogleCalendarListPortTest {
-
-    /** Wire a port whose Calendar client fails the calendarList.list call with the given exception. */
+    /**
+     * Wire a port whose Calendar client fails the calendarList.list call with the given exception.
+     */
     private static GoogleCalendarListPort portThatFailsWith(IOException failure) throws IOException {
         var tokens = mock(GoogleTokenService.class);
         when(tokens.validAccessToken(any(), any())).thenReturn("access-token");
@@ -48,7 +47,9 @@ class GoogleCalendarListPortTest {
         details.setCode(403);
         details.setMessage("Google Calendar API has not been used in project 477339155409 before or it is disabled.");
         return new GoogleJsonResponseException(
-                new HttpResponseException.Builder(403, "Forbidden", new HttpHeaders()), details);
+                new HttpResponseException.Builder(403, "Forbidden", new HttpHeaders()),
+                details
+        );
     }
 
     @Test
@@ -57,7 +58,6 @@ class GoogleCalendarListPortTest {
 
         var credential = new GoogleCredential();
         var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(credential));
-
         // Operators read the first line of the WARN; the status and Google's own words must be there.
         assertTrue(thrown.getMessage().contains("HTTP 403"), thrown.getMessage());
         assertTrue(thrown.getMessage().contains("has not been used in project"), thrown.getMessage());
@@ -67,8 +67,12 @@ class GoogleCalendarListPortTest {
     void googleErrorWithoutParsableDetailsStillReportsTheStatus() throws IOException {
         // A non-JSON error body (proxy HTML, gateway page) leaves getDetails() null. The status still
         // has to reach the log, and appending a null message must not.
-        var port = portThatFailsWith(new GoogleJsonResponseException(
-                new HttpResponseException.Builder(502, "Bad Gateway", new HttpHeaders()), null));
+        var port = portThatFailsWith(
+                new GoogleJsonResponseException(
+                        new HttpResponseException.Builder(502, "Bad Gateway", new HttpHeaders()),
+                        null
+                )
+        );
 
         var credential = new GoogleCredential();
         var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(credential));

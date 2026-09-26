@@ -1,7 +1,7 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
 import io.quarkus.narayana.jta.QuarkusTransaction;
-import java.time.Instant;
 import site.asm0dey.calit.notify.NotificationChannel;
 
 /**
@@ -10,10 +10,12 @@ import site.asm0dey.calit.notify.NotificationChannel;
  * {@code @Test} method without wrapping it themselves.
  */
 public final class ChannelFixtures {
+    private ChannelFixtures() {
+    }
 
-    private ChannelFixtures() {}
-
-    /** Persists a channel for {@code ownerId} with the given (plaintext) URL. Returns its id. */
+    /**
+     * Persists a channel for {@code ownerId} with the given (plaintext) URL. Returns its id.
+     */
     public static Long seedChannel(Long ownerId, String url) {
         return QuarkusTransaction.requiringNew().call(() -> {
             var c = new NotificationChannel();

@@ -1,22 +1,17 @@
 package site.asm0dey.calit.domain;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.Month;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.user.TestOwners;
 
 @QuarkusTest
 class AvailabilityRuleOwnerScopeTest {
-
     @Inject
     EntityManager em;
 
@@ -36,7 +31,8 @@ class AvailabilityRuleOwnerScopeTest {
     @TestTransaction
     void globalForOwnerReturnsOnlyThatOwnersGlobalRules() {
         globalRule(4001L, DayOfWeek.MONDAY);
-        globalRule(4002L, DayOfWeek.MONDAY); // other owner, same day
+        // other owner, same day
+        globalRule(4002L, DayOfWeek.MONDAY);
         // A per-type rule for owner A must NOT show up in the global list. meeting_type_id is a real
         // FK, so persist a meeting type for owner 4001 and use its id.
         MeetingType mt = new MeetingType();
@@ -55,8 +51,7 @@ class AvailabilityRuleOwnerScopeTest {
 
         assertEquals(1, AvailabilityRule.globalForOwner(4001L, DayOfWeek.MONDAY).size());
         assertEquals(1, AvailabilityRule.globalForOwner(4002L, DayOfWeek.MONDAY).size());
-        assertEquals(
-                0, AvailabilityRule.globalForOwner(4001L, DayOfWeek.TUESDAY).size());
+        assertEquals(0, AvailabilityRule.globalForOwner(4001L, DayOfWeek.TUESDAY).size());
     }
 
     @Test
@@ -75,7 +70,6 @@ class AvailabilityRuleOwnerScopeTest {
         b.meetingTypeId = null;
         b.overrideDate = day;
         b.persist();
-
         // No per-type override -> falls back to the OWNER's global override, never the other owner's.
         assertEquals(a.id, DateOverride.resolve(4001L, 9999L, day).id);
         assertEquals(b.id, DateOverride.resolve(4002L, 9999L, day).id);

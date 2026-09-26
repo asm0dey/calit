@@ -1,17 +1,12 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -34,17 +29,19 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class AdminTimeRenderingTest {
-
-    /** Saves a known timezone so the assertion below is deterministic. */
+    /**
+     * Saves a known timezone so the assertion below is deterministic.
+     */
     private void saveTimezone(String zone) {
-        given().formParam("ownerName", "Admin")
-                .formParam("ownerEmail", "admin@example.com")
-                .formParam("timezone", zone)
-                .formParam("locale", "en")
-                .when()
-                .post("/me/settings")
-                .then()
-                .statusCode(200);
+        given()
+            .formParam("ownerName", "Admin")
+            .formParam("ownerEmail", "admin@example.com")
+            .formParam("timezone", zone)
+            .formParam("locale", "en")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(200);
     }
 
     @Test
@@ -66,23 +63,18 @@ class AdminTimeRenderingTest {
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void scriptNoLongerBailsWhenThereIsNoPicker() {
-        given().when()
-                .get("/me")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_TZ_REFORMAT"))
-                // the early return is gone
-                .body(not(containsString("if (!picker) { return; }")))
-                // and the no-picker path reads the server-supplied zone
-                .body(containsString("document.body.dataset.tz"))
-                // The no-picker branch reads the shared `initial`, which is where the fallback now
-                // lives -- it used to repeat the whole expression here. The ORDER is still pinned,
-                // by thePickerDefaultsToTheZoneThePageWasAuthoredIn below, which asserts on
-                // `initial`'s definition character-for-character: RestAssured can't execute the
-                // script, so without that a silent inversion to "(detected || dataset.tz)" would
-                // reintroduce the original bug (a travelling host reading their bookings in the
-                // trip's timezone instead of their configured one).
-                .body(containsString("picker ? picker.value : initial"));
+        given()
+            .when()
+            .get("/me")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_TZ_REFORMAT"))
+            // the early return is gone
+            .body(not(containsString("if (!picker) { return; }")))
+            // and the no-picker path reads the server-supplied zone
+            .body(containsString("document.body.dataset.tz"))
+            // trip's timezone instead of their configured one).
+            .body(containsString("picker ? picker.value : initial"));
     }
 
     @Test
@@ -94,24 +86,25 @@ class AdminTimeRenderingTest {
         // picker now defaults to body[data-tz] (the owner's stored zone on /me) and only falls back
         // to detection where there is none, i.e. on the invitee pages.
         saveTimezone("Europe/Amsterdam");
-        var bookingId = seedConfirmedBooking(
-                LocalDate.now(ZoneOffset.UTC).plusYears(1).atTime(13, 0).toInstant(ZoneOffset.UTC));
+        var bookingId =
+                seedConfirmedBooking(LocalDate
+            .now(ZoneOffset.UTC)
+            .plusYears(1)
+            .atTime(13, 0)
+            .toInstant(ZoneOffset.UTC));
 
-        given().when()
-                .get("/me/bookings/" + bookingId + "/manage")
-                .then()
-                .statusCode(200)
-                // this page really does render a picker, so the assertions below are about it
-                .body(containsString("id=\"tz-picker\""))
-                // pin the fallback ORDER, not just that both operands appear somewhere: RestAssured
-                // can't execute the script, so a bare "dataset.tz" check would still pass if this
-                // were silently inverted to "(detected || document.body.dataset.tz)" -- which would
-                // reintroduce the original bug. scriptNoLongerBailsWhenThereIsNoPicker's no-picker
-                // branch now reads `initial`, so this is the one place that order is pinned.
-                .body(containsString("var initial = document.body.dataset.tz || detected;"))
-                .body(containsString("if (z === initial) { o.selected = true; }"))
-                // the detected-zone pre-selection is gone
-                .body(not(containsString("if (z === detected) { o.selected = true; }")));
+        given()
+            .when()
+            .get("/me/bookings/" + bookingId + "/manage")
+            .then()
+            .statusCode(200)
+            // this page really does render a picker, so the assertions below are about it
+            .body(containsString("id=\"tz-picker\""))
+            // branch now reads `initial`, so this is the one place that order is pinned.
+            .body(containsString("var initial = document.body.dataset.tz || detected;"))
+            .body(containsString("if (z === initial) { o.selected = true; }"))
+            // the detected-zone pre-selection is gone
+            .body(not(containsString("if (z === detected) { o.selected = true; }")));
     }
 
     @Test
@@ -123,55 +116,54 @@ class AdminTimeRenderingTest {
 
         given().when().get("/me").then().statusCode(200).body(containsString("Times shown in Europe/Amsterdam"));
 
-        given().when()
-                .get("/me/pending")
-                .then()
-                .statusCode(200)
-                .body(containsString("Times shown in Europe/Amsterdam"));
+        given().when().get("/me/pending").then().statusCode(200).body(containsString("Times shown in Europe/Amsterdam"));
     }
 
-    /** An explicit host preference reaches the /me pages... */
+    /**
+     * An explicit host preference reaches the /me pages...
+     */
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void dashboardCarriesAnExplicitHourCycle() {
-        given().formParam("ownerName", "Admin")
-                .formParam("ownerEmail", "admin@example.com")
-                .formParam("timezone", "UTC")
-                .formParam("locale", "en")
-                .formParam("timeFormat", "h23")
-                .when()
-                .post("/me/settings")
-                .then()
-                .statusCode(200);
+        given()
+            .formParam("ownerName", "Admin")
+            .formParam("ownerEmail", "admin@example.com")
+            .formParam("timezone", "UTC")
+            .formParam("locale", "en")
+            .formParam("timeFormat", "h23")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(200);
 
-        given().when()
-                .get("/me")
-                .then()
-                .statusCode(200)
-                .body(containsString("data-hc=\"h23\""))
-                // the script prefers the server value over the device probe
-                .body(containsString("document.body.dataset.hc"))
-                // pin the override PRECEDENCE, not just that the identifier appears somewhere:
-                // RestAssured can't execute the script, so a bare "dataset.hc" check would still
-                // pass even if the assignment were silently inverted to "HC = HC || forcedHC;" —
-                // which would make the device always win and silently ignore the host's stored
-                // preference, defeating the whole point of the feature.
-                .body(containsString("if (forcedHC) { HC = forcedHC; }"));
+        given()
+            .when()
+            .get("/me")
+            .then()
+            .statusCode(200)
+            .body(containsString("data-hc=\"h23\""))
+            // the script prefers the server value over the device probe
+            .body(containsString("document.body.dataset.hc"))
+            // preference, defeating the whole point of the feature.
+            .body(containsString("if (forcedHC) { HC = forcedHC; }"));
     }
 
-    /** ...and "auto" leaves the device in charge, so no cycle is forced. */
+    /**
+     * ...and "auto" leaves the device in charge, so no cycle is forced.
+     */
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void autoEmitsNoForcedHourCycle() {
-        given().formParam("ownerName", "Admin")
-                .formParam("ownerEmail", "admin@example.com")
-                .formParam("timezone", "UTC")
-                .formParam("locale", "en")
-                .formParam("timeFormat", "auto")
-                .when()
-                .post("/me/settings")
-                .then()
-                .statusCode(200);
+        given()
+            .formParam("ownerName", "Admin")
+            .formParam("ownerEmail", "admin@example.com")
+            .formParam("timezone", "UTC")
+            .formParam("locale", "en")
+            .formParam("timeFormat", "auto")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(200);
 
         given().when().get("/me").then().statusCode(200).body(containsString("data-hc=\"\""));
     }
@@ -225,20 +217,23 @@ class AdminTimeRenderingTest {
         var startUtc = LocalDate.now(ZoneOffset.UTC).plusYears(1).atTime(13, 0).toInstant(ZoneOffset.UTC);
         seedConfirmedBooking(startUtc);
 
-        given().when()
-                .get("/me")
-                .then()
-                .statusCode(200)
-                // data-utc attribute is untouched -- the client script still keys off it
-                .body(containsString("data-utc=\"" + startUtc + "\""))
-                // human-rendered fallback carries the zone
-                .body(containsString("22:00"))
-                .body(containsString("(JST)"))
-                // the raw ISO instant is no longer used as the visible fallback text
-                .body(not(containsString(startUtc + " UTC")));
+        given()
+            .when()
+            .get("/me")
+            .then()
+            .statusCode(200)
+            // data-utc attribute is untouched -- the client script still keys off it
+            .body(containsString("data-utc=\"" + startUtc + "\""))
+            // human-rendered fallback carries the zone
+            .body(containsString("22:00"))
+            .body(containsString("(JST)"))
+            // the raw ISO instant is no longer used as the visible fallback text
+            .body(not(containsString(startUtc + " UTC")));
     }
 
-    /** Same fallback requirement on the pending-approval queue. */
+    /**
+     * Same fallback requirement on the pending-approval queue.
+     */
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void pendingNoJsFallbackIsHumanReadableWithZone() {
@@ -271,14 +266,15 @@ class AdminTimeRenderingTest {
             b.persist();
         });
 
-        given().when()
-                .get("/me/pending")
-                .then()
-                .statusCode(200)
-                .body(containsString("data-utc=\"2026-08-20T13:00:00Z\""))
-                .body(containsString("22:00"))
-                .body(containsString("(JST)"))
-                .body(not(containsString("2026-08-20T13:00:00Z UTC")));
+        given()
+            .when()
+            .get("/me/pending")
+            .then()
+            .statusCode(200)
+            .body(containsString("data-utc=\"2026-08-20T13:00:00Z\""))
+            .body(containsString("22:00"))
+            .body(containsString("(JST)"))
+            .body(not(containsString("2026-08-20T13:00:00Z UTC")));
     }
 
     /**
@@ -310,25 +306,26 @@ class AdminTimeRenderingTest {
         var day1 = LocalDate.now().plusYears(1);
         seedBookingForOwner(ownerBId, day1, BookingStatus.CONFIRMED, false);
         seedBookingForOwner(ownerBId, day1.plusDays(1), BookingStatus.PENDING, true);
-
         // Owner B's zone (Asia/Tokyo, no DST -- stable regardless of when this runs) renders the
         // 13:00 UTC start as 22:00 JST. Under the OwnerSettings.forOwner(1L) mutation this would
         // instead render owner 1's Europe/Amsterdam zone (15:00 CEST that same time of year).
-        given().when()
-                .get("/me")
-                .then()
-                .statusCode(200)
-                .body(containsString("22:00"))
-                .body(containsString("(JST)"))
-                .body(not(containsString("(CEST)")));
+        given()
+            .when()
+            .get("/me")
+            .then()
+            .statusCode(200)
+            .body(containsString("22:00"))
+            .body(containsString("(JST)"))
+            .body(not(containsString("(CEST)")));
 
-        given().when()
-                .get("/me/pending")
-                .then()
-                .statusCode(200)
-                .body(containsString("22:00"))
-                .body(containsString("(JST)"))
-                .body(not(containsString("(CEST)")));
+        given()
+            .when()
+            .get("/me/pending")
+            .then()
+            .statusCode(200)
+            .body(containsString("22:00"))
+            .body(containsString("(JST)"))
+            .body(not(containsString("(CEST)")));
     }
 
     /**

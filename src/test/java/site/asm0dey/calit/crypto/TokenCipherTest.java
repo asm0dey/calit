@@ -1,13 +1,10 @@
 package site.asm0dey.calit.crypto;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import org.junit.jupiter.api.Test;
 
 class TokenCipherTest {
-
     private static final String KEY = "0".repeat(64);
-
     private final TokenCipher cipher = new TokenCipher(KEY);
 
     @Test

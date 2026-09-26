@@ -2,7 +2,6 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
@@ -14,14 +13,14 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class BookingSettingsGuardTest {
-
     @Transactional
     void removeSettingsAndSeedType() {
         AppUser owner = AppUser.findByUsername("bob");
         if (owner == null) {
             owner = AppUser.create("bob", "x", false);
             owner.persistAndFlush();
-        } // create() builds but does not persist; flush to assign id
+        }
+        // create() builds but does not persist; flush to assign id
         Long ownerId = owner.id;
         // Drop bob's settings so the booking page hits the notReady() guard — but bob the
         // AppUser must still exist so resolveOwner({user}) binds instead of 404ing first.
@@ -36,7 +35,9 @@ class BookingSettingsGuardTest {
         t.persist();
     }
 
-    /** Leave a valid OwnerSettings behind so test ordering can't strand other suites. */
+    /**
+     * Leave a valid OwnerSettings behind so test ordering can't strand other suites.
+     */
     @AfterEach
     @Transactional
     void restoreSettings() {
@@ -55,11 +56,12 @@ class BookingSettingsGuardTest {
     void bookPageShowsFriendlyMessageWhenSettingsMissing() {
         removeSettingsAndSeedType();
         // "isn't ready yet" renders as "isn&#39;t ready yet" in escaped HTML — match the stable part.
-        given().when()
-                .get("/bob/guard-type")
-                .then()
-                .statusCode(200)
-                .body(containsString("booking page"))
-                .body(containsString("ready yet"));
+        given()
+            .when()
+            .get("/bob/guard-type")
+            .then()
+            .statusCode(200)
+            .body(containsString("booking page"))
+            .body(containsString("ready yet"));
     }
 }

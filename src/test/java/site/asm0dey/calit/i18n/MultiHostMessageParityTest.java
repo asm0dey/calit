@@ -1,14 +1,9 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.qute.i18n.Message;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -21,7 +16,6 @@ import org.junit.jupiter.api.Test;
  * no CDI container / Postgres and runs fast.
  */
 class MultiHostMessageParityTest {
-
     @Test
     void everyAppMessageKeyHasGermanAndHebrewTranslation() {
         assertParity(AppMessages.class, "messages/msg_de.properties", "messages/msg_he.properties");
@@ -49,22 +43,26 @@ class MultiHostMessageParityTest {
         var failures = new StringBuilder();
         for (String resource : localeResources) {
             var props = loadProperties(resource);
-            Set<String> missing = methodNames.stream()
-                    .filter(name -> !props.containsKey(name))
-                    .collect(Collectors.toCollection(TreeSet::new));
+            Set<String> missing =
+                    methodNames
+                .stream()
+                .filter(name -> !props.containsKey(name))
+                .collect(Collectors.toCollection(TreeSet::new));
             if (!missing.isEmpty()) {
-                failures.append("\n  ")
-                        .append(resource)
-                        .append(" is missing ")
-                        .append(missing.size())
-                        .append(" key(s): ")
-                        .append(missing);
+                failures
+                    .append("\n  ")
+                    .append(resource)
+                    .append(" is missing ")
+                    .append(missing.size())
+                    .append(" key(s): ")
+                    .append(missing);
             }
         }
 
         assertTrue(
                 failures.isEmpty(),
-                "Missing translations for " + bundle.getSimpleName() + " @Message keys:" + failures);
+                "Missing translations for " + bundle.getSimpleName() + " @Message keys:" + failures
+        );
     }
 
     private static void assertNoOrphans(Class<?> bundle, String... localeResources) {
@@ -73,31 +71,39 @@ class MultiHostMessageParityTest {
         var failures = new StringBuilder();
         for (String resource : localeResources) {
             var props = loadProperties(resource);
-            Set<String> orphans = props.stringPropertyNames().stream()
-                    .filter(key -> !methodNames.contains(key))
-                    .collect(Collectors.toCollection(TreeSet::new));
+            Set<String> orphans = props
+                .stringPropertyNames()
+                .stream()
+                .filter(key -> !methodNames.contains(key))
+                .collect(Collectors.toCollection(TreeSet::new));
             if (!orphans.isEmpty()) {
-                failures.append("\n  ")
-                        .append(resource)
-                        .append(" has ")
-                        .append(orphans.size())
-                        .append(" orphan key(s) with no matching @Message method: ")
-                        .append(orphans);
+                failures
+                    .append("\n  ")
+                    .append(resource)
+                    .append(" has ")
+                    .append(orphans.size())
+                    .append(" orphan key(s) with no matching @Message method: ")
+                    .append(orphans);
             }
         }
 
         assertTrue(
                 failures.isEmpty(),
-                "Orphan property keys for " + bundle.getSimpleName() + " (rename/remove them or add the @Message"
-                        + " method):" + failures);
+                "Orphan property keys for "
+                + bundle.getSimpleName()
+                + " (rename/remove them or add the @Message"
+                + " method):"
+                + failures
+        );
     }
 
     private static Set<String> messageMethodNames(Class<?> bundle) {
         var methods = bundle.getDeclaredMethods();
-        return Arrays.stream(methods)
-                .filter(m -> m.isAnnotationPresent(Message.class))
-                .map(Method::getName)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return Arrays
+            .stream(methods)
+            .filter(m -> m.isAnnotationPresent(Message.class))
+            .map(Method::getName)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private static Properties loadProperties(String classpathResource) {

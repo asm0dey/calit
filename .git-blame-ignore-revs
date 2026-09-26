@@ -4,3 +4,7 @@
 #
 # After committing the Spotless+CleanThat bulk reformat, append its full SHA below:
 c678697f4808f892648ca3b0c7a2198176c0ce46
+
+# Prince of Space reformat and JEP 511 module imports (#234; merged with a merge commit so these SHAs survive)
+8dfb6f91326f68e49f505ebb2ee820b9092f7403
+49c226da615bc6cdc0ebed9b196d7fc9b4a7acdb

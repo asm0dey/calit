@@ -16,10 +16,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @ApplicationScoped
 @IfBuildProfile("prod")
 public class StartupSecretCheck {
-
-    /** Any secret containing this marker is one of the committed dev placeholders. */
+    /**
+     * Any secret containing this marker is one of the committed dev placeholders.
+     */
     private static final String DEV_MARKER = "dev-only-insecure";
-
     /**
      * The committed dev default for {@code TOKEN_ENCRYPTION_KEY}. A 64-hex AES key can't embed the
      * text {@link #DEV_MARKER} (hex is 0-9a-f only), so this all-zeros placeholder is rejected by
@@ -27,18 +27,16 @@ public class StartupSecretCheck {
      */
     private static final String TOKEN_KEY_DEV_DEFAULT =
             "0000000000000000000000000000000000000000000000000000000000000000";
-
     final String stateSecret;
-
     final String sessionKey;
-
     final String tokenKey;
 
     @Inject
     public StartupSecretCheck(
             @ConfigProperty(name = "google.oauth.state-secret") String stateSecret,
             @ConfigProperty(name = "quarkus.http.auth.session.encryption-key") String sessionKey,
-            @ConfigProperty(name = "token.encryption-key") String tokenKey) {
+            @ConfigProperty(name = "token.encryption-key") String tokenKey
+    ) {
         this.stateSecret = stateSecret;
         this.sessionKey = sessionKey;
         this.tokenKey = tokenKey;
@@ -56,7 +54,8 @@ public class StartupSecretCheck {
         if (TOKEN_KEY_DEV_DEFAULT.equals(tokenKey)) {
             throw new IllegalStateException(
                     "TOKEN_ENCRYPTION_KEY is still the insecure all-zeros development default — "
-                            + "set a real key (openssl rand -hex 32).");
+                    + "set a real key (openssl rand -hex 32)."
+            );
         }
     }
 
@@ -65,12 +64,13 @@ public class StartupSecretCheck {
             throw new IllegalStateException(envName + " must be set in production.");
         }
         if (value.contains(DEV_MARKER)) {
-            throw new IllegalStateException(
-                    envName + " is still the insecure development default — set a real secret.");
+            throw new IllegalStateException(envName
+                    + " is still the insecure development default — set a real secret.");
         }
         if (value.length() < minLength) {
             throw new IllegalStateException(
-                    envName + " is too short (" + value.length() + " chars); require >= " + minLength + ".");
+                    envName + " is too short (" + value.length() + " chars); require >= " + minLength + "."
+            );
         }
     }
 }

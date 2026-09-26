@@ -1,4 +1,4 @@
-# Auto-format staged Java with Spotless (palantir + cleanthat) before commit.
+# Auto-format staged Java with Spotless (Prince of Space + cleanthat) before commit.
 # Installed via `bun install` (package.json "prepare": "lefthook install").
 pre-commit:
   commands:

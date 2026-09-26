@@ -1,8 +1,8 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.Instant;
 
 /**
  * DB-backed application user. Authentication is handled by {@link AppUserIdentityProvider}
@@ -13,53 +13,47 @@ import java.time.Instant;
 @Entity
 @Table(name = "app_user")
 public class AppUser extends PanacheEntityBase {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
-
     @Column(unique = true, nullable = false)
     public String username;
-
     // Nullable: users who only sign in with Google have no password (see V11). Form-login
     // users always have one; AppUserIdentityProvider guards against verifying a null hash.
     @Column(name = "password_hash")
     public String passwordHash;
-
-    /** Stable Google id_token "sub" linking this account to a Google identity, or null. Unique. */
+    /**
+     * Stable Google id_token "sub" linking this account to a Google identity, or null. Unique.
+     */
     @Column(name = "google_sub", unique = true)
     public String googleSub;
-
-    /** Stable OIDC id_token "sub" linking this account to an OIDC (e.g. Authelia) identity, or null. Unique. */
+    /**
+     * Stable OIDC id_token "sub" linking this account to an OIDC (e.g. Authelia) identity, or null. Unique.
+     */
     @Column(name = "oidc_sub", unique = true)
     public String oidcSub;
-
     /**
      * Admin granted by an OIDC group, recomputed on every OIDC login. Effective admin is
      * {@code isAdmin || oidcAdmin}; kept separate so a local {@code isAdmin} is never demoted by the IdP.
      */
     @Column(name = "oidc_admin", nullable = false)
     public boolean oidcAdmin = false;
-
     @Column(nullable = false)
     public String roles;
-
     @Column(name = "is_admin", nullable = false)
     public boolean isAdmin = false;
-
     @Column(nullable = false)
     public boolean enabled = true;
-
     @Column(name = "must_change_password", nullable = false)
     public boolean mustChangePassword = false;
-
     @Column(name = "settings_complete", nullable = false)
     public boolean settingsComplete = false;
-
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
 
-    /** Roles string kept in sync with isAdmin: admins get "user,admin", others "user". */
+    /**
+     * Roles string kept in sync with isAdmin: admins get "user,admin", others "user".
+     */
     private static String rolesFor(boolean admin) {
         return admin ? "user,admin" : "user";
     }
@@ -107,7 +101,8 @@ public class AppUser extends PanacheEntityBase {
         u.oidcSub = oidcSub;
         u.isAdmin = false;
         u.oidcAdmin = oidcAdmin;
-        u.roles = rolesFor(oidcAdmin); // effective = isAdmin(false) || oidcAdmin
+        // effective = isAdmin(false) || oidcAdmin
+        u.roles = rolesFor(oidcAdmin);
         u.mustChangePassword = false;
         u.settingsComplete = false;
         u.createdAt = Instant.now();
@@ -147,7 +142,9 @@ public class AppUser extends PanacheEntityBase {
         return usernameTaken(username) || DeletedUsername.isTombstoned(username);
     }
 
-    /** Toggle site-admin, keeping the roles string in sync (the augmentor/identity reads roles). */
+    /**
+     * Toggle site-admin, keeping the roles string in sync (the augmentor/identity reads roles).
+     */
     public void setAdmin(boolean admin) {
         this.isAdmin = admin;
         this.roles = rolesFor(admin);

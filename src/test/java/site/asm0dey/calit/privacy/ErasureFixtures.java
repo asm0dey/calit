@@ -1,12 +1,7 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
 import io.quarkus.narayana.jta.QuarkusTransaction;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -23,10 +18,10 @@ import site.asm0dey.calit.scheduler.Reminder;
  * package (route tests) can seed the same booking shape without duplicating it.
  */
 public final class ErasureFixtures {
-
-    /** The seeded admin owner — DatabaseResetCallback guarantees id 1. */
+    /**
+     * The seeded admin owner — DatabaseResetCallback guarantees id 1.
+     */
     public static final Long OWNER = 1L;
-
     /**
      * Spaces out repeated {@link #seedPastBookingId()} calls within one test so their held
      * ([start, end)) windows never overlap for the same owner — {@code booking_no_overlap_held}
@@ -34,7 +29,8 @@ public final class ErasureFixtures {
      */
     private static final AtomicLong SEED_OFFSET = new AtomicLong();
 
-    private ErasureFixtures() {}
+    private ErasureFixtures() {
+    }
 
     /**
      * A CONFIRMED booking in the past, with a guest, a parked mail and an unsent reminder. Returns
@@ -51,8 +47,10 @@ public final class ErasureFixtures {
             b.title = "Dana's slot";
             b.description = "notes from Dana";
             b.meetLink = "https://meet.google.com/abc-defg-hij";
-            b.startUtc =
-                    Instant.now().minus(30, ChronoUnit.DAYS).minus(SEED_OFFSET.getAndIncrement(), ChronoUnit.HOURS);
+            b.startUtc = Instant
+                .now()
+                .minus(30, ChronoUnit.DAYS)
+                .minus(SEED_OFFSET.getAndIncrement(), ChronoUnit.HOURS);
             b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
             b.status = BookingStatus.CONFIRMED;
             b.createdAt = Instant.now().minus(31, ChronoUnit.DAYS);
@@ -82,7 +80,8 @@ public final class ErasureFixtures {
                     null,
                     null,
                     "seed",
-                    MailTag.forBooking(b.id, OWNER));
+                    MailTag.forBooking(b.id, OWNER)
+            );
             return b.id;
         });
     }
@@ -106,7 +105,10 @@ public final class ErasureFixtures {
             b.title = "Dana's upcoming slot";
             b.description = "notes from Dana";
             b.meetLink = "https://meet.google.com/abc-defg-hij";
-            b.startUtc = Instant.now().plus(30, ChronoUnit.DAYS).plus(SEED_OFFSET.getAndIncrement(), ChronoUnit.HOURS);
+            b.startUtc = Instant
+                .now()
+                .plus(30, ChronoUnit.DAYS)
+                .plus(SEED_OFFSET.getAndIncrement(), ChronoUnit.HOURS);
             b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
             b.status = BookingStatus.CONFIRMED;
             b.createdAt = Instant.now();
@@ -116,10 +118,14 @@ public final class ErasureFixtures {
         });
     }
 
-    /** Same seed as {@link #seedPastBookingId()}, returning the manage token instead of the id. */
+    /**
+     * Same seed as {@link #seedPastBookingId()}, returning the manage token instead of the id.
+     */
     public static String seedPastBooking() {
         var id = seedPastBookingId();
-        return QuarkusTransaction.requiringNew().call(() -> Booking.<Booking>findById(id).manageToken);
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(id).manageToken);
     }
 
     /**

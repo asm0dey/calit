@@ -1,8 +1,8 @@
 package site.asm0dey.calit.web.og;
 
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.util.ArrayList;
+import module java.base;
+import module java.desktop;
+// ambiguous across the module imports above; single-type import wins
 import java.util.List;
 
 /**
@@ -13,14 +13,18 @@ import java.util.List;
  * {@code drawString}, which is why Hebrew and mixed "30 דק׳ · Google Meet" need no special case.</p>
  */
 public final class TextRuns {
-
-    private TextRuns() {}
+    private TextRuns() {
+    }
 
     public record Run(String text, Font font) {}
 
-    /** Every character drawable by some font in the chain. */
+    /**
+     * Every character drawable by some font in the chain.
+     */
     public static boolean covered(String text, List<Font> chain) {
-        return text.codePoints().allMatch(cp -> chain.stream().anyMatch(f -> f.canDisplay(cp)));
+        return text
+            .codePoints()
+            .allMatch(cp -> chain.stream().anyMatch(f -> f.canDisplay(cp)));
     }
 
     // S127 flags the loop counter being assigned in the body. That is deliberate here: i advances by
@@ -34,7 +38,11 @@ public final class TextRuns {
         Font currentFont = null;
         for (var i = 0; i < text.length(); ) {
             var cp = text.codePointAt(i);
-            var font = chain.stream().filter(f -> f.canDisplay(cp)).findFirst().orElse(chain.getFirst());
+            var font = chain
+                .stream()
+                .filter(f -> f.canDisplay(cp))
+                .findFirst()
+                .orElse(chain.getFirst());
             if (currentFont == null || font == currentFont) {
                 currentFont = font;
             } else {

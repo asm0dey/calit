@@ -2,7 +2,6 @@ package site.asm0dey.calit.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -12,7 +11,6 @@ import site.asm0dey.calit.user.TestOwners;
 
 @QuarkusTest
 class OwnerSettingsForOwnerTest {
-
     @Inject
     EntityManager em;
 
@@ -54,7 +52,9 @@ class OwnerSettingsForOwnerTest {
         assertEquals("UTC", OwnerSettings.coerceZone("   "));
     }
 
-    /** The picker is fed from the same list the guard checks against, so every option survives. */
+    /**
+     * The picker is fed from the same list the guard checks against, so every option survives.
+     */
     @Test
     void coerceZoneAcceptsEveryZoneThePickerCanOffer() {
         for (String z : OwnerSettings.zoneIds()) {

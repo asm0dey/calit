@@ -1,17 +1,14 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -21,26 +18,25 @@ import site.asm0dey.calit.google.CalendarPort;
 
 @QuarkusTest
 class EmailEnqueueTest {
-
     private static final String OWNER_EMAIL = "owner-enq@example.com";
     private static final String INVITEE_EMAIL = "invitee-enq@example.com";
-
     @Inject
     EmailService emailService;
-
     @Inject
     MockMailbox mailbox;
-
     @InjectMock
     CalendarPort calendarPort;
 
     @Test
     void enqueueReminderWritesOutboxRowsAndDoesNotSendDirectly() {
-        when(calendarPort.isConnected(anyLong())).thenReturn(false); // Google off -> invitee fallback
+        // Google off -> invitee fallback
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var bookingId = seed();
         mailbox.clear();
 
-        QuarkusTransaction.requiringNew().run(() -> emailService.enqueueReminder(bookingId));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> emailService.enqueueReminder(bookingId));
 
         QuarkusTransaction.requiringNew().run(() -> {
             assertEquals(1, EmailOutbox.count("recipient", INVITEE_EMAIL), "invitee reminder enqueued");

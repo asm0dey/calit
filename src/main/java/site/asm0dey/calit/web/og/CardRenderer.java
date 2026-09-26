@@ -1,24 +1,11 @@
 package site.asm0dey.calit.web.og;
 
+import module java.base;
+import module java.desktop;
+// ambiguous across the module imports above; single-type import wins
+import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.GradientPaint;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.font.TextAttribute;
-import java.awt.geom.RoundRectangle2D;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import javax.imageio.ImageIO;
 
 /**
  * Draws the 1200x630 link-preview card.
@@ -33,35 +20,20 @@ import javax.imageio.ImageIO;
  */
 @ApplicationScoped
 public class CardRenderer {
-
     static final int W = 1200;
-
     static final int H = 630;
-
     static final int SAFE_X0 = (W - H) / 2;
-
     static final int SAFE_X1 = SAFE_X0 + H;
-
     static final int FLANK = 150;
-
     static final Color BG = new Color(0xFFFFFF);
-
     static final Color INK = new Color(0x16140F);
-
     static final Color INK_2 = new Color(0x565049);
-
     static final Color INDIGO = new Color(0x4F46E5);
-
     static final Color INDIGO_2 = new Color(0x6D65F0);
-
     static final Color MIST = new Color(0xF1F0FE);
-
     static final String PRODUCT_OWNER = "";
-
     static final String PRODUCT_TYPE = "Book a meeting";
-
     static final String PRODUCT_META = "Pick a meeting type and book a time.";
-
     final CardFonts fonts;
 
     @Inject
@@ -69,7 +41,9 @@ public class CardRenderer {
         this.fonts = fonts;
     }
 
-    /** Owner name, meeting-type name, and the meta line ("30 min · Google Meet"). */
+    /**
+     * Owner name, meeting-type name, and the meta line ("30 min · Google Meet").
+     */
     public record Card(String owner, String type, String meta) {}
 
     /**
@@ -137,7 +111,9 @@ public class CardRenderer {
         return toPng(img);
     }
 
-    /** Chip + wordmark, matching .lp-brand: Fraunces inside the chip, the sans for "calit". */
+    /**
+     * Chip + wordmark, matching .lp-brand: Fraunces inside the chip, the sans for "calit".
+     */
     void drawLockup(Graphics2D g, int cx) {
         var tile = 56;
         Font wordFont = fonts.wordmark().deriveFont(34f);
@@ -161,7 +137,8 @@ public class CardRenderer {
         g.drawString(
                 "c",
                 x + (tile - chipMetrics.stringWidth("c")) / 2f,
-                74 + tile / 2f + (chipMetrics.getAscent() - chipMetrics.getDescent()) / 2f);
+                74 + tile / 2f + (chipMetrics.getAscent() - chipMetrics.getDescent()) / 2f
+        );
 
         g.setColor(INK);
         drawTracked(g, "calit", wordFont, x + tile + 14, 74 + tile / 2f + 12);
@@ -182,12 +159,16 @@ public class CardRenderer {
         return fm.stringWidth(text);
     }
 
-    /** Fixed-order attribute map — required so rendering stays byte-for-byte deterministic. */
+    /**
+     * Fixed-order attribute map — required so rendering stays byte-for-byte deterministic.
+     */
     static Font trackedFont(Font font) {
         return font.deriveFont(Map.of(TextAttribute.TRACKING, -0.02f));
     }
 
-    /** Shrink to fit the safe square, then wrap to two lines, then ellipsize. */
+    /**
+     * Shrink to fit the safe square, then wrap to two lines, then ellipsize.
+     */
     List<List<TextRuns.Run>> fitHeadline(Graphics2D g, String text) {
         var maxWidth = SAFE_X1 - SAFE_X0 - 40;
         for (float size = 74; size >= 52; size -= 3) {

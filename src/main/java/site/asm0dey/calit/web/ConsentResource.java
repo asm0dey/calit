@@ -23,10 +23,10 @@ import site.asm0dey.calit.i18n.AppMessageResolver;
  */
 @Path("/consent")
 public class ConsentResource {
-
     @CheckedTemplate
     public static class Templates {
-        private Templates() {}
+        private Templates() {
+        }
 
         public static native TemplateInstance confirm(String title, MeetingType type, String creatorName, String token);
 
@@ -34,9 +34,7 @@ public class ConsentResource {
     }
 
     final MeetingHosts meetingHosts;
-
     final AppMessageResolver messages;
-
     final ActiveLocale activeLocale;
 
     @Inject
@@ -46,7 +44,9 @@ public class ConsentResource {
         this.activeLocale = activeLocale;
     }
 
-    /** Resolves the token to a still-pending host row, or 404 (unknown, already-used, or malformed). */
+    /**
+     * Resolves the token to a still-pending host row, or 404 (unknown, already-used, or malformed).
+     */
     private MeetingTypeHost requireHost(String token) {
         MeetingTypeHost host;
         try {
@@ -80,14 +80,20 @@ public class ConsentResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance respond(@PathParam("token") String token, @RestForm String action) {
         var m = messages.forLocale(activeLocale.current());
-        requireHost(token); // 404 unknown/already-used/malformed before acting
+        // 404 unknown/already-used/malformed before acting
+        requireHost(token);
         // Mutation commits in its own tx before the result render (issue #75). The host row is
         // (re)loaded INSIDE the tx: acceptConsent mutates the passed entity, so it must be managed
         // in the same persistence context to flush.
         if ("accept".equals(action)) {
-            QuarkusTransaction.requiringNew().run(() -> meetingHosts.acceptConsent(requireHost(token)));
+            QuarkusTransaction
+                .requiringNew()
+                .run(() -> meetingHosts.acceptConsent(requireHost(token)));
             return Templates.done(
-                    m.pub_consent_result_title(), m.pub_consent_accepted_h1(), m.pub_consent_accepted_desc());
+                    m.pub_consent_result_title(),
+                    m.pub_consent_accepted_h1(),
+                    m.pub_consent_accepted_desc()
+            );
         }
         QuarkusTransaction.requiringNew().run(() -> {
             MeetingTypeHost host = requireHost(token);

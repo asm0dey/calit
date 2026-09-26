@@ -1,15 +1,13 @@
 package site.asm0dey.calit.domain;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class MeetingTypeTest {
-
     @Test
     @TestTransaction
     void persistsWithDefaultBuffersActiveAndNotSecret() {
@@ -53,8 +51,12 @@ class MeetingTypeTest {
         hidden.persist();
 
         List<MeetingType> publicList = MeetingType.listPublic(1L);
-        assertTrue(publicList.stream().anyMatch(m -> "pub-listpublic".equals(m.slug)));
-        assertFalse(publicList.stream().anyMatch(m -> "secret-listpublic".equals(m.slug)));
+        assertTrue(publicList
+            .stream()
+            .anyMatch(m -> "pub-listpublic".equals(m.slug)));
+        assertFalse(publicList
+            .stream()
+            .anyMatch(m -> "secret-listpublic".equals(m.slug)));
         // Direct slug access bypasses the public filter.
         assertEquals(hidden.id, MeetingType.findBySlug(1L, "secret-listpublic").id);
     }

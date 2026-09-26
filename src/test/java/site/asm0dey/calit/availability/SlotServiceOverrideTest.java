@@ -1,25 +1,20 @@
 package site.asm0dey.calit.availability;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.*;
 
 @QuarkusTest
 class SlotServiceOverrideTest {
-
     @Inject
     SlotService slotService;
-
-    private static final LocalDate WORKDAY = LocalDate.of(2026, 6, 8); // Monday
+    // Monday
+    private static final LocalDate WORKDAY = LocalDate.of(2026, 6, 8);
 
     @Test
     @TestTransaction
@@ -44,9 +39,11 @@ class SlotServiceOverrideTest {
     void emptyWindowOverrideYieldsZeroSlotsEvenWithWeeklyRule() {
         seedSettings("Europe/Amsterdam");
         MeetingType t = meetingType("ov-dayoff", 60);
-        globalRule(WORKDAY.getDayOfWeek(), "09:00", "11:00"); // weekly rule exists
+        // weekly rule exists
+        globalRule(WORKDAY.getDayOfWeek(), "09:00", "11:00");
         DateOverride dayOff = override(t.id, WORKDAY);
-        dayOff.persist(); // empty windows = day off
+        // empty windows = day off
+        dayOff.persist();
 
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
@@ -58,7 +55,8 @@ class SlotServiceOverrideTest {
     void dateWithoutOverrideStillUsesWeeklyRules() {
         seedSettings("Europe/Amsterdam");
         MeetingType t = meetingType("ov-fallback", 60);
-        globalRule(WORKDAY.getDayOfWeek(), "09:00", "11:00"); // no override -> weekly applies
+        // no override -> weekly applies
+        globalRule(WORKDAY.getDayOfWeek(), "09:00", "11:00");
 
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
@@ -68,7 +66,6 @@ class SlotServiceOverrideTest {
     }
 
     // --- helpers ---
-
     private void seedSettings(String zone) {
         OwnerSettings s = OwnerSettings.forOwner(1L);
         if (s == null) {

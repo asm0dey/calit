@@ -1,5 +1,6 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -7,17 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
-
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -37,18 +32,13 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class AccountDeletionNotifiesTest {
-
     private static final String INVITEE = "ivy@example.com";
-
     @Inject
     PrivacyService privacy;
-
     @Inject
     EmailService emailService;
-
     @Inject
     MockMailbox mailbox;
-
     @InjectSpy
     MailSender mailSender;
 
@@ -57,7 +47,9 @@ class AccountDeletionNotifiesTest {
         mailbox.clear();
     }
 
-    /** A non-admin creator and a co-host sharing one type, plus an upcoming group booking on it. */
+    /**
+     * A non-admin creator and a co-host sharing one type, plus an upcoming group booking on it.
+     */
     private record Shared(Long creatorId, Long cohostId, UUID groupId) {}
 
     private static Shared seedSharedTypeWithUpcomingGroup() {
@@ -89,7 +81,9 @@ class AccountDeletionNotifiesTest {
     }
 
     private static long groupRows(UUID groupId) {
-        return QuarkusTransaction.requiringNew().call(() -> Booking.count("groupId", groupId));
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.count("groupId", groupId));
     }
 
     @Test
@@ -98,24 +92,26 @@ class AccountDeletionNotifiesTest {
 
         privacy.deleteAccount(s.creatorId());
 
-        QuarkusTransaction.requiringNew()
-                .run(() -> assertEquals(0L, AppUser.count("id", s.creatorId()), "the account is gone"));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> assertEquals(0L, AppUser.count("id", s.creatorId()), "the account is gone"));
         assertEquals(0L, groupRows(s.groupId()), "the type's bookings cascade away after the cancel");
         assertEquals(
                 1,
-                QuarkusTransaction.requiringNew().call(() -> (int) AppUser.count("id", s.cohostId())),
-                "the co-host's account survives");
+                QuarkusTransaction
+                    .requiringNew()
+                    .call(() -> (int) AppUser.count("id", s.cohostId())),
+                "the co-host's account survives"
+        );
         assertFalse(mailbox.getMailsSentTo(INVITEE).isEmpty(), "the invitee is told the meeting is cancelled");
         assertFalse(
                 mailbox.getMailsSentTo("shared-cohost@x.com").isEmpty(),
-                "the co-host is told the meeting is cancelled");
+                "the co-host is told the meeting is cancelled"
+        );
         assertTrue(
-                mailbox.getMailsSentTo(INVITEE)
-                        .getFirst()
-                        .getSubject()
-                        .toLowerCase(Locale.ROOT)
-                        .contains("cancel"),
-                "the invitee's mail is the cancellation notice");
+                mailbox.getMailsSentTo(INVITEE).getFirst().getSubject().toLowerCase(Locale.ROOT).contains("cancel"),
+                "the invitee's mail is the cancellation notice"
+        );
     }
 
     /**
@@ -127,8 +123,8 @@ class AccountDeletionNotifiesTest {
     void parkedCancellationNoticesForOtherPeopleSurviveTheDeletion() {
         var s = seedSharedTypeWithUpcomingGroup();
         doThrow(new RuntimeException("smtp down"))
-                .when(mailSender)
-                .sendNow(any(), anyString(), anyString(), anyString(), any());
+            .when(mailSender)
+            .sendNow(any(), anyString(), anyString(), anyString(), any());
 
         privacy.deleteAccount(s.creatorId());
 
@@ -136,8 +132,7 @@ class AccountDeletionNotifiesTest {
             assertEquals(0L, EmailOutbox.count("ownerId", s.creatorId()), "nothing stays tagged to the deleted owner");
             assertEquals(0L, EmailOutbox.count("recipient", "shared-creator@x.com"), "the owner's own copy is purged");
             assertEquals(1L, EmailOutbox.count("recipient", INVITEE), "the invitee's notice is still queued");
-            EmailOutbox cohostCopy =
-                    EmailOutbox.find("recipient", "shared-cohost@x.com").firstResult();
+            EmailOutbox cohostCopy = EmailOutbox.find("recipient", "shared-cohost@x.com").firstResult();
             assertEquals(s.cohostId(), cohostCopy.ownerId, "the co-host's copy stays tagged to the co-host");
             assertNull(cohostCopy.bookingId, "the booking link is dropped before the cascade");
         });
@@ -145,23 +140,39 @@ class AccountDeletionNotifiesTest {
 
     @Test
     void parkedResetAndInviteMailForTheOwnerIsRemoved() {
-        Long id = QuarkusTransaction.requiringNew().call(() -> MultiHostFixtures.enabledUser("parked-mail-owner").id);
+        Long id = QuarkusTransaction
+            .requiringNew()
+            .call(() -> MultiHostFixtures.enabledUser("parked-mail-owner").id);
         doThrow(new RuntimeException("smtp down"))
-                .when(mailSender)
-                .sendNow(any(), anyString(), anyString(), anyString(), any());
+            .when(mailSender)
+            .sendNow(any(), anyString(), anyString(), anyString(), any());
         var expiry = Instant.now().plus(1, ChronoUnit.HOURS);
         emailService.sendPasswordReset(id, "parked@example.com", "https://x/reset", expiry, Locale.ENGLISH);
         emailService.sendInvite(
-                id, "parked@example.com", "https://x/activate", "admin", "https://x", expiry, Locale.ENGLISH);
+                id,
+                "parked@example.com",
+                "https://x/activate",
+                "admin",
+                "https://x",
+                expiry,
+                Locale.ENGLISH
+        );
         emailService.sendGoogleDisconnected(id, "parked@example.com", "work@gmail.com", Locale.ENGLISH);
         assertEquals(
                 3L,
-                QuarkusTransaction.requiringNew().call(() -> EmailOutbox.count("ownerId", id)),
-                "precondition: all three owner mails are parked and tagged with the owner");
+                QuarkusTransaction
+                    .requiringNew()
+                    .call(() -> EmailOutbox.count("ownerId", id)),
+                "precondition: all three owner mails are parked and tagged with the owner"
+        );
 
         privacy.deleteAccount(id);
 
         assertEquals(
-                0L, QuarkusTransaction.requiringNew().call(() -> EmailOutbox.count("recipient", "parked@example.com")));
+                0L,
+                QuarkusTransaction
+                    .requiringNew()
+                    .call(() -> EmailOutbox.count("recipient", "parked@example.com"))
+        );
     }
 }

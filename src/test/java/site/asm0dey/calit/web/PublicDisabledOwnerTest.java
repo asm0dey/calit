@@ -1,13 +1,9 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
@@ -22,8 +18,9 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class PublicDisabledOwnerTest {
-
-    /** The zone the disabled owner's settings row is seeded with, below. */
+    /**
+     * The zone the disabled owner's settings row is seeded with, below.
+     */
     private static final ZoneId OWNER_ZONE = ZoneId.of("Europe/Amsterdam");
 
     @AfterEach
@@ -38,7 +35,9 @@ class PublicDisabledOwnerTest {
         }
     }
 
-    /** An owner who HAD working hours, a settings row and a public type -- then was switched off. */
+    /**
+     * An owner who HAD working hours, a settings row and a public type -- then was switched off.
+     */
     @Transactional
     void seedDisabledOwnerWithHours() {
         AppUser u = AppUser.create("disabled-owner", "x", false);
@@ -58,7 +57,6 @@ class PublicDisabledOwnerTest {
         t.slug = "intro";
         t.durationMinutes = 30;
         t.persist();
-
         // Hours set BEFORE the account was disabled: this is the case that is bookable today.
         for (DayOfWeek d : DayOfWeek.values()) {
             AvailabilityRule r = new AvailabilityRule();
@@ -68,8 +66,8 @@ class PublicDisabledOwnerTest {
             r.endTime = LocalTime.of(18, 0);
             r.persist();
         }
-
-        u.enabled = false; // managed entity -> flushed on commit
+        // managed entity -> flushed on commit
+        u.enabled = false;
     }
 
     @Test
@@ -87,14 +85,15 @@ class PublicDisabledOwnerTest {
     @Test
     void bookingPostIs404() {
         seedDisabledOwnerWithHours();
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", "2030-01-07T09:00:00Z")
-                .formParam("inviteeName", "Stranger")
-                .formParam("inviteeEmail", "stranger@example.com")
-                .when()
-                .post("/disabled-owner/intro")
-                .then()
-                .statusCode(404);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", "2030-01-07T09:00:00Z")
+            .formParam("inviteeName", "Stranger")
+            .formParam("inviteeEmail", "stranger@example.com")
+            .when()
+            .post("/disabled-owner/intro")
+            .then()
+            .statusCode(404);
     }
 
     /**
@@ -111,21 +110,25 @@ class PublicDisabledOwnerTest {
         // A slot that is genuinely bookable: inside the type's 60-day horizon and inside the seeded
         // 09:00-18:00 hours. Without the guard this POST returns 201 -- a real booking on a departed
         // owner -- rather than an incidental 409, so the test fails loudly if the guard is removed.
-        var startUtc = LocalDate.now(OWNER_ZONE)
-                .plusDays(7)
-                .atTime(10, 0)
-                .atZone(OWNER_ZONE)
-                .toInstant()
-                .toString();
+        var startUtc = LocalDate
+            .now(OWNER_ZONE)
+            .plusDays(7)
+            .atTime(10, 0)
+            .atZone(OWNER_ZONE)
+            .toInstant()
+            .toString();
 
-        given().contentType("application/json")
-                .body("""
+        given()
+            .contentType("application/json")
+            .body("""
                         {"user":"disabled-owner","slug":"intro","startUtc":"%s",\
                         "inviteeName":"Stranger","inviteeEmail":"stranger@example.com",\
-                        "answers":{},"turnstileToken":"tok","honeypot":""}""".formatted(startUtc))
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(404);
+                        "answers":{},"turnstileToken":"tok","honeypot":""}"""
+                .formatted(startUtc)
+            )
+            .when()
+            .post("/api/bookings")
+            .then()
+            .statusCode(404);
     }
 }

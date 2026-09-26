@@ -1,18 +1,16 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.response.Response;
-import java.time.LocalTime;
-import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
@@ -43,10 +41,11 @@ import site.asm0dey.calit.domain.OwnerSettings;
 @QuarkusTest
 @TestProfile(CsrfEnforcementTest.CsrfOn.class)
 class CardCsrfCookieFilterTest {
-
     static final byte[] PNG_MAGIC = {(byte) 0x89, 'P', 'N', 'G'};
 
-    /** Admin is always id 1 / username "admin" (DatabaseResetCallback invariant). */
+    /**
+     * Admin is always id 1 / username "admin" (DatabaseResetCallback invariant).
+     */
     private static void seedBookableType(String slug) {
         QuarkusTransaction.requiringNew().run(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);
@@ -79,8 +78,7 @@ class CardCsrfCookieFilterTest {
 
     @Test
     void productCardHasNoCsrfCookie() {
-        Response r =
-                given().when().get("/og.png").then().statusCode(200).extract().response();
+        Response r = given().when().get("/og.png").then().statusCode(200).extract().response();
         assertNull(r.getDetailedCookie("csrf-token"), "card image must not carry a csrf-token cookie");
         assertEquals("public, max-age=3600", r.header("Cache-Control"));
         assertNotNull(r.header("ETag"), "card image must still carry its ETag");
@@ -89,12 +87,7 @@ class CardCsrfCookieFilterTest {
 
     @Test
     void ownerCardHasNoCsrfCookie() {
-        Response r = given().when()
-                .get("/og/admin.png")
-                .then()
-                .statusCode(200)
-                .extract()
-                .response();
+        Response r = given().when().get("/og/admin.png").then().statusCode(200).extract().response();
         assertNull(r.getDetailedCookie("csrf-token"), "card image must not carry a csrf-token cookie");
         assertEquals("public, max-age=3600", r.header("Cache-Control"));
         assertNotNull(r.header("ETag"), "card image must still carry its ETag");
@@ -103,12 +96,13 @@ class CardCsrfCookieFilterTest {
     @Test
     void meetingTypeCardHasNoCsrfCookie() {
         seedBookableType("csrf-card-check");
-        Response r = given().when()
-                .get("/og/admin/csrf-card-check.png")
-                .then()
-                .statusCode(200)
-                .extract()
-                .response();
+        Response r = given()
+            .when()
+            .get("/og/admin/csrf-card-check.png")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
         assertNull(r.getDetailedCookie("csrf-token"), "card image must not carry a csrf-token cookie");
         assertEquals("public, max-age=3600", r.header("Cache-Control"));
         assertNotNull(r.header("ETag"), "card image must still carry its ETag");
@@ -117,16 +111,12 @@ class CardCsrfCookieFilterTest {
     @Test
     void bookingPageStillGetsCsrfCookieAndToken() {
         seedBookableType("csrf-booking-check");
-        Response r = given().when()
-                .get("/admin/csrf-booking-check")
-                .then()
-                .statusCode(200)
-                .extract()
-                .response();
+        Response r = given().when().get("/admin/csrf-booking-check").then().statusCode(200).extract().response();
         String token = r.getCookie("csrf-token");
         assertNotNull(token, "booking page GET must still set the csrf-token cookie");
         assertTrue(
                 r.asString().contains("name=\"csrf-token\" value=\"" + token + "\""),
-                "booking form must still render the matching hidden csrf token field");
+                "booking form must still render the matching hidden csrf token field"
+        );
     }
 }

@@ -1,11 +1,8 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-import java.security.SecureRandom;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Base64;
 
 /**
  * Issues and consumes single-use password-reset tokens (see {@link PasswordResetToken}). State
@@ -14,21 +11,25 @@ import java.util.Base64;
  */
 @ApplicationScoped
 public class PasswordResetService {
-
-    /** Long enough to survive email delivery; short enough to limit a leaked-link window. */
+    /**
+     * Long enough to survive email delivery; short enough to limit a leaked-link window.
+     */
     public static final Duration TTL = Duration.ofMinutes(30);
-
     // Non-static: keep SecureRandom out of the native image heap (build-time seed is rejected).
     private final SecureRandom RNG = new SecureRandom();
     private static final Base64.Encoder B64URL = Base64.getUrlEncoder().withoutPadding();
 
-    /** Mint a token for {@code userId}, persist its hash, and return the raw token (emailed once). */
+    /**
+     * Mint a token for {@code userId}, persist its hash, and return the raw token (emailed once).
+     */
     @Transactional
     public String issue(Long userId, Instant now) {
         return issue(userId, now, TTL);
     }
 
-    /** As {@link #issue(Long, Instant)} but with a caller-chosen lifetime (e.g. longer for invites). */
+    /**
+     * As {@link #issue(Long, Instant)} but with a caller-chosen lifetime (e.g. longer for invites).
+     */
     @Transactional
     public String issue(Long userId, Instant now, Duration ttl) {
         var raw = new byte[32];
@@ -58,7 +59,8 @@ public class PasswordResetService {
         }
         Long userId = t.userId;
         Instant expiry = t.expiresAt;
-        t.delete(); // single-use: gone whether or not it was still valid
+        // single-use: gone whether or not it was still valid
+        t.delete();
         if (expiry.isBefore(now)) {
             return null;
         }

@@ -1,17 +1,14 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
@@ -22,7 +19,6 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class LangQueryParamTest {
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -71,12 +67,13 @@ class LangQueryParamTest {
     void queryParamOverridesToHebrew() {
         mockCal();
         seed();
-        given().when()
-                .get("/langq/intro?lang=he")
-                .then()
-                .statusCode(200)
-                .body(containsString("lang=\"he\""))
-                .body(containsString("dir=\"rtl\""));
+        given()
+            .when()
+            .get("/langq/intro?lang=he")
+            .then()
+            .statusCode(200)
+            .body(containsString("lang=\"he\""))
+            .body(containsString("dir=\"rtl\""));
     }
 
     @Test
@@ -84,23 +81,25 @@ class LangQueryParamTest {
         mockCal();
         seed();
         // cookie says English, query says Hebrew -> query wins
-        given().cookie("calit_lang", "en")
-                .when()
-                .get("/langq/intro?lang=he")
-                .then()
-                .statusCode(200)
-                .body(containsString("lang=\"he\""));
+        given()
+            .cookie("calit_lang", "en")
+            .when()
+            .get("/langq/intro?lang=he")
+            .then()
+            .statusCode(200)
+            .body(containsString("lang=\"he\""));
     }
 
     @Test
     void unknownQueryParamFallsThroughToCookie() {
         mockCal();
         seed();
-        given().cookie("calit_lang", "he")
-                .when()
-                .get("/langq/intro?lang=zz")
-                .then()
-                .statusCode(200)
-                .body(containsString("lang=\"he\""));
+        given()
+            .cookie("calit_lang", "he")
+            .when()
+            .get("/langq/intro?lang=zz")
+            .then()
+            .statusCode(200)
+            .body(containsString("lang=\"he\""));
     }
 }

@@ -1,16 +1,15 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -30,7 +29,6 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 @TestProfile(CsrfEnforcementTest.CsrfOn.class)
 class CsrfEnforcementTest {
-
     public static class CsrfOn implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
@@ -41,25 +39,27 @@ class CsrfEnforcementTest {
     // Enforcement: an authenticated state-changing form POST with no CSRF token is rejected (400).
     @Test
     void tokenlessAuthenticatedPostIsRejected() {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType(ContentType.URLENC)
-                .formParam("ownerName", "x")
-                .when()
-                .post("/me/settings")
-                .then()
-                .statusCode(400);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType(ContentType.URLENC)
+            .formParam("ownerName", "x")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(400);
     }
 
     // Enforcement on an anonymous form route too. A public booking POST still matches its routing
     // template, so the CSRF filter rejects it before the handler runs, no matter the body.
     @Test
     void tokenlessAnonymousFormPostIsRejected() {
-        given().contentType(ContentType.URLENC)
-                .formParam("inviteeName", "x")
-                .when()
-                .post("/admin/some-slug")
-                .then()
-                .statusCode(400);
+        given()
+            .contentType(ContentType.URLENC)
+            .formParam("inviteeName", "x")
+            .when()
+            .post("/admin/some-slug")
+            .then()
+            .statusCode(400);
     }
 
     // Happy path: GET the form (sets the csrf-token cookie + renders the matching token), then POST
@@ -68,27 +68,29 @@ class CsrfEnforcementTest {
     void postWithValidTokenSucceeds() {
         String credential = FormAuth.login();
 
-        Response form = given().cookie("quarkus-credential", credential)
-                .when()
-                .get("/me/settings")
-                .then()
-                .statusCode(200)
-                .extract()
-                .response();
+        Response form = given()
+            .cookie("quarkus-credential", credential)
+            .when()
+            .get("/me/settings")
+            .then()
+            .statusCode(200)
+            .extract()
+            .response();
 
         String token = form.getCookie("csrf-token");
         assertNotNull(token, "GET must set the csrf-token cookie");
 
-        given().cookie("quarkus-credential", credential)
-                .cookie("csrf-token", token)
-                .contentType(ContentType.URLENC)
-                .formParam("csrf-token", token)
-                .formParam("ownerName", "Admin")
-                .formParam("ownerEmail", "admin@example.com")
-                .formParam("timezone", "Europe/Berlin")
-                .when()
-                .post("/me/settings")
-                .then()
-                .statusCode(anyOf(is(200), is(302)));
+        given()
+            .cookie("quarkus-credential", credential)
+            .cookie("csrf-token", token)
+            .contentType(ContentType.URLENC)
+            .formParam("csrf-token", token)
+            .formParam("ownerName", "Admin")
+            .formParam("ownerEmail", "admin@example.com")
+            .formParam("timezone", "Europe/Berlin")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(anyOf(is(200), is(302)));
     }
 }

@@ -22,32 +22,34 @@ import site.asm0dey.calit.user.PasswordHasher;
  * The callback only fires for {@code @QuarkusTest} classes; plain unit tests (no CDI/ORM) are skipped.</p>
  */
 public class DatabaseResetCallback implements QuarkusTestBeforeEachCallback {
-
     // Hash once per JVM (argon2 is deliberately slow); the same encoded hash verifies "testpass".
     private static final String ADMIN_HASH = new PasswordHasher().hash("testpass");
-
     // deleted_username carries no FK to app_user (R16 — it must outlive the row it tombstones), so
     // TRUNCATE ... CASCADE does not sweep it in via app_user the way every FK-linked table is;
     // it must be named explicitly or a username tombstoned by one test method would poison every
     // later test method that reuses the same username, for the rest of the suite run (the Postgres
     // container and its rows persist across test methods under reuseForks=true).
-    private static final String TRUNCATE_ALL = "TRUNCATE TABLE "
+    private static final String TRUNCATE_ALL =
+            "TRUNCATE TABLE "
             + "reminder, booking, date_override_window, date_override, availability_rule, "
             + "booking_field, meeting_type, owner_settings, google_calendar, google_credential, "
             + "deleted_username, app_user RESTART IDENTITY CASCADE";
 
     @Override
     public void beforeEach(QuarkusTestMethodContext context) {
-        if (Arc.container() == null
-                || !Arc.container().instance(EntityManager.class).isAvailable()) {
-            return; // not a Quarkus/ORM test context — nothing to reset
+        if (Arc.container() == null || !Arc.container().instance(EntityManager.class).isAvailable()) {
+            // not a Quarkus/ORM test context — nothing to reset
+            return;
         }
-        QuarkusTransaction.requiringNew().run(() -> {
-            EntityManager em = Arc.container().instance(EntityManager.class).get();
-            em.createNativeQuery(TRUNCATE_ALL).executeUpdate();
-            AppUser admin = AppUser.create("admin", ADMIN_HASH, true);
-            admin.settingsComplete = true; // baseline admin is onboarded (no first-login wizard in tests)
-            admin.persist();
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                EntityManager em = Arc.container().instance(EntityManager.class).get();
+                em.createNativeQuery(TRUNCATE_ALL).executeUpdate();
+                AppUser admin = AppUser.create("admin", ADMIN_HASH, true);
+                // baseline admin is onboarded (no first-login wizard in tests)
+                admin.settingsComplete = true;
+                admin.persist();
+            });
     }
 }

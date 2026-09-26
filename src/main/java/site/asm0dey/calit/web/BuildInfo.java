@@ -1,10 +1,8 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
-import java.io.IOException;
-import java.util.Map;
-import java.util.Properties;
 
 /**
  * Build metadata (release version + short git commit) for display in the page footer.
@@ -16,9 +14,7 @@ import java.util.Properties;
 @Named("build")
 @ApplicationScoped
 public class BuildInfo {
-
     private static final String FALLBACK = "dev";
-
     private final String version;
     private final String commit;
 
@@ -44,7 +40,11 @@ public class BuildInfo {
     }
 
     private static String value(
-            Map<String, String> environment, String environmentKey, Properties properties, String propertyKey) {
+            Map<String, String> environment,
+            String environmentKey,
+            Properties properties,
+            String propertyKey
+    ) {
         var runtimeValue = environment.get(environmentKey);
         if (runtimeValue != null && !runtimeValue.isBlank()) {
             return runtimeValue;

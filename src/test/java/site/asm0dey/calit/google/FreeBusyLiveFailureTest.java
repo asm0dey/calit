@@ -1,12 +1,11 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -17,10 +16,8 @@ import org.mockito.Mockito;
  */
 @QuarkusTest
 class FreeBusyLiveFailureTest {
-
     @Inject
     GoogleCalendarPort port;
-
     @InjectMock
     GoogleTokenService tokenService;
 
@@ -28,27 +25,28 @@ class FreeBusyLiveFailureTest {
     void liveFailureThrowsCalendarUnavailable() {
         var credId = seedHealthyCredWithReadCalendar("sub-live");
         // validAccessToken is called first inside client(cred); throwing here drives the live-failure path.
-        Mockito.when(tokenService.validAccessToken(Mockito.any(), Mockito.any()))
-                .thenThrow(new IllegalStateException("token dead"));
+        Mockito
+            .when(tokenService.validAccessToken(Mockito.any(), Mockito.any()))
+            .thenThrow(new IllegalStateException("token dead"));
 
-        assertThrows(
-                CalendarUnavailableException.class,
-                () -> port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)));
+        var from = Instant.now();
+        var to = Instant.now().plusSeconds(86400);
+        assertThrows(CalendarUnavailableException.class, () -> port.freeBusy(1L, from, to));
     }
 
     @Test
     void knownBrokenAccountThrowsCalendarUnavailableWithoutCallingGoogle() {
-        seedReadCalendarForCred(seedCred("sub-broken", true)); // pre-flagged needsReconnect
+        // pre-flagged needsReconnect
+        seedReadCalendarForCred(seedCred("sub-broken", true));
 
-        assertThrows(
-                CalendarUnavailableException.class,
-                () -> port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)));
+        var from = Instant.now();
+        var to = Instant.now().plusSeconds(86400);
+        assertThrows(CalendarUnavailableException.class, () -> port.freeBusy(1L, from, to));
         // No tokenService interaction: a known-broken account short-circuits before any Google call.
         Mockito.verifyNoInteractions(tokenService);
     }
 
     // --- helpers ---
-
     private Long seedHealthyCredWithReadCalendar(String sub) {
         return QuarkusTransaction.requiringNew().call(() -> {
             var id = seedCred(sub, false);

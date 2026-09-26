@@ -1,9 +1,7 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.List;
-import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -13,7 +11,6 @@ import org.junit.jupiter.api.Test;
  * For auto-discovery assertions (supported() == [en, de]) see {@link AppLocalesDiscoveryTest}.
  */
 class AppLocalesTest {
-
     private static final List<Locale> LOCALES = List.of(Locale.ENGLISH, Locale.GERMAN);
 
     @Test

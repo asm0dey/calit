@@ -1,14 +1,10 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.MeetingHosts;
 import site.asm0dey.calit.domain.BookingField;
@@ -23,7 +19,6 @@ import site.asm0dey.calit.domain.OwnerSettings;
  */
 @ApplicationScoped
 public class BookingSnapshotLoader {
-
     final MeetingHosts meetingHosts;
 
     @Inject
@@ -61,23 +56,34 @@ public class BookingSnapshotLoader {
         return new BookingSnapshot(booking, type, owner, zone, answers, hostDeliveries);
     }
 
-    /** As {@link #read} but opens its own transaction -- for AFTER_SUCCESS observers (no active tx). */
+    /**
+     * As {@link #read} but opens its own transaction -- for AFTER_SUCCESS observers (no active tx).
+     */
     public BookingSnapshot load(Long bookingId) {
-        return QuarkusTransaction.requiringNew().call(() -> read(bookingId));
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> read(bookingId));
     }
 
-    /** Every accepted host's own {@code OwnerSettings} paired with their own row of this group. */
+    /**
+     * Every accepted host's own {@code OwnerSettings} paired with their own row of this group.
+     */
     private List<HostDelivery> loadHostDeliveries(UUID groupId, MeetingType type) {
         List<Booking> rows = Booking.group(groupId);
         List<HostDelivery> deliveries = new ArrayList<>();
         for (Long hostId : meetingHosts.hostOwnerIds(type)) {
             OwnerSettings settings = OwnerSettings.forOwner(hostId);
-            if (settings == null) continue;
-            Booking row = rows.stream()
-                    .filter(r -> hostId.equals(r.ownerId))
-                    .findFirst()
-                    .orElse(null);
-            if (row == null) continue;
+            if (settings == null) {
+                continue;
+            }
+            Booking row = rows
+                .stream()
+                .filter(r -> hostId.equals(r.ownerId))
+                .findFirst()
+                .orElse(null);
+            if (row == null) {
+                continue;
+            }
             deliveries.add(new HostDelivery(settings, row));
         }
         return deliveries;

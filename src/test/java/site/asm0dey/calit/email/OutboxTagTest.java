@@ -1,12 +1,10 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.time.Instant;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -21,13 +19,19 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class OutboxTagTest {
-
     @Test
     @Transactional
     void enqueueStoresTheTag() {
         var bookingId = createBooking(1L);
         Long id = EmailOutbox.enqueue(
-                "a@example.com", "s", "<p>hi</p>", null, null, "test", MailTag.forBooking(bookingId, 1L));
+                "a@example.com",
+                "s",
+                "<p>hi</p>",
+                null,
+                null,
+                "test",
+                MailTag.forBooking(bookingId, 1L)
+        );
         EmailOutbox row = EmailOutbox.findById(id);
         assertEquals(bookingId, row.bookingId);
         assertEquals(1L, row.ownerId);
@@ -50,7 +54,14 @@ class OutboxTagTest {
         var bookingTwoId = createBooking(ownerTwoId);
         EmailOutbox.enqueue("a@example.com", "s", "<p>a</p>", null, null, "t", MailTag.forBooking(bookingOneId, 1L));
         EmailOutbox.enqueue(
-                "a@example.com", "s", "<p>b</p>", null, null, "t", MailTag.forBooking(bookingTwoId, ownerTwoId));
+                "a@example.com",
+                "s",
+                "<p>b</p>",
+                null,
+                null,
+                "t",
+                MailTag.forBooking(bookingTwoId, ownerTwoId)
+        );
         assertEquals(1L, EmailOutbox.deleteForBooking(bookingOneId));
         assertEquals(0L, EmailOutbox.count("bookingId", bookingOneId));
         assertEquals(1L, EmailOutbox.count("bookingId", bookingTwoId));
@@ -67,7 +78,6 @@ class OutboxTagTest {
     }
 
     // --- fixtures: booking_id/owner_id are real FKs (V34), so a tag needs a real row behind it. ---
-
     private Long createOwner(String username) {
         AppUser u = AppUser.create(username, null, false);
         u.persist();

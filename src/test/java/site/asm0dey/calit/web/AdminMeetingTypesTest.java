@@ -2,7 +2,6 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -11,7 +10,6 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 
 @QuarkusTest
 class AdminMeetingTypesTest {
-
     @Transactional
     void seedSecret() {
         MeetingType secret = new MeetingType();
@@ -38,84 +36,92 @@ class AdminMeetingTypesTest {
     @Test
     void cardRendersAbsoluteCopyLinkAndButton() {
         seedCoffee();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(containsString("data-copy-link=\"http://localhost:8080/admin/coffee\""))
-                .body(containsString("copy-link-btn"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .body(containsString("data-copy-link=\"http://localhost:8080/admin/coffee\""))
+            .body(containsString("copy-link-btn"));
     }
 
     @Test
     void pageIncludesToastAndClipboardScript() {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(containsString("id=\"copy-toast\""))
-                .body(containsString("navigator.clipboard"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .body(containsString("id=\"copy-toast\""))
+            .body(containsString("navigator.clipboard"));
     }
 
     @Test
     void adminListShowsSecretTypeUnlikePublicLanding() {
         seedSecret();
         // Admin sees it (listAll) ...
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(containsString("Admin Visible Secret"))
-                .body(containsString("secret")); // the "secret" badge
-
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .body(containsString("Admin Visible Secret"))
+            // the "secret" badge
+            .body(containsString("secret"));
         // ... but the public landing (listPublic) does not.
-        given().when()
-                .get("/")
-                .then()
-                .statusCode(200)
-                .body(org.hamcrest.Matchers.not(containsString("Admin Visible Secret")));
+        given()
+            .when()
+            .get("/")
+            .then()
+            .statusCode(200)
+            .body(org.hamcrest.Matchers.not(containsString("Admin Visible Secret")));
     }
 
     @Test
     void createFormExposesNewFields() {
         // The create form must offer the Plan 1b fields: min-notice, horizon, location, approval.
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(containsString("name=\"minNoticeMinutes\""))
-                .body(containsString("name=\"horizonDays\""))
-                .body(containsString("name=\"locationType\"")) // GOOGLE_MEET/PHONE/IN_PERSON/CUSTOM dropdown
-                .body(containsString("GOOGLE_MEET"))
-                .body(containsString("name=\"locationDetail\""))
-                .body(containsString("name=\"slotIntervalMinutes\"")) // slot cadence (blank = back-to-back)
-                .body(containsString("name=\"requiresApproval\"")); // approval checkbox
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .body(containsString("name=\"minNoticeMinutes\""))
+            .body(containsString("name=\"horizonDays\""))
+            // GOOGLE_MEET/PHONE/IN_PERSON/CUSTOM dropdown
+            .body(containsString("name=\"locationType\""))
+            .body(containsString("GOOGLE_MEET"))
+            .body(containsString("name=\"locationDetail\""))
+            // slot cadence (blank = back-to-back)
+            .body(containsString("name=\"slotIntervalMinutes\""))
+            // approval checkbox
+            .body(containsString("name=\"requiresApproval\""));
     }
 
     @Test
     void createMeetingTypeViaFormPersistsNewFields() {
         var slug = "admin-created-" + System.nanoTime();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Created Via Admin")
-                .formParam("slug", slug)
-                .formParam("durationMinutes", "45")
-                .formParam("secret", "on")
-                .formParam("minNoticeMinutes", "120")
-                .formParam("horizonDays", "30")
-                .formParam("locationType", "PHONE")
-                .formParam("locationDetail", "Call +1-555-0100")
-                .formParam("slotIntervalMinutes", "15")
-                .formParam("requiresApproval", "on")
-                .when()
-                .post("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(containsString(slug));
-
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Created Via Admin")
+            .formParam("slug", slug)
+            .formParam("durationMinutes", "45")
+            .formParam("secret", "on")
+            .formParam("minNoticeMinutes", "120")
+            .formParam("horizonDays", "30")
+            .formParam("locationType", "PHONE")
+            .formParam("locationDetail", "Call +1-555-0100")
+            .formParam("slotIntervalMinutes", "15")
+            .formParam("requiresApproval", "on")
+            .when()
+            .post("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .body(containsString(slug));
         // Persisted with the new fields (resolves via findBySlug).
         MeetingType created = MeetingType.findBySlug(1L, slug);
         org.junit.jupiter.api.Assertions.assertNotNull(created);
@@ -129,47 +135,56 @@ class AdminMeetingTypesTest {
 
     @Test
     void createFormUsesAccordionSectionsAndLocationTiles() {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(containsString("class=\"collapse")) // daisyUI accordion sections
-                .body(containsString("has-[:checked]:btn-primary")) // location picker tiles
-                .body(containsString("type=\"radio\" name=\"locationType\"")) // tiles are radios
-                .body(containsString("value=\"GOOGLE_MEET\"")); // a tile per LocationType
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            // daisyUI accordion sections
+            .body(containsString("class=\"collapse"))
+            // location picker tiles
+            .body(containsString("has-[:checked]:btn-primary"))
+            // tiles are radios
+            .body(containsString("type=\"radio\" name=\"locationType\""))
+            // a tile per LocationType
+            .body(containsString("value=\"GOOGLE_MEET\""));
     }
 
     @Test
     void locationTilesHaveEqualFixedHeight() {
         // daisyUI 5: location tiles are equal-size grid items — a fixed-column grid of
         // btn labels with identical padding (grid stretch + uniform btn shape = equal height).
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(containsString("grid grid-cols-2 sm:grid-cols-4")) // fixed-column tile grid
-                .body(containsString("btn btn-outline h-auto py-3 flex-col")); // uniform tile shape
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            // fixed-column tile grid
+            .body(containsString("grid grid-cols-2 sm:grid-cols-4"))
+            // uniform tile shape
+            .body(containsString("btn btn-outline h-auto py-3 flex-col"));
     }
 
     @Test
     void blankSlotIntervalPersistsAsNull() {
         var slug = "admin-blank-interval-" + System.nanoTime();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Blank Interval")
-                .formParam("slug", slug)
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "GOOGLE_MEET")
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                .when()
-                .post("/me/meeting-types")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Blank Interval")
+            .formParam("slug", slug)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "GOOGLE_MEET")
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            .when()
+            .post("/me/meeting-types")
+            .then()
+            .statusCode(200);
 
         MeetingType created = MeetingType.findBySlug(1L, slug);
         org.junit.jupiter.api.Assertions.assertNotNull(created);

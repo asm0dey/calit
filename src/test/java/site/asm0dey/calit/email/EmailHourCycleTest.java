@@ -1,22 +1,17 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -34,26 +29,26 @@ import site.asm0dey.calit.google.CalendarPort;
  */
 @QuarkusTest
 class EmailHourCycleTest {
-
     private static final String OWNER_EMAIL = "owner-hc@example.com";
     private static final String INVITEE_EMAIL = "invitee-hc@example.com";
-
     @Inject
     EmailService emailService;
-
     @Inject
     MockMailbox mailbox;
-
     @InjectMock
     CalendarPort calendarPort;
 
     @BeforeEach
     void init() {
         mailbox.clear();
-        QuarkusTransaction.requiringNew().run(() -> Booking.deleteAll());
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> Booking.deleteAll());
     }
 
-    /** 13:00 UTC is 13:00 in UTC — 24h renders "13:00", 12h renders "1:00 PM". */
+    /**
+     * 13:00 UTC is 13:00 in UTC — 24h renders "13:00", 12h renders "1:00 PM".
+     */
     private long seed(String hostTimeFormat) {
         return QuarkusTransaction.requiringNew().call(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);

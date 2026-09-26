@@ -1,9 +1,8 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.Duration;
-import java.time.Instant;
 
 /**
  * One mail that failed a direct SMTP send and is parked for retry. {@link #sentAt} null = unsent;
@@ -13,61 +12,66 @@ import java.time.Instant;
 @Entity
 @Table(name = "email_outbox")
 public class EmailOutbox extends PanacheEntityBase {
-
-    /** ponytail: hardcoded caps -- they don't vary per deployment. Make config only if ops asks. */
+    /**
+     * ponytail: hardcoded caps -- they don't vary per deployment. Make config only if ops asks.
+     */
     static final int MAX_ATTEMPTS = 10;
-
     static final Duration BASE_BACKOFF = Duration.ofMinutes(1);
     static final Duration CAP_BACKOFF = Duration.ofHours(1);
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
-
     @Column(name = "recipient", nullable = false, length = 320)
     public String recipient;
-
     @Column(name = "subject", nullable = false)
     public String subject;
-
     @Column(name = "html_body", nullable = false)
     public String htmlBody;
-
-    /** Optional single .ics attachment; null = none. */
+    /**
+     * Optional single .ics attachment; null = none.
+     */
     @Column(name = "ics_bytes")
     public byte[] icsBytes;
-
     @Column(name = "attempts", nullable = false)
     public int attempts;
-
     @Column(name = "last_error")
     public String lastError;
-
-    /** Usefulness deadline (e.g. reset-token expiry); null = no deadline (retry until attempt cap). */
+    /**
+     * Usefulness deadline (e.g. reset-token expiry); null = no deadline (retry until attempt cap).
+     */
     @Column(name = "not_after")
     public Instant notAfter;
-
-    /** Due time; null = dead (attempt-capped or deadline passed). */
+    /**
+     * Due time; null = dead (attempt-capped or deadline passed).
+     */
     @Column(name = "next_attempt_at")
     public Instant nextAttemptAt;
-
     @Column(name = "sent_at")
     public Instant sentAt;
-
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
-
-    /** The booking this mail is about, when there is one. Lets erasure purge it by key, not by address. */
+    /**
+     * The booking this mail is about, when there is one. Lets erasure purge it by key, not by address.
+     */
     @Column(name = "booking_id")
     public Long bookingId;
-
-    /** The owner this mail belongs to, when known. Cascades away with the account. */
+    /**
+     * The owner this mail belongs to, when known. Cascades away with the account.
+     */
     @Column(name = "owner_id")
     public Long ownerId;
 
-    /** Parks a failed send with no booking/owner link — see {@link #enqueue(String, String, String, byte[], Instant, String, MailTag)}. */
+    /**
+     * Parks a failed send with no booking/owner link — see {@link #enqueue(String, String, String, byte[], Instant, String, MailTag)}.
+     */
     public static Long enqueue(
-            String recipient, String subject, String htmlBody, byte[] icsBytes, Instant notAfter, String error) {
+            String recipient,
+            String subject,
+            String htmlBody,
+            byte[] icsBytes,
+            Instant notAfter,
+            String error
+    ) {
         return enqueue(recipient, subject, htmlBody, icsBytes, notAfter, error, MailTag.none());
     }
 
@@ -84,7 +88,8 @@ public class EmailOutbox extends PanacheEntityBase {
             byte[] icsBytes,
             Instant notAfter,
             String error,
-            MailTag tag) {
+            MailTag tag
+    ) {
         var r = new EmailOutbox();
         r.recipient = recipient;
         r.subject = subject;
@@ -93,7 +98,8 @@ public class EmailOutbox extends PanacheEntityBase {
         r.attempts = 0;
         r.lastError = error;
         r.notAfter = notAfter;
-        r.nextAttemptAt = Instant.now(); // due immediately
+        // due immediately
+        r.nextAttemptAt = Instant.now();
         r.sentAt = null;
         r.createdAt = Instant.now();
         r.bookingId = tag.bookingId();
@@ -102,33 +108,45 @@ public class EmailOutbox extends PanacheEntityBase {
         return r.id;
     }
 
-    /** Drops every parked mail about one booking. Returns the row count. */
+    /**
+     * Drops every parked mail about one booking. Returns the row count.
+     */
     public static long deleteForBooking(Long bookingId) {
         return delete("bookingId", bookingId);
     }
 
-    /** Drops every parked mail belonging to one owner. Returns the row count. */
+    /**
+     * Drops every parked mail belonging to one owner. Returns the row count.
+     */
     public static long deleteForOwner(Long ownerId) {
         return delete("ownerId", ownerId);
     }
 
-    /** True once a deadlined mail is no longer worth delivering. */
+    /**
+     * True once a deadlined mail is no longer worth delivering.
+     */
     public boolean pastDeadline(Instant now) {
         return notAfter != null && now.isAfter(notAfter);
     }
 
-    /** Mark dead without sending: the usefulness deadline passed before we could deliver. */
+    /**
+     * Mark dead without sending: the usefulness deadline passed before we could deliver.
+     */
     public void markExpired() {
-        nextAttemptAt = null; // dead: excluded by the claim predicate, kept for inspection
+        // dead: excluded by the claim predicate, kept for inspection
+        nextAttemptAt = null;
         lastError = "deadline passed before delivery";
     }
 
-    /** After a failed retry: bump attempts; reschedule with exponential backoff, or mark dead at the cap. */
+    /**
+     * After a failed retry: bump attempts; reschedule with exponential backoff, or mark dead at the cap.
+     */
     public void deadOrBackoff(String error) {
         attempts++;
         lastError = error;
         if (attempts >= MAX_ATTEMPTS) {
-            nextAttemptAt = null; // dead: excluded by the partial index / claim predicate
+            // dead: excluded by the partial index / claim predicate
+            nextAttemptAt = null;
             return;
         }
         var secs = Math.min(CAP_BACKOFF.getSeconds(), BASE_BACKOFF.getSeconds() << attempts);

@@ -1,7 +1,6 @@
 package site.asm0dey.calit.user;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
@@ -9,7 +8,6 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class CurrentOwnerTest {
-
     @Inject
     CurrentOwner currentOwner;
 

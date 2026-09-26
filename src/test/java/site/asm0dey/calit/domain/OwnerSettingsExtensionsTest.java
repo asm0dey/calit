@@ -1,14 +1,12 @@
 package site.asm0dey.calit.domain;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class OwnerSettingsExtensionsTest {
-
     @Test
     @TestTransaction
     void ownerNotificationsDefaultsTrueAndToggles() {
@@ -25,7 +23,8 @@ class OwnerSettingsExtensionsTest {
 
         OwnerSettings loaded = OwnerSettings.forOwner(1L);
         assertNotNull(loaded);
-        assertTrue(loaded.ownerNotificationsEnabled); // DB default TRUE
+        // DB default TRUE
+        assertTrue(loaded.ownerNotificationsEnabled);
 
         loaded.ownerNotificationsEnabled = false;
         loaded.persist();

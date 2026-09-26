@@ -1,12 +1,10 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Set;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
@@ -16,22 +14,14 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  */
 @ApplicationScoped
 public class CaptchaProviderConfig {
-
     private static final Set<String> VALID = Set.of("none", "turnstile", "altcha");
-
     final Optional<String> explicit;
-
     // Reuse the existing render flag (both turnstile flags come from ${TURNSTILE_ENABLED}).
     final boolean turnstileEnabled;
-
     final Optional<String> altchaHmacKey;
-
     final long altchaMaxNumber;
-
     final Optional<String> turnstileSecret;
-
     final String turnstileVerifyUrl;
-
     final Optional<String> turnstileSiteKey;
 
     @Inject
@@ -41,11 +31,10 @@ public class CaptchaProviderConfig {
             @ConfigProperty(name = "calit.captcha.altcha.hmac-key") Optional<String> altchaHmacKey,
             @ConfigProperty(name = "calit.captcha.altcha.max-number", defaultValue = "100000") long altchaMaxNumber,
             @ConfigProperty(name = "calit.abuse.turnstile.secret") Optional<String> turnstileSecret,
-            @ConfigProperty(
-                            name = "calit.abuse.turnstile.verify-url",
-                            defaultValue = "https://challenges.cloudflare.com/turnstile/v0/siteverify")
-                    String turnstileVerifyUrl,
-            @ConfigProperty(name = "calit.turnstile.site-key") Optional<String> turnstileSiteKey) {
+            @ConfigProperty(name = "calit.abuse.turnstile.verify-url", defaultValue = "https://challenges.cloudflare."
+            + "com/turnstile/v0/siteverify") String turnstileVerifyUrl,
+            @ConfigProperty(name = "calit.turnstile.site-key") Optional<String> turnstileSiteKey
+    ) {
         this.explicit = explicit;
         this.turnstileEnabled = turnstileEnabled;
         this.altchaHmacKey = altchaHmacKey;
@@ -95,8 +84,7 @@ public class CaptchaProviderConfig {
 
     // Fail fast: altcha with no HMAC key would silently accept forged solutions.
     void validate(@Observes StartupEvent ev) {
-        if ("altcha".equals(provider())
-                && altchaHmacKey.filter(s -> !s.isBlank()).isEmpty()) {
+        if ("altcha".equals(provider()) && altchaHmacKey.filter(s -> !s.isBlank()).isEmpty()) {
             throw new IllegalStateException("CAPTCHA_PROVIDER=altcha requires ALTCHA_HMAC_KEY");
         }
     }

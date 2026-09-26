@@ -9,10 +9,11 @@ package site.asm0dey.calit.email;
  * before V34 has neither.
  */
 public record MailTag(Long bookingId, Long ownerId) {
-
     private static final MailTag NONE = new MailTag(null, null);
 
-    /** No link recorded — the age purge is the only thing that clears these. */
+    /**
+     * No link recorded — the age purge is the only thing that clears these.
+     */
     public static MailTag none() {
         return NONE;
     }

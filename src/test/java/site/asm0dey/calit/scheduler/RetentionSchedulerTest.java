@@ -1,16 +1,13 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -27,22 +24,25 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class RetentionSchedulerTest {
-
     @Inject
     RetentionScheduler scheduler;
 
     private static boolean erased(Long id) {
-        return QuarkusTransaction.requiringNew()
-                .call(() -> Booking.<Booking>findById(id).isErased());
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(id).isErased());
     }
 
     private static Instant erasedAt(Long id) {
-        return QuarkusTransaction.requiringNew().call(() -> Booking.<Booking>findById(id).erasedAt);
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(id).erasedAt);
     }
 
     @Test
     void unsetInstanceDefaultIsANoOp() {
-        Long id = ErasureFixtures.seedPastBookingId(); // ends 30 days ago
+        // ends 30 days ago
+        Long id = ErasureFixtures.seedPastBookingId();
         scheduler.sweep();
         assertFalse(erased(id), "an unset retention window must keep bookings forever");
     }
@@ -97,9 +97,10 @@ class RetentionSchedulerTest {
      */
     @Test
     void oneSweepDrainsMoreThanOneBatch() {
-        var ids = java.util.stream.IntStream.range(0, 5)
-                .mapToObj(i -> ErasureFixtures.seedPastBookingId())
-                .toList();
+        var ids = java.util.stream.IntStream
+            .range(0, 5)
+            .mapToObj(i -> ErasureFixtures.seedPastBookingId())
+            .toList();
         QuarkusTransaction.requiringNew().run(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);
             s.bookingRetentionDays = 7;
@@ -130,14 +131,20 @@ class RetentionSchedulerTest {
         assertFalse(erased(id), "clamped to ~100 years, a 30-day-old booking is still well inside the window");
     }
 
-    /** A booking whose window has not yet elapsed must be kept — the mirror of the 7-day-catches case. */
+    /**
+     * A booking whose window has not yet elapsed must be kept — the mirror of the 7-day-catches case.
+     */
     @Test
     void aBookingStillInsideItsWindowIsKept() {
-        Long id = ErasureFixtures.seedPastBookingId(); // ends ~30 days ago
-        QuarkusTransaction.requiringNew().run(() -> {
-            OwnerSettings s = OwnerSettings.forOwner(1L);
-            s.bookingRetentionDays = 60; // window longer than the booking's age
-        });
+        // ends ~30 days ago
+        Long id = ErasureFixtures.seedPastBookingId();
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                OwnerSettings s = OwnerSettings.forOwner(1L);
+                // window longer than the booking's age
+                s.bookingRetentionDays = 60;
+            });
         scheduler.sweep();
         assertFalse(erased(id), "a 60-day window must keep a booking that ended only 30 days ago");
     }
@@ -149,50 +156,57 @@ class RetentionSchedulerTest {
      */
     @Test
     void twoOwnersWithDifferentWindowsOnlyErasesTheOnePastItsOwnWindow() {
-        Long ownerOneBookingId = ErasureFixtures.seedPastBookingId(); // owner 1, ends ~30 days ago
-        QuarkusTransaction.requiringNew().run(() -> {
-            OwnerSettings s = OwnerSettings.forOwner(1L);
-            s.bookingRetentionDays = 7; // shorter than 30 -> must be erased
-        });
+        // owner 1, ends ~30 days ago
+        Long ownerOneBookingId = ErasureFixtures.seedPastBookingId();
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                OwnerSettings s = OwnerSettings.forOwner(1L);
+                // shorter than 30 -> must be erased
+                s.bookingRetentionDays = 7;
+            });
 
-        Long ownerTwoBookingId = QuarkusTransaction.requiringNew().call(() -> {
-            var u = new AppUser();
-            u.username = "retention-owner-two";
-            u.passwordHash = "x";
-            u.roles = "user";
-            u.enabled = true;
-            u.isAdmin = false;
-            u.createdAt = Instant.now();
-            u.persist();
+        Long ownerTwoBookingId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                var u = new AppUser();
+                u.username = "retention-owner-two";
+                u.passwordHash = "x";
+                u.roles = "user";
+                u.enabled = true;
+                u.isAdmin = false;
+                u.createdAt = Instant.now();
+                u.persist();
 
-            var s = new OwnerSettings();
-            s.ownerId = u.id;
-            s.ownerName = "Owner Two";
-            s.ownerEmail = "owner-two@example.com";
-            s.timezone = "UTC";
-            s.bookingRetentionDays = 365; // much longer -> must be kept
-            s.persist();
+                var s = new OwnerSettings();
+                s.ownerId = u.id;
+                s.ownerName = "Owner Two";
+                s.ownerEmail = "owner-two@example.com";
+                s.timezone = "UTC";
+                // much longer -> must be kept
+                s.bookingRetentionDays = 365;
+                s.persist();
 
-            var t = new MeetingType();
-            t.ownerId = u.id;
-            t.name = "Owner Two's type";
-            t.slug = "retention-owner-two-type";
-            t.durationMinutes = 30;
-            t.persist();
+                var t = new MeetingType();
+                t.ownerId = u.id;
+                t.name = "Owner Two's type";
+                t.slug = "retention-owner-two-type";
+                t.durationMinutes = 30;
+                t.persist();
 
-            var b = new Booking();
-            b.ownerId = u.id;
-            b.meetingTypeId = t.id;
-            b.inviteeName = "Other Invitee";
-            b.inviteeEmail = "other@example.com";
-            b.startUtc = Instant.now().minus(30, ChronoUnit.DAYS);
-            b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
-            b.status = BookingStatus.CONFIRMED;
-            b.createdAt = Instant.now().minus(31, ChronoUnit.DAYS);
-            b.manageToken = UUID.randomUUID().toString();
-            b.persist();
-            return b.id;
-        });
+                var b = new Booking();
+                b.ownerId = u.id;
+                b.meetingTypeId = t.id;
+                b.inviteeName = "Other Invitee";
+                b.inviteeEmail = "other@example.com";
+                b.startUtc = Instant.now().minus(30, ChronoUnit.DAYS);
+                b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
+                b.status = BookingStatus.CONFIRMED;
+                b.createdAt = Instant.now().minus(31, ChronoUnit.DAYS);
+                b.manageToken = UUID.randomUUID().toString();
+                b.persist();
+                return b.id;
+            });
 
         scheduler.sweep();
 

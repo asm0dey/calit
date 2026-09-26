@@ -11,7 +11,6 @@ import jakarta.ws.rs.core.Response;
  */
 @RequestScoped
 public class CurrentOwner {
-
     private AppUser owner;
 
     public void set(AppUser owner) {
@@ -26,12 +25,16 @@ public class CurrentOwner {
         return owner != null;
     }
 
-    /** The owner's id, or null when unset. */
+    /**
+     * The owner's id, or null when unset.
+     */
     public Long id() {
         return owner == null ? null : owner.id;
     }
 
-    /** The owner, or a 401 WebApplicationException when no owner has been resolved. */
+    /**
+     * The owner, or a 401 WebApplicationException when no owner has been resolved.
+     */
     public AppUser require() {
         if (owner == null) {
             throw new WebApplicationException("No owner in request scope", Response.Status.UNAUTHORIZED);

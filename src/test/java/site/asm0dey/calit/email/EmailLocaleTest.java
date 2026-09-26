@@ -1,23 +1,15 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -36,30 +28,26 @@ import site.asm0dey.calit.i18n.AppLocales;
  */
 @QuarkusTest
 class EmailLocaleTest {
-
     private static final String OWNER_EMAIL = "owner-locale@example.com";
     private static final String INVITEE_EMAIL = "invitee-locale@example.com";
-
     @Inject
     site.asm0dey.calit.i18n.AppMessageResolver messages;
-
     @Inject
     EmailService emailService;
-
     @Inject
     MockMailbox mailbox;
-
     @InjectMock
     CalendarPort calendarPort;
 
     @BeforeEach
     void init() {
         mailbox.clear();
-        QuarkusTransaction.requiringNew().run(() -> Booking.deleteAll());
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> Booking.deleteAll());
     }
 
     // ---- 1. Subject accessor: German differs from English ----
-
     @Test
     void germanSubjectResolves() {
         String deSubj = messages.forTag("de").email_confirmed_subject("X");
@@ -85,7 +73,6 @@ class EmailLocaleTest {
     }
 
     // ---- 1b. h12 pattern is a valid, renderable DateTimeFormatter pattern in every locale ----
-
     @Test
     void h12DatetimePatternResolvesAndFormatsForEveryLocale() {
         var instant = Instant.parse("2026-06-08T13:00:00Z");
@@ -102,7 +89,9 @@ class EmailLocaleTest {
                 formatter = DateTimeFormatter.ofPattern(pattern, locale);
             } catch (IllegalArgumentException e) {
                 throw new AssertionError(
-                        "h12 pattern for '" + tag + "' is not a valid DateTimeFormatter pattern: " + pattern, e);
+                        "h12 pattern for '" + tag + "' is not a valid DateTimeFormatter pattern: " + pattern,
+                        e
+                );
             }
 
             String rendered;
@@ -116,51 +105,54 @@ class EmailLocaleTest {
     }
 
     // ---- 2. End-to-end: de booking → German date string in body ----
-
     @Test
     void germanBookingConfirmationContainsGermanDate() {
-        when(calendarPort.isConnected(anyLong())).thenReturn(false); // invitee fallback active
-
+        // invitee fallback active
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
         // Seed a booking with locale="de"; start on a known date so we can predict the German weekday.
         // 2026-06-08 is a Monday → "Montag" in German.
-        long bookingId = QuarkusTransaction.requiringNew().call(() -> {
-            OwnerSettings s = OwnerSettings.forOwner(1L);
-            if (s == null) {
-                s = new OwnerSettings();
-                s.ownerId = 1L;
-            }
-            s.ownerName = "Owner";
-            s.ownerEmail = OWNER_EMAIL;
-            s.timezone = "Europe/Berlin";
-            s.ownerNotificationsEnabled = true;
-            s.locale = "en"; // owner locale stays English
-            s.persist();
+        long bookingId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                OwnerSettings s = OwnerSettings.forOwner(1L);
+                if (s == null) {
+                    s = new OwnerSettings();
+                    s.ownerId = 1L;
+                }
+                s.ownerName = "Owner";
+                s.ownerEmail = OWNER_EMAIL;
+                s.timezone = "Europe/Berlin";
+                s.ownerNotificationsEnabled = true;
+                // owner locale stays English
+                s.locale = "en";
+                s.persist();
 
-            MeetingType t = new MeetingType();
-            t.ownerId = 1L;
-            t.name = "DE Call";
-            t.slug = "de-call-" + System.nanoTime();
-            t.durationMinutes = 30;
-            t.locationType = LocationType.PHONE;
-            t.locationDetail = "+49 30 12345";
-            t.persist();
-
-            var start = Instant.parse("2026-06-08T09:00:00Z"); // Monday
-            Booking b = new Booking();
-            b.ownerId = 1L;
-            b.meetingTypeId = t.id;
-            b.inviteeName = "Hans Müller";
-            b.inviteeEmail = INVITEE_EMAIL;
-            b.startUtc = start;
-            b.endUtc = start.plus(30, ChronoUnit.MINUTES);
-            b.status = BookingStatus.CONFIRMED;
-            b.manageToken = UUID.randomUUID().toString();
-            b.createdAt = Instant.now();
-            b.answers = Map.of();
-            b.locale = "de"; // invitee's locale is German
-            b.persist();
-            return b.id;
-        });
+                MeetingType t = new MeetingType();
+                t.ownerId = 1L;
+                t.name = "DE Call";
+                t.slug = "de-call-" + System.nanoTime();
+                t.durationMinutes = 30;
+                t.locationType = LocationType.PHONE;
+                t.locationDetail = "+49 30 12345";
+                t.persist();
+                // Monday
+                var start = Instant.parse("2026-06-08T09:00:00Z");
+                Booking b = new Booking();
+                b.ownerId = 1L;
+                b.meetingTypeId = t.id;
+                b.inviteeName = "Hans Müller";
+                b.inviteeEmail = INVITEE_EMAIL;
+                b.startUtc = start;
+                b.endUtc = start.plus(30, ChronoUnit.MINUTES);
+                b.status = BookingStatus.CONFIRMED;
+                b.manageToken = UUID.randomUUID().toString();
+                b.createdAt = Instant.now();
+                b.answers = Map.of();
+                // invitee's locale is German
+                b.locale = "de";
+                b.persist();
+                return b.id;
+            });
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
@@ -169,63 +161,66 @@ class EmailLocaleTest {
 
         Mail inviteeMail = toInvitee.getFirst();
         String html = inviteeMail.getHtml();
-
         // German weekday for 2026-06-08 (Monday) = "Montag"
         assertTrue(
                 html.contains("Montag") || html.contains("um"),
-                "German date in invitee body must contain 'Montag' (Monday) or German 'um' connector; got: " + html);
-
+                "German date in invitee body must contain 'Montag' (Monday) or German 'um' connector; got: " + html
+        );
         // Subject must be the German confirmation subject
         String subject = inviteeMail.getSubject();
         assertTrue(
                 subject.contains("bestätigt") || subject.toLowerCase().contains("buchung"),
-                "German invitee subject must be in German; got: " + subject);
+                "German invitee subject must be in German; got: " + subject
+        );
     }
 
     // ---- 3. Owner-copy uses owner locale (English when owner.locale = "en") ----
-
     @Test
     void ownerCopyUsesOwnerLocale() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
 
-        long bookingId = QuarkusTransaction.requiringNew().call(() -> {
-            OwnerSettings s = OwnerSettings.forOwner(1L);
-            if (s == null) {
-                s = new OwnerSettings();
-                s.ownerId = 1L;
-            }
-            s.ownerName = "Owner";
-            s.ownerEmail = OWNER_EMAIL;
-            s.timezone = "Europe/London";
-            s.ownerNotificationsEnabled = true;
-            s.locale = "en"; // English owner
-            s.persist();
+        long bookingId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                OwnerSettings s = OwnerSettings.forOwner(1L);
+                if (s == null) {
+                    s = new OwnerSettings();
+                    s.ownerId = 1L;
+                }
+                s.ownerName = "Owner";
+                s.ownerEmail = OWNER_EMAIL;
+                s.timezone = "Europe/London";
+                s.ownerNotificationsEnabled = true;
+                // English owner
+                s.locale = "en";
+                s.persist();
 
-            MeetingType t = new MeetingType();
-            t.ownerId = 1L;
-            t.name = "Owner Locale Call";
-            t.slug = "owner-locale-" + System.nanoTime();
-            t.durationMinutes = 30;
-            t.locationType = LocationType.PHONE;
-            t.locationDetail = "+44 1234";
-            t.persist();
-
-            var start = Instant.parse("2026-06-08T09:00:00Z"); // Monday
-            Booking b = new Booking();
-            b.ownerId = 1L;
-            b.meetingTypeId = t.id;
-            b.inviteeName = "Anna";
-            b.inviteeEmail = INVITEE_EMAIL;
-            b.startUtc = start;
-            b.endUtc = start.plus(30, ChronoUnit.MINUTES);
-            b.status = BookingStatus.CONFIRMED;
-            b.manageToken = UUID.randomUUID().toString();
-            b.createdAt = Instant.now();
-            b.answers = Map.of();
-            b.locale = "de"; // invitee German, owner English
-            b.persist();
-            return b.id;
-        });
+                MeetingType t = new MeetingType();
+                t.ownerId = 1L;
+                t.name = "Owner Locale Call";
+                t.slug = "owner-locale-" + System.nanoTime();
+                t.durationMinutes = 30;
+                t.locationType = LocationType.PHONE;
+                t.locationDetail = "+44 1234";
+                t.persist();
+                // Monday
+                var start = Instant.parse("2026-06-08T09:00:00Z");
+                Booking b = new Booking();
+                b.ownerId = 1L;
+                b.meetingTypeId = t.id;
+                b.inviteeName = "Anna";
+                b.inviteeEmail = INVITEE_EMAIL;
+                b.startUtc = start;
+                b.endUtc = start.plus(30, ChronoUnit.MINUTES);
+                b.status = BookingStatus.CONFIRMED;
+                b.manageToken = UUID.randomUUID().toString();
+                b.createdAt = Instant.now();
+                b.answers = Map.of();
+                // invitee German, owner English
+                b.locale = "de";
+                b.persist();
+                return b.id;
+            });
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
@@ -237,184 +232,192 @@ class EmailLocaleTest {
         String html = ownerMail.getHtml();
         assertTrue(
                 html.contains("Monday") || html.contains("at"),
-                "English owner email must use English date; got: " + html);
+                "English owner email must use English date; got: " + html
+        );
     }
 
     // ---- 4. German invitee email body contains translated body strings ----
-
     @Test
     void germanInviteeBodyContainsGermanBodyStrings() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
 
-        long bookingId = QuarkusTransaction.requiringNew().call(() -> {
-            OwnerSettings s = OwnerSettings.forOwner(1L);
-            if (s == null) {
-                s = new OwnerSettings();
-                s.ownerId = 1L;
-            }
-            s.ownerName = "Owner";
-            s.ownerEmail = OWNER_EMAIL;
-            s.timezone = "Europe/Berlin";
-            s.ownerNotificationsEnabled = true;
-            s.locale = "en";
-            s.persist();
+        long bookingId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                OwnerSettings s = OwnerSettings.forOwner(1L);
+                if (s == null) {
+                    s = new OwnerSettings();
+                    s.ownerId = 1L;
+                }
+                s.ownerName = "Owner";
+                s.ownerEmail = OWNER_EMAIL;
+                s.timezone = "Europe/Berlin";
+                s.ownerNotificationsEnabled = true;
+                s.locale = "en";
+                s.persist();
 
-            MeetingType t = new MeetingType();
-            t.ownerId = 1L;
-            t.name = "DE Body Test";
-            t.slug = "de-body-" + System.nanoTime();
-            t.durationMinutes = 45;
-            t.locationType = LocationType.PHONE;
-            t.locationDetail = "+49 30 999";
-            t.persist();
+                MeetingType t = new MeetingType();
+                t.ownerId = 1L;
+                t.name = "DE Body Test";
+                t.slug = "de-body-" + System.nanoTime();
+                t.durationMinutes = 45;
+                t.locationType = LocationType.PHONE;
+                t.locationDetail = "+49 30 999";
+                t.persist();
 
-            var start = Instant.parse("2026-06-08T10:00:00Z");
-            Booking b = new Booking();
-            b.ownerId = 1L;
-            b.meetingTypeId = t.id;
-            b.inviteeName = "Greta Haber";
-            b.inviteeEmail = INVITEE_EMAIL;
-            b.startUtc = start;
-            b.endUtc = start.plus(45, ChronoUnit.MINUTES);
-            b.status = BookingStatus.CONFIRMED;
-            b.manageToken = java.util.UUID.randomUUID().toString();
-            b.createdAt = Instant.now();
-            b.answers = Map.of();
-            b.locale = "de"; // German invitee
-            b.persist();
-            return b.id;
-        });
+                var start = Instant.parse("2026-06-08T10:00:00Z");
+                Booking b = new Booking();
+                b.ownerId = 1L;
+                b.meetingTypeId = t.id;
+                b.inviteeName = "Greta Haber";
+                b.inviteeEmail = INVITEE_EMAIL;
+                b.startUtc = start;
+                b.endUtc = start.plus(45, ChronoUnit.MINUTES);
+                b.status = BookingStatus.CONFIRMED;
+                b.manageToken = java.util.UUID.randomUUID().toString();
+                b.createdAt = Instant.now();
+                b.answers = Map.of();
+                // German invitee
+                b.locale = "de";
+                b.persist();
+                return b.id;
+            });
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee must receive one confirmation email");
         String html = toInvitee.getFirst().getHtml();
-
         // German body strings added by task 9d — both must be present (body-specific, not just subject)
         assertTrue(html.contains("Hallo"), "German confirmation body must contain greeting 'Hallo'; got: " + html);
-        assertTrue(
-                html.contains("Minuten"), "German confirmation body must contain 'Minuten' (duration); got: " + html);
+        assertTrue(html.contains("Minuten"), "German confirmation body must contain 'Minuten' (duration); got: "
+                + html);
     }
 
     // ---- 5. English default locale email body contains English body strings ----
-
     @Test
     void englishDefaultBodyContainsEnglishBodyStrings() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
 
-        long bookingId = QuarkusTransaction.requiringNew().call(() -> {
-            OwnerSettings s = OwnerSettings.forOwner(1L);
-            if (s == null) {
-                s = new OwnerSettings();
-                s.ownerId = 1L;
-            }
-            s.ownerName = "Owner";
-            s.ownerEmail = OWNER_EMAIL;
-            s.timezone = "Europe/London";
-            s.ownerNotificationsEnabled = true;
-            s.locale = "en";
-            s.persist();
+        long bookingId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                OwnerSettings s = OwnerSettings.forOwner(1L);
+                if (s == null) {
+                    s = new OwnerSettings();
+                    s.ownerId = 1L;
+                }
+                s.ownerName = "Owner";
+                s.ownerEmail = OWNER_EMAIL;
+                s.timezone = "Europe/London";
+                s.ownerNotificationsEnabled = true;
+                s.locale = "en";
+                s.persist();
 
-            MeetingType t = new MeetingType();
-            t.ownerId = 1L;
-            t.name = "EN Body Test";
-            t.slug = "en-body-" + System.nanoTime();
-            t.durationMinutes = 30;
-            t.locationType = LocationType.PHONE;
-            t.locationDetail = "+44 999";
-            t.persist();
+                MeetingType t = new MeetingType();
+                t.ownerId = 1L;
+                t.name = "EN Body Test";
+                t.slug = "en-body-" + System.nanoTime();
+                t.durationMinutes = 30;
+                t.locationType = LocationType.PHONE;
+                t.locationDetail = "+44 999";
+                t.persist();
 
-            var start = Instant.parse("2026-06-08T14:00:00Z");
-            Booking b = new Booking();
-            b.ownerId = 1L;
-            b.meetingTypeId = t.id;
-            b.inviteeName = "Alice Smith";
-            b.inviteeEmail = INVITEE_EMAIL;
-            b.startUtc = start;
-            b.endUtc = start.plus(30, ChronoUnit.MINUTES);
-            b.status = BookingStatus.CONFIRMED;
-            b.manageToken = java.util.UUID.randomUUID().toString();
-            b.createdAt = Instant.now();
-            b.answers = Map.of();
-            b.locale = "en"; // English invitee
-            b.persist();
-            return b.id;
-        });
+                var start = Instant.parse("2026-06-08T14:00:00Z");
+                Booking b = new Booking();
+                b.ownerId = 1L;
+                b.meetingTypeId = t.id;
+                b.inviteeName = "Alice Smith";
+                b.inviteeEmail = INVITEE_EMAIL;
+                b.startUtc = start;
+                b.endUtc = start.plus(30, ChronoUnit.MINUTES);
+                b.status = BookingStatus.CONFIRMED;
+                b.manageToken = java.util.UUID.randomUUID().toString();
+                b.createdAt = Instant.now();
+                b.answers = Map.of();
+                // English invitee
+                b.locale = "en";
+                b.persist();
+                return b.id;
+            });
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee must receive one confirmation email");
         String html = toInvitee.getFirst().getHtml();
-
         // English body strings from task 9d — both must be present (body-specific)
         assertTrue(html.contains("Hi "), "English confirmation body must contain greeting 'Hi '; got: " + html);
         assertTrue(
-                html.contains("minutes"), "English confirmation body must contain 'minutes' (duration); got: " + html);
+                html.contains("minutes"),
+                "English confirmation body must contain 'minutes' (duration); got: " + html
+        );
     }
 
     // ---- 7. German email has <html lang="de" ----
-
     @Test
     void germanEmailHasCorrectHtmlLang() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
 
-        long bookingId = QuarkusTransaction.requiringNew().call(() -> {
-            OwnerSettings s = OwnerSettings.forOwner(1L);
-            if (s == null) {
-                s = new OwnerSettings();
-                s.ownerId = 1L;
-            }
-            s.ownerName = "Owner";
-            s.ownerEmail = OWNER_EMAIL;
-            s.timezone = "Europe/Berlin";
-            s.ownerNotificationsEnabled = true;
-            s.locale = "en"; // English owner — should get lang="en"
-            s.persist();
+        long bookingId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                OwnerSettings s = OwnerSettings.forOwner(1L);
+                if (s == null) {
+                    s = new OwnerSettings();
+                    s.ownerId = 1L;
+                }
+                s.ownerName = "Owner";
+                s.ownerEmail = OWNER_EMAIL;
+                s.timezone = "Europe/Berlin";
+                s.ownerNotificationsEnabled = true;
+                // English owner — should get lang="en"
+                s.locale = "en";
+                s.persist();
 
-            MeetingType t = new MeetingType();
-            t.ownerId = 1L;
-            t.name = "Lang Test";
-            t.slug = "lang-test-" + System.nanoTime();
-            t.durationMinutes = 30;
-            t.locationType = LocationType.PHONE;
-            t.locationDetail = "+49 30 1111";
-            t.persist();
+                MeetingType t = new MeetingType();
+                t.ownerId = 1L;
+                t.name = "Lang Test";
+                t.slug = "lang-test-" + System.nanoTime();
+                t.durationMinutes = 30;
+                t.locationType = LocationType.PHONE;
+                t.locationDetail = "+49 30 1111";
+                t.persist();
 
-            var start = Instant.parse("2026-06-08T09:00:00Z");
-            Booking b = new Booking();
-            b.ownerId = 1L;
-            b.meetingTypeId = t.id;
-            b.inviteeName = "Luisa Meier";
-            b.inviteeEmail = INVITEE_EMAIL;
-            b.startUtc = start;
-            b.endUtc = start.plus(30, ChronoUnit.MINUTES);
-            b.status = BookingStatus.CONFIRMED;
-            b.manageToken = java.util.UUID.randomUUID().toString();
-            b.createdAt = Instant.now();
-            b.answers = Map.of();
-            b.locale = "de"; // German invitee
-            b.persist();
-            return b.id;
-        });
+                var start = Instant.parse("2026-06-08T09:00:00Z");
+                Booking b = new Booking();
+                b.ownerId = 1L;
+                b.meetingTypeId = t.id;
+                b.inviteeName = "Luisa Meier";
+                b.inviteeEmail = INVITEE_EMAIL;
+                b.startUtc = start;
+                b.endUtc = start.plus(30, ChronoUnit.MINUTES);
+                b.status = BookingStatus.CONFIRMED;
+                b.manageToken = java.util.UUID.randomUUID().toString();
+                b.createdAt = Instant.now();
+                b.answers = Map.of();
+                // German invitee
+                b.locale = "de";
+                b.persist();
+                return b.id;
+            });
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
-
         // German invitee email must have lang="de"
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertEquals(1, toInvitee.size(), "invitee must receive confirmation email");
         String inviteeHtml = toInvitee.getFirst().getHtml();
         assertTrue(
                 inviteeHtml.contains("lang=\"de\""),
-                "German invitee email must have <html lang=\"de\">; got: " + inviteeHtml);
-
+                "German invitee email must have <html lang=\"de\">; got: " + inviteeHtml
+        );
         // English owner email must have lang="en"
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
         assertEquals(1, toOwner.size(), "owner must receive confirmation email");
         String ownerHtml = toOwner.getFirst().getHtml();
         assertTrue(
                 ownerHtml.contains("lang=\"en\""),
-                "English owner email must have <html lang=\"en\">; got: " + ownerHtml);
+                "English owner email must have <html lang=\"en\">; got: " + ownerHtml
+        );
     }
 }

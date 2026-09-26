@@ -1,14 +1,12 @@
 package site.asm0dey.calit.user;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class AppUserOidcTest {
-
     @Test
     @Transactional
     void createOidcUser_setsPasswordlessNonLocalAdmin_rolesTrackOidcAdmin() {
@@ -23,14 +21,17 @@ class AppUserOidcTest {
     @Test
     @Transactional
     void applyOidcAdmin_revokesOidcAdmin_butKeepsLocalAdmin() {
-        AppUser local = AppUser.create("boss", "hash", true); // local site admin
-        local.applyOidcAdmin(false); // OIDC groups say "not admin"
+        // local site admin
+        AppUser local = AppUser.create("boss", "hash", true);
+        // OIDC groups say "not admin"
+        local.applyOidcAdmin(false);
         assertTrue(local.isAdmin, "local admin is sticky");
         assertFalse(local.oidcAdmin);
         assertEquals("user,admin", local.roles, "local admin keeps admin role");
 
         AppUser granted = AppUser.createOidcUser("temp", "sub-9", true);
-        granted.applyOidcAdmin(false); // removed from Authelia admin group
+        // removed from Authelia admin group
+        granted.applyOidcAdmin(false);
         assertFalse(granted.isAdmin);
         assertFalse(granted.oidcAdmin);
         assertEquals("user", granted.roles, "OIDC-granted admin is revoked");

@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
@@ -8,9 +9,6 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestForm;
 import site.asm0dey.calit.audit.AuditLog;
@@ -31,7 +29,6 @@ import site.asm0dey.calit.user.Usernames;
 // S6813: CDI field injection is the established pattern across this codebase's beans.
 @SuppressWarnings("java:S6813")
 public class UsersResource {
-
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance users(
@@ -40,29 +37,29 @@ public class UsersResource {
                 boolean isAdmin,
                 Long pendingCount,
                 String title,
-                Long currentUserId);
+                Long currentUserId
+        );
 
         public static native TemplateInstance deleteUser(
-                String title, Long pendingCount, Long userId, String username, String error);
+                String title,
+                Long pendingCount,
+                Long userId,
+                String username,
+                String error
+        );
     }
 
     final CurrentOwner currentOwner;
-
-    /** Audit-event target prefix for a user-directed admin action. */
+    /**
+     * Audit-event target prefix for a user-directed admin action.
+     */
     private static final String USER_TARGET = "user:";
-
     final SecurityIdentity identity;
-
     final AuditLog audit;
-
     final AdminMessageResolver adminMsgs;
-
     final ActiveLocale activeLocale;
-
     final PasswordResetService resetService;
-
     final EmailService emailService;
-
     final PrivacyService privacy;
 
     @Inject
@@ -75,7 +72,8 @@ public class UsersResource {
             PasswordResetService resetService,
             EmailService emailService,
             PrivacyService privacy,
-            @ConfigProperty(name = "app.base-url") String baseUrl) {
+            @ConfigProperty(name = "app.base-url") String baseUrl
+    ) {
         this.currentOwner = currentOwner;
         this.identity = identity;
         this.audit = audit;
@@ -89,12 +87,16 @@ public class UsersResource {
 
     final String baseUrl;
 
-    /** This admin's own pending-approval count — drives the shared nav badge (consistent with other /me pages). */
+    /**
+     * This admin's own pending-approval count — drives the shared nav badge (consistent with other /me pages).
+     */
     private long pendingCount() {
         return Booking.count("ownerId = ?1 and status = ?2", currentOwner.id(), BookingStatus.PENDING);
     }
 
-    /** All users, oldest first. Page is admin-only, so isAdmin is always true here. */
+    /**
+     * All users, oldest first. Page is admin-only, so isAdmin is always true here.
+     */
     private TemplateInstance render(String error) {
         AppUser me = currentUser();
         return Templates.users(
@@ -103,7 +105,8 @@ public class UsersResource {
                 true,
                 pendingCount(),
                 adminMsgs.forLocale(activeLocale.current()).adm_users_title(),
-                me == null ? null : me.id);
+                me == null ? null : me.id
+        );
     }
 
     @GET
@@ -119,8 +122,9 @@ public class UsersResource {
         var m = adminMsgs.forLocale(activeLocale.current());
         String normalized;
         try {
-            normalized =
-                    Usernames.validateNew(username, AppUser::usernameUnavailable); // throws on invalid/reserved/taken
+            normalized = Usernames
+                // throws on invalid/reserved/taken
+                .validateNew(username, AppUser::usernameUnavailable);
         } catch (IllegalArgumentException e) {
             return render(e.getMessage());
         }
@@ -132,15 +136,18 @@ public class UsersResource {
         var now = Instant.now();
         // One tx: create the dormant user + its settings row + mint the activation token together.
         record Invited(Long userId, String token) {}
-        Invited invited = QuarkusTransaction.requiringNew().call(() -> {
-            AppUser u = AppUser.create(normalized, null, false); // null hash => cannot log in until activated
-            u.settingsComplete = false;
-            u.persist();
-            // ownerEmail holds the invite address so resend + the wizard's pre-fill both find it.
-            OwnerSettings.seed(u.id, inviteEmail);
-            audit.event(identity.getPrincipal().getName(), "invite-user", USER_TARGET + normalized, null);
-            return new Invited(u.id, resetService.issue(u.id, now, Duration.ofHours(48)));
-        });
+        Invited invited = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                // null hash => cannot log in until activated
+                AppUser u = AppUser.create(normalized, null, false);
+                u.settingsComplete = false;
+                u.persist();
+                // ownerEmail holds the invite address so resend + the wizard's pre-fill both find it.
+                OwnerSettings.seed(u.id, inviteEmail);
+                audit.event(identity.getPrincipal().getName(), "invite-user", USER_TARGET + normalized, null);
+                return new Invited(u.id, resetService.issue(u.id, now, Duration.ofHours(48)));
+            });
         emailService.sendInvite(
                 invited.userId(),
                 inviteEmail,
@@ -148,11 +155,14 @@ public class UsersResource {
                 inviterEmail(),
                 baseUrl,
                 now.plus(Duration.ofHours(48)),
-                activeLocale.current());
+                activeLocale.current()
+        );
         return render(null);
     }
 
-    /** The inviting admin's display email (their settings address), falling back to their username. */
+    /**
+     * The inviting admin's display email (their settings address), falling back to their username.
+     */
     private String inviterEmail() {
         String adminName = identity.getPrincipal().getName();
         AppUser me = AppUser.findByUsername(adminName);
@@ -196,12 +206,16 @@ public class UsersResource {
         return u;
     }
 
-    /** The currently-authenticated admin's own AppUser row (principal name == username). */
+    /**
+     * The currently-authenticated admin's own AppUser row (principal name == username).
+     */
     private AppUser currentUser() {
         return AppUser.find("username", identity.getPrincipal().getName()).firstResult();
     }
 
-    /** Count of admins that can still log in — the invariant we must never drive to zero. */
+    /**
+     * Count of admins that can still log in — the invariant we must never drive to zero.
+     */
     private static long enabledAdminCount() {
         return AppUser.count("isAdmin = true and enabled = true");
     }
@@ -215,10 +229,13 @@ public class UsersResource {
     @Path("/{id}/grant-admin")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance grantAdmin(@PathParam("id") Long id) {
-        QuarkusTransaction.requiringNew().run(() -> {
-            requireUser(id).setAdmin(true); // managed entity loaded inside the tx → flushes on commit
-            audit.event(identity.getPrincipal().getName(), "grant-admin", USER_TARGET + id, null);
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                // managed entity loaded inside the tx → flushes on commit
+                requireUser(id).setAdmin(true);
+                audit.event(identity.getPrincipal().getName(), "grant-admin", USER_TARGET + id, null);
+            });
         return render(null);
     }
 
@@ -231,10 +248,13 @@ public class UsersResource {
         if (target.isAdmin && enabledAdminCount() <= 1) {
             return render("Cannot revoke admin from the last enabled admin.");
         }
-        QuarkusTransaction.requiringNew().run(() -> {
-            requireUser(id).setAdmin(false); // re-load inside the tx so the change flushes on commit
-            audit.event(identity.getPrincipal().getName(), "revoke-admin", USER_TARGET + id, null);
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                // re-load inside the tx so the change flushes on commit
+                requireUser(id).setAdmin(false);
+                audit.event(identity.getPrincipal().getName(), "revoke-admin", USER_TARGET + id, null);
+            });
         return render(null);
     }
 
@@ -250,10 +270,13 @@ public class UsersResource {
         if (target.isAdmin && target.enabled && enabledAdminCount() <= 1) {
             return render("Cannot lock the last enabled admin.");
         }
-        QuarkusTransaction.requiringNew().run(() -> {
-            requireUser(id).enabled = false; // re-load inside the tx so the change flushes on commit
-            audit.event(identity.getPrincipal().getName(), "lock", USER_TARGET + id, null);
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                // re-load inside the tx so the change flushes on commit
+                requireUser(id).enabled = false;
+                audit.event(identity.getPrincipal().getName(), "lock", USER_TARGET + id, null);
+            });
         return render(null);
     }
 
@@ -261,10 +284,13 @@ public class UsersResource {
     @Path("/{id}/unlock")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance unlock(@PathParam("id") Long id) {
-        QuarkusTransaction.requiringNew().run(() -> {
-            requireUser(id).enabled = true; // managed entity loaded inside the tx → flushes on commit
-            audit.event(identity.getPrincipal().getName(), "unlock", USER_TARGET + id, null);
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                // managed entity loaded inside the tx → flushes on commit
+                requireUser(id).enabled = true;
+                audit.event(identity.getPrincipal().getName(), "unlock", USER_TARGET + id, null);
+            });
         return render(null);
     }
 
@@ -289,7 +315,8 @@ public class UsersResource {
                 inviterEmail(),
                 baseUrl,
                 now.plus(Duration.ofHours(48)),
-                activeLocale.current());
+                activeLocale.current()
+        );
         return render(null);
     }
 
@@ -332,7 +359,8 @@ public class UsersResource {
         if (isSelf(id)) {
             return render(m.adm_users_error_delete_self());
         }
-        AppUser target = requireUser(id); // 404 for an unknown id -- no audit event for a delete that never happened
+        // 404 for an unknown id -- no audit event for a delete that never happened
+        AppUser target = requireUser(id);
         if (!target.username.equals(Usernames.normalize(confirmation == null ? "" : confirmation))) {
             return renderDeleteUser(target, m.adm_users_delete_error_mismatch());
         }
@@ -351,6 +379,7 @@ public class UsersResource {
                 pendingCount(),
                 target.id,
                 target.username,
-                error);
+                error
+        );
     }
 }

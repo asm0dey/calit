@@ -14,4 +14,5 @@ public record ChannelRow(
         String docsUrl,
         String lastSuccess,
         String lastFailure,
-        boolean defaultEnabled) {}
+        boolean defaultEnabled
+) {}

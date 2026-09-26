@@ -1,10 +1,10 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.transaction.Transactional;
-import java.time.Instant;
 
 /**
  * The one DB write on the async side. A SEPARATE bean on purpose: calling a {@code @Transactional}
@@ -15,7 +15,6 @@ import java.time.Instant;
  */
 @ApplicationScoped
 public class ChannelStamp {
-
     @Transactional
     @ActivateRequestContext
     public void stamp(Long channelId, boolean ok, Instant at) {
@@ -25,8 +24,12 @@ public class ChannelStamp {
         // the channel was deleted between dispatch and delivery; nothing to record.
         // The ternary picks the COLUMN, not the call: both branches are compile-time literals, so
         // nothing caller-supplied reaches the query.
-        int updated = NotificationChannel.update(
-                (ok ? "lastSuccessAt" : "lastFailureAt") + " = ?1 where id = ?2", at, channelId);
+        int updated =
+                NotificationChannel.update(
+                        (ok ? "lastSuccessAt" : "lastFailureAt") + " = ?1 where id = ?2",
+                        at,
+                        channelId
+        );
         if (updated == 0) {
             return;
         }

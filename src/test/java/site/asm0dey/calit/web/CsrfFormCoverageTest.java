@@ -1,18 +1,11 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class CsrfFormCoverageTest {
-
     private static final Path TEMPLATES = Path.of("src/main/resources/templates");
     // j_security_check forms are handled by form-auth, not the REST CSRF filter (SEC-SECRET-04).
     private static final Set<String> EXCLUDED = Set.of("login.html", "bridge.html");
@@ -24,15 +17,22 @@ class CsrfFormCoverageTest {
             for (Path p : htmls) {
                 var body = Files.readString(p);
                 var postForms = count(body, "method=\"post\"");
-                if (postForms == 0) continue;
+                if (postForms == 0) {
+                    continue;
+                }
                 var tokens = count(body, "{inject:csrf.token}");
                 if (EXCLUDED.contains(p.getFileName().toString())) {
                     assertEquals(0, tokens, p + " is a j_security_check form and must NOT carry a REST-CSRF token");
                 } else {
                     assertTrue(
                             tokens >= postForms,
-                            p + " has " + postForms + " post form(s) but only " + tokens
-                                    + " csrf token(s) — every form-urlencoded POST must carry {inject:csrf.token}");
+                            p
+                            + " has "
+                            + postForms
+                            + " post form(s) but only "
+                            + tokens
+                            + " csrf token(s) — every form-urlencoded POST must carry {inject:csrf.token}"
+                    );
                 }
             }
         }

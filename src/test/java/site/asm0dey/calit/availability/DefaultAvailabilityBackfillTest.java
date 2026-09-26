@@ -1,15 +1,12 @@
 package site.asm0dey.calit.availability;
 
+import module java.base;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import java.io.IOException;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.user.AppUser;
@@ -21,9 +18,7 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class DefaultAvailabilityBackfillTest {
-
     private static final String MIGRATION = "/db/migration/V28__seed_default_availability.sql";
-
     @Inject
     EntityManager em;
 
@@ -42,7 +37,8 @@ class DefaultAvailabilityBackfillTest {
     @Transactional
     Long seedUser(String username) {
         AppUser u = AppUser.create(username, null, false);
-        u.settingsComplete = true; // onboarded before the wizard learned to seed
+        // onboarded before the wizard learned to seed
+        u.settingsComplete = true;
         u.persist();
         return u.id;
     }
@@ -81,7 +77,10 @@ class DefaultAvailabilityBackfillTest {
         var configured = seedUser("legacy2");
         seedOneRule(configured, DayOfWeek.SATURDAY);
         assertNotEquals(
-                1L, configured, "must differ from the bare admin (id 1) for the assertion below to mean anything");
+                1L,
+                configured,
+                "must differ from the bare admin (id 1) for the assertion below to mean anything"
+        );
         runBackfill();
         assertEquals(1, globalCount(configured), "hand-set hours must survive untouched");
         assertTrue(AvailabilityRule.globalForOwner(configured, DayOfWeek.MONDAY).isEmpty());

@@ -1,15 +1,11 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailService;
@@ -24,13 +20,9 @@ import site.asm0dey.calit.i18n.AppLocales;
  */
 @ApplicationScoped
 public class GoogleConnectionScheduler {
-
     final Duration probeInterval;
-
     final EntityManager em;
-
     final GoogleTokenService tokens;
-
     final EmailService emailService;
 
     @Inject
@@ -38,7 +30,8 @@ public class GoogleConnectionScheduler {
             EntityManager em,
             GoogleTokenService tokens,
             EmailService emailService,
-            @ConfigProperty(name = "calit.google.probe-interval") Duration probeInterval) {
+            @ConfigProperty(name = "calit.google.probe-interval") Duration probeInterval
+    ) {
         this.em = em;
         this.tokens = tokens;
         this.emailService = emailService;
@@ -62,32 +55,39 @@ public class GoogleConnectionScheduler {
         List<Long> ids = claimDueForProbe();
         var now = Instant.now();
         for (Long id : ids) {
-            tokens.probe(id, now); // own @Transactional; sets/clears needs_reconnect
+            // own @Transactional; sets/clears needs_reconnect
+            tokens.probe(id, now);
         }
     }
 
     List<Long> claimDueForProbe() {
         var graceSeconds = Math.max(1, probeInterval.toSeconds() / 2);
-        return QuarkusTransaction.requiringNew().call(() -> {
-            @SuppressWarnings("unchecked")
-            List<Number> ids = em.createNativeQuery("SELECT id FROM google_credential "
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                @SuppressWarnings("unchecked")
+                List<Number> ids = em
+                    .createNativeQuery(
+                            "SELECT id FROM google_credential "
                             + "WHERE last_probed_at IS NULL "
                             + "   OR last_probed_at <= now() - make_interval(secs => :secs) "
                             + "ORDER BY last_probed_at NULLS FIRST "
                             + "FOR UPDATE SKIP LOCKED "
-                            + "LIMIT 50")
+                            + "LIMIT 50"
+                    )
                     .setParameter("secs", (double) graceSeconds)
                     .getResultList();
-            List<Long> claimed = new ArrayList<>();
-            var now = Instant.now();
-            for (Number n : ids) {
-                Long id = n.longValue();
-                GoogleCredential c = GoogleCredential.findById(id);
-                c.lastProbedAt = now; // stamped in the lock-holding transaction
-                claimed.add(id);
-            }
-            return claimed;
-        });
+                List<Long> claimed = new ArrayList<>();
+                var now = Instant.now();
+                for (Number n : ids) {
+                    Long id = n.longValue();
+                    GoogleCredential c = GoogleCredential.findById(id);
+                    // stamped in the lock-holding transaction
+                    c.lastProbedAt = now;
+                    claimed.add(id);
+                }
+                return claimed;
+            });
     }
 
     /**
@@ -105,24 +105,30 @@ public class GoogleConnectionScheduler {
     private record Pending(Long ownerId, String ownerEmail, String accountEmail, Locale locale) {}
 
     List<Pending> claimUnnotifiedDisconnects() {
-        return QuarkusTransaction.requiringNew().call(() -> {
-            @SuppressWarnings("unchecked")
-            List<Number> ids = em.createNativeQuery("SELECT id FROM google_credential "
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                @SuppressWarnings("unchecked")
+                List<Number> ids = em
+                    .createNativeQuery(
+                            "SELECT id FROM google_credential "
                             + "WHERE needs_reconnect = true AND reconnect_notified_at IS NULL "
                             + "FOR UPDATE SKIP LOCKED "
-                            + "LIMIT 50")
+                            + "LIMIT 50"
+                    )
                     .getResultList();
-            List<Pending> out = new ArrayList<>();
-            var now = Instant.now();
-            for (Number n : ids) {
-                GoogleCredential c = GoogleCredential.findById(n.longValue());
-                c.reconnectNotifiedAt = now; // claim: prevents any replica re-sending
-                OwnerSettings s = OwnerSettings.forOwner(c.ownerId);
-                if (s != null) {
-                    out.add(new Pending(c.ownerId, s.ownerEmail, c.accountEmail, AppLocales.pick(s.locale)));
+                List<Pending> out = new ArrayList<>();
+                var now = Instant.now();
+                for (Number n : ids) {
+                    GoogleCredential c = GoogleCredential.findById(n.longValue());
+                    // claim: prevents any replica re-sending
+                    c.reconnectNotifiedAt = now;
+                    OwnerSettings s = OwnerSettings.forOwner(c.ownerId);
+                    if (s != null) {
+                        out.add(new Pending(c.ownerId, s.ownerEmail, c.accountEmail, AppLocales.pick(s.locale)));
+                    }
                 }
-            }
-            return out;
-        });
+                return out;
+            });
     }
 }

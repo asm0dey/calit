@@ -1,15 +1,13 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingService;
@@ -21,14 +19,14 @@ import site.asm0dey.calit.google.CalendarPort;
 
 @QuarkusTest
 class CancelConfirmTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @Inject
     BookingService bookingService;
 
-    /** Seeds a CONFIRMED booking (PHONE type, no Google mock needed) and returns its manageToken. */
+    /**
+     * Seeds a CONFIRMED booking (PHONE type, no Google mock needed) and returns its manageToken.
+     */
     @Transactional
     String newConfirmedBooking() {
         Booking.delete("meetingTypeId in (select id from MeetingType where slug = ?1)", "cancel-confirm-type");
@@ -76,19 +74,22 @@ class CancelConfirmTest {
                 "",
                 "",
                 "en",
-                java.util.List.of());
+                java.util.List.of()
+        );
         return b.manageToken;
     }
 
     @Test
     void cancelConfirmPageShowsConfirmForm() {
         var manageToken = newConfirmedBooking();
-        given().when()
-                .get("/booking/" + manageToken + "/cancel")
-                .then()
-                .statusCode(200)
-                .body(containsString("/booking/" + manageToken + "/cancel")) // the POST form action
-                .body(containsString("Confirm cancellation"));
+        given()
+            .when()
+            .get("/booking/" + manageToken + "/cancel")
+            .then()
+            .statusCode(200)
+            // the POST form action
+            .body(containsString("/booking/" + manageToken + "/cancel"))
+            .body(containsString("Confirm cancellation"));
     }
 
     @Test

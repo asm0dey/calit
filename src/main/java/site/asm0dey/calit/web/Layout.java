@@ -7,8 +7,8 @@ import site.asm0dey.calit.i18n.AppMessages;
  * enhancement script. Styling comes from Tailwind v4 + daisyUI 5 compiled to {@code /calit.css}.
  */
 public final class Layout {
-
-    private Layout() {}
+    private Layout() {
+    }
 
     /**
      * Shared inline vanilla JS reused by every invitee-facing page that shows times
@@ -24,7 +24,8 @@ public final class Layout {
      * <p>The stable marker comment {@code CALIT_TZ_REFORMAT} lets @QuarkusTest assert the
      * script is present without executing it (RestAssured can't run JS).</p>
      */
-    public static final String TZ_SCRIPT = """
+    public static final String TZ_SCRIPT =
+            """
             <script>
             /* CALIT_TZ_REFORMAT — viewer-local time reformatting (Calendly-standard) */
             (function () {
@@ -102,7 +103,8 @@ public final class Layout {
                     <select id="tz-picker"></select>
                   </label>
                 </div>
-                """.formatted(m.tz_bar_shown_in(), m.tz_bar_local_default(), m.tz_bar_change());
+                """
+            .formatted(m.tz_bar_shown_in(), m.tz_bar_local_default(), m.tz_bar_change());
     }
 
     /**
@@ -112,7 +114,8 @@ public final class Layout {
      * builds a month calendar, hides all day sections, and reveals one day at a time on click.
      * It never alters any radio value — only which day section is visible.
      */
-    public static final String CALENDAR_SCRIPT = """
+    public static final String CALENDAR_SCRIPT =
+            """
             <script>
             /* CALIT_CALENDAR — two-pane calendar/time picker progressive enhancement */
             (function () {
@@ -191,7 +194,6 @@ public final class Layout {
             })();
             </script>
             """;
-
     /**
      * Progressive enhancement for the co-host add input in {@code _hostlist.html}: with JS OFF the
      * plain {@code <input name=cohost>} still submits and is validated server-side (Task 6/17,
@@ -202,7 +204,8 @@ public final class Layout {
      * <p>The stable marker comment {@code CALIT_HOST_TYPEAHEAD} lets @QuarkusTest assert the
      * script is present without executing it (RestAssured can't run JS).
      */
-    public static final String HOST_TYPEAHEAD_SCRIPT = """
+    public static final String HOST_TYPEAHEAD_SCRIPT =
+            """
             <script>
             /* CALIT_HOST_TYPEAHEAD - progressive-enhancement co-host autocomplete over a plain input */
             (function () {

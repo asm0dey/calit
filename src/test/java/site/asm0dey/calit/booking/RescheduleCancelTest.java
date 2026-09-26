@@ -1,19 +1,13 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.domain.AvailabilityRule;
@@ -25,18 +19,16 @@ import site.asm0dey.calit.google.CreatedEvent;
 
 @QuarkusTest
 class RescheduleCancelTest {
-
     @Inject
     BookingService bookingService;
-
     @InjectMock
     CalendarPort calendarPort;
-
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
-    private static final LocalDate DAY =
-            Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
-    private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant(); // 09:00 local
-    private static final Instant SLOT_10 = DAY.atTime(10, 0).atZone(ZONE).toInstant(); // 10:00 local
+    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    // 09:00 local
+    private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant();
+    // 10:00 local
+    private static final Instant SLOT_10 = DAY.atTime(10, 0).atZone(ZONE).toInstant();
 
     @Test
     @TestTransaction
@@ -46,12 +38,31 @@ class RescheduleCancelTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-r", "https://meet.google.com/r-r-r", "h", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-r", "https://meet.google.com/r-r-r", "h", null));
 
-        Booking b = bookingService.book(
-                1L, "resched", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
-
+        Booking b =
+                bookingService.book(
+                        1L,
+                        "resched",
+                        SLOT_09,
+                        "Sam",
+                        "sam@example.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
         // Reschedule is keyed by the invitee's manage-token, not the numeric id.
         bookingService.reschedule(b.manageToken, SLOT_10);
 
@@ -60,12 +71,15 @@ class RescheduleCancelTest {
         assertEquals(SLOT_10, loaded.startUtc);
         assertEquals(SLOT_10.plusSeconds(3600), loaded.endUtc);
         verify(calendarPort, times(1))
-                .updateEvent(anyLong(), any(), eq("evt-r"), eq(SLOT_10), eq(SLOT_10.plusSeconds(3600)), any());
-
+            .updateEvent(anyLong(), any(), eq("evt-r"), eq(SLOT_10), eq(SLOT_10.plusSeconds(3600)), any());
         // Old 09:00 time is free again; new 10:00 time is now taken.
         List<TimeSlot> avail = bookingService.availableSlots(t, DAY, DAY);
-        assertTrue(avail.stream().anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
-        assertTrue(avail.stream().noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(10, 0))));
+        assertTrue(avail
+            .stream()
+            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
+        assertTrue(avail
+            .stream()
+            .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(10, 0))));
     }
 
     @Test
@@ -77,13 +91,31 @@ class RescheduleCancelTest {
         MeetingType t = approvalType("resched-approval");
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-
         // Book PENDING, then approve so it has a CONFIRMED Google event to delete on reschedule.
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-ra", "https://meet.google.com/ra-1-2", "h", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-ra", "https://meet.google.com/ra-1-2", "h", null));
         Booking b = bookingService.book(
-                1L, "resched-approval", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+                1L,
+                "resched-approval",
+                SLOT_09,
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of()
+        );
         bookingService.approve(b.id);
 
         bookingService.reschedule(b.manageToken, SLOT_10);
@@ -105,14 +137,32 @@ class RescheduleCancelTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-nn", "https://meet.google.com/n-n-n", "h", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-nn", "https://meet.google.com/n-n-n", "h", null));
 
         Booking b = bookingService.book(
-                1L, "resched-noop", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+                1L,
+                "resched-noop",
+                SLOT_09,
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of()
+        );
         int beforeSeq = b.icsSequence;
         clearInvocations(calendarPort);
-
         // Reschedule to the SAME start with guests untouched (null) -> no-op.
         bookingService.reschedule(b.manageToken, SLOT_09, null, false);
 
@@ -130,14 +180,36 @@ class RescheduleCancelTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-c", "https://meet.google.com/c-c-c", "h", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-c", "https://meet.google.com/c-c-c", "h", null));
 
-        Booking b = bookingService.book(
-                1L, "cancel", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
-        assertTrue(bookingService.availableSlots(t, DAY, DAY).stream()
-                .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
-
+        Booking b =
+                bookingService.book(
+                        1L,
+                        "cancel",
+                        SLOT_09,
+                        "Sam",
+                        "sam@example.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
+        assertTrue(bookingService
+            .availableSlots(t, DAY, DAY)
+            .stream()
+            .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))
+        );
         // Cancel is keyed by the manage-token.
         bookingService.cancel(b.manageToken);
 
@@ -145,8 +217,11 @@ class RescheduleCancelTest {
         assertEquals(BookingStatus.CANCELLED, loaded.status);
         verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), eq("evt-c"));
         // 09:00 slot is bookable again.
-        assertTrue(bookingService.availableSlots(t, DAY, DAY).stream()
-                .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
+        assertTrue(bookingService
+            .availableSlots(t, DAY, DAY)
+            .stream()
+            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))
+        );
     }
 
     @Test
@@ -157,11 +232,30 @@ class RescheduleCancelTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-refs", "https://meet.google.com/r-e-f", "h", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-refs", "https://meet.google.com/r-e-f", "h", null));
 
         Booking b = bookingService.book(
-                1L, "cancel-refs", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok-refs", "", "en", List.of());
+                1L,
+                "cancel-refs",
+                SLOT_09,
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok-refs",
+                "",
+                "en",
+                List.of()
+        );
 
         bookingService.cancel(b.manageToken);
 
@@ -183,12 +277,30 @@ class RescheduleCancelTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-off", null, "h", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-off", null, "h", null));
 
         Booking b = bookingService.book(
-                1L, "cancel-refs-off", SLOT_09, "Sam", "sam@example.com", Map.of(), "tok-off", "", "en", List.of());
-
+                1L,
+                "cancel-refs-off",
+                SLOT_09,
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok-off",
+                "",
+                "en",
+                List.of()
+        );
         // The owner disconnects Google between booking and cancelling: the remote delete is skipped,
         // but the local refs must still be cleared (mirrors deleteGroupGoogleEvent's javadoc).
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
@@ -208,8 +320,17 @@ class RescheduleCancelTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-rg", null, "https://calendar.google.com/evt-rg", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-rg", null, "https://calendar.google.com/evt-rg", null));
 
         Booking b = bookingService.book(
                 1L,
@@ -221,23 +342,23 @@ class RescheduleCancelTest {
                 "tok-rg",
                 "",
                 "en",
-                List.of("g1@example.com"));
-
+                List.of("g1@example.com")
+        );
         // reschedule to SLOT_10 with NO guests → g1 removed
         bookingService.reschedule(b.manageToken, SLOT_10, List.of());
 
         verify(calendarPort, times(1))
-                .updateEvent(
-                        anyLong(),
-                        any(),
-                        eq("evt-rg"),
-                        eq(SLOT_10),
-                        eq(SLOT_10.plusSeconds(3600)),
-                        eq(List.of("sam@example.com", "owner@example.com")));
+            .updateEvent(
+                    anyLong(),
+                    any(),
+                    eq("evt-rg"),
+                    eq(SLOT_10),
+                    eq(SLOT_10.plusSeconds(3600)),
+                    eq(List.of("sam@example.com", "owner@example.com"))
+            );
     }
 
     // --- helpers ---
-
     private void seedSettings() {
         // Idempotent upsert: a non-@TestTransaction REST test (MeetingTypeResourceTest PUT /api/settings)
         // may have committed the singleton row before this suite runs, so reuse it if present rather

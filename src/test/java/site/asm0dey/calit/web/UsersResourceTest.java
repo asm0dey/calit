@@ -3,7 +3,6 @@ package site.asm0dey.calit.web;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -18,9 +17,7 @@ import site.asm0dey.calit.user.PasswordResetToken;
 
 @QuarkusTest
 class UsersResourceTest {
-
     private static final PasswordHasher HASHER = new PasswordHasher();
-
     @Inject
     EntityManager em;
 
@@ -36,34 +33,29 @@ class UsersResourceTest {
     }
 
     @Test
-    @TestSecurity(
-            user = "admin",
-            roles = {"user", "admin"})
+    @TestSecurity(user = "admin", roles = {"user", "admin"})
     void listShowsExistingUsers() {
         given().when().get("/me/users").then().statusCode(200).body(containsString("Users"));
     }
 
     @Test
-    @TestSecurity(
-            user = "alice",
-            roles = {"user"})
+    @TestSecurity(user = "alice", roles = {"user"})
     void nonAdminIsForbidden() {
         given().when().get("/me/users").then().statusCode(403);
     }
 
     @Test
-    @TestSecurity(
-            user = "admin",
-            roles = {"user", "admin"})
+    @TestSecurity(user = "admin", roles = {"user", "admin"})
     void createUserSendsInviteAndStoresEmail() {
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("username", "bob")
-                .formParam("email", "bob@example.com")
-                .when()
-                .post("/me/users")
-                .then()
-                .statusCode(200)
-                .body(containsString("bob"));
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("username", "bob")
+            .formParam("email", "bob@example.com")
+            .when()
+            .post("/me/users")
+            .then()
+            .statusCode(200)
+            .body(containsString("bob"));
 
         AppUser bob = reload(AppUser.findByUsername("bob").id);
         assertNull(bob.passwordHash, "invited user starts password-less (dormant)");
@@ -79,57 +71,59 @@ class UsersResourceTest {
     }
 
     @Test
-    @TestSecurity(
-            user = "admin",
-            roles = {"user", "admin"})
+    @TestSecurity(user = "admin", roles = {"user", "admin"})
     void createUserRejectsInvalidEmail() {
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("username", "carol")
-                .formParam("email", "   ")
-                .when()
-                .post("/me/users")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("username", "carol")
+            .formParam("email", "   ")
+            .when()
+            .post("/me/users")
+            .then()
+            .statusCode(200);
         assertNull(AppUser.findByUsername("carol"), "no user created on invalid email");
 
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("username", "nodot")
-                .formParam("email", "a@")
-                .when()
-                .post("/me/users")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("username", "nodot")
+            .formParam("email", "a@")
+            .when()
+            .post("/me/users")
+            .then()
+            .statusCode(200);
         assertNull(AppUser.findByUsername("nodot"), "no user created on malformed (no-dot) email");
     }
 
     @Test
-    @TestSecurity(
-            user = "admin",
-            roles = {"user", "admin"})
+    @TestSecurity(user = "admin", roles = {"user", "admin"})
     void createUserRejectsInvalidUsername() {
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("username", "Me")
-                .formParam("tempPassword", "Temp-pw-12345") // reserved + uppercase
-                .when()
-                .post("/me/users")
-                .then()
-                .statusCode(200)
-                .body(containsString("reserved"));
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("username", "Me")
+            // reserved + uppercase
+            .formParam(
+                    // reserved + uppercase
+            "tempPassword",
+                    "Temp-pw-12345")
+            .when()
+            .post("/me/users")
+            .then()
+            .statusCode(200)
+            .body(containsString("reserved"));
         assertNull(AppUser.findByUsername("me"));
     }
 
     @Test
-    @TestSecurity(
-            user = "admin",
-            roles = {"user", "admin"})
+    @TestSecurity(user = "admin", roles = {"user", "admin"})
     void grantAndRevokeAdminSyncRoles() {
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("username", "carol")
-                .formParam("email", "carol@example.com")
-                .when()
-                .post("/me/users")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("username", "carol")
+            .formParam("email", "carol@example.com")
+            .when()
+            .post("/me/users")
+            .then()
+            .statusCode(200);
         AppUser carol = AppUser.findByUsername("carol");
 
         given().when().post("/me/users/" + carol.id + "/grant-admin").then().statusCode(200);
@@ -144,17 +138,16 @@ class UsersResourceTest {
     }
 
     @Test
-    @TestSecurity(
-            user = "admin",
-            roles = {"user", "admin"})
+    @TestSecurity(user = "admin", roles = {"user", "admin"})
     void lockAndUnlockTogglesEnabled() {
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("username", "dave")
-                .formParam("email", "dave@example.com")
-                .when()
-                .post("/me/users")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("username", "dave")
+            .formParam("email", "dave@example.com")
+            .when()
+            .post("/me/users")
+            .then()
+            .statusCode(200);
         AppUser dave = AppUser.findByUsername("dave");
 
         given().when().post("/me/users/" + dave.id + "/lock").then().statusCode(200);
@@ -165,49 +158,46 @@ class UsersResourceTest {
     }
 
     @Test
-    @TestSecurity(
-            user = "admin",
-            roles = {"user", "admin"})
+    @TestSecurity(user = "admin", roles = {"user", "admin"})
     void unknownUserActionReturns404() {
         given().when().post("/me/users/999999/lock").then().statusCode(404);
     }
 
     @Test
-    @TestSecurity(
-            user = "admin",
-            roles = {"user", "admin"})
+    @TestSecurity(user = "admin", roles = {"user", "admin"})
     void resendInviteMintsAnotherTokenForPendingUser() {
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("username", "dave")
-                .formParam("email", "dave@example.com")
-                .when()
-                .post("/me/users")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("username", "dave")
+            .formParam("email", "dave@example.com")
+            .when()
+            .post("/me/users")
+            .then()
+            .statusCode(200);
         Long id = AppUser.findByUsername("dave").id;
         assertEquals(1, PasswordResetToken.count("userId", id));
 
-        given().contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/users/" + id + "/resend-invite")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/users/" + id + "/resend-invite")
+            .then()
+            .statusCode(200);
         assertEquals(2, PasswordResetToken.count("userId", id), "resend mints a second token");
     }
 
     @Test
-    @TestSecurity(
-            user = "admin",
-            roles = {"user", "admin"})
+    @TestSecurity(user = "admin", roles = {"user", "admin"})
     void resendInviteRejectedForActiveUser() {
         // Admin (id 1) already has a password → not pending.
         Long adminId = AppUser.findByUsername("admin").id;
         long before = PasswordResetToken.count("userId", adminId);
-        given().contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/users/" + adminId + "/resend-invite")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/users/" + adminId + "/resend-invite")
+            .then()
+            .statusCode(200);
         assertEquals(before, PasswordResetToken.count("userId", adminId), "no token minted for an active user");
     }
 
@@ -222,13 +212,14 @@ class UsersResourceTest {
             u.persist();
         });
         // Enabled → login succeeds (302).
-        var ok = given().contentType("application/x-www-form-urlencoded")
-                .formParam("j_username", "erin")
-                .formParam("j_password", "Erin-pw-12345")
-                .redirects()
-                .follow(false)
-                .when()
-                .post("/j_security_check");
+        var ok = given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("j_username", "erin")
+            .formParam("j_password", "Erin-pw-12345")
+            .redirects()
+            .follow(false)
+            .when()
+            .post("/j_security_check");
         assertEquals(302, ok.statusCode());
         // Lock the user.
         QuarkusTransaction.requiringNew().run(() -> {
@@ -236,16 +227,18 @@ class UsersResourceTest {
             u.enabled = false;
         });
         // Re-login now fails → redirect to the form error page (/login?error=true).
-        var denied = given().contentType("application/x-www-form-urlencoded")
-                .formParam("j_username", "erin")
-                .formParam("j_password", "Erin-pw-12345")
-                .redirects()
-                .follow(false)
-                .when()
-                .post("/j_security_check");
+        var denied = given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("j_username", "erin")
+            .formParam("j_password", "Erin-pw-12345")
+            .redirects()
+            .follow(false)
+            .when()
+            .post("/j_security_check");
         assertEquals(302, denied.statusCode());
         assertTrue(
                 denied.getHeader("Location").contains("error"),
-                "locked user login should redirect to the error page, got " + denied.getHeader("Location"));
+                "locked user login should redirect to the error page, got " + denied.getHeader("Location")
+        );
     }
 }

@@ -1,18 +1,15 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.BookingField;
@@ -25,7 +22,6 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class BookPageTest {
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -35,11 +31,15 @@ class BookPageTest {
         if (owner == null) {
             owner = AppUser.create("bob", "x", false);
             owner.persistAndFlush();
-        } // create() builds but does not persist; flush to assign id
+        }
+        // create() builds but does not persist; flush to assign id
         Long ownerId = owner.id;
         // Idempotent across the multiple seed() calls in this class (committed tx, fixed slug).
         BookingField.delete(
-                "meetingTypeId in (select id from MeetingType where slug = ?1 and ownerId = ?2)", "book-page", ownerId);
+                "meetingTypeId in (select id from MeetingType where slug = ?1 and ownerId = ?2)",
+                "book-page",
+                ownerId
+        );
         MeetingType.delete("ownerId = ?1 and slug = ?2", ownerId, "book-page");
         OwnerSettings s = OwnerSettings.forOwner(ownerId);
         if (s == null) {
@@ -56,9 +56,9 @@ class BookPageTest {
         t.name = "Book Page Type";
         t.slug = "book-page";
         t.durationMinutes = 60;
-        t.locationType = LocationType.GOOGLE_MEET; // auto type, Meet location
+        // auto type, Meet location
+        t.locationType = LocationType.GOOGLE_MEET;
         t.persist();
-
         // A rule for every weekday so at least one day in the next 14 has slots.
         for (DayOfWeek dow : DayOfWeek.values()) {
             AvailabilityRule r = new AvailabilityRule();
@@ -69,7 +69,6 @@ class BookPageTest {
             r.meetingTypeId = null;
             r.persist();
         }
-
         // A required custom EXTRA field for this type — must render on the booking form.
         BookingField f = new BookingField();
         f.ownerId = ownerId;
@@ -82,14 +81,17 @@ class BookPageTest {
         f.persist();
     }
 
-    /** A PHONE-located, approval-requiring type to exercise features 13 + 14a wording. */
+    /**
+     * A PHONE-located, approval-requiring type to exercise features 13 + 14a wording.
+     */
     @Transactional
     void seedApprovalPhoneType() {
         AppUser owner = AppUser.findByUsername("bob");
         if (owner == null) {
             owner = AppUser.create("bob", "x", false);
             owner.persistAndFlush();
-        } // create() builds but does not persist; flush to assign id
+        }
+        // create() builds but does not persist; flush to assign id
         Long ownerId = owner.id;
         MeetingType.delete("ownerId = ?1 and slug = ?2", ownerId, "phone-approval");
         OwnerSettings s = OwnerSettings.forOwner(ownerId);
@@ -129,23 +131,29 @@ class BookPageTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seed();
 
-        given().when()
-                .get("/bob/book-page")
-                .then()
-                .statusCode(200)
-                .body(containsString("Book Page Type"))
-                .body(containsString("name=\"startUtc\"")) // at least one slot radio rendered
-                .body(containsString("name=\"inviteeName\"")) // built-in Full name input
-                .body(containsString("name=\"inviteeEmail\"")) // built-in Email input
-                .body(containsString("Company Name")) // custom field label
-                .body(containsString("name=\"answers.company\"")) // custom field input
-                // Honeypot is ALWAYS present (independent of Turnstile flag) + hidden.
-                .body(containsString("name=\"website\""))
-                .body(containsString("style=\"display:none\""))
-                // Auto (non-approval) GOOGLE_MEET type → "Confirm booking" button, Meet location line.
-                .body(containsString("Confirm booking"))
-                .body(containsString("Google Meet"))
-                .body(not(containsString(">Request<")));
+        given()
+            .when()
+            .get("/bob/book-page")
+            .then()
+            .statusCode(200)
+            .body(containsString("Book Page Type"))
+            // at least one slot radio rendered
+            .body(containsString("name=\"startUtc\""))
+            // built-in Full name input
+            .body(containsString("name=\"inviteeName\""))
+            // built-in Email input
+            .body(containsString("name=\"inviteeEmail\""))
+            // custom field label
+            .body(containsString("Company Name"))
+            // custom field input
+            .body(containsString("name=\"answers.company\""))
+            // Honeypot is ALWAYS present (independent of Turnstile flag) + hidden.
+            .body(containsString("name=\"website\""))
+            .body(containsString("style=\"display:none\""))
+            // Auto (non-approval) GOOGLE_MEET type → "Confirm booking" button, Meet location line.
+            .body(containsString("Confirm booking"))
+            .body(containsString("Google Meet"))
+            .body(not(containsString(">Request<")));
     }
 
     @Test
@@ -154,15 +162,16 @@ class BookPageTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seedApprovalPhoneType();
 
-        given().when()
-                .get("/bob/phone-approval")
-                .then()
-                .statusCode(200)
-                // Approval type → submit button reads "Request" (NOT "Confirm booking").
-                .body(containsString(">Request<"))
-                .body(not(containsString("Confirm booking")))
-                // PHONE location detail shown up-front on the slot page (feature 13).
-                .body(containsString("Call +1-555-0100"));
+        given()
+            .when()
+            .get("/bob/phone-approval")
+            .then()
+            .statusCode(200)
+            // Approval type → submit button reads "Request" (NOT "Confirm booking").
+            .body(containsString(">Request<"))
+            .body(not(containsString("Confirm booking")))
+            // PHONE location detail shown up-front on the slot page (feature 13).
+            .body(containsString("Call +1-555-0100"));
     }
 
     @Test
@@ -172,14 +181,15 @@ class BookPageTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seed();
 
-        given().when()
-                .get("/bob/book-page")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("cf-turnstile")))
-                .body(not(containsString("challenges.cloudflare.com")))
-                // Honeypot is still present even with Turnstile off.
-                .body(containsString("name=\"website\""));
+        given()
+            .when()
+            .get("/bob/book-page")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("cf-turnstile")))
+            .body(not(containsString("challenges.cloudflare.com")))
+            // Honeypot is still present even with Turnstile off.
+            .body(containsString("name=\"website\""));
     }
 
     @Test
@@ -191,34 +201,35 @@ class BookPageTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seed();
 
-        String html = given().when()
-                .get("/bob/book-page")
-                .then()
-                .statusCode(200)
-                .extract()
-                .asString();
-
+        String html = given().when().get("/bob/book-page").then().statusCode(200).extract().asString();
         // 1) Each slot's absolute instant is rendered in a machine-readable data-utc attribute.
         //    Pull the first radio's value (an ISO-8601 instant) and assert it ALSO appears as a data-utc.
         var startUtc =
                 html.substring(html.indexOf("name=\"startUtc\" value=\"") + "name=\"startUtc\" value=\"".length());
         startUtc = startUtc.substring(0, startUtc.indexOf('"'));
         org.junit.jupiter.api.Assertions.assertTrue(
-                startUtc.endsWith("Z"), "slot value must be an absolute UTC instant (…Z), was: " + startUtc);
+                startUtc.endsWith("Z"),
+                "slot value must be an absolute UTC instant (…Z), was: " + startUtc
+        );
         org.junit.jupiter.api.Assertions.assertTrue(
                 html.contains("data-utc=\"" + startUtc + "\""),
-                "the same absolute instant must appear as a data-utc display attribute");
+                "the same absolute instant must appear as a data-utc display attribute"
+        );
 
-        given().when()
-                .get("/bob/book-page")
-                .then()
-                .statusCode(200)
-                .body(containsString("id=\"tz-picker\"")) // timezone override select
-                .body(containsString("CALIT_TZ_REFORMAT")) // stable reformat-script marker
-                .body(containsString("Times shown in:")) // active-zone label element
-                .body(containsString("id=\"tz-label\""))
-                // The submitted value stays the absolute UTC instant — display zone never changes it.
-                .body(containsString("type=\"radio\" name=\"startUtc\" value=\"" + startUtc + "\""));
+        given()
+            .when()
+            .get("/bob/book-page")
+            .then()
+            .statusCode(200)
+            // timezone override select
+            .body(containsString("id=\"tz-picker\""))
+            // stable reformat-script marker
+            .body(containsString("CALIT_TZ_REFORMAT"))
+            // active-zone label element
+            .body(containsString("Times shown in:"))
+            .body(containsString("id=\"tz-label\""))
+            // The submitted value stays the absolute UTC instant — display zone never changes it.
+            .body(containsString("type=\"radio\" name=\"startUtc\" value=\"" + startUtc + "\""));
     }
 
     @Test
@@ -239,14 +250,19 @@ class BookPageTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seed();
 
-        given().when()
-                .get("/bob/book-page")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_CALENDAR")) // enhancement script present
-                .body(containsString("id=\"calendar\"")) // calendar mount point
-                .body(containsString("class=\"day-slots\"")) // per-day section
-                .body(containsString("name=\"startUtc\"")); // radios still posted
+        given()
+            .when()
+            .get("/bob/book-page")
+            .then()
+            .statusCode(200)
+            // enhancement script present
+            .body(containsString("CALIT_CALENDAR"))
+            // calendar mount point
+            .body(containsString("id=\"calendar\""))
+            // per-day section
+            .body(containsString("class=\"day-slots\""))
+            // radios still posted
+            .body(containsString("name=\"startUtc\""));
     }
 
     @Test
@@ -254,11 +270,12 @@ class BookPageTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(java.util.List.of());
         seed();
-        given().when()
-                .get("/bob/book-page")
-                .then()
-                .statusCode(200)
-                .body(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("link sent after booking")));
+        given()
+            .when()
+            .get("/bob/book-page")
+            .then()
+            .statusCode(200)
+            .body(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("link sent after booking")));
     }
 
     @Test
@@ -274,16 +291,9 @@ class BookPageTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seed();
 
-        String html = given().when()
-                .get("/bob/book-page")
-                .then()
-                .statusCode(200)
-                .extract()
-                .asString();
-
+        String html = given().when().get("/bob/book-page").then().statusCode(200).extract().asString();
         // Collect every rendered day section's ISO date and find the furthest one.
-        var m = java.util.regex.Pattern.compile("data-date=\"(\\d{4}-\\d{2}-\\d{2})\"")
-                .matcher(html);
+        var m = java.util.regex.Pattern.compile("data-date=\"(\\d{4}-\\d{2}-\\d{2})\"").matcher(html);
         java.time.LocalDate furthest = null;
         while (m.find()) {
             var d = java.time.LocalDate.parse(m.group(1));
@@ -296,7 +306,8 @@ class BookPageTest {
         var today = java.time.LocalDate.now(java.time.ZoneId.of("Europe/Amsterdam"));
         org.junit.jupiter.api.Assertions.assertTrue(
                 furthest.isAfter(today.plusDays(20)),
-                "booking window should follow type.horizonDays (60), not a 14-day cap; furthest day was " + furthest);
+                "booking window should follow type.horizonDays (60), not a 14-day cap; furthest day was " + furthest
+        );
     }
 
     @Test
@@ -305,13 +316,18 @@ class BookPageTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seed();
 
-        given().when()
-                .get("/bob/book-page")
-                .then()
-                .statusCode(200)
-                .body(containsString("Select a Date")) // picker panel heading
-                .body(containsString("Owner")) // host name from OwnerSettings
-                .body(containsString("60 min")) // clock-icon duration line
-                .body(containsString("id=\"calendar\"")); // picker still present
+        given()
+            .when()
+            .get("/bob/book-page")
+            .then()
+            .statusCode(200)
+            // picker panel heading
+            .body(containsString("Select a Date"))
+            // host name from OwnerSettings
+            .body(containsString("Owner"))
+            // clock-icon duration line
+            .body(containsString("60 min"))
+            // picker still present
+            .body(containsString("id=\"calendar\""));
     }
 }

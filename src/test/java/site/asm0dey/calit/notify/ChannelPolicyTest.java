@@ -2,7 +2,6 @@ package site.asm0dey.calit.notify;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
 import jakarta.inject.Inject;
@@ -10,18 +9,14 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class ChannelPolicyTest {
-
     @Inject
     ChannelPolicy policy;
-
     @InjectSpy
     NotifyConfig config;
 
     @Test
     void unknownSchemeIsRejected() {
-        assertEquals(
-                ChannelPolicy.Reason.UNKNOWN_SCHEME,
-                policy.check("carrier-pigeon://nope").reason());
+        assertEquals(ChannelPolicy.Reason.UNKNOWN_SCHEME, policy.check("carrier-pigeon://nope").reason());
         assertEquals(ChannelPolicy.Reason.UNKNOWN_SCHEME, policy.check("   ").reason());
     }
 
@@ -48,9 +43,7 @@ class ChannelPolicyTest {
         when(config.schemeAllowed("webhook")).thenReturn(false);
         when(config.schemeAllowed("ntfy")).thenReturn(true);
 
-        assertEquals(
-                ChannelPolicy.Reason.SCHEME_BLOCKED,
-                policy.check("webhook://example.com/hook").reason());
+        assertEquals(ChannelPolicy.Reason.SCHEME_BLOCKED, policy.check("webhook://example.com/hook").reason());
         // "ntfy+http://" must match an allowlist entry of "ntfy": tryParse reports the channel
         // scheme with the transport suffix already split off.
         assertTrue(policy.check("ntfy+http://localhost:1/topic").ok());
@@ -61,9 +54,7 @@ class ChannelPolicyTest {
         assertTrue(policy.check("ntfy+http://127.0.0.1:1/topic").ok(), "default-allow");
 
         when(config.allowPrivateTargets()).thenReturn(false);
-        assertEquals(
-                ChannelPolicy.Reason.PRIVATE_TARGET,
-                policy.check("ntfy+http://127.0.0.1:1/topic").reason());
+        assertEquals(ChannelPolicy.Reason.PRIVATE_TARGET, policy.check("ntfy+http://127.0.0.1:1/topic").reason());
     }
 
     @Test
@@ -87,15 +78,12 @@ class ChannelPolicyTest {
     @Test
     void aHostFieldIsAPrivateTargetLikeAnyOther() {
         when(config.allowPrivateTargets()).thenReturn(false);
+        assertEquals(ChannelPolicy.Reason.PRIVATE_TARGET, policy.check("ntfy://localhost/topic").reason());
+        assertEquals(ChannelPolicy.Reason.PRIVATE_TARGET, policy.check("gotify://localhost/AppToken").reason());
         assertEquals(
                 ChannelPolicy.Reason.PRIVATE_TARGET,
-                policy.check("ntfy://localhost/topic").reason());
-        assertEquals(
-                ChannelPolicy.Reason.PRIVATE_TARGET,
-                policy.check("gotify://localhost/AppToken").reason());
-        assertEquals(
-                ChannelPolicy.Reason.PRIVATE_TARGET,
-                policy.check("telegram://localhost/111:AAbbCC/222333").reason());
+                policy.check("telegram://localhost/111:AAbbCC/222333").reason()
+        );
     }
 
     /**
@@ -110,11 +98,13 @@ class ChannelPolicyTest {
         assertEquals(
                 ChannelPolicy.Reason.INCOMPLETE,
                 policy.check("telegram://111:AAbbCC/222333").reason(),
-                "the host-less telegram URL calit used to document");
+                "the host-less telegram URL calit used to document"
+        );
         assertEquals(
                 ChannelPolicy.Reason.INCOMPLETE,
                 policy.check("telegram://api.telegram.org/111:AAbbCC").reason(),
-                "chat id missing");
+                "chat id missing"
+        );
         assertTrue(policy.check("telegram://api.telegram.org/111:AAbbCC/222333").ok());
     }
 

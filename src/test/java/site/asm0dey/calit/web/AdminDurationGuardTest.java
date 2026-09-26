@@ -3,7 +3,6 @@ package site.asm0dey.calit.web;
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -20,7 +19,6 @@ import site.asm0dey.calit.domain.MeetingType;
  */
 @QuarkusTest
 class AdminDurationGuardTest {
-
     @Transactional
     Long seedType(String slug) {
         MeetingType t = new MeetingType();
@@ -37,22 +35,23 @@ class AdminDurationGuardTest {
         var slug = "guard-create-" + System.nanoTime();
         long before = MeetingType.count();
 
-        String body = given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Zero")
-                .formParam("slug", slug)
-                .formParam("durationMinutes", "0")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "CUSTOM")
-                .formParam("locationDetail", "x")
-                .when()
-                .post("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .extract()
-                .body()
-                .asString();
+        String body = given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Zero")
+            .formParam("slug", slug)
+            .formParam("durationMinutes", "0")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "CUSTOM")
+            .formParam("locationDetail", "x")
+            .when()
+            .post("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
 
         assertEquals(before, MeetingType.count(), "no meeting type may be created with a zero duration");
         assertTrue(body.contains("at least 1 minute"), "the owner is told why the save was refused");
@@ -62,19 +61,20 @@ class AdminDurationGuardTest {
     void editingToAZeroDurationIsRefused() {
         var id = seedType("guard-edit-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Guard seed")
-                .formParam("slug", "guard-edit-kept")
-                .formParam("durationMinutes", "0")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "CUSTOM")
-                .formParam("locationDetail", "x")
-                .when()
-                .post("/me/meeting-types/" + id + "/edit")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Guard seed")
+            .formParam("slug", "guard-edit-kept")
+            .formParam("durationMinutes", "0")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "CUSTOM")
+            .formParam("locationDetail", "x")
+            .when()
+            .post("/me/meeting-types/" + id + "/edit")
+            .then()
+            .statusCode(200);
 
         assertEquals(30, ((MeetingType) MeetingType.findById(id)).durationMinutes, "the stored duration is untouched");
     }
@@ -83,19 +83,20 @@ class AdminDurationGuardTest {
     void aNegativeDurationIsRefusedToo() {
         var id = seedType("guard-negative-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Guard seed")
-                .formParam("slug", "guard-negative-kept")
-                .formParam("durationMinutes", "-15")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "CUSTOM")
-                .formParam("locationDetail", "x")
-                .when()
-                .post("/me/meeting-types/" + id + "/edit")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Guard seed")
+            .formParam("slug", "guard-negative-kept")
+            .formParam("durationMinutes", "-15")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "CUSTOM")
+            .formParam("locationDetail", "x")
+            .when()
+            .post("/me/meeting-types/" + id + "/edit")
+            .then()
+            .statusCode(200);
 
         assertEquals(30, ((MeetingType) MeetingType.findById(id)).durationMinutes);
     }

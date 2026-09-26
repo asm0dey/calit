@@ -18,7 +18,6 @@ import jakarta.transaction.Transactional;
  */
 @ApplicationScoped
 public class TestUserBootstrap {
-
     @Transactional
     void onStart(@Observes StartupEvent ev) {
         if (AppUser.count() == 0) {

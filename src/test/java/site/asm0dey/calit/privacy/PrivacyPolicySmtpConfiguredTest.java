@@ -1,12 +1,11 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -20,23 +19,21 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 @TestProfile(PrivacyPolicySmtpConfiguredTest.RealSmtp.class)
 class PrivacyPolicySmtpConfiguredTest {
-
     @Test
     void smtpBulletNamesTheConfiguredHostWhenMailIsNotMocked() {
-        given().when()
-                .get("/privacy")
-                .then()
-                .statusCode(200)
-                .body(containsString("The SMTP server"))
-                .body(containsString("mail.example.org"));
+        given()
+            .when()
+            .get("/privacy")
+            .then()
+            .statusCode(200)
+            .body(containsString("The SMTP server"))
+            .body(containsString("mail.example.org"));
     }
 
     public static class RealSmtp implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
-            return Map.of(
-                    "quarkus.mailer.mock", "false",
-                    "quarkus.mailer.host", "mail.example.org");
+            return Map.of("quarkus.mailer.mock", "false", "quarkus.mailer.host", "mail.example.org");
         }
     }
 }

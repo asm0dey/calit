@@ -1,8 +1,8 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import io.quarkus.vertx.web.RouteFilter;
 import io.vertx.ext.web.RoutingContext;
-import java.util.regex.Pattern;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
@@ -38,9 +38,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  * three known-static card paths here is the safe direction.
  */
 public class CardCsrfCookieFilter {
-
-    private static final Pattern CARD_PATH = Pattern.compile("^/og\\.png$|^/og/[^/]+\\.png$|^/og/[^/]+/[^/]+\\.png$");
-
+    private static final Pattern CARD_PATH =
+            Pattern.compile("^/og\\.png$|^/og/[^/]+\\.png$|^/og/[^/]+/[^/]+\\." + "png$");
     @ConfigProperty(name = "quarkus.rest-csrf.cookie-name", defaultValue = "csrf-token")
     String csrfCookieName;
 

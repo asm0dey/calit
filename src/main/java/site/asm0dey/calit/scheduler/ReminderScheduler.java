@@ -1,5 +1,6 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
@@ -8,10 +9,6 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.TransactionPhase;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.events.*;
@@ -21,15 +18,10 @@ import site.asm0dey.calit.notify.NotificationDispatcher;
 
 @ApplicationScoped
 public class ReminderScheduler {
-
     final int leadMinutes;
-
     final int graceSeconds;
-
     final EntityManager em;
-
     final EmailService emailService;
-
     final NotificationDispatcher channels;
 
     @Inject
@@ -38,7 +30,8 @@ public class ReminderScheduler {
             EmailService emailService,
             NotificationDispatcher channels,
             @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440") int leadMinutes,
-            @ConfigProperty(name = "calit.scheduler.grace-seconds", defaultValue = "30") int graceSeconds) {
+            @ConfigProperty(name = "calit.scheduler.grace-seconds", defaultValue = "30") int graceSeconds
+    ) {
         this.em = em;
         this.emailService = emailService;
         this.channels = channels;
@@ -47,18 +40,23 @@ public class ReminderScheduler {
     }
 
     // --- lifecycle observers (creation/recompute/delete side) ---
-
-    /** Auto-confirmed at book time. */
+    /**
+     * Auto-confirmed at book time.
+     */
     void onConfirmed(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingConfirmed e) {
         scheduleReminder(e.bookingId());
     }
 
-    /** PENDING -> CONFIRMED via owner approval. */
+    /**
+     * PENDING -> CONFIRMED via owner approval.
+     */
     void onApproved(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingApproved e) {
         scheduleReminder(e.bookingId());
     }
 
-    /** Cancelled by invitee. */
+    /**
+     * Cancelled by invitee.
+     */
     void onCancelled(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingCancelled e) {
         onCancelledOrDeclined(e.bookingId());
     }
@@ -73,12 +71,16 @@ public class ReminderScheduler {
         onCancelledOrDeclined(e.bookingId());
     }
 
-    /** Declined by owner OR auto-expired (Plan 6 expiry tick fires BookingDeclined). */
+    /**
+     * Declined by owner OR auto-expired (Plan 6 expiry tick fires BookingDeclined).
+     */
     void onDeclined(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingDeclined e) {
         onCancelledOrDeclined(e.bookingId());
     }
 
-    /** Auto-type reschedule stays CONFIRMED at a new time: recompute the reminder. */
+    /**
+     * Auto-type reschedule stays CONFIRMED at a new time: recompute the reminder.
+     */
     void onRescheduled(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingRescheduled e) {
         scheduleReminder(e.bookingId());
     }
@@ -89,40 +91,46 @@ public class ReminderScheduler {
      * Opens its own transaction (AFTER_SUCCESS observers have no active one).
      */
     public void scheduleReminder(Long bookingId) {
-        QuarkusTransaction.requiringNew().run(() -> {
-            Booking booking = Booking.findById(bookingId);
-            if (booking == null) {
-                return;
-            }
-            // Multi-host: a reminder belongs to the group's lead row only -- never N reminders for
-            // one conceptual meeting. BookingConfirmed/BookingApproved/BookingRescheduled already
-            // fire once with the lead id (Tasks 9-11), so this is normally a no-op guard.
-            if (booking.groupId != null) {
-                Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
-                Booking lead = Booking.leadOfGroup(booking.groupId, creatorOwnerId);
-                if (!lead.id.equals(booking.id)) {
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                Booking booking = Booking.findById(bookingId);
+                if (booking == null) {
                     return;
                 }
-            }
-            Instant sendAt = booking.startUtc.minus(leadMinutes, ChronoUnit.MINUTES);
-            // Booking made inside the lead window: nothing to remind about ahead of time.
-            if (!sendAt.isAfter(Instant.now())) {
-                return;
-            }
-            // Never double-schedule (re-confirm / reschedule recompute).
-            Reminder.deleteUnsentFor(bookingId);
-            Reminder r = new Reminder();
-            r.bookingId = bookingId;
-            r.sendAt = sendAt;
-            r.kind = Reminder.KIND_REMINDER;
-            r.sentAt = null;
-            r.persist();
-        });
+                // Multi-host: a reminder belongs to the group's lead row only -- never N reminders for
+                // one conceptual meeting. BookingConfirmed/BookingApproved/BookingRescheduled already
+                // fire once with the lead id (Tasks 9-11), so this is normally a no-op guard.
+                if (booking.groupId != null) {
+                    Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+                    Booking lead = Booking.leadOfGroup(booking.groupId, creatorOwnerId);
+                    if (!lead.id.equals(booking.id)) {
+                        return;
+                    }
+                }
+                Instant sendAt = booking.startUtc.minus(leadMinutes, ChronoUnit.MINUTES);
+                // Booking made inside the lead window: nothing to remind about ahead of time.
+                if (!sendAt.isAfter(Instant.now())) {
+                    return;
+                }
+                // Never double-schedule (re-confirm / reschedule recompute).
+                Reminder.deleteUnsentFor(bookingId);
+                Reminder r = new Reminder();
+                r.bookingId = bookingId;
+                r.sendAt = sendAt;
+                r.kind = Reminder.KIND_REMINDER;
+                r.sentAt = null;
+                r.persist();
+            });
     }
 
-    /** Drop the future unsent reminder for a cancelled/declined/expired booking. */
+    /**
+     * Drop the future unsent reminder for a cancelled/declined/expired booking.
+     */
     public void onCancelledOrDeclined(Long bookingId) {
-        QuarkusTransaction.requiringNew().run(() -> Reminder.deleteUnsentFor(bookingId));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> Reminder.deleteUnsentFor(bookingId));
     }
 
     /**
@@ -149,36 +157,48 @@ public class ReminderScheduler {
      */
     void claimAndMarkDueReminders() {
         List<Long> claimed = new ArrayList<>();
-        QuarkusTransaction.requiringNew().run(() -> {
-            @SuppressWarnings("unchecked")
-            List<Number> ids = em.createNativeQuery("SELECT id FROM reminder "
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                @SuppressWarnings("unchecked")
+                List<Number> ids = em
+                    .createNativeQuery(
+                            "SELECT id FROM reminder "
                             + "WHERE sent_at IS NULL AND send_at <= now() + make_interval(secs => :graceSeconds) "
                             + "ORDER BY send_at "
                             + "FOR UPDATE SKIP LOCKED "
-                            + "LIMIT 50")
+                            + "LIMIT 50"
+                    )
                     .setParameter("graceSeconds", (double) graceSeconds)
                     .getResultList();
 
-            var now = Instant.now();
-            for (Number n : ids) {
-                Reminder r = Reminder.findById(n.longValue());
-                r.sentAt = now; // claim: marked within the lock-holding transaction
-                claimed.add(r.bookingId);
-                // Guard covers a render/load failure (e.g. missing OwnerSettings), which throws
-                // BEFORE any persist -- session stays clean, the claim still commits, one mail dropped.
-                // A node crash is not caught here: it kills the process pre-commit, the tx rolls back,
-                // and the row is reclaimed next tick -- that is the crash-safety guarantee.
-                try {
-                    emailService.enqueueReminder(r.bookingId); // durable intent, same tx
-                } catch (Exception ex) {
-                    Log.errorf(ex, "reminder enqueue failed for booking %d (marked sent, mail dropped)", r.bookingId);
+                var now = Instant.now();
+                for (Number n : ids) {
+                    Reminder r = Reminder.findById(n.longValue());
+                    // claim: marked within the lock-holding transaction
+                    r.sentAt = now;
+                    claimed.add(r.bookingId);
+                    // Guard covers a render/load failure (e.g. missing OwnerSettings), which throws
+                    // BEFORE any persist -- session stays clean, the claim still commits, one mail dropped.
+                    // A node crash is not caught here: it kills the process pre-commit, the tx rolls back,
+                    // and the row is reclaimed next tick -- that is the crash-safety guarantee.
+                    try {
+                        // durable intent, same tx
+                        emailService.enqueueReminder(r.bookingId);
+                    } catch (Exception ex) {
+                        Log.errorf(
+                                ex,
+                                "reminder enqueue failed for booking %d (marked sent, mail dropped)",
+                                r.bookingId
+                        );
+                    }
                 }
-            }
-        });
+            });
         // requiringNew().run() propagates a commit failure, so nothing below runs unless the claims
         // are durable -- no channel message for a reminder that will be reclaimed next tick.
         for (Long bookingId : claimed) {
-            channels.notifyReminder(bookingId); // swallows its own failures
+            // swallows its own failures
+            channels.notifyReminder(bookingId);
         }
     }
 }

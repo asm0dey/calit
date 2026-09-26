@@ -1,16 +1,16 @@
 package site.asm0dey.calit.domain;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class MeetingTypeDurationTest {
-
-    /** Admin is always owner id 1 (DatabaseResetCallback reseeds it per test). */
+    /**
+     * Admin is always owner id 1 (DatabaseResetCallback reseeds it per test).
+     */
     private static final Long OWNER = 1L;
 
     @Transactional

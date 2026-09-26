@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
@@ -7,18 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.specification.RequestSpecification;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.Instant;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingService;
@@ -32,21 +26,23 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class ApprovalLinkTest {
-
     @Inject
     BookingService bookingService;
-
     @InjectMock
     CalendarPort calendarPort;
 
     record BookingRef(long id, String approvalToken) {}
 
-    /** Returns a RestAssured spec with the admin session cookie. */
+    /**
+     * Returns a RestAssured spec with the admin session cookie.
+     */
     private RequestSpecification authedAdmin() {
         return given().cookie("quarkus-credential", FormAuth.login());
     }
 
-    /** Creates a PENDING approval booking owned by admin (id 1), returns its id + approvalToken. */
+    /**
+     * Creates a PENDING approval booking owned by admin (id 1), returns its id + approvalToken.
+     */
     @Transactional
     BookingRef newPendingBooking() {
         OwnerSettings s = OwnerSettings.forOwner(1L);
@@ -58,7 +54,6 @@ class ApprovalLinkTest {
         s.ownerEmail = "owner@example.com";
         s.timezone = "Europe/Amsterdam";
         s.persist();
-
         // Unique slug per invocation to avoid unique-slug constraint collisions across tests.
         var slug = "approval-link-" + System.nanoTime();
         MeetingType t = new MeetingType();
@@ -82,7 +77,17 @@ class ApprovalLinkTest {
         assertFalse(slots.isEmpty(), "no available slots seeded — check AvailabilityRule setup");
         var slot = slots.get(0);
         Booking b = bookingService.book(
-                1L, slug, slot.start().toInstant(), "Test User", "test@example.com", Map.of(), "", "", "en", List.of());
+                1L,
+                slug,
+                slot.start().toInstant(),
+                "Test User",
+                "test@example.com",
+                Map.of(),
+                "",
+                "",
+                "en",
+                List.of()
+        );
         // Reload to get the persisted approvalToken
         Booking loaded = Booking.findById(b.id);
         return new BookingRef(loaded.id, loaded.approvalToken);
@@ -93,13 +98,14 @@ class ApprovalLinkTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         var b = newPendingBooking();
-        given().redirects()
-                .follow(false)
-                .when()
-                .get("/me/bookings/" + b.id + "/approve?t=" + b.approvalToken)
-                .then()
-                .statusCode(302)
-                .header("Location", containsString("/login"));
+        given()
+            .redirects()
+            .follow(false)
+            .when()
+            .get("/me/bookings/" + b.id + "/approve?t=" + b.approvalToken)
+            .then()
+            .statusCode(302)
+            .header("Location", containsString("/login"));
     }
 
     @Test
@@ -107,12 +113,13 @@ class ApprovalLinkTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         var b = newPendingBooking();
-        given().spec(authedAdmin())
-                .when()
-                .get("/me/bookings/" + b.id + "/approve?t=" + b.approvalToken)
-                .then()
-                .statusCode(200)
-                .body(containsString("Booking approved"));
+        given()
+            .spec(authedAdmin())
+            .when()
+            .get("/me/bookings/" + b.id + "/approve?t=" + b.approvalToken)
+            .then()
+            .statusCode(200)
+            .body(containsString("Booking approved"));
     }
 
     @Test
@@ -120,11 +127,7 @@ class ApprovalLinkTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         var b = newPendingBooking();
-        given().spec(authedAdmin())
-                .when()
-                .get("/me/bookings/" + b.id + "/approve?t=wrong")
-                .then()
-                .statusCode(404);
+        given().spec(authedAdmin()).when().get("/me/bookings/" + b.id + "/approve?t=wrong").then().statusCode(404);
     }
 
     @Test
@@ -132,12 +135,13 @@ class ApprovalLinkTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         var b = newPendingBooking();
-        given().spec(authedAdmin())
-                .when()
-                .get("/me/bookings/" + b.id + "/decline?t=" + b.approvalToken)
-                .then()
-                .statusCode(200)
-                .body(containsString("Booking declined"));
+        given()
+            .spec(authedAdmin())
+            .when()
+            .get("/me/bookings/" + b.id + "/decline?t=" + b.approvalToken)
+            .then()
+            .statusCode(200)
+            .body(containsString("Booking declined"));
     }
 
     @Test
@@ -145,18 +149,20 @@ class ApprovalLinkTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         var b = newPendingBooking();
-        given().spec(authedAdmin())
-                .when()
-                .get("/me/bookings/" + b.id + "/approve?t=" + b.approvalToken)
-                .then()
-                .statusCode(200)
-                .body(containsString("Booking approved"));
-        given().spec(authedAdmin())
-                .when()
-                .get("/me/bookings/" + b.id + "/approve?t=" + b.approvalToken)
-                .then()
-                .statusCode(200)
-                .body(containsString("Already handled"));
+        given()
+            .spec(authedAdmin())
+            .when()
+            .get("/me/bookings/" + b.id + "/approve?t=" + b.approvalToken)
+            .then()
+            .statusCode(200)
+            .body(containsString("Booking approved"));
+        given()
+            .spec(authedAdmin())
+            .when()
+            .get("/me/bookings/" + b.id + "/approve?t=" + b.approvalToken)
+            .then()
+            .statusCode(200)
+            .body(containsString("Already handled"));
     }
 
     /**
@@ -182,8 +188,8 @@ class ApprovalLinkTest {
             s.persist();
         }
 
-        MeetingType t = MeetingType.<MeetingType>find("ownerId = ?1 and slug = ?2", b.id, "approval-b-type")
-                .firstResult();
+        MeetingType t =
+                MeetingType.<MeetingType>find("ownerId = ?1 and slug = ?2", b.id, "approval-b-type").firstResult();
         if (t == null) {
             t = new MeetingType();
             t.ownerId = b.id;
@@ -193,13 +199,17 @@ class ApprovalLinkTest {
             t.requiresApproval = true;
             t.persist();
         }
-
         // Persist booking row directly — simpler than going through bookingService for a foreign owner.
         final Long typeId = t.id;
         final Long ownerId = b.id;
-        Booking bk = Booking.<Booking>find(
-                        "ownerId = ?1 and meetingTypeId = ?2 and status = ?3", ownerId, typeId, BookingStatus.PENDING)
-                .firstResult();
+        Booking bk = Booking
+            .<Booking>find(
+                    "ownerId = ?1 and meetingTypeId = ?2 and status = ?3",
+                    ownerId,
+                    typeId,
+                    BookingStatus.PENDING
+            )
+            .firstResult();
         if (bk == null) {
             bk = new Booking();
             bk.ownerId = ownerId;
@@ -219,29 +229,35 @@ class ApprovalLinkTest {
         return new BookingRef(loaded.id, loaded.approvalToken);
     }
 
-    /** Admin (owner A) must get 404 when trying to approve a booking owned by a different user. */
+    /**
+     * Admin (owner A) must get 404 when trying to approve a booking owned by a different user.
+     */
     @Test
     void crossOwnerApproveIs404() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         var b = newPendingBookingForSecondOwner();
-        given().spec(authedAdmin())
-                .when()
-                .get("/me/bookings/" + b.id + "/approve?t=" + b.approvalToken)
-                .then()
-                .statusCode(404);
+        given()
+            .spec(authedAdmin())
+            .when()
+            .get("/me/bookings/" + b.id + "/approve?t=" + b.approvalToken)
+            .then()
+            .statusCode(404);
     }
 
-    /** Admin (owner A) must get 404 when trying to decline a booking owned by a different user. */
+    /**
+     * Admin (owner A) must get 404 when trying to decline a booking owned by a different user.
+     */
     @Test
     void crossOwnerDeclineIs404() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         var b = newPendingBookingForSecondOwner();
-        given().spec(authedAdmin())
-                .when()
-                .get("/me/bookings/" + b.id + "/decline?t=" + b.approvalToken)
-                .then()
-                .statusCode(404);
+        given()
+            .spec(authedAdmin())
+            .when()
+            .get("/me/bookings/" + b.id + "/decline?t=" + b.approvalToken)
+            .then()
+            .statusCode(404);
     }
 }

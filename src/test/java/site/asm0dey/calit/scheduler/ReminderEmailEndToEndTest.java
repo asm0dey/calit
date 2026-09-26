@@ -1,17 +1,14 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -29,19 +26,17 @@ import site.asm0dey.calit.google.CalendarPort;
  */
 @QuarkusTest
 class ReminderEmailEndToEndTest {
-
     private static final String OWNER_EMAIL = "owner-e2e@example.com";
     private static final String INVITEE_EMAIL = "invitee-e2e@example.com";
-
     @Inject
     ReminderScheduler scheduler;
-
     @InjectMock
     CalendarPort calendarPort;
 
     @Test
     void dispatchTickEnqueuesReminderForInviteeAndOwner() {
-        when(calendarPort.isConnected(anyLong())).thenReturn(false); // Google off -> invitee fallback
+        // Google off -> invitee fallback
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
 
         var bookingId = seedConfirmedBookingWithOwner();
         seedDueUnsentReminder(bookingId);
@@ -52,11 +47,13 @@ class ReminderEmailEndToEndTest {
             assertEquals(
                     1,
                     EmailOutbox.count("recipient", INVITEE_EMAIL),
-                    "invitee reminder enqueued (Google disconnected -> fallback)");
+                    "invitee reminder enqueued (Google disconnected -> fallback)"
+            );
             assertEquals(
                     1,
                     EmailOutbox.count("recipient", OWNER_EMAIL),
-                    "owner reminder enqueued (ownerNotificationsEnabled=true)");
+                    "owner reminder enqueued (ownerNotificationsEnabled=true)"
+            );
             EmailOutbox r = EmailOutbox.find("recipient", INVITEE_EMAIL).firstResult();
             assertTrue(r.subject.toLowerCase().contains("reminder"), "subject identifies the reminder email");
         });
@@ -108,13 +105,17 @@ class ReminderEmailEndToEndTest {
     }
 
     private void seedDueUnsentReminder(Long bookingId) {
-        QuarkusTransaction.requiringNew().run(() -> {
-            Reminder r = new Reminder();
-            r.bookingId = bookingId;
-            r.sendAt = Instant.now().minus(1, ChronoUnit.MINUTES); // due
-            r.kind = Reminder.KIND_REMINDER;
-            r.sentAt = null; // unsent
-            r.persist();
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                Reminder r = new Reminder();
+                r.bookingId = bookingId;
+                // due
+                r.sendAt = Instant.now().minus(1, ChronoUnit.MINUTES);
+                r.kind = Reminder.KIND_REMINDER;
+                // unsent
+                r.sentAt = null;
+                r.persist();
+            });
     }
 }

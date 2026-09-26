@@ -1,14 +1,11 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -20,7 +17,6 @@ import site.asm0dey.calit.web.CommonFeaturesProfile;
 @QuarkusTest
 @TestProfile(CommonFeaturesProfile.class)
 class PendingExpiryGraceWindowTest {
-
     @Inject
     PendingExpiryScheduler scheduler;
 
@@ -44,13 +40,22 @@ class PendingExpiryGraceWindowTest {
     @Test
     void expiresPendingWhoseExpiryIsWithinGraceWindow() {
         var meetingTypeId = seedMeetingType();
-
         // Created now, starts in 60s -> expiry = LEAST(createdAt+24h, startUtc) = +60s. Grace 120s -> expire.
-        Long withinGrace = seedBooking(
-                meetingTypeId, Instant.now(), Instant.now().plus(60, ChronoUnit.SECONDS), BookingStatus.PENDING);
+        Long withinGrace =
+                seedBooking(
+                        meetingTypeId,
+                        Instant.now(),
+                        Instant.now().plus(60, ChronoUnit.SECONDS),
+                        BookingStatus.PENDING
+        );
         // Created now, starts in 1h -> expiry = +1h, beyond grace -> keep.
-        Long beyondGrace = seedBooking(
-                meetingTypeId, Instant.now(), Instant.now().plus(1, ChronoUnit.HOURS), BookingStatus.PENDING);
+        Long beyondGrace =
+                seedBooking(
+                        meetingTypeId,
+                        Instant.now(),
+                        Instant.now().plus(1, ChronoUnit.HOURS),
+                        BookingStatus.PENDING
+        );
 
         scheduler.expirePendingBookings();
 
@@ -88,6 +93,8 @@ class PendingExpiryGraceWindowTest {
     }
 
     private BookingStatus reloadStatus(Long id) {
-        return QuarkusTransaction.requiringNew().call(() -> ((Booking) Booking.findById(id)).status);
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> ((Booking) Booking.findById(id)).status);
     }
 }

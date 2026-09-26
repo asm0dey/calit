@@ -1,21 +1,11 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.temporal.TemporalAdjusters;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.*;
@@ -24,9 +14,7 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class RescheduleLengthTest {
-
     private static final Long OWNER = 1L;
-
     @Inject
     BookingService bookingService;
 
@@ -75,8 +63,7 @@ class RescheduleLengthTest {
     @Test
     void reschedulingA120MinuteBookingKeepsIt120() {
         MeetingType t = seed("resched-len");
-        var slots = bookingService.availableSlots(
-                t, LocalDate.now(), LocalDate.now().plusDays(7), Set.of(), 120);
+        var slots = bookingService.availableSlots(t, LocalDate.now(), LocalDate.now().plusDays(7), Set.of(), 120);
 
         Booking b = bookingService.book(
                 OWNER,
@@ -90,20 +77,23 @@ class RescheduleLengthTest {
                 null,
                 "en",
                 List.of(),
-                120);
+                120
+        );
         assertEquals(120, Duration.between(b.startUtc, b.endUtc).toMinutes());
 
-        var target = slots.stream()
-                .filter(s -> !s.start().toInstant().equals(b.startUtc))
-                .findFirst()
-                .orElseThrow();
+        var target = slots
+            .stream()
+            .filter(s -> !s.start().toInstant().equals(b.startUtc))
+            .findFirst()
+            .orElseThrow();
         bookingService.reschedule(b.manageToken, target.start().toInstant());
 
         Booking moved = Booking.findById(b.id);
         assertEquals(
                 120,
                 Duration.between(moved.startUtc, moved.endUtc).toMinutes(),
-                "reschedule moves a booking; it must never resize it");
+                "reschedule moves a booking; it must never resize it"
+        );
     }
 
     private static final ZoneId AMS = ZoneId.of("Europe/Amsterdam");
@@ -139,21 +129,37 @@ class RescheduleLengthTest {
         MeetingType type = groupType();
 
         Booking lead = bookingService.book(
-                OWNER, type.slug, nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", null, "", "en", List.of(), 90);
+                OWNER,
+                type.slug,
+                nextMonday(10),
+                "Sam",
+                "sam@x.com",
+                Map.of(),
+                "tok",
+                null,
+                "",
+                "en",
+                List.of(),
+                90
+        );
         List<Booking> rows = Booking.group(lead.groupId);
         assertEquals(2, rows.size(), "both hosts get a row");
         rows.forEach(r -> assertEquals(
-                90, Duration.between(r.startUtc, r.endUtc).toMinutes(), "booked at the chosen non-default length"));
+                90,
+                Duration.between(r.startUtc, r.endUtc).toMinutes(),
+                "booked at the chosen non-default length"
+        ));
 
         Booking freshLead = Booking.leadOfGroup(lead.groupId, OWNER);
         bookingService.reschedule(freshLead.manageToken, nextMonday(13));
-
         // Assert EVERY row, not just the one whose manageToken drove the reschedule -- taking the
         // length from the wrong row is exactly the bug this path could hide.
-        Booking.<Booking>group(lead.groupId)
-                .forEach(r -> assertEquals(
-                        90,
-                        Duration.between(r.startUtc, r.endUtc).toMinutes(),
-                        "group reschedule moves every row; it must never resize any of them"));
+        Booking
+            .<Booking>group(lead.groupId)
+            .forEach(r -> assertEquals(
+                    90,
+                    Duration.between(r.startUtc, r.endUtc).toMinutes(),
+                    "group reschedule moves every row; it must never resize any of them"
+            ));
     }
 }

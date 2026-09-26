@@ -1,15 +1,10 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Locale;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
@@ -19,13 +14,13 @@ import site.asm0dey.calit.email.BookingSnapshot;
 import site.asm0dey.calit.email.BookingSnapshotLoader;
 import site.asm0dey.calit.test.MultiHostFixtures;
 
-/** Every kind must render a non-empty title and body in every supported locale. */
+/**
+ * Every kind must render a non-empty title and body in every supported locale.
+ */
 @QuarkusTest
 class ChannelMessageRendererTest {
-
     @Inject
     ChannelMessageRenderer renderer;
-
     @Inject
     BookingSnapshotLoader snapshots;
 
@@ -76,7 +71,8 @@ class ChannelMessageRendererTest {
                     new HostNotification.GuestDeclined(s, h, guest()),
                     new HostNotification.GuestRemoved(s, h, guest()),
                     new HostNotification.ReminderDue(s, h),
-                    new HostNotification.ConsentRequested(s.meetingType(), h, "consent-token"));
+                    new HostNotification.ConsentRequested(s.meetingType(), h, "consent-token")
+            );
             for (HostNotification n : all) {
                 var msg = renderer.render(n);
                 assertNotNull(msg.title(), n.kind() + " title in " + locale);
@@ -93,22 +89,24 @@ class ChannelMessageRendererTest {
         assertEquals("BOOKING_CANCELLED", new HostNotification.Cancelled(s, host(Locale.ENGLISH), true).kind());
         assertEquals(
                 "HOST_CONSENT_REQUESTED",
-                new HostNotification.ConsentRequested(s.meetingType(), host(Locale.ENGLISH), "t").kind());
+                new HostNotification.ConsentRequested(s.meetingType(), host(Locale.ENGLISH), "t").kind()
+        );
     }
 
     @Test
     void rescheduledBodyNamesBothTimes() {
         BookingSnapshot s = snapshot();
-        var msg = renderer.render(new HostNotification.Rescheduled(
-                s, host(Locale.ENGLISH), Instant.parse("2026-06-07T09:00:00Z"), false));
+        var msg = renderer.render(
+                new HostNotification.Rescheduled(s, host(Locale.ENGLISH), Instant.parse("2026-06-07T09:00:00Z"), false)
+        );
         assertTrue(msg.body().contains("→"), "rescheduled body shows old → new: " + msg.body());
     }
 
     @Test
     void consentBodyCarriesTheAcceptLink() {
         BookingSnapshot s = snapshot();
-        var msg = renderer.render(
-                new HostNotification.ConsentRequested(s.meetingType(), host(Locale.ENGLISH), "abc-123"));
+        var msg =
+                renderer.render(new HostNotification.ConsentRequested(s.meetingType(), host(Locale.ENGLISH), "abc-123"));
         assertTrue(msg.body().contains("/consent/abc-123"), msg.body());
     }
 }

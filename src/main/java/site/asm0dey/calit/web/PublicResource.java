@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -10,13 +11,6 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
-import java.net.URI;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
 import site.asm0dey.calit.availability.TimeSlot;
@@ -41,7 +35,6 @@ import site.asm0dey.calit.user.Usernames;
 
 @Path("/")
 public class PublicResource {
-
     @CheckedTemplate
     // S107: Qute @CheckedTemplate signatures pass one arg per template variable; param count is inherent.
     @SuppressWarnings("java:S107")
@@ -49,7 +42,12 @@ public class PublicResource {
         public static native TemplateInstance index(String title, boolean authenticated, String username, OgCard og);
 
         public static native TemplateInstance landing(
-                String title, List<LandingType> types, String user, String ownerName, OgCard og);
+                String title,
+                List<LandingType> types,
+                String user,
+                String ownerName,
+                OgCard og
+        );
 
         public static native TemplateInstance book(
                 String title,
@@ -64,7 +62,8 @@ public class PublicResource {
                 boolean googleConnected,
                 String ownerName,
                 String initialGuests,
-                OgCard og);
+                OgCard og
+        );
 
         public static native TemplateInstance confirmation(
                 String title,
@@ -78,7 +77,8 @@ public class PublicResource {
                 String tzBar,
                 String tzScript,
                 boolean mailUndelivered,
-                boolean googleConnected);
+                boolean googleConnected
+        );
 
         public static native TemplateInstance manage(
                 String title,
@@ -97,7 +97,8 @@ public class PublicResource {
                 boolean hostInactive,
                 boolean guestsHidden,
                 boolean erasureEnabled,
-                String contactEmail);
+                String contactEmail
+        );
 
         public static native TemplateInstance guestDeclineConfirm(
                 String title,
@@ -105,12 +106,18 @@ public class PublicResource {
                 MeetingType type,
                 String guestEmail,
                 String guestDeclineToken,
-                String tzScript);
+                String tzScript
+        );
 
         public static native TemplateInstance guestDeclined(String title);
 
         public static native TemplateInstance cancelConfirm(
-                String title, Booking booking, MeetingType type, String meetingName, String tzScript);
+                String title,
+                Booking booking,
+                MeetingType type,
+                String meetingName,
+                String tzScript
+        );
 
         public static native TemplateInstance cancelled(String title);
 
@@ -121,47 +128,41 @@ public class PublicResource {
                 String meetingName,
                 boolean upcoming,
                 String tzScript,
-                Integer erasureWindowDays);
+                Integer erasureWindowDays
+        );
 
         public static native TemplateInstance erased(
-                String title, ErasureReport report, String contactEmail, Integer erasureWindowDays);
+                String title,
+                ErasureReport report,
+                String contactEmail,
+                Integer erasureWindowDays
+        );
 
         public static native TemplateInstance notReady(String title);
 
         public static native TemplateInstance unavailable(String title);
 
-        /** Alias resolves to a multi-host type that isn't fully bookable yet (a co-host hasn't accepted). */
+        /**
+         * Alias resolves to a multi-host type that isn't fully bookable yet (a co-host hasn't accepted).
+         */
         public static native TemplateInstance hostPending(String title);
     }
 
     final BookingService bookingService;
-
     final MeetingHosts meetingHosts;
-
     final CurrentOwner currentOwner;
-
     final ActiveLocale activeLocale;
-
     final AppMessageResolver messages;
-
     final CalendarPort calendarPort;
-
     final MailHealth mailHealth;
-
     final EmailService emailService;
-
     // Root landing is public; with proactive auth this is the anonymous identity when logged out,
     // or the logged-in user's identity (so the landing can show Logout/Settings instead of Sign in).
     final SecurityIdentity identity;
-
     final CaptchaProviderConfig captchaProviderConfig;
-
     final OgCards ogCards;
-
     final PrivacyService privacy;
-
     final PrivacyConfig privacyConfig;
-
     final SiteInfo siteInfo;
 
     @Inject
@@ -179,7 +180,8 @@ public class PublicResource {
             EmailService emailService,
             PrivacyService privacy,
             PrivacyConfig privacyConfig,
-            SiteInfo siteInfo) {
+            SiteInfo siteInfo
+    ) {
         this.bookingService = bookingService;
         this.meetingHosts = meetingHosts;
         this.currentOwner = currentOwner;
@@ -199,10 +201,14 @@ public class PublicResource {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
 
-    /** One selectable slot: human label + the UTC instant string used as the form value. */
+    /**
+     * One selectable slot: human label + the UTC instant string used as the form value.
+     */
     public record SlotView(String label, String startUtc) {}
 
-    /** One day's worth of selectable slots: ISO date (for the JS calendar), a human label, and the slots. */
+    /**
+     * One day's worth of selectable slots: ISO date (for the JS calendar), a human label, and the slots.
+     */
     public record DaySlots(String isoDate, String label, List<SlotView> slots) {}
 
     /**
@@ -212,15 +218,23 @@ public class PublicResource {
      */
     public record LandingType(MeetingType type, String bookUrl, List<Integer> durations) {}
 
-    /** The page furniture every booking-page render passes identically: timezone bar + its scripts. */
+    /**
+     * The page furniture every booking-page render passes identically: timezone bar + its scripts.
+     */
     public record Chrome(String tzBar, String tzScript, String calScript) {}
 
-    /** Captcha wiring for the booking form; siteKey is public and rendered into the page. */
+    /**
+     * Captcha wiring for the booking form; siteKey is public and rendered into the page.
+     */
     public record Captcha(String provider, String siteKey) {}
 
-    /** The lengths this type offers and the one currently rendered. */
+    /**
+     * The lengths this type offers and the one currently rendered.
+     */
     public record DurationChoice(int chosen, List<Integer> allowed) {
-        /** Only a type offering more than one length shows a picker. */
+        /**
+         * Only a type offering more than one length shows a picker.
+         */
         public boolean multiple() {
             return allowed.size() > 1;
         }
@@ -236,9 +250,14 @@ public class PublicResource {
         if (!identity.isAnonymous()
                 && identity.getPrincipal() != null
                 && homeRedirectEnabled(identity.getPrincipal().getName())) {
-            return Response.seeOther(URI.create("/me"))
-                    .header(HttpHeaders.CACHE_CONTROL, "no-store") // per-identity: never cached and replayed
-                    .build();
+            return Response
+                .seeOther(URI.create("/me"))
+                // per-identity: never cached and replayed
+                .header(
+                        // per-identity: never cached and replayed
+                HttpHeaders.CACHE_CONTROL,
+                        "no-store")
+                .build();
         }
         return productPageResponse();
     }
@@ -264,9 +283,9 @@ public class PublicResource {
         // Normalizing here matches AppUser.findByUsername, which is how the column is written.
         // The subquery lives here rather than on OwnerSettings because domain/ deliberately imports
         // nothing from user/.
-        OwnerSettings s = OwnerSettings.find(
-                        "ownerId in (select u.id from AppUser u where u.username = ?1)", Usernames.normalize(username))
-                .firstResult();
+        OwnerSettings s = OwnerSettings
+            .find("ownerId in (select u.id from AppUser u where u.username = ?1)", Usernames.normalize(username))
+            .firstResult();
         return s != null && s.homeRedirectEnabled;
     }
 
@@ -289,9 +308,10 @@ public class PublicResource {
         var m = messages.forLocale(activeLocale.current());
         var authenticated = !identity.isAnonymous();
         String username = authenticated ? identity.getPrincipal().getName() : null;
-        return Response.ok(Templates.index(m.pub_index_title(), authenticated, username, ogCards.product("/")))
-                .header(HttpHeaders.CACHE_CONTROL, "private")
-                .build();
+        return Response
+            .ok(Templates.index(m.pub_index_title(), authenticated, username, ogCards.product("/")))
+            .header(HttpHeaders.CACHE_CONTROL, "private")
+            .build();
     }
 
     @GET
@@ -316,28 +336,35 @@ public class PublicResource {
         // Batch the multi-host bookability check: one host query + one user query for the whole
         // set, instead of isMultiHost() + bookable() (forType + findById per host) per type.
         Set<Long> bookableIds = meetingHosts.bookableTypeIds(candidates);
-        List<MeetingType> bookableTypes =
-                candidates.stream().filter(t -> bookableIds.contains(t.id)).toList();
+        List<MeetingType> bookableTypes = candidates
+            .stream()
+            .filter(t -> bookableIds.contains(t.id))
+            .toList();
         // Batch allowedDurations the same way: one query for every bookable type's configured rows
         // instead of one SELECT per type inside the map below (this is the exact per-type fan-out
         // bookableTypeIds above exists to collapse -- see its javadoc).
         Map<Long, List<Integer>> durationsByType = allowedDurationsByType(bookableTypes);
-        List<LandingType> types = bookableTypes.stream()
-                .map(t -> new LandingType(t, "/" + bookUsernameFor(t, owner) + "/" + t.slug, durationsByType.get(t.id)))
-                .toList();
+        List<LandingType> types = bookableTypes
+            .stream()
+            .map(t -> new LandingType(t, "/" + bookUsernameFor(t, owner) + "/" + t.slug, durationsByType.get(t.id)))
+            .toList();
         return Templates.landing(
                 m.pub_user_title(),
                 types,
                 owner.username,
                 settings.ownerName,
-                ogCards.owner(owner.username, settings.ownerName));
+                ogCards.owner(owner.username, settings.ownerName)
+        );
     }
 
     @GET
     @Path("/{user}/{slug}")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance book(
-            @PathParam("user") String user, @PathParam("slug") String slug, @RestQuery String duration) {
+            @PathParam("user") String user,
+            @PathParam("slug") String slug,
+            @RestQuery String duration
+    ) {
         var m = messages.forLocale(activeLocale.current());
         BookingTarget target = resolveBookingTarget(user, slug, m);
         if (target.earlyExit() != null) {
@@ -362,7 +389,8 @@ public class PublicResource {
         String bookTitle = m.pub_book_title_prefix() + " " + type.name;
         return Templates.book(
                 bookTitle,
-                urlUser.username, // keeps the form posting back to the alias URL it was reached at
+                // keeps the form posting back to the alias URL it was reached at
+                urlUser.username,
                 type,
                 byDate,
                 fields,
@@ -373,7 +401,8 @@ public class PublicResource {
                 calendarPort.isConnected(type.ownerId),
                 settings.ownerName,
                 "",
-                ogCards.meetingType(user, type, settings.ownerName));
+                ogCards.meetingType(user, type, settings.ownerName)
+        );
     }
 
     private String turnstileSiteKey() {
@@ -399,9 +428,10 @@ public class PublicResource {
         return new DurationChoice(chosen, allowed);
     }
 
-    /** Resolved booking target; a non-null {@code earlyExit} page means "render it and stop". */
-    private record BookingTarget(
-            MeetingType type, OwnerSettings settings, AppUser urlUser, TemplateInstance earlyExit) {}
+    /**
+     * Resolved booking target; a non-null {@code earlyExit} page means "render it and stop".
+     */
+    private record BookingTarget(MeetingType type, OwnerSettings settings, AppUser urlUser, TemplateInstance earlyExit) {}
 
     /**
      * Resolve {@code {user}/{slug}} to a bookable type: 404 on unknown, bind {@link CurrentOwner} to
@@ -410,7 +440,8 @@ public class PublicResource {
      * instead of a target when the type isn't bookable yet. Shared by the GET and POST handlers.
      */
     private BookingTarget resolveBookingTarget(String user, String slug, AppMessages m) {
-        AppUser urlUser = resolveOwner(user); // 404 if unknown; binds CurrentOwner (may be a co-host alias)
+        // 404 if unknown; binds CurrentOwner (may be a co-host alias)
+        AppUser urlUser = resolveOwner(user);
         // resolveForAlias: urlUser's own type wins, else a multi-host type urlUser is an ACCEPTED
         // co-host of (secret types still reachable by direct link, as before).
         MeetingType type = MeetingType.resolveForAlias(urlUser.id, slug);
@@ -441,9 +472,10 @@ public class PublicResource {
             return Map.of();
         }
         List<Long> ids = types.stream().map(t -> t.id).toList();
-        Map<Long, List<MeetingTypeDuration>> rowsByType =
-                MeetingTypeDuration.<MeetingTypeDuration>list("meetingTypeId in ?1", ids).stream()
-                        .collect(Collectors.groupingBy(d -> d.meetingTypeId));
+        Map<Long, List<MeetingTypeDuration>> rowsByType = MeetingTypeDuration
+            .<MeetingTypeDuration>list("meetingTypeId in ?1", ids)
+            .stream()
+            .collect(Collectors.groupingBy(d -> d.meetingTypeId));
         Map<Long, List<Integer>> result = new HashMap<>();
         for (MeetingType t : types) {
             List<Integer> all = new ArrayList<>();
@@ -459,7 +491,9 @@ public class PublicResource {
         return result;
     }
 
-    /** The username a landing entry should book at: the owner's own for their types, else the creator's. */
+    /**
+     * The username a landing entry should book at: the owner's own for their types, else the creator's.
+     */
     private static String bookUsernameFor(MeetingType t, AppUser landingOwner) {
         if (t.ownerId.equals(landingOwner.id)) {
             return landingOwner.username;
@@ -468,16 +502,19 @@ public class PublicResource {
         return creator.username;
     }
 
-    /** Splits the optional "guests" form field on commas/whitespace into a clean email list. */
+    /**
+     * Splits the optional "guests" form field on commas/whitespace into a clean email list.
+     */
     private static List<String> parseGuests(MultivaluedMap<String, String> form) {
         String raw = form.getFirst("guests");
         if (raw == null || raw.isBlank()) {
             return List.of();
         }
-        return Arrays.stream(raw.split("[,\\s]+"))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .toList();
+        return Arrays
+            .stream(raw.split("[,\\s]+"))
+            .map(String::trim)
+            .filter(s -> !s.isBlank())
+            .toList();
     }
 
     @POST
@@ -490,11 +527,13 @@ public class PublicResource {
             @RestForm String startUtc,
             @RestForm String inviteeName,
             @RestForm String inviteeEmail,
-            @RestForm String website, // honeypot
+            // honeypot
+            @RestForm String website,
             @RestForm("cf-turnstile-response") String turnstileToken,
             @RestForm("altcha") String altchaSolution,
             @RestForm @DefaultValue("0") int durationMinutes,
-            MultivaluedMap<String, String> form) {
+            MultivaluedMap<String, String> form
+    ) {
         var m = messages.forLocale(activeLocale.current());
         BookingTarget target = resolveBookingTarget(user, slug, m);
         if (target.earlyExit() != null) {
@@ -507,14 +546,14 @@ public class PublicResource {
         // A missing/blank hidden field binds to 0 (@DefaultValue), which must resolve to the type's
         // own default rather than reaching assertDurationAllowed with a bogus value.
         int submittedDuration = durationMinutes > 0 ? durationMinutes : type.durationMinutes;
-
         // Collect every "answers.<fieldKey>" form param into the answers map (strip the prefix).
         Map<String, String> answers = new HashMap<>();
         for (Map.Entry<String, List<String>> e : form.entrySet()) {
             if (e.getKey().startsWith("answers.")) {
                 answers.put(
                         e.getKey().substring("answers.".length()),
-                        e.getValue().isEmpty() ? "" : e.getValue().getFirst());
+                        e.getValue().isEmpty() ? "" : e.getValue().getFirst()
+                );
             }
         }
 
@@ -536,7 +575,8 @@ public class PublicResource {
                     website,
                     locale,
                     parseGuests(form),
-                    submittedDuration);
+                    submittedDuration
+            );
         } catch (BookingValidationException | AbuseException | RateLimitException | BookingConflictException be) {
             // Required-field 422 OR an abuse-guard rejection (filled honeypot / failed Turnstile /
             // per-email cap) / slot conflict. Re-render the form inline with the message; do NOT
@@ -556,12 +596,15 @@ public class PublicResource {
                     calendarPort.isConnected(type.ownerId),
                     settings.ownerName,
                     "",
-                    ogCards.meetingType(user, type, settings.ownerName));
+                    ogCards.meetingType(user, type, settings.ownerName)
+            );
         }
         return confirmationPage(booking, type);
     }
 
-    /** Renders the confirmation/request-sent page for a freshly created/rescheduled booking. */
+    /**
+     * Renders the confirmation/request-sent page for a freshly created/rescheduled booking.
+     */
     private TemplateInstance confirmationPage(Booking booking, MeetingType type) {
         var m = messages.forLocale(activeLocale.current());
         // Server fallback label is owner-tz; the page also carries the booked instant as a
@@ -569,7 +612,8 @@ public class PublicResource {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         String when =
                 booking.startUtc.atZone(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
-        String startUtcIso = booking.startUtc.toString(); // absolute instant for data-utc
+        // absolute instant for data-utc
+        String startUtcIso = booking.startUtc.toString();
         // Approval types come back PENDING → "request sent" page (no Meet link yet); auto types
         // come back CONFIRMED → location/Meet confirmation.
         var pending = booking.status == BookingStatus.PENDING;
@@ -599,16 +643,19 @@ public class PublicResource {
                 Layout.tzBar(m),
                 Layout.TZ_SCRIPT,
                 mailUndelivered,
-                googleConnected);
+                googleConnected
+        );
     }
 
     @GET
     @Path("/booking/{manageToken}/manage")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance manage(@PathParam("manageToken") String manageToken) {
-        Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
+        // unguessable key, not id
+        Booking booking = Booking.findByManageToken(manageToken);
         if (booking == null || booking.isErased()) {
-            throw new NotFoundException("No booking for that token"); // unknown token → 404
+            // unknown token → 404
+            throw new NotFoundException("No booking for that token");
         }
         return renderManage(booking);
     }
@@ -623,16 +670,15 @@ public class PublicResource {
     @Path("/booking/{manageToken}/invite.ics")
     @Produces("text/calendar;charset=UTF-8")
     public Response inviteIcs(@PathParam("manageToken") String manageToken) {
-        Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
+        // unguessable key, not id
+        Booking booking = Booking.findByManageToken(manageToken);
         if (booking == null || booking.isErased()) {
             throw new NotFoundException("No booking for that token");
         }
         byte[] ics = emailService
-                .inviteeIcs(booking.id)
-                .orElseThrow(() -> new NotFoundException("No calendar entry for that token"));
-        return Response.ok(ics)
-                .header("Content-Disposition", "attachment; filename=\"invite.ics\"")
-                .build();
+            .inviteeIcs(booking.id)
+            .orElseThrow(() -> new NotFoundException("No calendar entry for that token"));
+        return Response.ok(ics).header("Content-Disposition", "attachment; filename=\"invite.ics\"").build();
     }
 
     /**
@@ -643,13 +689,20 @@ public class PublicResource {
     @Path("/booking/{manageToken}/data")
     @Produces(MediaType.APPLICATION_JSON)
     public Response bookingData(@PathParam("manageToken") String manageToken) {
-        return Response.ok(privacy.exportBooking(manageToken))
-                .header("Content-Disposition", "attachment; filename=\"booking-data.json\"")
-                .header(HttpHeaders.CACHE_CONTROL, "no-store") // personal data: never kept by a shared cache
-                .build();
+        return Response
+            .ok(privacy.exportBooking(manageToken))
+            .header("Content-Disposition", "attachment; filename=\"booking-data.json\"")
+            // personal data: never kept by a shared cache
+            .header(
+                    // personal data: never kept by a shared cache
+            HttpHeaders.CACHE_CONTROL,
+                    "no-store")
+            .build();
     }
 
-    /** Render the invitee's Manage hub (shared by GET manage and POST edit-details). */
+    /**
+     * Render the invitee's Manage hub (shared by GET manage and POST edit-details).
+     */
     private TemplateInstance renderManage(Booking booking) {
         var m = messages.forLocale(activeLocale.current());
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
@@ -671,10 +724,14 @@ public class PublicResource {
         }
         String current =
                 booking.startUtc.atZone(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
-        String currentUtcIso = booking.startUtc.toString(); // absolute instant for data-utc
-        String guestsCsv = BookingGuest.activeForBooking(booking.id).stream()
-                .map(g -> g.email)
-                .collect(Collectors.joining(","));
+        // absolute instant for data-utc
+        String currentUtcIso = booking.startUtc.toString();
+        String guestsCsv =
+                BookingGuest
+            .activeForBooking(booking.id)
+            .stream()
+            .map(g -> g.email)
+            .collect(Collectors.joining(","));
         return Templates.manage(
                 m.pub_manage_title(),
                 booking,
@@ -685,14 +742,16 @@ public class PublicResource {
                 Layout.TZ_SCRIPT,
                 Layout.CALENDAR_SCRIPT,
                 guestsCsv,
-                booking.title == null ? "" : booking.title, // raw override
+                // raw override
+                booking.title == null ? "" : booking.title,
                 booking.description == null ? "" : booking.description,
                 type.name,
                 type.description == null ? "" : type.description,
                 hostInactive(booking),
                 type.hidesGuests(),
                 privacyConfig.inviteeErasureEnabled(),
-                siteInfo.getContactEmail());
+                siteInfo.getContactEmail()
+        );
     }
 
     /**
@@ -716,16 +775,14 @@ public class PublicResource {
     @Path("/booking/{manageToken}/edit-details")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
-    // Transactional so the reload below shares updateDetails' persistence context instead of hitting this
-    // request's long-lived non-transactional EntityManager, which would still hold the pre-update entity
-    // in its L1 cache and serve stale data back to renderManage (same reasoning as AdminResource's
     // ownerEditDetails).
     @Transactional
     public TemplateInstance editDetails(
             @PathParam("manageToken") String manageToken,
             @RestForm String title,
             @RestForm String description,
-            MultivaluedMap<String, String> form) {
+            MultivaluedMap<String, String> form
+    ) {
         // Authenticated solely by the unguessable manage token. Re-renders the Manage hub with fresh values.
         Booking existing = Booking.findByManageToken(manageToken);
         if (existing == null || existing.isErased()) {
@@ -769,7 +826,8 @@ public class PublicResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance cancelConfirmPage(@PathParam("manageToken") String manageToken) {
         var m = messages.forLocale(activeLocale.current());
-        Booking booking = Booking.findByManageToken(manageToken); // unguessable key, not id
+        // unguessable key, not id
+        Booking booking = Booking.findByManageToken(manageToken);
         if (booking == null || booking.isErased()) {
             throw new NotFoundException("No booking for that token");
         }
@@ -779,7 +837,12 @@ public class PublicResource {
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         return Templates.cancelConfirm(
-                m.pub_cancel_confirm_title(), booking, type, booking.effectiveTitle(type), Layout.TZ_SCRIPT);
+                m.pub_cancel_confirm_title(),
+                booking,
+                type,
+                booking.effectiveTitle(type),
+                Layout.TZ_SCRIPT
+        );
     }
 
     @POST
@@ -792,7 +855,8 @@ public class PublicResource {
         if (existing == null || existing.isErased()) {
             throw new NotFoundException("No booking for that token");
         }
-        bookingService.cancel(manageToken); // keyed by the token
+        // keyed by the token
+        bookingService.cancel(manageToken);
         return Templates.cancelled(m.pub_cancelled_title());
     }
 
@@ -818,7 +882,8 @@ public class PublicResource {
                 booking.effectiveTitle(type),
                 upcoming,
                 Layout.TZ_SCRIPT,
-                erasureWindowDaysFor(booking));
+                erasureWindowDaysFor(booking)
+        );
     }
 
     @POST
@@ -828,7 +893,8 @@ public class PublicResource {
     public TemplateInstance erase(@PathParam("manageToken") String manageToken) {
         var m = messages.forLocale(activeLocale.current());
         Booking booking = requireErasableBooking(manageToken);
-        Integer erasureWindowDays = erasureWindowDaysFor(booking); // owner_id survives the anonymising erasure below
+        // owner_id survives the anonymising erasure below
+        Integer erasureWindowDays = erasureWindowDaysFor(booking);
         ErasureReport report = privacy.eraseByManageToken(manageToken);
         return Templates.erased(m.pub_erased_title(), report, siteInfo.getContactEmail(), erasureWindowDays);
     }
@@ -873,17 +939,25 @@ public class PublicResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance guestDeclineConfirm(@PathParam("declineToken") String declineToken) {
         var m = messages.forLocale(activeLocale.current());
-        BookingGuest guest = BookingGuest.findByDeclineToken(declineToken); // unguessable key
+        // unguessable key
+        BookingGuest guest = BookingGuest.findByDeclineToken(declineToken);
         if (guest == null) {
             throw new NotFoundException("No guest for that token");
         }
         if (guest.status != GuestStatus.INVITED) {
-            return Templates.guestDeclined(m.pub_guest_declined_title()); // already declined/removed
+            // already declined/removed
+            return Templates.guestDeclined(m.pub_guest_declined_title());
         }
         Booking booking = Booking.findById(guest.bookingId);
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         return Templates.guestDeclineConfirm(
-                m.pub_guest_decline_confirm_title(), booking, type, guest.email, declineToken, Layout.TZ_SCRIPT);
+                m.pub_guest_decline_confirm_title(),
+                booking,
+                type,
+                guest.email,
+                declineToken,
+                Layout.TZ_SCRIPT
+        );
     }
 
     @POST
@@ -892,7 +966,8 @@ public class PublicResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance guestDecline(@PathParam("declineToken") String declineToken) {
         var m = messages.forLocale(activeLocale.current());
-        bookingService.declineGuest(declineToken); // keyed by the token; idempotent
+        // keyed by the token; idempotent
+        bookingService.declineGuest(declineToken);
         return Templates.guestDeclined(m.pub_guest_declined_title());
     }
 
@@ -912,7 +987,9 @@ public class PublicResource {
         return owner;
     }
 
-    /** Available slots as an ordered per-day list (ISO date + label), chronological, at {@code durationMinutes}. */
+    /**
+     * Available slots as an ordered per-day list (ISO date + label), chronological, at {@code durationMinutes}.
+     */
     private List<DaySlots> daySlots(MeetingType type, int durationMinutes) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         var from = LocalDate.now(zone);
@@ -922,14 +999,12 @@ public class PublicResource {
         Map<String, DaySlots> byIso = new LinkedHashMap<>();
         for (TimeSlot slot : bookingService.availableSlots(type, from, to, Set.of(), durationMinutes)) {
             String isoDate = slot.start().toLocalDate().toString();
-            var day = byIso.computeIfAbsent(
-                    isoDate,
-                    k -> new DaySlots(
-                            k, slot.start().format(DATE_FMT.withLocale(activeLocale.current())), new ArrayList<>()));
-            day.slots()
-                    .add(new SlotView(
-                            slot.start().format(TIME_FMT),
-                            slot.start().toInstant().toString()));
+            var day = byIso.computeIfAbsent(isoDate, k -> new DaySlots(
+                    k,
+                    slot.start().format(DATE_FMT.withLocale(activeLocale.current())),
+                    new ArrayList<>()
+            ));
+            day.slots().add(new SlotView(slot.start().format(TIME_FMT), slot.start().toInstant().toString()));
         }
         return new ArrayList<>(byIso.values());
     }

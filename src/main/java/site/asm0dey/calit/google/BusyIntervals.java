@@ -1,16 +1,13 @@
 package site.asm0dey.calit.google;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import module java.base;
 
 /**
  * Pure interval algebra for busy time. No Google or CDI dependencies — unit-tested directly.
  */
 public final class BusyIntervals {
-
-    private BusyIntervals() {}
+    private BusyIntervals() {
+    }
 
     /**
      * Sort the given intervals by start, then collapse any that overlap or merely touch

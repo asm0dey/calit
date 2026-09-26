@@ -1,18 +1,15 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -26,14 +23,11 @@ import site.asm0dey.calit.google.CalendarPort;
 // When SMTP is down, a booking notification must NOT throw out of the observer -- it must land in the outbox.
 @QuarkusTest
 class EmailServiceFallbackTest {
-
     @Inject
     EmailService emailService;
-
     // Spy the seam so we can force the raw send to fail (Mailer is @Singleton -> @InjectMock unusable).
     @InjectSpy
     MailSender mailSender;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -45,18 +39,22 @@ class EmailServiceFallbackTest {
         });
     }
 
+    // Lambda, not EmailOutbox::count: a method reference binds to PanacheEntityBase.count, which Panache
+    // does not rewrite, and throws "did you forget to annotate your entity with @Entity?".
+    @SuppressWarnings("java:S1612")
     @Test
     void declinedWithSmtpDownQueuesInsteadOfThrowing() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         doThrow(new RuntimeException("smtp down"))
-                .when(mailSender)
-                .sendNow(any(), anyString(), anyString(), anyString(), any());
+            .when(mailSender)
+            .sendNow(any(), anyString(), anyString(), anyString(), any());
         var bookingId = seedDeclined();
-
         // Must not throw.
         emailService.handleDeclined(new BookingDeclined(bookingId));
 
-        long queued = QuarkusTransaction.requiringNew().call(() -> EmailOutbox.count());
+        long queued = QuarkusTransaction
+            .requiringNew()
+            .call(() -> EmailOutbox.count());
         // declined notifies invitee + owner -> 2 parked mails.
         assertTrue(queued >= 2, "both recipients' mail parked in outbox, got " + queued);
     }

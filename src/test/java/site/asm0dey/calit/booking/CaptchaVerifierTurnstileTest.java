@@ -1,17 +1,13 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
-
 import com.sun.net.httpserver.HttpServer;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
 import jakarta.inject.Inject;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,10 +23,10 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class CaptchaVerifierTurnstileTest {
-
-    /** Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide. */
+    /**
+     * Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide.
+     */
     static int port;
-
     static HttpServer server;
 
     @BeforeAll
@@ -59,7 +55,6 @@ class CaptchaVerifierTurnstileTest {
 
     @Inject
     CaptchaVerifier verifier;
-
     @InjectSpy
     CaptchaProviderConfig providerConfig;
 

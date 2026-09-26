@@ -1,14 +1,12 @@
 package site.asm0dey.calit.web.og;
 
+import module java.base;
+import module java.desktop;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -22,7 +20,6 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class CardRendererCoverageTest {
-
     @Inject
     CardRenderer renderer;
 
@@ -89,7 +86,8 @@ class CardRendererCoverageTest {
         // pill's y) only take their multi-line side when a card actually wraps -- every card seeded
         // through OgImageResourceTest uses a short one-line type name, so this side was unexercised.
         byte[] png = renderer.render(
-                new CardRenderer.Card("Ada Lovelace", "Quarterly architecture review session", "15, 30 or 60 min"));
+                new CardRenderer.Card("Ada Lovelace", "Quarterly architecture review session", "15, 30 or 60 min")
+        );
         var img = ImageIO.read(new ByteArrayInputStream(png));
         assertEquals(1200, img.getWidth());
         assertEquals(630, img.getHeight());
@@ -112,8 +110,7 @@ class CardRendererCoverageTest {
         // CardRendererTest.pathologicalSingleWordIsEllipsizedAndFitsTheSafeSquare, but through the
         // CDI-injected bean so this specific branch (fitHeadline's first-line-still-overflows path)
         // counts towards coverage.
-        var unbrokenWord =
-                "Supercalifragilisticexpialidociousantidisestablishmentarianismfloccinaucinihilipilification";
+        var unbrokenWord = "Supercalifragilisticexpialidociousantidisestablishmentarianismfloccinaucinihilipilification";
         var probe = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
         var g = probe.createGraphics();
 
@@ -127,7 +124,8 @@ class CardRendererCoverageTest {
         int maxWidth = CardRenderer.SAFE_X1 - CardRenderer.SAFE_X0 - 40;
         assertTrue(
                 TextRuns.width(g, lines.getFirst()) <= maxWidth,
-                "ellipsized line must fit the safe square, width was " + TextRuns.width(g, lines.getFirst()));
+                "ellipsized line must fit the safe square, width was " + TextRuns.width(g, lines.getFirst())
+        );
         g.dispose();
     }
 

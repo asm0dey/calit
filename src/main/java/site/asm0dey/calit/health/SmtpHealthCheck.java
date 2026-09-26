@@ -1,10 +1,8 @@
 package site.asm0dey.calit.health;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.util.Optional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
@@ -25,20 +23,17 @@ import org.eclipse.microprofile.health.Readiness;
 @Readiness
 @ApplicationScoped
 public class SmtpHealthCheck implements HealthCheck {
-
     private static final String STATE = "state";
-
     final boolean mock;
-
     final Optional<String> host;
-
     final int port;
 
     @Inject
     public SmtpHealthCheck(
             @ConfigProperty(name = "quarkus.mailer.mock", defaultValue = "false") boolean mock,
             @ConfigProperty(name = "quarkus.mailer.host") Optional<String> host,
-            @ConfigProperty(name = "quarkus.mailer.port", defaultValue = "587") int port) {
+            @ConfigProperty(name = "quarkus.mailer.port", defaultValue = "587") int port
+    ) {
         this.mock = mock;
         this.host = host;
         this.port = port;
@@ -52,15 +47,15 @@ public class SmtpHealthCheck implements HealthCheck {
         }
         try (var s = new Socket()) {
             s.connect(new InetSocketAddress(host.get(), port), 2000);
-            return r.up().withData(STATE, "reachable")
-                    .withData("host", host.get() + ":" + port)
-                    .build();
+            return r.up().withData(STATE, "reachable").withData("host", host.get() + ":" + port).build();
         } catch (Exception e) {
             // UP, not DOWN: the outbox queues mail while SMTP is down -- don't drop out of rotation.
-            return r.up().withData(STATE, "unreachable")
-                    .withData("host", host.get() + ":" + port)
-                    .withData("error", e.getMessage())
-                    .build();
+            return r
+                .up()
+                .withData(STATE, "unreachable")
+                .withData("host", host.get() + ":" + port)
+                .withData("error", e.getMessage())
+                .build();
         }
     }
 }

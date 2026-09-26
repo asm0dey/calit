@@ -1,9 +1,9 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
-import java.time.format.DateTimeParseException;
 
 /**
  * Maps a malformed ISO-8601 date/time in a public request (e.g. a bad {@code startUtc} body field
@@ -14,8 +14,9 @@ import java.time.format.DateTimeParseException;
 public class MalformedDateTimeMapper implements ExceptionMapper<DateTimeParseException> {
     @Override
     public Response toResponse(DateTimeParseException ex) {
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity("Malformed date/time value: " + ex.getParsedString())
-                .build();
+        return Response
+            .status(Response.Status.BAD_REQUEST)
+            .entity("Malformed date/time value: " + ex.getParsedString())
+            .build();
     }
 }

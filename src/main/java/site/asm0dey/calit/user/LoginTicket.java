@@ -1,8 +1,8 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.Instant;
 
 /**
  * Single-use, short-lived ticket that bridges a verified Google identity into a native
@@ -13,17 +13,13 @@ import java.time.Instant;
 @Entity
 @Table(name = "login_ticket")
 public class LoginTicket extends PanacheEntityBase {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
-
     @Column(name = "user_id", nullable = false)
     public Long userId;
-
     @Column(name = "token_hash", nullable = false, unique = true)
     public String tokenHash;
-
     @Column(name = "expires_at", nullable = false)
     public Instant expiresAt;
 

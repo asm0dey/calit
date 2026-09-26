@@ -1,15 +1,12 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -21,15 +18,15 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 @TestProfile(PrivacyPolicyOverrideTest.WithOverride.class)
 class PrivacyPolicyOverrideTest {
-
     @Test
     void theOperatorFragmentReplacesTheShippedBody() {
-        given().when()
-                .get("/privacy")
-                .then()
-                .statusCode(200)
-                .body(containsString("OPERATOR SUPPLIED POLICY"))
-                .body(not(containsString("CALIT_LEGAL_PRIVACY")));
+        given()
+            .when()
+            .get("/privacy")
+            .then()
+            .statusCode(200)
+            .body(containsString("OPERATOR SUPPLIED POLICY"))
+            .body(not(containsString("CALIT_LEGAL_PRIVACY")));
     }
 
     public static class WithOverride implements QuarkusTestProfile {

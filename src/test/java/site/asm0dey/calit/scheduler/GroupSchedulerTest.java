@@ -1,14 +1,11 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -24,17 +21,14 @@ import site.asm0dey.calit.test.MultiHostFixtures;
  */
 @QuarkusTest
 class GroupSchedulerTest {
-
-    private static final long CREATOR_ID = 1L; // DatabaseResetCallback baseline admin
+    // DatabaseResetCallback baseline admin
+    private static final long CREATOR_ID = 1L;
     private static final long COHOST_ID = 2L;
     private static final String INVITEE_EMAIL = "invitee-groupsched@example.com";
-
     @Inject
     ReminderScheduler reminderScheduler;
-
     @Inject
     PendingExpiryScheduler expiryScheduler;
-
     @Inject
     EntityManager em;
 
@@ -55,7 +49,8 @@ class GroupSchedulerTest {
             BookingStatus leadStatus,
             Instant leadCreatedAt,
             BookingStatus cohostStatus,
-            Instant cohostCreatedAt) {
+            Instant cohostCreatedAt
+    ) {
         return QuarkusTransaction.requiringNew().call(() -> {
             var groupId = UUID.randomUUID();
             long leadId = seedRow(meetingTypeId, CREATOR_ID, groupId, start, leadStatus, leadCreatedAt);
@@ -65,7 +60,13 @@ class GroupSchedulerTest {
     }
 
     private long seedRow(
-            long meetingTypeId, long ownerId, UUID groupId, Instant start, BookingStatus status, Instant createdAt) {
+            long meetingTypeId,
+            long ownerId,
+            UUID groupId,
+            Instant start,
+            BookingStatus status,
+            Instant createdAt
+    ) {
         Booking b = new Booking();
         b.ownerId = ownerId;
         b.meetingTypeId = meetingTypeId;
@@ -84,10 +85,17 @@ class GroupSchedulerTest {
     @Test
     void onlyLeadRowGetsReminderOnGroupConfirm() {
         MeetingType type = twoHostType(false);
-        var start = Instant.now().plus(500, ChronoUnit.HOURS); // well beyond the default 1440-min lead
-        GroupIds ids = seedGroup(
-                type.id, start, BookingStatus.CONFIRMED, Instant.now(), BookingStatus.CONFIRMED, Instant.now());
-
+        // well beyond the default 1440-min lead
+        var start = Instant.now().plus(500, ChronoUnit.HOURS);
+        GroupIds ids =
+                seedGroup(
+                        type.id,
+                        start,
+                        BookingStatus.CONFIRMED,
+                        Instant.now(),
+                        BookingStatus.CONFIRMED,
+                        Instant.now()
+        );
         // Simulate both rows firing scheduleReminder -- BookingConfirmed only fires once with the
         // lead id in practice, but the guard must hold even if a non-lead row's event somehow fires.
         reminderScheduler.scheduleReminder(ids.leadId());
@@ -107,9 +115,16 @@ class GroupSchedulerTest {
                 type.id,
                 start,
                 BookingStatus.CONFIRMED,
-                Instant.now().minus(2, ChronoUnit.HOURS), // lead already approved
+                Instant
+                    .now()
+                    // lead already approved
+                    .minus(2, ChronoUnit.HOURS),
                 BookingStatus.PENDING,
-                Instant.now().minus(25, ChronoUnit.HOURS)); // cohost still pending, past the 24h hold
+                Instant
+                    .now()
+                    // cohost still pending, past the 24h hold
+                    .minus(25, ChronoUnit.HOURS)
+        );
 
         expiryScheduler.expirePendingBookings();
 
@@ -117,14 +132,19 @@ class GroupSchedulerTest {
             assertEquals(
                     BookingStatus.DECLINED,
                     ((Booking) Booking.findById(ids.leadId())).status,
-                    "already-approved lead row is also declined -- the whole group dies together");
+                    "already-approved lead row is also declined -- the whole group dies together"
+            );
             assertEquals(
                     BookingStatus.DECLINED,
                     ((Booking) Booking.findById(ids.cohostId())).status,
-                    "expired PENDING row is declined");
+                    "expired PENDING row is declined"
+            );
             assertEquals(1, EmailOutbox.count("recipient", INVITEE_EMAIL), "invitee gets exactly one declined email");
             assertEquals(
-                    1, EmailOutbox.count("recipient", "Creator@x.com"), "lead host gets exactly one declined email");
+                    1,
+                    EmailOutbox.count("recipient", "Creator@x.com"),
+                    "lead host gets exactly one declined email"
+            );
             assertEquals(1, EmailOutbox.count("recipient", "Cohost@x.com"), "co-host gets exactly one declined email");
         });
     }
@@ -145,19 +165,25 @@ class GroupSchedulerTest {
         GroupIds ids = seedGroup(
                 type.id,
                 start,
-                BookingStatus.DECLINED, // simulates a concurrent tick that already won the race
+                // simulates a concurrent tick that already won the race
+                BookingStatus.DECLINED,
                 Instant.now().minus(25, ChronoUnit.HOURS),
                 BookingStatus.PENDING,
-                Instant.now().minus(25, ChronoUnit.HOURS)); // still claimable: past the 24h hold
-
+                Instant
+                    .now()
+                    // still claimable: past the 24h hold
+                    .minus(25, ChronoUnit.HOURS)
+        );
         // email_outbox isn't reset per test (DatabaseResetCallback only truncates domain tables), so
         // compare counts before/after the tick rather than asserting an absolute value.
         record Baseline(long invitee, long lead, long cohost) {}
-        Baseline before = QuarkusTransaction.requiringNew()
-                .call(() -> new Baseline(
-                        EmailOutbox.count("recipient", INVITEE_EMAIL),
-                        EmailOutbox.count("recipient", "Creator@x.com"),
-                        EmailOutbox.count("recipient", "Cohost@x.com")));
+        Baseline before = QuarkusTransaction
+            .requiringNew()
+            .call(() -> new Baseline(
+                    EmailOutbox.count("recipient", INVITEE_EMAIL),
+                    EmailOutbox.count("recipient", "Creator@x.com"),
+                    EmailOutbox.count("recipient", "Cohost@x.com")
+            ));
 
         expiryScheduler.expirePendingBookings();
 
@@ -165,23 +191,28 @@ class GroupSchedulerTest {
             assertEquals(
                     BookingStatus.DECLINED,
                     ((Booking) Booking.findById(ids.leadId())).status,
-                    "lead row stays DECLINED (already handled by the other tick)");
+                    "lead row stays DECLINED (already handled by the other tick)"
+            );
             assertEquals(
                     BookingStatus.PENDING,
                     ((Booking) Booking.findById(ids.cohostId())).status,
-                    "co-host row is left untouched -- the skip happens before the group loop runs");
+                    "co-host row is left untouched -- the skip happens before the group loop runs"
+            );
             assertEquals(
                     before.invitee(),
                     EmailOutbox.count("recipient", INVITEE_EMAIL),
-                    "no second declined email for the invitee");
+                    "no second declined email for the invitee"
+            );
             assertEquals(
                     before.lead(),
                     EmailOutbox.count("recipient", "Creator@x.com"),
-                    "no second declined email for the lead host");
+                    "no second declined email for the lead host"
+            );
             assertEquals(
                     before.cohost(),
                     EmailOutbox.count("recipient", "Cohost@x.com"),
-                    "no second declined email for the co-host");
+                    "no second declined email for the co-host"
+            );
         });
     }
 
@@ -205,29 +236,39 @@ class GroupSchedulerTest {
                 type.id,
                 start,
                 BookingStatus.CONFIRMED,
-                Instant.now().minus(2, ChronoUnit.HOURS), // lead already approved
+                Instant
+                    .now()
+                    // lead already approved
+                    .minus(2, ChronoUnit.HOURS),
                 BookingStatus.PENDING,
-                Instant.now().minus(25, ChronoUnit.HOURS)); // cohost still pending, past the 24h hold
+                Instant
+                    .now()
+                    // cohost still pending, past the 24h hold
+                    .minus(25, ChronoUnit.HOURS)
+        );
 
-        UUID groupId = QuarkusTransaction.requiringNew().call(() -> ((Booking) Booking.findById(ids.leadId())).groupId);
+        UUID groupId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> ((Booking) Booking.findById(ids.leadId())).groupId);
 
         record Baseline(long invitee, long lead, long cohost) {}
-        Baseline before = QuarkusTransaction.requiringNew()
-                .call(() -> new Baseline(
-                        EmailOutbox.count("recipient", INVITEE_EMAIL),
-                        EmailOutbox.count("recipient", "Creator@x.com"),
-                        EmailOutbox.count("recipient", "Cohost@x.com")));
-
+        Baseline before = QuarkusTransaction
+            .requiringNew()
+            .call(() -> new Baseline(
+                    EmailOutbox.count("recipient", INVITEE_EMAIL),
+                    EmailOutbox.count("recipient", "Creator@x.com"),
+                    EmailOutbox.count("recipient", "Cohost@x.com")
+            ));
         // Manually open (and hold open) a transaction that owns the group's advisory lock, standing
         // in for "another tick's still-open transaction". PendingExpiryScheduler's own
         // requiringNew() call below runs on a DIFFERENT connection, so its
         // pg_try_advisory_xact_lock attempt for the same group must return false.
         QuarkusTransaction.begin();
         try {
-            var acquiredHere =
-                    (Boolean) em.createNativeQuery("select pg_try_advisory_xact_lock(hashtextextended(?1, 0))")
-                            .setParameter(1, "group:" + groupId)
-                            .getSingleResult();
+            var acquiredHere = (Boolean) em
+                .createNativeQuery("select pg_try_advisory_xact_lock(hashtextextended(?1, 0))")
+                .setParameter(1, "group:" + groupId)
+                .getSingleResult();
             assertEquals(Boolean.TRUE, acquiredHere, "test setup: this transaction must win the lock first");
 
             expiryScheduler.expirePendingBookings();
@@ -239,18 +280,29 @@ class GroupSchedulerTest {
             assertEquals(
                     BookingStatus.CONFIRMED,
                     ((Booking) Booking.findById(ids.leadId())).status,
-                    "lead row untouched -- the tick never owned the group's advisory lock");
+                    "lead row untouched -- the tick never owned the group's advisory lock"
+            );
             assertEquals(
                     BookingStatus.PENDING,
                     ((Booking) Booking.findById(ids.cohostId())).status,
-                    "claimed cohost row is skipped outright, not declined, while the lock is held elsewhere");
+                    "claimed cohost row is skipped outright, not declined, while the lock is held elsewhere"
+            );
         });
         assertEquals(
-                before.invitee(), EmailOutbox.count("recipient", INVITEE_EMAIL), "no declined email for the invitee");
+                before.invitee(),
+                EmailOutbox.count("recipient", INVITEE_EMAIL),
+                "no declined email for the invitee"
+        );
         assertEquals(
-                before.lead(), EmailOutbox.count("recipient", "Creator@x.com"), "no declined email for the lead host");
+                before.lead(),
+                EmailOutbox.count("recipient", "Creator@x.com"),
+                "no declined email for the lead host"
+        );
         assertEquals(
-                before.cohost(), EmailOutbox.count("recipient", "Cohost@x.com"), "no declined email for the co-host");
+                before.cohost(),
+                EmailOutbox.count("recipient", "Cohost@x.com"),
+                "no declined email for the co-host"
+        );
     }
 
     /**
@@ -267,26 +319,28 @@ class GroupSchedulerTest {
     void singleHostExpirySkipsClaimedRowWhenBookingAdvisoryLockIsHeldByAnotherTransaction() {
         MeetingType type = twoHostType(true);
         var start = Instant.now().plus(500, ChronoUnit.HOURS);
-        long bookingId = QuarkusTransaction.requiringNew()
-                .call(() -> seedRow(
-                        type.id,
-                        CREATOR_ID,
-                        null,
-                        start,
-                        BookingStatus.PENDING,
-                        Instant.now().minus(25, ChronoUnit.HOURS)));
+        long bookingId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> seedRow(
+                    type.id,
+                    CREATOR_ID,
+                    null,
+                    start,
+                    BookingStatus.PENDING,
+                    Instant.now().minus(25, ChronoUnit.HOURS)
+            ));
 
-        long invitesBefore =
-                QuarkusTransaction.requiringNew().call(() -> EmailOutbox.count("recipient", INVITEE_EMAIL));
-
+        long invitesBefore = QuarkusTransaction
+            .requiringNew()
+            .call(() -> EmailOutbox.count("recipient", INVITEE_EMAIL));
         // Manually open (and hold open) a transaction that owns this booking's advisory lock,
         // standing in for "another tick's still-open transaction" -- mirrors the group-lock test.
         QuarkusTransaction.begin();
         try {
-            var acquiredHere =
-                    (Boolean) em.createNativeQuery("select pg_try_advisory_xact_lock(hashtextextended(?1, 0))")
-                            .setParameter(1, "booking:" + bookingId)
-                            .getSingleResult();
+            var acquiredHere = (Boolean) em
+                .createNativeQuery("select pg_try_advisory_xact_lock(hashtextextended(?1, 0))")
+                .setParameter(1, "booking:" + bookingId)
+                .getSingleResult();
             assertEquals(Boolean.TRUE, acquiredHere, "test setup: this transaction must win the lock first");
 
             expiryScheduler.expirePendingBookings();
@@ -294,15 +348,17 @@ class GroupSchedulerTest {
             QuarkusTransaction.rollback();
         }
 
-        QuarkusTransaction.requiringNew()
-                .run(
-                        () -> assertEquals(
-                                BookingStatus.PENDING,
-                                ((Booking) Booking.findById(bookingId)).status,
-                                "claimed single-host row is skipped outright, not declined, while its advisory lock is held elsewhere"));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> assertEquals(
+                    BookingStatus.PENDING,
+                    ((Booking) Booking.findById(bookingId)).status,
+                    "claimed single-host row is skipped outright, not declined, while its advisory lock is held elsewhere"
+            ));
         assertEquals(
                 invitesBefore,
                 EmailOutbox.count("recipient", INVITEE_EMAIL),
-                "no declined email for the invitee -- the row was never declined");
+                "no declined email for the invitee -- the row was never declined"
+        );
     }
 }

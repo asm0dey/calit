@@ -1,16 +1,14 @@
 package site.asm0dey.calit.domain;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class BookingFieldTest {
-
     @Test
     @TestTransaction
     void globalFormIncludesSeededDescription() {
@@ -18,10 +16,11 @@ class BookingFieldTest {
         // owner 1L's global "description" field explicitly, then resolve it via the global form.
         BookingField desc = field(null, "description", "Description", BookingField.FieldType.LONG_TEXT, false, 0);
         desc.persist();
-
         // No per-type fields for this id -> falls back to the owner's global default form.
         List<BookingField> form = BookingField.formFor(1L, 999_999L);
-        assertTrue(form.stream().anyMatch(f -> "description".equals(f.fieldKey)));
+        assertTrue(form
+            .stream()
+            .anyMatch(f -> "description".equals(f.fieldKey)));
     }
 
     @Test
@@ -44,12 +43,20 @@ class BookingFieldTest {
         List<BookingField> form = BookingField.formFor(1L, type.id);
 
         assertEquals(2, form.size());
-        assertEquals("vat", form.getFirst().fieldKey); // position 0 first
-        assertEquals("company", form.get(1).fieldKey); // global description NOT included
+        // position 0 first
+        assertEquals("vat", form.getFirst().fieldKey);
+        // global description NOT included
+        assertEquals("company", form.get(1).fieldKey);
     }
 
     private BookingField field(
-            Long typeId, String key, String label, BookingField.FieldType type, boolean required, int position) {
+            Long typeId,
+            String key,
+            String label,
+            BookingField.FieldType type,
+            boolean required,
+            int position
+    ) {
         BookingField f = new BookingField();
         f.ownerId = 1L;
         f.meetingTypeId = typeId;

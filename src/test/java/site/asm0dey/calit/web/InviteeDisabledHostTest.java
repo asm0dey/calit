@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
@@ -7,16 +8,10 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.Instant;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -41,10 +36,8 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class InviteeDisabledHostTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @Inject
     BookingService bookingService;
 
@@ -56,12 +49,14 @@ class InviteeDisabledHostTest {
         AvailabilityRule.delete("ownerId", 1L);
     }
 
-    /** A confirmed booking on owner 1, who is then disabled. Returns its manage token. */
+    /**
+     * A confirmed booking on owner 1, who is then disabled. Returns its manage token.
+     */
     private String seedThenDisableHost() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-jyck", "https://meet.google.com/jyck", "h", null));
+            .thenReturn(new CreatedEvent("evt-jyck", "https://meet.google.com/jyck", "h", null));
         var token = seedBooking();
         setHostEnabled(false);
         return token;
@@ -96,21 +91,19 @@ class InviteeDisabledHostTest {
             r.meetingTypeId = null;
             r.persist();
         }
-        var slot = bookingService
-                .availableSlots(MeetingType.findById(t.id), now(), now().plusDays(14))
-                .getFirst();
+        var slot = bookingService.availableSlots(MeetingType.findById(t.id), now(), now().plusDays(14)).getFirst();
         return bookingService.book(
-                        1L,
-                        "jyck-type",
-                        slot.start().toInstant(),
-                        "Pat",
-                        "pat@example.com",
-                        Map.of(),
-                        "",
-                        "",
-                        "en",
-                        List.of())
-                .manageToken;
+                1L,
+                "jyck-type",
+                slot.start().toInstant(),
+                "Pat",
+                "pat@example.com",
+                Map.of(),
+                "",
+                "",
+                "en",
+                List.of()
+        ).manageToken;
     }
 
     @Transactional
@@ -118,31 +111,36 @@ class InviteeDisabledHostTest {
         AppUser.<AppUser>findById(1L).enabled = enabled;
     }
 
-    /** A free slot on the same type, different from the booking's current time. */
+    /**
+     * A free slot on the same type, different from the booking's current time.
+     */
     private Instant anotherSlot(String token) {
         Booking b = Booking.findByManageToken(token);
         MeetingType t = MeetingType.findById(b.meetingTypeId);
-        return bookingService.availableSlots(t, now(), now().plusDays(14)).stream()
-                .map(sl -> sl.start().toInstant())
-                .filter(i -> !i.equals(b.startUtc))
-                .findFirst()
-                .orElseThrow();
+        return bookingService
+            .availableSlots(t, now(), now().plusDays(14))
+            .stream()
+            .map(sl -> sl.start().toInstant())
+            .filter(i -> !i.equals(b.startUtc))
+            .findFirst()
+            .orElseThrow();
     }
 
     @Test
     void manageHubHidesTheWriteFormsAndKeepsCancel() {
         var token = seedThenDisableHost();
 
-        given().when()
-                .get("/booking/" + token + "/manage")
-                .then()
-                .statusCode(200)
-                .body(containsString("no longer taking changes"))
-                // both write forms gone...
-                .body(not(containsString("/booking/" + token + "/reschedule")))
-                .body(not(containsString("/booking/" + token + "/edit-details")))
-                // ...cancel still offered
-                .body(containsString("/booking/" + token + "/cancel"));
+        given()
+            .when()
+            .get("/booking/" + token + "/manage")
+            .then()
+            .statusCode(200)
+            .body(containsString("no longer taking changes"))
+            // both write forms gone...
+            .body(not(containsString("/booking/" + token + "/reschedule")))
+            .body(not(containsString("/booking/" + token + "/edit-details")))
+            // ...cancel still offered
+            .body(containsString("/booking/" + token + "/cancel"));
     }
 
     @Test
@@ -150,15 +148,15 @@ class InviteeDisabledHostTest {
         var token = seedThenDisableHost();
         Instant before = Booking.findByManageToken(token).startUtc;
         var target = anotherSlot(token);
-
         // A stale tab or crafted POST: the rendered page no longer carries this form.
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", target.toString())
-                .when()
-                .post("/booking/" + token + "/reschedule")
-                .then()
-                .statusCode(200)
-                .body(containsString("no longer taking changes"));
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", target.toString())
+            .when()
+            .post("/booking/" + token + "/reschedule")
+            .then()
+            .statusCode(200)
+            .body(containsString("no longer taking changes"));
 
         assertEquals(before, Booking.findByManageToken(token).startUtc, "the booking must not have moved");
     }
@@ -167,14 +165,15 @@ class InviteeDisabledHostTest {
     void editDetailsIsRefusedAndTheBookingKeepsItsDetails() {
         var token = seedThenDisableHost();
 
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("title", "Injected title")
-                .formParam("description", "Injected description")
-                .when()
-                .post("/booking/" + token + "/edit-details")
-                .then()
-                .statusCode(200)
-                .body(containsString("no longer taking changes"));
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("title", "Injected title")
+            .formParam("description", "Injected description")
+            .when()
+            .post("/booking/" + token + "/edit-details")
+            .then()
+            .statusCode(200)
+            .body(containsString("no longer taking changes"));
 
         Booking after = Booking.findByManageToken(token);
         org.junit.jupiter.api.Assertions.assertNull(after.title, "title must not have been written");
@@ -185,16 +184,18 @@ class InviteeDisabledHostTest {
     void cancelStillWorks() {
         var token = seedThenDisableHost();
 
-        given().contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/booking/" + token + "/cancel")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/booking/" + token + "/cancel")
+            .then()
+            .statusCode(200);
 
         assertEquals(
                 BookingStatus.CANCELLED,
                 Booking.findByManageToken(token).status,
-                "an invitee must always be able to cancel, even on a departed host");
+                "an invitee must always be able to cancel, even on a departed host"
+        );
     }
 
     @Test
@@ -203,15 +204,16 @@ class InviteeDisabledHostTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-jyck-ok", "https://meet.google.com/ok", "h", null));
+            .thenReturn(new CreatedEvent("evt-jyck-ok", "https://meet.google.com/ok", "h", null));
         var token = seedBooking();
 
-        given().when()
-                .get("/booking/" + token + "/manage")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("no longer taking changes")))
-                .body(containsString("/booking/" + token + "/reschedule"))
-                .body(containsString("/booking/" + token + "/edit-details"));
+        given()
+            .when()
+            .get("/booking/" + token + "/manage")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("no longer taking changes")))
+            .body(containsString("/booking/" + token + "/reschedule"))
+            .body(containsString("/booking/" + token + "/edit-details"));
     }
 }

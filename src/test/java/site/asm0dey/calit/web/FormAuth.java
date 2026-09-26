@@ -1,40 +1,50 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.PasswordHasher;
 
-/** Test helper: seeds a DB admin user, performs a form login, returns the credential cookie. */
+/**
+ * Test helper: seeds a DB admin user, performs a form login, returns the credential cookie.
+ */
 public final class FormAuth {
-    private FormAuth() {}
+    private FormAuth() {
+    }
 
     private static final PasswordHasher HASHER = new PasswordHasher();
 
-    /** Idempotently ensure an enabled admin user 'admin'/'testpass' exists. Own transaction. */
+    /**
+     * Idempotently ensure an enabled admin user 'admin'/'testpass' exists. Own transaction.
+     */
     public static void ensureAdminSeeded() {
-        QuarkusTransaction.requiringNew().run(() -> {
-            if (!AppUser.usernameTaken("admin")) {
-                AppUser u = AppUser.create("admin", HASHER.hash("testpass"), true);
-                u.settingsComplete = true; // baseline admin is onboarded (no first-login wizard in tests)
-                u.persist();
-            }
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                if (!AppUser.usernameTaken("admin")) {
+                    AppUser u = AppUser.create("admin", HASHER.hash("testpass"), true);
+                    // baseline admin is onboarded (no first-login wizard in tests)
+                    u.settingsComplete = true;
+                    u.persist();
+                }
+            });
     }
 
-    /** Logs in as the seeded test admin and returns the `quarkus-credential` cookie value. */
+    /**
+     * Logs in as the seeded test admin and returns the `quarkus-credential` cookie value.
+     */
     public static String login() {
         ensureAdminSeeded();
-        return given().redirects()
-                .follow(false)
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("j_username", "admin")
-                .formParam("j_password", "testpass")
-                .when()
-                .post("/j_security_check")
-                .then()
-                .extract()
-                .cookie("quarkus-credential");
+        return given()
+            .redirects()
+            .follow(false)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("j_username", "admin")
+            .formParam("j_password", "testpass")
+            .when()
+            .post("/j_security_check")
+            .then()
+            .extract()
+            .cookie("quarkus-credential");
     }
 }

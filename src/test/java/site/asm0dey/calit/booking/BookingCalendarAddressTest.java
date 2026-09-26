@@ -1,5 +1,6 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,18 +11,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
@@ -31,20 +24,18 @@ import site.asm0dey.calit.google.CalendarRef;
 import site.asm0dey.calit.google.CreatedEvent;
 import site.asm0dey.calit.google.GoogleCredential;
 
-/** The event address columns round-trip, and a row without one reports a null ref. */
+/**
+ * The event address columns round-trip, and a row without one reports a null ref.
+ */
 @QuarkusTest
 class BookingCalendarAddressTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @Inject
     BookingService bookingService;
-
     // Owner tz Europe/Amsterdam; a slot a week out is never in the past. Mirrors BookServiceTest.
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
-    private static final LocalDate DAY =
-            Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
     private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant();
     private static final Instant SLOT_10 = DAY.atTime(10, 0).atZone(ZONE).toInstant();
 
@@ -104,7 +95,8 @@ class BookingCalendarAddressTest {
     @Test
     @TestTransaction
     void bookingWithNoReportedAddressStoresNone() {
-        stubGoogle(null, "evt-old"); // createEvent reports no address, as pre-V26 rows have none
+        // createEvent reports no address, as pre-V26 rows have none
+        stubGoogle(null, "evt-old");
         Booking booked = bookAnySlot("addr-old");
 
         bookingService.cancel(booked.manageToken, true);
@@ -124,7 +116,6 @@ class BookingCalendarAddressTest {
         stubGoogle(ref, "evt-resched");
         Booking booked = bookAnySlot("addr-resched", true);
         bookingService.approve(booked.id);
-
         // Invitee-initiated (byOwner defaults false) -> triggers re-approval.
         bookingService.reschedule(booked.manageToken, SLOT_10);
 
@@ -146,7 +137,8 @@ class BookingCalendarAddressTest {
         GoogleCredential cred = seedCredential("sub-resched-auto-test");
         CalendarRef ref = new CalendarRef(cred.id, "work@example.com");
         stubGoogle(ref, "evt-resched-auto");
-        Booking booked = bookAnySlot("addr-resched-auto"); // requiresApproval=false
+        // requiresApproval=false
+        Booking booked = bookAnySlot("addr-resched-auto");
 
         bookingService.reschedule(booked.manageToken, SLOT_10);
 
@@ -166,21 +158,36 @@ class BookingCalendarAddressTest {
         verify(calendarPort).updateEventDetails(eq(booked.ownerId), eq(ref), eq("evt-details"), any(), any(), any());
     }
 
-    /** Google connected, no busy time, createEvent returning an event at the given address. */
+    /**
+     * Google connected, no busy time, createEvent returning an event at the given address.
+     */
     private void stubGoogle(CalendarRef address, String eventId) {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), eq(SLOT_09), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent(eventId, null, null, address));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                eq(SLOT_09),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent(eventId, null, null, address));
     }
 
-    /** Seed owner settings + a 09:00-11:00 type on DAY, then book the 09:00 slot. */
+    /**
+     * Seed owner settings + a 09:00-11:00 type on DAY, then book the 09:00 slot.
+     */
     private Booking bookAnySlot(String slug) {
         return bookAnySlot(slug, false);
     }
 
-    /** Seed owner settings + a 09:00-11:00 type on DAY, then book the 09:00 slot. */
+    /**
+     * Seed owner settings + a 09:00-11:00 type on DAY, then book the 09:00 slot.
+     */
     private Booking bookAnySlot(String slug, boolean requiresApproval) {
         OwnerSettings s = OwnerSettings.forOwner(1L);
         if (s == null) {
@@ -214,7 +221,9 @@ class BookingCalendarAddressTest {
         return bookingService.book(1L, slug, SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
     }
 
-    /** Seed a real GoogleCredential row so a booking's google_credential_id FK holds. */
+    /**
+     * Seed a real GoogleCredential row so a booking's google_credential_id FK holds.
+     */
     private static GoogleCredential seedCredential(String sub) {
         GoogleCredential cred = new GoogleCredential();
         cred.ownerId = 1L;
@@ -224,7 +233,9 @@ class BookingCalendarAddressTest {
         return cred;
     }
 
-    /** Minimal valid booking row for owner 1 (the always-present admin), on a type it also owns. */
+    /**
+     * Minimal valid booking row for owner 1 (the always-present admin), on a type it also owns.
+     */
     private static Booking seed() {
         MeetingType t = new MeetingType();
         t.ownerId = 1L;

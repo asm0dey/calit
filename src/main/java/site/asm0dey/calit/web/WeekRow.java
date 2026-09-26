@@ -1,11 +1,6 @@
 package site.asm0dey.calit.web;
 
-import java.time.DayOfWeek;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import module java.base;
 import site.asm0dey.calit.domain.AvailabilityRule;
 
 /**
@@ -15,14 +10,16 @@ import site.asm0dey.calit.domain.AvailabilityRule;
  * a fixed seven-row grid.
  */
 public record WeekRow(DayOfWeek day, List<AvailabilityRule> frames) {
-
     public static List<WeekRow> fromRules(List<AvailabilityRule> rules) {
         Map<DayOfWeek, List<AvailabilityRule>> byDay = rules.stream().collect(Collectors.groupingBy(r -> r.dayOfWeek));
         List<WeekRow> rows = new ArrayList<>(7);
         for (DayOfWeek d : DayOfWeek.values()) {
-            List<AvailabilityRule> frames = byDay.getOrDefault(d, List.of()).stream()
-                    .sorted(Comparator.comparing(r -> r.startTime))
-                    .toList();
+            List<AvailabilityRule> frames =
+                    byDay
+                .getOrDefault(d, List.of())
+                .stream()
+                .sorted(Comparator.comparing(r -> r.startTime))
+                .toList();
             rows.add(new WeekRow(d, frames));
         }
         return rows;

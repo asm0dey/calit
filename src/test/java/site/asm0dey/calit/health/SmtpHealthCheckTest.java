@@ -1,16 +1,14 @@
 package site.asm0dey.calit.health;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.Optional;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.junit.jupiter.api.Test;
 
 // Pure unit test -- no Quarkus. SMTP unreachable must report UP (informational), never DOWN,
 // so a down mail server can't pull a replica out of rotation now that the outbox covers delivery.
 class SmtpHealthCheckTest {
-
     @Test
     void unreachableHostReportsUpWithState() {
         // closed port -> connection refused fast, no slow timeout

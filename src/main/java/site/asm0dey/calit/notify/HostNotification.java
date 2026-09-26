@@ -1,8 +1,6 @@
 package site.asm0dey.calit.notify;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.util.Locale;
+import module java.base;
 import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
@@ -19,19 +17,21 @@ import site.asm0dey.calit.i18n.AppLocales;
  * string on the wire, so a {@code webhook://} consumer sees {@code "BOOKING_REQUESTED"}, not prose.
  */
 public sealed interface HostNotification {
-
     Host recipient();
 
     String kind();
 
-    /** The recipient, flattened off the (detached) OwnerSettings row the sync side already read. */
+    /**
+     * The recipient, flattened off the (detached) OwnerSettings row the sync side already read.
+     */
     record Host(Long ownerId, Locale locale, ZoneId zone, String hourCycle) {
         public static Host of(OwnerSettings settings) {
             return new Host(
                     settings.ownerId,
                     AppLocales.pick(settings.locale),
                     ZoneId.of(OwnerSettings.coerceZone(settings.timezone)),
-                    settings.timeFormat);
+                    settings.timeFormat
+            );
         }
     }
 
@@ -66,7 +66,8 @@ public sealed interface HostNotification {
     }
 
     record Rescheduled(BookingSnapshot b, Host recipient, Instant oldStartUtc, boolean byOwner)
-            implements HostNotification {
+            implements HostNotification
+    {
         public String kind() {
             return "BOOKING_RESCHEDULED";
         }

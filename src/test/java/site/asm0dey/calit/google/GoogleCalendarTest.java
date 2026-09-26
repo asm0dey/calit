@@ -1,15 +1,13 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class GoogleCalendarTest {
-
     @Test
     @TestTransaction
     void listsOnlyReadForBusyCalendars() {

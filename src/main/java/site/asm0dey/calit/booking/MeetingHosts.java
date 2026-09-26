@@ -1,18 +1,10 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 import site.asm0dey.calit.booking.events.HostConsentRequested;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeDuration;
@@ -26,11 +18,8 @@ import site.asm0dey.calit.user.AppUser;
  */
 @ApplicationScoped
 public class MeetingHosts {
-
     public static final int MAX_HOSTS = 10;
-
     private final CalendarPort calendarPort;
-
     @Inject
     Event<HostConsentRequested> consentEvent;
 
@@ -39,7 +28,9 @@ public class MeetingHosts {
         this.calendarPort = calendarPort;
     }
 
-    /** Owner ids that must all be free: [creator] for single-host; creator + accepted co-hosts otherwise. */
+    /**
+     * Owner ids that must all be free: [creator] for single-host; creator + accepted co-hosts otherwise.
+     */
     public List<Long> hostOwnerIds(MeetingType type) {
         if (!MeetingTypeHost.isMultiHost(type.id)) {
             return List.of(type.ownerId);
@@ -51,7 +42,9 @@ public class MeetingHosts {
         return ids;
     }
 
-    /** Single-host is always bookable. Multi-host requires every host ACCEPTED and every host enabled. */
+    /**
+     * Single-host is always bookable. Multi-host requires every host ACCEPTED and every host enabled.
+     */
     public boolean bookable(MeetingType type) {
         if (!MeetingTypeHost.isMultiHost(type.id)) {
             return true;
@@ -80,27 +73,34 @@ public class MeetingHosts {
             return Set.of();
         }
         List<Long> typeIds = types.stream().map(t -> t.id).toList();
-        Map<Long, List<MeetingTypeHost>> hostsByType =
-                MeetingTypeHost.<MeetingTypeHost>list("meetingTypeId in ?1", typeIds).stream()
-                        .collect(Collectors.groupingBy(h -> h.meetingTypeId));
-        Set<Long> ownerIds = hostsByType.values().stream()
-                .flatMap(List::stream)
-                .map(h -> h.ownerId)
-                .collect(Collectors.toSet());
+        Map<Long, List<MeetingTypeHost>> hostsByType = MeetingTypeHost
+            .<MeetingTypeHost>list("meetingTypeId in ?1", typeIds)
+            .stream()
+            .collect(Collectors.groupingBy(h -> h.meetingTypeId));
+        Set<Long> ownerIds =
+                hostsByType
+            .values()
+            .stream()
+            .flatMap(List::stream)
+            .map(h -> h.ownerId)
+            .collect(Collectors.toSet());
         Map<Long, Boolean> enabledById = ownerIds.isEmpty()
                 ? Map.of()
-                : AppUser.<AppUser>list("id in ?1", ownerIds).stream()
-                        .collect(Collectors.toMap(u -> u.id, u -> u.enabled));
+                : AppUser.<AppUser>list("id in ?1", ownerIds).stream().collect(Collectors.toMap(u -> u.id, u -> u.enabled)
+        );
         Set<Long> bookable = new HashSet<>();
         for (MeetingType t : types) {
             List<MeetingTypeHost> hosts = hostsByType.get(t.id);
             var multiHost = hosts != null && hosts.stream().anyMatch(h -> MeetingTypeHost.COHOST.equals(h.role));
             if (!multiHost) {
-                bookable.add(t.id); // single-host: mirrors bookable()'s early `return true`
+                // single-host: mirrors bookable()'s early `return true`
+                bookable.add(t.id);
                 continue;
             }
             boolean allOk =
-                    hosts.stream().allMatch(h -> h.accepted() && Boolean.TRUE.equals(enabledById.get(h.ownerId)));
+                    hosts
+                .stream()
+                .allMatch(h -> h.accepted() && Boolean.TRUE.equals(enabledById.get(h.ownerId)));
             if (allOk) {
                 bookable.add(t.id);
             }
@@ -108,7 +108,9 @@ public class MeetingHosts {
         return bookable;
     }
 
-    /** Creator if connected, else the lowest-id connected host, else null (no Google event). */
+    /**
+     * Creator if connected, else the lowest-id connected host, else null (no Google event).
+     */
     public Long chooseOrganizer(MeetingType type, List<Long> hostOwnerIds) {
         if (calendarPort.isConnected(type.ownerId)) {
             return type.ownerId;
@@ -128,7 +130,8 @@ public class MeetingHosts {
         return strictest(
                 h == null ? null : h.bufferBeforeMinutes,
                 d == null ? null : d.bufferBeforeMinutes,
-                type.bufferBeforeMinutes);
+                type.bufferBeforeMinutes
+        );
     }
 
     public int effectiveBufferAfter(MeetingType type, Long hostOwnerId, int durationMinutes) {
@@ -137,7 +140,8 @@ public class MeetingHosts {
         return strictest(
                 h == null ? null : h.bufferAfterMinutes,
                 d == null ? null : d.bufferAfterMinutes,
-                type.bufferAfterMinutes);
+                type.bufferAfterMinutes
+        );
     }
 
     /**
@@ -178,7 +182,8 @@ public class MeetingHosts {
     public void addCohost(MeetingType type, AppUser candidate) {
         MeetingTypeHost existing = MeetingTypeHost.find(type.id, candidate.id);
         if (existing != null) {
-            return; // idempotent: already a host (pending or accepted) -> no-op, no repeat email
+            // idempotent: already a host (pending or accepted) -> no-op, no repeat email
+            return;
         }
         ensureCreatorRow(type);
         long hostCount = MeetingTypeHost.count("meetingTypeId", type.id);
@@ -210,7 +215,9 @@ public class MeetingHosts {
         }
     }
 
-    /** For create/rename of a shared type: slug must be free in every host's namespace. */
+    /**
+     * For create/rename of a shared type: slug must be free in every host's namespace.
+     */
     public void assertSlugFreeAcrossHosts(MeetingType type, String newSlug) {
         for (Long hostId : hostOwnerIds(type)) {
             if (!hostId.equals(type.ownerId) && MeetingType.slugUsedByOwner(hostId, newSlug, null)) {
@@ -221,12 +228,13 @@ public class MeetingHosts {
 
     private void ensureCreatorRow(MeetingType type) {
         if (MeetingTypeHost.find(type.id, type.ownerId) == null) {
-            MeetingTypeHost.of(type.id, type.ownerId, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED)
-                    .persist();
+            MeetingTypeHost.of(type.id, type.ownerId, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED).persist();
         }
     }
 
-    /** Marks a pending co-host row accepted and clears its one-time consent token. */
+    /**
+     * Marks a pending co-host row accepted and clears its one-time consent token.
+     */
     @Transactional
     public void acceptConsent(MeetingTypeHost host) {
         host.status = MeetingTypeHost.ACCEPTED;
@@ -248,7 +256,8 @@ public class MeetingHosts {
                 hostOwnerId,
                 type.id,
                 Instant.now(),
-                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED));
+                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)
+        );
     }
 
     /**

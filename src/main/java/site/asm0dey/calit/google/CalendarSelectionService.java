@@ -1,8 +1,8 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-import java.util.List;
 
 /**
  * Validates and persists an owner's calendar selection, replacing any prior selection. Shared by the
@@ -13,22 +13,27 @@ import java.util.List;
  */
 @ApplicationScoped
 public class CalendarSelectionService {
-
-    /** One chosen calendar belonging to a specific connected account. */
+    /**
+     * One chosen calendar belonging to a specific connected account.
+     */
     public record Selection(
             Long googleCredentialId,
             String googleCalendarId,
             String summary,
             boolean readForBusy,
             boolean writeTarget,
-            boolean meetSupported) {
-        /** Convenience for callers/tests that don't track Meet capability (defaults true, as before). */
+            boolean meetSupported
+    ) {
+        /**
+         * Convenience for callers/tests that don't track Meet capability (defaults true, as before).
+         */
         public Selection(
                 Long googleCredentialId,
                 String googleCalendarId,
                 String summary,
                 boolean readForBusy,
-                boolean writeTarget) {
+                boolean writeTarget
+        ) {
             this(googleCredentialId, googleCalendarId, summary, readForBusy, writeTarget, true);
         }
     }
@@ -43,8 +48,9 @@ public class CalendarSelectionService {
         for (Selection sel : selections) {
             GoogleCredential cred = GoogleCredential.findById(sel.googleCredentialId());
             if (cred == null || !ownerId.equals(cred.ownerId)) {
-                throw new IllegalArgumentException(
-                        "Unknown credential " + sel.googleCredentialId() + " for this owner");
+                throw new IllegalArgumentException("Unknown credential "
+                        + sel.googleCredentialId()
+                        + " for this owner");
             }
             GoogleCalendar c = new GoogleCalendar();
             c.ownerId = ownerId;

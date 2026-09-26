@@ -1,11 +1,9 @@
 package site.asm0dey.calit.oidc;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
@@ -28,19 +26,20 @@ import site.asm0dey.calit.user.Usernames;
  */
 @ApplicationScoped
 public class OidcSignInService {
-
     final boolean signupEnabled;
-
-    /** OIDC group whose members get admin, or absent/blank to disable OIDC-driven admin entirely.
+    /**
+     * OIDC group whose members get admin, or absent/blank to disable OIDC-driven admin entirely.
      * Optional<String>, not a required String: an unset OIDC_ADMIN_GROUP resolves to an empty
      * property value, and SmallRye Config treats an empty value as "undefined" for non-Optional
-     * injection points, which crashes the app at boot (SRCFG00040). */
+     * injection points, which crashes the app at boot (SRCFG00040).
+     */
     final Optional<String> adminGroup;
 
     @Inject
     public OidcSignInService(
             @ConfigProperty(name = "calit.signup.enabled", defaultValue = "false") boolean signupEnabled,
-            @ConfigProperty(name = "calit.oidc.admin-group") Optional<String> adminGroup) {
+            @ConfigProperty(name = "calit.oidc.admin-group") Optional<String> adminGroup
+    ) {
         this.signupEnabled = signupEnabled;
         this.adminGroup = adminGroup;
     }
@@ -51,7 +50,8 @@ public class OidcSignInService {
 
         AppUser bySub = AppUser.findByOidcSub(identity.sub());
         if (bySub != null) {
-            bySub.applyOidcAdmin(grantsAdmin); // managed entity -> dirty-checked in this tx
+            // managed entity -> dirty-checked in this tx
+            bySub.applyOidcAdmin(grantsAdmin);
             return bySub;
         }
 
@@ -75,15 +75,13 @@ public class OidcSignInService {
     }
 
     private boolean grantsAdmin(Set<String> groups) {
-        return groups != null
-                && adminGroup.filter(g -> !g.isBlank()).map(groups::contains).orElse(false);
+        return groups != null && adminGroup.filter(g -> !g.isBlank()).map(groups::contains).orElse(false);
     }
 
     private AppUser provision(OidcIdentity identity, boolean grantsAdmin) {
         String username = Usernames.uniquify(Usernames.fromEmail(identity.email()), AppUser::usernameUnavailable);
         AppUser u = AppUser.createOidcUser(username, identity.sub(), grantsAdmin);
         u.persist();
-
         // Seed the row so the first-login wizard (/me/setup) can pre-fill the email.
         OwnerSettings.seed(u.id, identity.email());
         return u;

@@ -1,16 +1,13 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -28,13 +25,11 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class SharedWriteCalendarTest {
-
     @AfterEach
     @Transactional
     void cleanup() {
         Booking.delete("meetingTypeId in (select t.id from MeetingType t where t.slug like ?1)", "shared-cal-%");
-        MeetingTypeHost.delete(
-                "meetingTypeId in (select t.id from MeetingType t where t.slug like ?1)", "shared-cal-%");
+        MeetingTypeHost.delete("meetingTypeId in (select t.id from MeetingType t where t.slug like ?1)", "shared-cal-%");
         MeetingType.delete("slug like ?1", "shared-cal-%");
         GoogleCalendar.deleteAll();
         GoogleCredential.deleteAll();
@@ -93,15 +88,16 @@ class SharedWriteCalendarTest {
         var typeId = seedSharedType();
         setHostOverride(typeId, null, "was-on-a-disconnected-account@example.com");
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("bufferBeforeMinutes", "")
-                .formParam("bufferAfterMinutes", "")
-                // Deliberately no "writeCalendar" formParam at all.
-                .when()
-                .post("/me/shared/" + typeId + "/buffers")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("bufferBeforeMinutes", "")
+            .formParam("bufferAfterMinutes", "")
+            // Deliberately no "writeCalendar" formParam at all.
+            .when()
+            .post("/me/shared/" + typeId + "/buffers")
+            .then()
+            .statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
         assertNull(h.googleCredentialId);
@@ -150,7 +146,6 @@ class SharedWriteCalendarTest {
         MeetingType t = MeetingType.findById(typeId);
         assertEquals(credId, t.googleCredentialId);
         assertEquals("work@example.com", t.googleCalendarId);
-
         // Never on the Creator's own host row either.
         MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
         assertNull(h.googleCredentialId);
@@ -163,17 +158,15 @@ class SharedWriteCalendarTest {
         var typeId = seedSharedType();
         setHostOverride(typeId, credId, "unticked@example.com");
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared/" + typeId + "/availability")
-                .then()
-                .statusCode(200)
-                .body(containsString("data-write-calendar-dangling"))
-                // Qute can't reference the WriteTargetResolver.KEEP constant directly -- the
-                // template hardcodes its literal, so this test is the guarantee that the two
-                // stay in sync (b50235c unified the constant precisely so the save paths, and
-                // this render, can't silently diverge on the sentinel string).
-                .body(containsString("value=\"" + WriteTargetResolver.KEEP + "\""));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared/" + typeId + "/availability")
+            .then()
+            .statusCode(200)
+            .body(containsString("data-write-calendar-dangling"))
+            // this render, can't silently diverge on the sentinel string).
+            .body(containsString("value=\"" + WriteTargetResolver.KEEP + "\""));
     }
 
     @Test
@@ -185,13 +178,14 @@ class SharedWriteCalendarTest {
         var typeId = seedSharedType();
         setHostOverride(typeId, credId, "work@example.com");
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared/" + typeId + "/availability")
-                .then()
-                .statusCode(200)
-                .body(containsString("value=\"" + credId + ":work@example.com\" selected"))
-                .body(not(containsString("value=\"\" selected")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared/" + typeId + "/availability")
+            .then()
+            .statusCode(200)
+            .body(containsString("value=\"" + credId + ":work@example.com\" selected"))
+            .body(not(containsString("value=\"\" selected")));
     }
 
     @Test
@@ -202,8 +196,8 @@ class SharedWriteCalendarTest {
         seedUpcomingBooking(typeId, credId, "default@example.com");
 
         saveBuffers(typeId, credId + ":work@example.com")
-                .statusCode(200)
-                .body(containsString("stay on the calendar they were created on"));
+            .statusCode(200)
+            .body(containsString("stay on the calendar they were created on"));
     }
 
     @Test
@@ -221,16 +215,17 @@ class SharedWriteCalendarTest {
         seedUpcomingBooking(typeId, credId, "elsewhere@example.com");
 
         saveBuffers(typeId, credId + ":default@example.com")
-                .statusCode(200)
-                .body(not(containsString("stay on the calendar they were created on")));
-
+            .statusCode(200)
+            .body(not(containsString("stay on the calendar they were created on")));
         // Positive control: an actual move still says so.
         saveBuffers(typeId, credId + ":work@example.com")
-                .statusCode(200)
-                .body(containsString("stay on the calendar they were created on"));
+            .statusCode(200)
+            .body(containsString("stay on the calendar they were created on"));
     }
 
-    /** Sets the type creator's OWN write override directly on {@code MeetingType} -- never touched by a co-host save. */
+    /**
+     * Sets the type creator's OWN write override directly on {@code MeetingType} -- never touched by a co-host save.
+     */
     @Transactional
     void setCreatorOverride(Long typeId, String calendarId) {
         MeetingType t = MeetingType.findById(typeId);
@@ -238,7 +233,9 @@ class SharedWriteCalendarTest {
         t.persist();
     }
 
-    /** A second, distinct co-host on the same type, with their own pre-existing override. Returns their owner id. */
+    /**
+     * A second, distinct co-host on the same type, with their own pre-existing override. Returns their owner id.
+     */
     @Transactional
     Long addSecondCohostWithOverride(Long typeId, String calendarId) {
         AppUser other = AppUser.create("shared-cal-cohost2", "x", false);
@@ -258,17 +255,20 @@ class SharedWriteCalendarTest {
     }
 
     private io.restassured.response.ValidatableResponse saveBuffers(Long typeId, String writeCalendar) {
-        return given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("bufferBeforeMinutes", "")
-                .formParam("bufferAfterMinutes", "")
-                .formParam("writeCalendar", writeCalendar)
-                .when()
-                .post("/me/shared/" + typeId + "/buffers")
-                .then();
+        return given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("bufferBeforeMinutes", "")
+            .formParam("bufferAfterMinutes", "")
+            .formParam("writeCalendar", writeCalendar)
+            .when()
+            .post("/me/shared/" + typeId + "/buffers")
+            .then();
     }
 
-    /** Owner 1 (the logged-in co-host): one account with a default and a second calendar. */
+    /**
+     * Owner 1 (the logged-in co-host): one account with a default and a second calendar.
+     */
     @Transactional
     Long seedOwnerCalendars() {
         GoogleCredential c = new GoogleCredential();
@@ -281,7 +281,9 @@ class SharedWriteCalendarTest {
         return c.id;
     }
 
-    /** A type owned by someone else, with owner 1 as an ACCEPTED co-host. */
+    /**
+     * A type owned by someone else, with owner 1 as an ACCEPTED co-host.
+     */
     @Transactional
     Long seedSharedType() {
         AppUser creator = AppUser.create("shared-cal-creator", "x", false);
@@ -293,10 +295,8 @@ class SharedWriteCalendarTest {
         t.durationMinutes = 30;
         t.locationType = MeetingType.LocationType.PHONE;
         t.persist();
-        MeetingTypeHost.of(t.id, creator.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED)
-                .persist();
-        MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED)
-                .persist();
+        MeetingTypeHost.of(t.id, creator.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED).persist();
+        MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED).persist();
         return t.id;
     }
 
@@ -315,16 +315,16 @@ class SharedWriteCalendarTest {
         t.durationMinutes = 30;
         t.locationType = MeetingType.LocationType.PHONE;
         t.persist();
-        MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED)
-                .persist();
+        MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED).persist();
         AppUser other = AppUser.create("shared-cal-cohost2", "x", false);
         other.persist();
-        MeetingTypeHost.of(t.id, other.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED)
-                .persist();
+        MeetingTypeHost.of(t.id, other.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED).persist();
         return t.id;
     }
 
-    /** One CONFIRMED booking a week out whose Google event lives on {@code calendarId}. */
+    /**
+     * One CONFIRMED booking a week out whose Google event lives on {@code calendarId}.
+     */
     @Transactional
     void seedUpcomingBooking(Long typeId, Long credId, String calendarId) {
         Booking b = new Booking();
@@ -343,7 +343,9 @@ class SharedWriteCalendarTest {
         b.persist();
     }
 
-    /** A connected calendar owned by the type's creator, not by owner 1. */
+    /**
+     * A connected calendar owned by the type's creator, not by owner 1.
+     */
     @Transactional
     Long foreignCredentialId(Long typeId) {
         MeetingType t = MeetingType.findById(typeId);

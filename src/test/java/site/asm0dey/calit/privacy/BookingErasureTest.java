@@ -1,20 +1,15 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.NotFoundException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
@@ -25,14 +20,16 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class BookingErasureTest {
-
-    /** The seeded admin owner — DatabaseResetCallback guarantees id 1. */
+    /**
+     * The seeded admin owner — DatabaseResetCallback guarantees id 1.
+     */
     private static final Long OWNER = ErasureFixtures.OWNER;
-
     @Inject
     PrivacyService privacy;
 
-    /** A second host for group-booking rows — booking.owner_id's no-overlap constraint is per-owner. */
+    /**
+     * A second host for group-booking rows — booking.owner_id's no-overlap constraint is per-owner.
+     */
     private static Long secondOwnerId() {
         var u = AppUser.create("cohost-" + UUID.randomUUID(), "x", false);
         u.persist();
@@ -74,7 +71,9 @@ class BookingErasureTest {
         var id = ErasureFixtures.seedPastBookingId();
         privacy.anonymise(id);
 
-        Booking b = QuarkusTransaction.requiringNew().call(() -> Booking.<Booking>findById(id));
+        Booking b = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(id));
         assertEquals("", b.inviteeName);
         assertEquals("", b.inviteeEmail, "invitee_email is NOT NULL, so erasure blanks it");
         assertTrue(b.answers.isEmpty());
@@ -106,7 +105,8 @@ class BookingErasureTest {
             assertEquals(
                     1L,
                     Reminder.count("bookingId = ?1 and sentAt is not null", id),
-                    "a sent reminder carries no personal data and must survive erasure");
+                    "a sent reminder carries no personal data and must survive erasure"
+            );
             assertEquals(0L, EmailOutbox.count("bookingId", id));
         });
     }
@@ -115,9 +115,13 @@ class BookingErasureTest {
     void anonymiseIsIdempotent() {
         var id = ErasureFixtures.seedPastBookingId();
         privacy.anonymise(id);
-        Instant first = QuarkusTransaction.requiringNew().call(() -> Booking.<Booking>findById(id).erasedAt);
+        Instant first = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(id).erasedAt);
         privacy.anonymise(id);
-        Instant second = QuarkusTransaction.requiringNew().call(() -> Booking.<Booking>findById(id).erasedAt);
+        Instant second = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(id).erasedAt);
         assertEquals(first, second, "a second erasure must not restamp the row");
     }
 
@@ -140,12 +144,15 @@ class BookingErasureTest {
     @Test
     void anonymiseErasesEveryRowInAGroupBooking() {
         var groupId = seedGroupBooking();
-        Long anyRowId = QuarkusTransaction.requiringNew()
-                .call(() -> Booking.group(groupId).get(0).id);
+        Long anyRowId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.group(groupId).get(0).id);
 
         privacy.anonymise(anyRowId);
 
-        List<Booking> rows = QuarkusTransaction.requiringNew().call(() -> Booking.group(groupId));
+        List<Booking> rows = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.group(groupId));
         assertEquals(2, rows.size(), "both host rows for the group must still exist");
         for (Booking row : rows) {
             assertEquals("", row.inviteeName, "owner " + row.ownerId + "'s row must be blanked too");
@@ -163,18 +170,23 @@ class BookingErasureTest {
     @Test
     void aPartlyErasedGroupIsStillExportableAndErasableThroughTheErasedRowsToken() {
         var groupId = seedGroupBooking();
-        List<Booking> rows = QuarkusTransaction.requiringNew().call(() -> Booking.group(groupId));
+        List<Booking> rows = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.group(groupId));
         Booking erasedRow = rows.get(0);
-        privacy.anonymise(List.of(erasedRow.id)); // as a retention sweep would: this row only
+        // as a retention sweep would: this row only
+        privacy.anonymise(List.of(erasedRow.id));
 
         String exported = privacy.exportBooking(erasedRow.manageToken);
         assertTrue(exported.contains("Dana Vogel"), "the co-host row still holds the invitee's data: " + exported);
 
         privacy.eraseByManageToken(erasedRow.manageToken);
 
-        QuarkusTransaction.requiringNew()
-                .run(() -> Booking.<Booking>group(groupId)
-                        .forEach(r -> assertTrue(r.isErased(), "row " + r.id + " must be erased")));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> Booking
+                .<Booking>group(groupId)
+                .forEach(r -> assertTrue(r.isErased(), "row " + r.id + " must be erased")));
         assertThrows(NotFoundException.class, () -> privacy.exportBooking(erasedRow.manageToken));
         assertThrows(NotFoundException.class, () -> privacy.eraseByManageToken(erasedRow.manageToken));
         String coHostManageToken = rows.get(1).manageToken;
@@ -189,7 +201,8 @@ class BookingErasureTest {
         assertEquals(
                 ErasureReport.GoogleOutcome.NOT_APPLICABLE,
                 report.google(),
-                "no Google event id on this row, and Google is disabled in %test");
+                "no Google event id on this row, and Google is disabled in %test"
+        );
     }
 
     @Test
@@ -202,7 +215,6 @@ class BookingErasureTest {
         });
 
         ErasureReport report = privacy.eraseByManageToken(token);
-
         // No GoogleCredential row is seeded in %test, so CalendarPort.isConnected(...) is false and
         // the best-effort delete is skipped without being attempted -- this is the "Google is not
         // connected" branch of the ruling, not "the call threw". Both land on UNREACHABLE; this
@@ -210,6 +222,7 @@ class BookingErasureTest {
         assertEquals(
                 ErasureReport.GoogleOutcome.UNREACHABLE,
                 report.google(),
-                "a stored event id with no connected Google account cannot be deleted");
+                "a stored event id with no connected Google account cannot be deleted"
+        );
     }
 }
