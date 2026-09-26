@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,10 +10,6 @@ import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.CaptchaProviderConfig;
 import site.asm0dey.calit.domain.AvailabilityRule;

@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.RawString;
@@ -9,10 +10,6 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
-import java.util.Optional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.notify.NotificationChannel;
 

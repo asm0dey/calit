@@ -1,10 +1,8 @@
 package site.asm0dey.calit.domain;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.List;
 
 @Entity
 @Table(name = "availability_rule")

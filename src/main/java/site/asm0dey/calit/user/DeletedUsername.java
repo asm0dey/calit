@@ -1,11 +1,11 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.Instant;
 
 /**
  * A permanent tombstone of every deleted account's username, hashed (never stored in the clear —

@@ -1,12 +1,10 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Set;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**

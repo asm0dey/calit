@@ -1,9 +1,6 @@
 package site.asm0dey.calit.google;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import module java.base;
 
 /**
  * Pure interval algebra for busy time. No Google or CDI dependencies — unit-tested directly.

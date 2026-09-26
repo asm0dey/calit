@@ -1,5 +1,6 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.credential.PasswordCredential;
@@ -8,8 +9,6 @@ import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.audit.AuditLog;

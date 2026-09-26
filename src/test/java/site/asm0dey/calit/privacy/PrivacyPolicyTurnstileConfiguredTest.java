@@ -1,11 +1,11 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**

@@ -1,9 +1,8 @@
 package site.asm0dey.calit.health;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.HealthCheckResponseBuilder;

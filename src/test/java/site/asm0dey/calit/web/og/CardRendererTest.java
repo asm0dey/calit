@@ -1,12 +1,11 @@
 package site.asm0dey.calit.web.og;
 
+import module java.base;
+import module java.desktop;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 
 class CardRendererTest {

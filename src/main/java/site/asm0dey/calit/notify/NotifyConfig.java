@@ -1,12 +1,8 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.alexmond.notify4j.HttpClientConfig;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 

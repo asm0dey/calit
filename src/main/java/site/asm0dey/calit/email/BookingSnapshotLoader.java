@@ -1,14 +1,10 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.MeetingHosts;
 import site.asm0dey.calit.domain.BookingField;

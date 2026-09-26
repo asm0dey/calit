@@ -1,5 +1,6 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -10,8 +11,6 @@ import com.google.api.client.http.HttpHeaders;
 import com.google.api.client.http.HttpResponseException;
 import com.google.api.services.calendar.Calendar;
 import io.quarkus.test.junit.QuarkusTest;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.user.CurrentOwner;
 

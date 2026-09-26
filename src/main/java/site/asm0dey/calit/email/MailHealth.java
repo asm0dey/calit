@@ -1,10 +1,10 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
-import java.util.Map;
 import site.asm0dey.calit.health.SmtpHealthCheck;
 
 /**

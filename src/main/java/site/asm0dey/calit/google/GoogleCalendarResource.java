@@ -1,10 +1,10 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.List;
 import site.asm0dey.calit.user.CurrentOwner;
 
 @Path("/api/google/calendars")

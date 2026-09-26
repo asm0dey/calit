@@ -1,12 +1,12 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.events.HostConsentRequested;
 import site.asm0dey.calit.domain.MeetingType;

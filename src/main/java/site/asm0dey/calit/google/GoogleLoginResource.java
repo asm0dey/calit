@@ -1,5 +1,6 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.inject.Inject;
@@ -9,7 +10,6 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.net.URI;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.LoginTicketService;
 

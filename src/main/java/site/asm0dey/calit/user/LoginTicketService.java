@@ -1,15 +1,8 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
 
 /**
  * Issues and consumes single-use login tickets (see {@link LoginTicket}). State lives in

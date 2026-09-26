@@ -1,9 +1,8 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.Duration;
-import java.time.Instant;
 
 /**
  * One mail that failed a direct SMTP send and is parked for retry. {@link #sentAt} null = unsent;

@@ -1,11 +1,10 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.*;
 

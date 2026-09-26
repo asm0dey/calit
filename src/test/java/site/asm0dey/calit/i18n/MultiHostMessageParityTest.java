@@ -1,13 +1,9 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.qute.i18n.Message;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /**

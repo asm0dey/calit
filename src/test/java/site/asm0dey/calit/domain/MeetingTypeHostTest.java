@@ -1,11 +1,11 @@
 package site.asm0dey.calit.domain;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.TestOwners;

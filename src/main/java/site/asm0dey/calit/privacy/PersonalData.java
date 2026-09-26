@@ -1,7 +1,6 @@
 package site.asm0dey.calit.privacy;
 
-import java.util.List;
-import java.util.Set;
+import module java.base;
 
 /**
  * What personal data this deployment holds, table by table, and what erasure does with each piece.

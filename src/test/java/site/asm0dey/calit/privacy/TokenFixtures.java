@@ -1,8 +1,7 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
 import io.quarkus.narayana.jta.QuarkusTransaction;
-import java.time.Instant;
-import java.util.UUID;
 import site.asm0dey.calit.user.LoginTicket;
 import site.asm0dey.calit.user.PasswordResetToken;
 

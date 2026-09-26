@@ -1,5 +1,6 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -7,8 +8,6 @@ import static org.mockito.Mockito.when;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest

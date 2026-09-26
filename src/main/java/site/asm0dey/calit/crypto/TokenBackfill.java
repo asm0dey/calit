@@ -1,12 +1,12 @@
 package site.asm0dey.calit.crypto;
 
+import module java.base;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import java.util.List;
 import org.jboss.logging.Logger;
 
 /**

@@ -1,5 +1,6 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.Calendar;
@@ -7,13 +8,6 @@ import com.google.api.services.calendar.model.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import site.asm0dey.calit.domain.OwnerSettings;
 
 /**

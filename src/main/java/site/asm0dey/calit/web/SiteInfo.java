@@ -1,9 +1,9 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
-import java.util.Optional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**

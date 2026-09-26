@@ -1,5 +1,6 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -8,8 +9,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.Instant;
-import java.util.List;
 import site.asm0dey.calit.crypto.EncryptedStringConverter;
 
 /**

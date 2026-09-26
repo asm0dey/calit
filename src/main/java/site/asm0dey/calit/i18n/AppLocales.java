@@ -1,8 +1,7 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import io.quarkus.arc.Arc;
-import java.util.List;
-import java.util.Locale;
 
 /**
  * Supported-locale list + negotiation utilities.

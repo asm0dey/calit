@@ -1,8 +1,6 @@
 package site.asm0dey.calit.user;
 
-import java.util.Set;
-import java.util.function.Predicate;
-import java.util.regex.Pattern;
+import module java.base;
 
 /**
  * Username normalization, validation, and reserved-word checks. Pure (no DB).

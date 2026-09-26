@@ -1,11 +1,10 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import java.time.Instant;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
 

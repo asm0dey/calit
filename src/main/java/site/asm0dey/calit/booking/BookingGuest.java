@@ -1,9 +1,8 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.Instant;
-import java.util.List;
 
 /**
  * One guest the invitee added to a booking. Owner-scoped (owner_id copied from the booking) per the

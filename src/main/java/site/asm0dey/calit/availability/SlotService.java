@@ -1,19 +1,7 @@
 package site.asm0dey.calit.availability;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.time.DayOfWeek;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import site.asm0dey.calit.domain.*;
 
 @ApplicationScoped

@@ -1,11 +1,10 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.ObservesAsync;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.util.List;
 import org.alexmond.notify4j.Notifications;
 import org.alexmond.notify4j.SendResult;
 

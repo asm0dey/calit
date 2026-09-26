@@ -1,9 +1,9 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import io.quarkus.qute.i18n.Localized;
 import io.quarkus.qute.i18n.MessageBundles;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.util.Locale;
 
 /**
  * Locale-specific AppMessages for Java code (e.g. email subjects).

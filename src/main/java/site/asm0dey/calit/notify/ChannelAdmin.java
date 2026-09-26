@@ -1,16 +1,10 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
 import org.alexmond.notify4j.ChannelCatalog;
 import org.alexmond.notify4j.Notifications;
 import org.alexmond.notify4j.SendResult;

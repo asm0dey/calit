@@ -1,10 +1,9 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import io.restassured.response.Response;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;

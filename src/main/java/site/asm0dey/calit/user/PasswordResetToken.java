@@ -1,8 +1,8 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.Instant;
 
 /**
  * Single-use, expiring password-reset token. Like {@link LoginTicket}, only the SHA-256 hash of

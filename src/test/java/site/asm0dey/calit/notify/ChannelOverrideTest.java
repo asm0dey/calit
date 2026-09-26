@@ -1,12 +1,12 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.test.MultiHostFixtures;

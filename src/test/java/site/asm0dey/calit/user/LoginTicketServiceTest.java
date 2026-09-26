@@ -1,11 +1,10 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Duration;
-import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest

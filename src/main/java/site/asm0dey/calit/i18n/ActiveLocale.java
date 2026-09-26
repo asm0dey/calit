@@ -1,7 +1,7 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import jakarta.enterprise.context.RequestScoped;
-import java.util.Locale;
 
 /**
  * Holds the active locale for the current request. Set by LocaleResolutionFilter,

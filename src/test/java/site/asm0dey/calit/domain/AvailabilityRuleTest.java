@@ -1,12 +1,10 @@
 package site.asm0dey.calit.domain;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest

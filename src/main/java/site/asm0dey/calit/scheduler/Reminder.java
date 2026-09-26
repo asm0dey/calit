@@ -1,8 +1,8 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.Instant;
 
 /**
  * Feature 15: a scheduled reminder for one CONFIRMED booking, due at

@@ -1,11 +1,11 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.test.MultiHostFixtures;
 

@@ -1,9 +1,9 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import io.quarkus.vertx.web.RouteFilter;
 import io.vertx.core.http.Cookie;
 import io.vertx.ext.web.RoutingContext;
-import java.util.Set;
 
 /**
  * Makes the form-auth credential cookie persistent when the user ticked "remember me".

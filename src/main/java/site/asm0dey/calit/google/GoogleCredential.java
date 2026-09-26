@@ -1,9 +1,8 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.Duration;
-import java.time.Instant;
 import site.asm0dey.calit.crypto.EncryptedStringConverter;
 
 @Entity

@@ -1,11 +1,10 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-import java.time.Duration;
-import java.time.Instant;
 import site.asm0dey.calit.email.EmailOutbox;
 import site.asm0dey.calit.user.LoginTicket;
 import site.asm0dey.calit.user.PasswordResetToken;

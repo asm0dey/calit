@@ -1,8 +1,8 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.Instant;
 
 /**
  * Single-use, short-lived ticket that bridges a verified Google identity into a native

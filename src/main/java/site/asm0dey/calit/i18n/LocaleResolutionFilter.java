@@ -1,5 +1,6 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
@@ -7,9 +8,6 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.ext.Provider;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.CurrentOwner;
 

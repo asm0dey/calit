@@ -1,5 +1,6 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.identity.AuthenticationRequestContext;
 import io.quarkus.security.identity.IdentityProvider;
@@ -9,7 +10,6 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
-import java.time.Clock;
 import site.asm0dey.calit.audit.AuditLog;
 
 /**

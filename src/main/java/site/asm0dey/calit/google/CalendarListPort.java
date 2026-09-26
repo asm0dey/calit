@@ -1,6 +1,6 @@
 package site.asm0dey.calit.google;
 
-import java.util.List;
+import module java.base;
 
 /**
  * Lists the owner's available Google calendars so they can choose read/write ones.

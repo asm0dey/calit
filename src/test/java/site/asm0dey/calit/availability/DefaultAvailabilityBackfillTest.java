@@ -1,14 +1,12 @@
 package site.asm0dey.calit.availability;
 
+import module java.base;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import java.io.IOException;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.user.AppUser;

@@ -1,10 +1,8 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
 
 /**
  * Example downstream consumer of CalendarPort. Demonstrates the mockable seam:

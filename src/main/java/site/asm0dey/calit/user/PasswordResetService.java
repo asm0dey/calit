@@ -1,11 +1,8 @@
 package site.asm0dey.calit.user;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-import java.security.SecureRandom;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Base64;
 
 /**
  * Issues and consumes single-use password-reset tokens (see {@link PasswordResetToken}). State

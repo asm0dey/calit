@@ -1,8 +1,6 @@
 package site.asm0dey.calit.email;
 
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
+import module java.base;
 
 /**
  * Hand-rolled RFC 5545 VCALENDAR/VEVENT builder for a single booking.

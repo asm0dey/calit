@@ -1,5 +1,6 @@
 package site.asm0dey.calit.oidc;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -12,7 +13,6 @@ import io.quarkus.test.junit.TestProfile;
 import io.quarkus.test.oidc.server.OidcWireMock;
 import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import io.restassured.filter.cookie.CookieFilter;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.user.AppUser;
 

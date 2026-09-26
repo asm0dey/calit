@@ -1,8 +1,7 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
-import java.util.List;
-import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 /**

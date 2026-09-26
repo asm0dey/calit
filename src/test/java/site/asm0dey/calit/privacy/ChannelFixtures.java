@@ -1,7 +1,7 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
 import io.quarkus.narayana.jta.QuarkusTransaction;
-import java.time.Instant;
 import site.asm0dey.calit.notify.NotificationChannel;
 
 /**

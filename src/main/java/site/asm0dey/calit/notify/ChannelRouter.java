@@ -1,9 +1,7 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Resolves which of a host's channels a meeting type's notifications go to.

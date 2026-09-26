@@ -1,5 +1,6 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static site.asm0dey.calit.test.MultiHostFixtures.*;
@@ -7,12 +8,6 @@ import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.temporal.TemporalAdjusters;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.domain.AvailabilityRule;

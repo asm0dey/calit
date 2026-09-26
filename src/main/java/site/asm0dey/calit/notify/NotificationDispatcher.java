@@ -1,5 +1,6 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -7,9 +8,6 @@ import jakarta.enterprise.event.Event;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.TransactionPhase;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.util.List;
-import java.util.function.BiFunction;
 import org.alexmond.notify4j.Message;
 import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.events.*;

@@ -1,12 +1,11 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import java.time.Instant;
-import java.util.List;
 
 /**
  * Retries parked mail. Runs on EVERY replica every 60s, multi-node-safe with NO leader: each tick

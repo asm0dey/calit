@@ -1,11 +1,9 @@
 package site.asm0dey.calit.availability;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 

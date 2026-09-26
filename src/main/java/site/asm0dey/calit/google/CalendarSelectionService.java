@@ -1,8 +1,8 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-import java.util.List;
 
 /**
  * Validates and persists an owner's calendar selection, replacing any prior selection. Shared by the

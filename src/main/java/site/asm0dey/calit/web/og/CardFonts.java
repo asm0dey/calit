@@ -1,11 +1,10 @@
 package site.asm0dey.calit.web.og;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import java.awt.Font;
-import java.awt.FontFormatException;
-import java.io.IOException;
-import java.io.UncheckedIOException;
+import module java.base;
+import module java.desktop;
+// ambiguous across the module imports above; single-type import wins
 import java.util.List;
+import jakarta.enterprise.context.ApplicationScoped;
 
 /**
  * The card's typefaces, loaded once off the classpath.

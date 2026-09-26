@@ -1,11 +1,8 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.net.InetAddress;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.Optional;
 import org.alexmond.notify4j.ChannelCatalog;
 import org.alexmond.notify4j.ChannelField;
 import org.alexmond.notify4j.FieldType;

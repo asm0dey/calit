@@ -1,6 +1,6 @@
 package site.asm0dey.calit.email;
 
-import java.time.Instant;
+import module java.base;
 
 /**
  * Immutable description of one calendar event to render as an .ics. Built via the fluent

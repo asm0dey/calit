@@ -1,15 +1,13 @@
 package site.asm0dey.calit.i18n;
 
+import module java.base;
+// ambiguous across the module imports above; single-type import wins
+import java.lang.annotation.Annotation;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.InstanceHandle;
 import io.quarkus.arc.Unremovable;
 import io.quarkus.qute.i18n.Localized;
 import jakarta.enterprise.context.ApplicationScoped;
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.TreeSet;
 import org.eclipse.microprofile.config.ConfigProvider;
 
 /**

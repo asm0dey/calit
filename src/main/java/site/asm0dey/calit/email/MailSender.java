@@ -1,12 +1,12 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.Mailer;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.time.Instant;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**

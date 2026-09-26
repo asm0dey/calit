@@ -1,7 +1,6 @@
 package site.asm0dey.calit.domain;
 
-import java.text.Normalizer;
-import java.util.Locale;
+import module java.base;
 
 /**
  * Slug helpers: turn a display name into a URL slug and guarantee meeting_type uniqueness.

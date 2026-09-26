@@ -1,5 +1,6 @@
 package site.asm0dey.calit.email;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.qute.Location;
@@ -7,8 +8,6 @@ import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.util.List;
-import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest

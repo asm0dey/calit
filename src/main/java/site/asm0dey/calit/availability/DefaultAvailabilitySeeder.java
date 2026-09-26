@@ -1,9 +1,6 @@
 package site.asm0dey.calit.availability;
 
-import java.time.DayOfWeek;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
+import module java.base;
 import site.asm0dey.calit.domain.AvailabilityRule;
 
 /**

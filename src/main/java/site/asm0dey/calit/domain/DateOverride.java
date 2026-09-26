@@ -1,10 +1,8 @@
 package site.asm0dey.calit.domain;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Replace-semantics availability override for a single date.

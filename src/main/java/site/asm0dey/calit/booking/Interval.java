@@ -1,7 +1,6 @@
 package site.asm0dey.calit.booking;
 
-import java.time.Instant;
-import java.util.List;
+import module java.base;
 
 /**
  * Half-open instant interval [start, end). Touching boundaries do not overlap.

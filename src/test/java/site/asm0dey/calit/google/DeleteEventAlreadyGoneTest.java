@@ -1,5 +1,6 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -13,8 +14,6 @@ import com.google.api.client.http.HttpResponseException;
 import com.google.api.services.calendar.Calendar;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import org.junit.jupiter.api.Test;
 
 /**

@@ -1,24 +1,11 @@
 package site.asm0dey.calit.web.og;
 
+import module java.base;
+import module java.desktop;
+// ambiguous across the module imports above; single-type import wins
+import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.GradientPaint;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.font.TextAttribute;
-import java.awt.geom.RoundRectangle2D;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import javax.imageio.ImageIO;
 
 /**
  * Draws the 1200x630 link-preview card.

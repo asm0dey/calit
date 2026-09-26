@@ -1,11 +1,8 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import site.asm0dey.calit.domain.MeetingType;

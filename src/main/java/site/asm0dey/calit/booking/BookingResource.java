@@ -1,12 +1,10 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.user.AppUser;

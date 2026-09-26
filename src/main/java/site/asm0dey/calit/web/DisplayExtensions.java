@@ -1,10 +1,7 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import io.quarkus.qute.TemplateExtension;
-import java.time.DateTimeException;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 
 /**
  * Qute template extensions that humanize UPPER_SNAKE_CASE enum constants for display:

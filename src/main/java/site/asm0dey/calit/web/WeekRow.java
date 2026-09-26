@@ -1,11 +1,6 @@
 package site.asm0dey.calit.web;
 
-import java.time.DayOfWeek;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import module java.base;
 import site.asm0dey.calit.domain.AvailabilityRule;
 
 /**

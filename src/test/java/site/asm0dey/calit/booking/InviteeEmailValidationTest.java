@@ -1,10 +1,9 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.time.Instant;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest

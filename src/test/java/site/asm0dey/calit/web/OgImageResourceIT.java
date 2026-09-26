@@ -1,14 +1,12 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
+import module java.desktop;
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.util.Arrays;
-import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 
 /**

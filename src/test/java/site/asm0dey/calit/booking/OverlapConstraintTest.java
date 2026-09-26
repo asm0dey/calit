@@ -1,13 +1,12 @@
 package site.asm0dey.calit.booking;
 
+import module java.base;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
-import java.time.Instant;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.TestOwners;

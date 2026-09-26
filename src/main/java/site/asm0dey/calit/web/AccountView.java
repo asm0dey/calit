@@ -1,6 +1,6 @@
 package site.asm0dey.calit.web;
 
-import java.util.List;
+import module java.base;
 
 /**
  * One connected Google account section on the /me/google page.

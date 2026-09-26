@@ -1,8 +1,8 @@
 package site.asm0dey.calit.web.og;
 
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.util.ArrayList;
+import module java.base;
+import module java.desktop;
+// ambiguous across the module imports above; single-type import wins
 import java.util.List;
 
 /**

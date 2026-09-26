@@ -1,6 +1,6 @@
 package site.asm0dey.calit.google;
 
-import java.time.Instant;
+import module java.base;
 
 /**
  * A busy block in absolute UTC time. Half-open [start, end).

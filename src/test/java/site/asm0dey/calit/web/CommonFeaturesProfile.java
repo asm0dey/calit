@@ -1,7 +1,7 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import io.quarkus.test.junit.QuarkusTestProfile;
-import java.util.Map;
 
 /**
  * Shared profile bundling the mutually-compatible runtime feature flags so tests that each need one

@@ -1,5 +1,6 @@
 package site.asm0dey.calit.oidc;
 
+import module java.base;
 import io.quarkus.oidc.IdToken;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -8,10 +9,6 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.Clock;
-import java.util.Set;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import site.asm0dey.calit.google.GoogleLoginResource;
 import site.asm0dey.calit.user.AppUser;

@@ -1,13 +1,10 @@
 package site.asm0dey.calit.notify;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.NotificationOptions;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 /**
  * The pool {@link ChannelDelivery} events are notified on. A DEDICATED, BOUNDED pool on purpose:

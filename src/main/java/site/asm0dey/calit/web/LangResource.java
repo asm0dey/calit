@@ -1,12 +1,12 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
-import java.net.URI;
 import site.asm0dey.calit.i18n.AppLocales;
 
 /**

@@ -1,12 +1,9 @@
 package site.asm0dey.calit.google;
 
+import module java.base;
 import com.google.api.services.calendar.model.CalendarListEntry;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.time.Instant;
-import java.util.List;
 import site.asm0dey.calit.user.CurrentOwner;
 
 /**

@@ -1,15 +1,12 @@
 package site.asm0dey.calit.scheduler;
 
+import module java.base;
 import io.quarkus.logging.Log;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import site.asm0dey.calit.privacy.PrivacyConfig;
 import site.asm0dey.calit.privacy.PrivacyService;
 
