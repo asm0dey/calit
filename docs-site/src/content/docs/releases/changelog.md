@@ -7,9 +7,10 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.27.0
 
-Merged but not yet in a tagged release.
+Signed-in visitors land on their dashboard, `/lang` handles encoded return paths, and
+dependencies are refreshed, including Quarkus 3.39.5.
 
 - Signing in and visiting `/` now goes to your dashboard; the product page moved to `/calit`, which
   never redirects. ([#230](https://github.com/asm0dey/calit/pull/230))
@@ -17,6 +18,12 @@ Merged but not yet in a tagged release.
   `/me/settings` turns it off. ([#230](https://github.com/asm0dey/calit/pull/230))
 - `/` and `/calit` now send `Cache-Control: private` and the redirect `no-store`, so a reverse proxy
   cannot serve one visitor's page to another. ([#230](https://github.com/asm0dey/calit/pull/230))
+- `/lang` keeps a percent-encoded `return` path such as `/a%20b` instead of answering 500.
+  ([#234](https://github.com/asm0dey/calit/pull/234))
+- Updates Quarkus to 3.39.5, jackson-core to 2.22.3 and altcha to 3.2.3, and refreshes the runtime
+  base image. ([#229](https://github.com/asm0dey/calit/pull/229),
+  [#231](https://github.com/asm0dey/calit/pull/231), [#232](https://github.com/asm0dey/calit/pull/232),
+  [#233](https://github.com/asm0dey/calit/pull/233))
 
 Upgrade: existing owners get the redirect on. Turn it off on `/me/settings`, or use `/calit` for a
 single visit. The admin brand links to `/calit` but is hidden below the mobile breakpoint, so on
