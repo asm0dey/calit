@@ -53,9 +53,8 @@ class FailedLoginAuditTest {
         AppUser u = AppUser.create("audit-pw", new PasswordHasher().hash("correct-horse"), false);
         u.persistAndFlush();
 
-        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(
-                req("audit-pw", "wrong-password")
-        ));
+        var request = req("audit-pw", "wrong-password");
+        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(request));
 
         assertTrue(
                 recorder.events
@@ -68,9 +67,8 @@ class FailedLoginAuditTest {
     @Test
     @TestTransaction
     void unknownUserEmitsLoginFailedAudit() {
-        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(
-                req("no-such-user", "whatever")
-        ));
+        var request = req("no-such-user", "whatever");
+        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(request));
 
         assertEquals(1, recorder.events
             .stream()

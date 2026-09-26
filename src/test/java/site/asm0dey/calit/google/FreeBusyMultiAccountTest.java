@@ -21,11 +21,9 @@ class FreeBusyMultiAccountTest {
         GoogleCredential a = cred(1L, "sub-A", true);
         a.persist();
         readCal(1L, a.id, "a-cal");
-        assertThrows(CalendarUnavailableException.class, () -> port.freeBusy(
-                1L,
-                Instant.now(),
-                Instant.now().plusSeconds(86400)
-        ));
+        var from = Instant.now();
+        var to = Instant.now().plusSeconds(86400);
+        assertThrows(CalendarUnavailableException.class, () -> port.freeBusy(1L, from, to));
     }
 
     @Test

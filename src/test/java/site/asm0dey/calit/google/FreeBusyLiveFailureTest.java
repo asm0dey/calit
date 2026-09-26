@@ -29,11 +29,9 @@ class FreeBusyLiveFailureTest {
             .when(tokenService.validAccessToken(Mockito.any(), Mockito.any()))
             .thenThrow(new IllegalStateException("token dead"));
 
-        assertThrows(CalendarUnavailableException.class, () -> port.freeBusy(
-                1L,
-                Instant.now(),
-                Instant.now().plusSeconds(86400)
-        ));
+        var from = Instant.now();
+        var to = Instant.now().plusSeconds(86400);
+        assertThrows(CalendarUnavailableException.class, () -> port.freeBusy(1L, from, to));
     }
 
     @Test
@@ -41,11 +39,9 @@ class FreeBusyLiveFailureTest {
         // pre-flagged needsReconnect
         seedReadCalendarForCred(seedCred("sub-broken", true));
 
-        assertThrows(CalendarUnavailableException.class, () -> port.freeBusy(
-                1L,
-                Instant.now(),
-                Instant.now().plusSeconds(86400)
-        ));
+        var from = Instant.now();
+        var to = Instant.now().plusSeconds(86400);
+        assertThrows(CalendarUnavailableException.class, () -> port.freeBusy(1L, from, to));
         // No tokenService interaction: a known-broken account short-circuits before any Google call.
         Mockito.verifyNoInteractions(tokenService);
     }

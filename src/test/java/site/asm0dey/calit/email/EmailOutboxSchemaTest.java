@@ -10,9 +10,7 @@ import org.junit.jupiter.api.Test;
 class EmailOutboxSchemaTest {
     @Test
     void tableExistsAndMapsCleanly() {
-        long n = QuarkusTransaction
-            .requiringNew()
-            .call(() -> EmailOutbox.count());
+        long n = QuarkusTransaction.requiringNew().call(EmailOutbox::count);
         assertEquals(0L, n);
     }
 }

@@ -50,9 +50,8 @@ class LoginTicketAuthTest {
         other.persistAndFlush();
         String token = tickets.issue(u.id, FIXED);
         // Token is valid but submitted under the wrong username -> reject (defence in depth).
-        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(
-                req("someone-else", token)
-        ));
+        var request = req("someone-else", token);
+        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(request));
     }
 
     @Test
@@ -73,8 +72,7 @@ class LoginTicketAuthTest {
         u.persistAndFlush();
         String token = tickets.issue(u.id, FIXED);
         // A valid ticket must NOT log in a disabled account (the enabled gate).
-        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(
-                req("disabled-tkt", token)
-        ));
+        var request = req("disabled-tkt", token);
+        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(request));
     }
 }

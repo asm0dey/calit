@@ -13,84 +13,99 @@ class InviteeEmailValidationTest {
 
     @Test
     void rejectsCrlfInjectionInEmail() {
+        var start = Instant.parse("2099-01-01T10:00:00Z");
+        Map<String, String> answers = Map.of();
+        List<String> guestEmails = List.of();
         assertThrows(BookingValidationException.class, () -> bookingService.book(
                 1L,
                 "intro",
-                Instant.parse("2099-01-01T10:00:00Z"),
+                start,
                 "Mallory",
                 "a@b.com\r\nBcc: attacker@evil.com",
-                Map.of(),
+                answers,
                 null,
                 null,
                 "en",
-                java.util.List.of()
+                guestEmails
         ));
     }
 
     @Test
     void rejectsOversizedEmail() {
         var huge = "x".repeat(250) + "@b.com";
+        var start = Instant.parse("2099-01-01T10:00:00Z");
+        Map<String, String> answers = Map.of();
+        List<String> guestEmails = List.of();
         assertThrows(BookingValidationException.class, () -> bookingService.book(
                 1L,
                 "intro",
-                Instant.parse("2099-01-01T10:00:00Z"),
+                start,
                 "Mallory",
                 huge,
-                Map.of(),
+                answers,
                 null,
                 null,
                 "en",
-                java.util.List.of()
+                guestEmails
         ));
     }
 
     @Test
     void rejectsMalformedEmail() {
+        var start = Instant.parse("2099-01-01T10:00:00Z");
+        Map<String, String> answers = Map.of();
+        List<String> guestEmails = List.of();
         assertThrows(BookingValidationException.class, () -> bookingService.book(
                 1L,
                 "intro",
-                Instant.parse("2099-01-01T10:00:00Z"),
+                start,
                 "Mallory",
                 "not-an-email",
-                Map.of(),
+                answers,
                 null,
                 null,
                 "en",
-                java.util.List.of()
+                guestEmails
         ));
     }
 
     @Test
     void rejectsOversizedInviteeName() {
         var longName = "n".repeat(201);
+        var start = Instant.parse("2099-01-01T10:00:00Z");
+        Map<String, String> answers = Map.of();
+        List<String> guestEmails = List.of();
         assertThrows(BookingValidationException.class, () -> bookingService.book(
                 1L,
                 "intro",
-                Instant.parse("2099-01-01T10:00:00Z"),
+                start,
                 longName,
                 "a@b.com",
-                Map.of(),
+                answers,
                 null,
                 null,
                 "en",
-                java.util.List.of()
+                guestEmails
         ));
     }
 
     @Test
     void rejectsOversizedAnswer() {
         var longAnswer = "x".repeat(2001);
+        var start = Instant.parse("2099-01-01T10:00:00Z");
+        Map<String, String> answers = Map.of("note", longAnswer);
+        List<String> guestEmails = List.of();
         assertThrows(BookingValidationException.class, () -> bookingService.book(
                 1L,
                 "intro",
-                Instant.parse("2099-01-01T10:00:00Z"),
+                start,
                 "Bob",
                 "a@b.com",
-                Map.of("note", longAnswer),
+                answers,
                 null,
                 null,
                 "en",
-                java.util.List.of()
+                guestEmails
         ));
     }
 }

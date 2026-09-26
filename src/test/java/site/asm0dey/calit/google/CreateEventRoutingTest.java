@@ -15,14 +15,17 @@ class CreateEventRoutingTest {
     @Test
     @Transactional
     void noWriteTargetThrows() {
+        var start = Instant.now();
+        var end = Instant.now().plusSeconds(1800);
+        var attendeeEmails = List.of("a@example.com");
         assertThrows(IllegalStateException.class, () -> port.createEvent(
                 1L,
                 null,
                 "s",
                 "d",
-                Instant.now(),
-                Instant.now().plusSeconds(1800),
-                List.of("a@example.com"),
+                start,
+                end,
+                attendeeEmails,
                 true,
                 null
         ));

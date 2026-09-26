@@ -292,17 +292,19 @@ class BookServiceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         // Present but blank value is rejected just like a missing key.
+        Map<String, String> answers = Map.of("company", "   ");
+        List<String> guestEmails = List.of();
         assertThrows(BookingValidationException.class, () -> bookingService.book(
                 1L,
                 "book-required-blank",
                 SLOT_09,
                 "Sam",
                 "sam@example.com",
-                Map.of("company", "   "),
+                answers,
                 "tok",
                 "",
                 "en",
-                List.of()
+                guestEmails
         ));
     }
 
@@ -468,17 +470,20 @@ class BookServiceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         // 09:13 is not a generated slot start.
+        var start = DAY.atTime(9, 13).atZone(ZONE).toInstant();
+        Map<String, String> answers = Map.of();
+        List<String> guestEmails = List.of();
         assertThrows(BookingConflictException.class, () -> bookingService.book(
                 1L,
                 "book-bad-start",
-                DAY.atTime(9, 13).atZone(ZONE).toInstant(),
+                start,
                 "X",
                 "x@example.com",
-                Map.of(),
+                answers,
                 "tok",
                 "",
                 "en",
-                List.of()
+                guestEmails
         ));
     }
 

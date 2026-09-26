@@ -49,9 +49,7 @@ class EmailServiceFallbackTest {
         // Must not throw.
         emailService.handleDeclined(new BookingDeclined(bookingId));
 
-        long queued = QuarkusTransaction
-            .requiringNew()
-            .call(() -> EmailOutbox.count());
+        long queued = QuarkusTransaction.requiringNew().call(EmailOutbox::count);
         // declined notifies invitee + owner -> 2 parked mails.
         assertTrue(queued >= 2, "both recipients' mail parked in outbox, got " + queued);
     }

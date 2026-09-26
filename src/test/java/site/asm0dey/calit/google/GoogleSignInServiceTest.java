@@ -54,18 +54,16 @@ class GoogleSignInServiceTest {
         s.timezone = "UTC";
         s.persistAndFlush();
 
-        GoogleSignInException ex = assertThrows(GoogleSignInException.class, () -> signIn.resolveOrProvision(
-                new GoogleIdentity("sub-x", "unv@x.com", false)
-        ));
+        var identity = new GoogleIdentity("sub-x", "unv@x.com", false);
+        GoogleSignInException ex = assertThrows(GoogleSignInException.class, () -> signIn.resolveOrProvision(identity));
         assertEquals(GoogleSignInException.Reason.SIGNUP_DISABLED, ex.reason);
     }
 
     @Test
     @TestTransaction
     void unknownIdentityRejectedWhenSignupDisabled() {
-        GoogleSignInException ex = assertThrows(GoogleSignInException.class, () -> signIn.resolveOrProvision(
-                new GoogleIdentity("sub-none", "new@x.com", true)
-        ));
+        var identity = new GoogleIdentity("sub-none", "new@x.com", true);
+        GoogleSignInException ex = assertThrows(GoogleSignInException.class, () -> signIn.resolveOrProvision(identity));
         assertEquals(GoogleSignInException.Reason.SIGNUP_DISABLED, ex.reason);
     }
 }

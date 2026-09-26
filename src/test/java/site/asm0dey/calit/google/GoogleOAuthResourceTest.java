@@ -4,9 +4,11 @@ import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
@@ -20,11 +22,7 @@ class GoogleOAuthResourceTest {
 
     @Test
     void connectRedirectsToGoogleConsent() {
-        Mockito
-            .when(tokenService.buildConsentUrl(
-                    org.mockito.ArgumentMatchers.anyLong(),
-                    org.mockito.ArgumentMatchers.any(Instant.class)
-            ))
+        when(tokenService.buildConsentUrl(anyLong(), any(Instant.class)))
             .thenReturn("https://accounts.google.com/o/oauth2/v2/auth?access_type=offline&prompt=consent");
 
         RestAssured
@@ -43,7 +41,7 @@ class GoogleOAuthResourceTest {
     @Test
     void callbackExchangesCodeAndRedirectsToAdmin() {
         // Stateless CSRF: the mocked service accepts this state without any session.
-        Mockito.when(tokenService.validateState(eq("good-state"), any(Instant.class))).thenReturn(7L);
+        when(tokenService.validateState(eq("good-state"), any(Instant.class))).thenReturn(7L);
         doNothing().when(tokenService).exchangeCode(any(), eq("the-code"), any(Instant.class));
 
         RestAssured
@@ -63,7 +61,7 @@ class GoogleOAuthResourceTest {
     @Test
     void callbackWithInvalidStateReturns400() {
         // Forged/expired state is rejected before any code exchange — no session to consult.
-        Mockito.when(tokenService.validateState(eq("bad-state"), any(Instant.class))).thenReturn((Long) null);
+        when(tokenService.validateState(eq("bad-state"), any(Instant.class))).thenReturn((Long) null);
 
         given()
             .cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())

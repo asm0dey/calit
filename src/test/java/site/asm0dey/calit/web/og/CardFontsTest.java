@@ -1,13 +1,12 @@
 package site.asm0dey.calit.web.og;
 
-import module java.base;
 import module java.desktop;
-// ambiguous across the module imports above; single-type import wins
-import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+// java.desktop's module import would otherwise bind List to java.awt.List
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**

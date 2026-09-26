@@ -161,11 +161,13 @@ class UpdateDetailsTest {
     void updateDetailsRejectsOverlongTitle() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         Booking b = seedConfirmed("upd-5");
+        var title = "x".repeat(201);
+        List<String> guestEmails = List.of();
         assertThrows(BookingValidationException.class, () -> bookingService.updateDetails(
                 b.manageToken,
-                "x".repeat(201),
+                title,
                 null,
-                List.of(),
+                guestEmails,
                 true
         ));
     }
