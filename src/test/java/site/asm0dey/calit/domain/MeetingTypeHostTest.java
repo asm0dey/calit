@@ -1,7 +1,6 @@
 package site.asm0dey.calit.domain;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -13,7 +12,6 @@ import site.asm0dey.calit.user.TestOwners;
 
 @QuarkusTest
 class MeetingTypeHostTest {
-
     @Inject
     EntityManager em;
 

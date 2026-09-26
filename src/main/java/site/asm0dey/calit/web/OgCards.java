@@ -6,14 +6,13 @@ import java.util.List;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeDuration;
 
-/** Builds the per-page {@link OgCard}s. Absolute URLs come from {@code app.base-url}. */
+/**
+ * Builds the per-page {@link OgCard}s. Absolute URLs come from {@code app.base-url}.
+ */
 @ApplicationScoped
 public class OgCards {
-
     static final String PRODUCT_TITLE = "calit";
-
     static final String PRODUCT_DESCRIPTION = "Self-hosted scheduling. Pick a time that works for you.";
-
     final SiteInfo site;
 
     @Inject
@@ -21,7 +20,9 @@ public class OgCards {
         this.site = site;
     }
 
-    /** Product-level card. {@code pagePath} is an absolute path such as {@code "/privacy"}. */
+    /**
+     * Product-level card. {@code pagePath} is an absolute path such as {@code "/privacy"}.
+     */
     public OgCard product(String pagePath) {
         return new OgCard(PRODUCT_TITLE, PRODUCT_DESCRIPTION, url("/og.png"), url(pagePath));
     }
@@ -32,7 +33,8 @@ public class OgCards {
                 name + " · calit",
                 "Pick a meeting type and book a time.",
                 url("/og/" + username + ".png"),
-                url("/" + username));
+                url("/" + username)
+        );
     }
 
     /**
@@ -48,19 +50,25 @@ public class OgCards {
                 type.name + " · " + name,
                 "Book a " + durations(type) + " meeting with " + name + ".",
                 url("/og/" + username + "/" + type.slug + ".png"),
-                url("/" + username + "/" + type.slug));
+                url("/" + username + "/" + type.slug)
+        );
     }
 
-    /** "30 min", or "15, 30 or 60 min" — never claims a single length for a multi-duration type. */
+    /**
+     * "30 min", or "15, 30 or 60 min" — never claims a single length for a multi-duration type.
+     */
     static String durations(MeetingType type) {
         List<Integer> all = MeetingTypeDuration.allowedDurations(type);
         if (all.size() == 1) {
             return all.getFirst() + " min";
         }
-        var head = all.subList(0, all.size() - 1).stream()
-                .map(String::valueOf)
-                .reduce((a, b) -> a + ", " + b)
-                .orElse("");
+        var head =
+                all
+            .subList(0, all.size() - 1)
+            .stream()
+            .map(String::valueOf)
+            .reduce((a, b) -> a + ", " + b)
+            .orElse("");
         return head + " or " + all.getLast() + " min";
     }
 

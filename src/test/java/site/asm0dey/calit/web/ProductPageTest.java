@@ -3,7 +3,6 @@ package site.asm0dey.calit.web;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import org.junit.jupiter.api.Test;
@@ -14,28 +13,29 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class ProductPageTest {
-
     @Test
     void productPageServesTheMarketingContentToAnonymousVisitors() {
-        given().redirects()
-                .follow(false)
-                .when()
-                .get("/calit")
-                .then()
-                .statusCode(200)
-                .body(containsString("Self-hosted scheduling"));
+        given()
+            .redirects()
+            .follow(false)
+            .when()
+            .get("/calit")
+            .then()
+            .statusCode(200)
+            .body(containsString("Self-hosted scheduling"));
     }
 
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void productPageNeverRedirectsASignedInVisitor() {
-        given().redirects()
-                .follow(false)
-                .when()
-                .get("/calit")
-                .then()
-                .statusCode(200)
-                .body(containsString("Self-hosted scheduling"));
+        given()
+            .redirects()
+            .follow(false)
+            .when()
+            .get("/calit")
+            .then()
+            .statusCode(200)
+            .body(containsString("Self-hosted scheduling"));
     }
 
     @Test
@@ -58,7 +58,12 @@ class ProductPageTest {
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void signedInVisitorsBrandAnchorsPointBackAtProductPage() {
-        given().when().get("/calit").then().statusCode(200).body(containsString("class=\"lp-brand\" href=\"/calit\""));
+        given()
+            .when()
+            .get("/calit")
+            .then()
+            .statusCode(200)
+            .body(containsString("class=\\\"lp-brand\\\" " + "href=\\\"/calit\\\""));
     }
 
     @Test

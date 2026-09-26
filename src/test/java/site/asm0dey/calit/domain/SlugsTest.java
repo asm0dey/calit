@@ -1,11 +1,9 @@
 package site.asm0dey.calit.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import org.junit.jupiter.api.Test;
 
 class SlugsTest {
-
     @Test
     void slugifyLowercasesAndHyphenates() {
         assertEquals("intro-call", Slugs.slugify("Intro Call"));

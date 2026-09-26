@@ -14,50 +14,40 @@ import site.asm0dey.calit.google.CalendarRef;
 @Entity
 @Table(name = "booking")
 public class Booking extends PanacheEntityBase {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
-
     @Column(name = "owner_id", nullable = false)
     public Long ownerId;
-
     @Column(name = "meeting_type_id", nullable = false)
     public Long meetingTypeId;
-
     @Column(name = "invitee_name", nullable = false)
     public String inviteeName;
-
     @Column(name = "invitee_email", nullable = false)
     public String inviteeEmail;
-
     @Column(name = "start_utc", nullable = false)
     public Instant startUtc;
-
     @Column(name = "end_utc", nullable = false)
     public Instant endUtc;
-
     @Column(name = "google_event_id")
     public String googleEventId;
-
-    /** Google's calendar id for {@link #googleEventId}; null on rows created before V26. */
+    /**
+     * Google's calendar id for {@link #googleEventId}; null on rows created before V26.
+     */
     @Column(name = "google_calendar_id", columnDefinition = "text")
     public String googleCalendarId;
-
-    /** The connected account the event was created with; nulled when that account is disconnected. */
+    /**
+     * The connected account the event was created with; nulled when that account is disconnected.
+     */
     @Column(name = "google_credential_id")
     public Long googleCredentialId;
-
     @Column(name = "meet_link", length = 512)
     public String meetLink;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     public BookingStatus status;
-
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
-
     /**
      * Invitee manage/reschedule/cancel key: a random UUID set at creation. Unique.
      * Plan 4 emails a tokenized link {app.base-url}/booking/{manageToken}/manage; Plan 5 must
@@ -65,11 +55,11 @@ public class Booking extends PanacheEntityBase {
      */
     @Column(name = "manage_token", nullable = false, length = 36, unique = true)
     public String manageToken;
-
-    /** BCP-47 language tag captured from the invitee at booking time; drives invitee emails. */
+    /**
+     * BCP-47 language tag captured from the invitee at booking time; drives invitee emails.
+     */
     @Column(nullable = false)
     public String locale = "en";
-
     /**
      * Feature 14 owner-approval nonce: an unguessable random UUID, set only when the meeting type
      * requires approval. Emailed to the owner inside the authenticated approve/decline links
@@ -77,7 +67,6 @@ public class Booking extends PanacheEntityBase {
      */
     @Column(name = "approval_token", length = 36, unique = true)
     public String approvalToken;
-
     /**
      * Feature 10: submitted values for the owner-defined custom BookingFields
      * (fieldKey -> value). Built-in full-name/email are NOT stored here — they
@@ -87,7 +76,6 @@ public class Booking extends PanacheEntityBase {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "answers", columnDefinition = "jsonb")
     public Map<String, String> answers = new java.util.HashMap<>();
-
     /**
      * Per-booking override of the meeting's displayed name. NULL (or blank) means "no override" —
      * {@link #effectiveTitle} falls back to the meeting type's name. Editable post-booking by both the
@@ -95,14 +83,12 @@ public class Booking extends PanacheEntityBase {
      */
     @Column(columnDefinition = "text")
     public String title;
-
     /**
      * Per-booking override of the meeting description. NULL (or blank) falls back to the meeting type's
      * description (which may itself be null). Propagates to the .ics DESCRIPTION and Google event description.
      */
     @Column(columnDefinition = "text")
     public String description;
-
     /**
      * iTIP SEQUENCE for this booking's guest .ics invites. Starts at 0; reschedule() increments it so
      * a guest's calendar client supersedes the prior event (and so a CANCEL with an equal-or-higher
@@ -110,7 +96,6 @@ public class Booking extends PanacheEntityBase {
      */
     @Column(name = "ics_sequence", nullable = false)
     public int icsSequence = 0;
-
     /**
      * When this booking's invitee data was anonymised (Art. 17 erasure, or the retention window
      * elapsing). NULL = not erased. The row survives so the owner keeps the slot record; this stamp
@@ -118,7 +103,6 @@ public class Booking extends PanacheEntityBase {
      */
     @Column(name = "erased_at")
     public Instant erasedAt;
-
     /**
      * Multi-host: links the N rows (one per host) of a single conceptual booking. NULL means a
      * single-host booking (the common case).
@@ -139,10 +123,13 @@ public class Booking extends PanacheEntityBase {
                 ownerId,
                 List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED),
                 to,
-                from);
+                from
+        );
     }
 
-    /** Loads a booking by its invitee manage-token (reschedule/cancel key), or null. */
+    /**
+     * Loads a booking by its invitee manage-token (reschedule/cancel key), or null.
+     */
     public static Booking findByManageToken(String manageToken) {
         return find("manageToken", manageToken).firstResult();
     }
@@ -165,21 +152,26 @@ public class Booking extends PanacheEntityBase {
         if (own.groupId == null) {
             return null;
         }
-        return find("groupId = ?1 and erasedAt is null order by id", own.groupId)
-                .firstResult();
+        return find("groupId = ?1 and erasedAt is null order by id", own.groupId).firstResult();
     }
 
-    /** True once the invitee's data has been anonymised — see {@link #erasedAt}. */
+    /**
+     * True once the invitee's data has been anonymised — see {@link #erasedAt}.
+     */
     public boolean isErased() {
         return erasedAt != null;
     }
 
-    /** Displayed meeting name: this booking's override when set + non-blank, else the type's name. */
+    /**
+     * Displayed meeting name: this booking's override when set + non-blank, else the type's name.
+     */
     public String effectiveTitle(MeetingType type) {
         return (title != null && !title.isBlank()) ? title : type.name;
     }
 
-    /** Meeting description: override when set + non-blank, else the type's description (may be null). */
+    /**
+     * Meeting description: override when set + non-blank, else the type's description (may be null).
+     */
     public String effectiveDescription(MeetingType type) {
         if (description != null && !description.isBlank()) {
             return description;
@@ -187,46 +179,58 @@ public class Booking extends PanacheEntityBase {
         return (type.description != null && !type.description.isBlank()) ? type.description : null;
     }
 
-    /** This row's Google event address, or null when unknown (pre-V26 rows) — see {@link CalendarRef}. */
+    /**
+     * This row's Google event address, or null when unknown (pre-V26 rows) — see {@link CalendarRef}.
+     */
     public CalendarRef calendarRef() {
         return googleCalendarId == null ? null : new CalendarRef(googleCredentialId, googleCalendarId);
     }
 
-    /** Feature 16: how many bookings this invitee email created in [dayStart, dayEnd). */
+    /**
+     * Feature 16: how many bookings this invitee email created in [dayStart, dayEnd).
+     */
     public static long countByEmailCreatedBetween(String email, Instant dayStart, Instant dayEnd) {
         return count("inviteeEmail = ?1 and createdAt >= ?2 and createdAt < ?3", email, dayStart, dayEnd);
     }
 
-    /** Multi-host: all per-host rows sharing this group_id. */
+    /**
+     * Multi-host: all per-host rows sharing this group_id.
+     */
     public static List<Booking> group(UUID groupId) {
         return list("groupId", groupId);
     }
 
-    /** The creator's row in a group (the invitee-facing lead). */
+    /**
+     * The creator's row in a group (the invitee-facing lead).
+     */
     public static Booking leadOfGroup(UUID groupId, Long creatorOwnerId) {
         return find("groupId = ?1 and ownerId = ?2", groupId, creatorOwnerId).firstResult();
     }
 
-    /** Counts one per conceptual booking: standalone rows + distinct group_id. */
+    /**
+     * Counts one per conceptual booking: standalone rows + distinct group_id.
+     */
     public static long countDistinctBookingsByEmailBetween(String email, Instant dayStart, Instant dayEnd) {
         Long singles = getEntityManager()
-                .createQuery(
-                        "select count(b) from Booking b where b.inviteeEmail = :e "
-                                + "and b.createdAt >= :s and b.createdAt < :d and b.groupId is null",
-                        Long.class)
-                .setParameter("e", email)
-                .setParameter("s", dayStart)
-                .setParameter("d", dayEnd)
-                .getSingleResult();
+            .createQuery(
+                    "select count(b) from Booking b where b.inviteeEmail = :e "
+                    + "and b.createdAt >= :s and b.createdAt < :d and b.groupId is null",
+                    Long.class
+            )
+            .setParameter("e", email)
+            .setParameter("s", dayStart)
+            .setParameter("d", dayEnd)
+            .getSingleResult();
         Long groups = getEntityManager()
-                .createQuery(
-                        "select count(distinct b.groupId) from Booking b where b.inviteeEmail = :e "
-                                + "and b.createdAt >= :s and b.createdAt < :d and b.groupId is not null",
-                        Long.class)
-                .setParameter("e", email)
-                .setParameter("s", dayStart)
-                .setParameter("d", dayEnd)
-                .getSingleResult();
+            .createQuery(
+                    "select count(distinct b.groupId) from Booking b where b.inviteeEmail = :e "
+                    + "and b.createdAt >= :s and b.createdAt < :d and b.groupId is not null",
+                    Long.class
+            )
+            .setParameter("e", email)
+            .setParameter("s", dayStart)
+            .setParameter("d", dayEnd)
+            .getSingleResult();
         return singles + groups;
     }
 }

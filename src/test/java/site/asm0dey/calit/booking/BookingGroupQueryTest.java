@@ -1,7 +1,6 @@
 package site.asm0dey.calit.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -14,7 +13,6 @@ import site.asm0dey.calit.user.TestOwners;
 
 @QuarkusTest
 class BookingGroupQueryTest {
-
     @Inject
     EntityManager em;
 
@@ -46,10 +44,13 @@ class BookingGroupQueryTest {
     void groupAndLeadResolve() {
         TestOwners.ensure(em, 1L);
         TestOwners.ensure(em, 2L);
-        MultiHostFixtures.meetingType(1L, "solo", 30); // seeds meeting_type.id=1 for booking's FK
+        // seeds meeting_type.id=1 for booking's FK
+        MultiHostFixtures.meetingType(1L, "solo", 30);
         var g = UUID.randomUUID();
-        row(g, 1L, 0); // creator/lead
-        row(g, 2L, 1); // cohost
+        // creator/lead
+        row(g, 1L, 0);
+        // cohost
+        row(g, 2L, 1);
         assertEquals(2, Booking.group(g).size());
         assertEquals(1L, Booking.leadOfGroup(g, 1L).ownerId);
     }
@@ -59,13 +60,20 @@ class BookingGroupQueryTest {
     void abuseCapCountsPerGroupNotPerRow() {
         TestOwners.ensure(em, 1L);
         TestOwners.ensure(em, 2L);
-        MultiHostFixtures.meetingType(1L, "solo", 30); // seeds meeting_type.id=1 for booking's FK
+        // seeds meeting_type.id=1 for booking's FK
+        MultiHostFixtures.meetingType(1L, "solo", 30);
         var g = UUID.randomUUID();
         row(g, 1L, 0);
-        row(g, 2L, 1); // one multi-host booking = 2 rows
-        row(null, 1L, 2); // one single-host booking = 1 row
+        // one multi-host booking = 2 rows
+        row(g, 2L, 1);
+        // one single-host booking = 1 row
+        row(null, 1L, 2);
         long n = Booking.countDistinctBookingsByEmailBetween(
-                "sam@x.com", Instant.parse("2000-01-01T00:00:00Z"), Instant.parse("2100-01-01T00:00:00Z"));
-        assertEquals(2, n); // 2 conceptual bookings, not 3 rows
+                "sam@x.com",
+                Instant.parse("2000-01-01T00:00:00Z"),
+                Instant.parse("2100-01-01T00:00:00Z")
+        );
+        // 2 conceptual bookings, not 3 rows
+        assertEquals(2, n);
     }
 }

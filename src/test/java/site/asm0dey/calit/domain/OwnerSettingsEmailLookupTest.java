@@ -2,7 +2,6 @@ package site.asm0dey.calit.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -13,7 +12,6 @@ import site.asm0dey.calit.user.TestOwners;
 
 @QuarkusTest
 class OwnerSettingsEmailLookupTest {
-
     @Inject
     EntityManager em;
 

@@ -23,9 +23,7 @@ import site.asm0dey.calit.google.GoogleOAuthConfig;
 @Readiness
 @ApplicationScoped
 public class GoogleHealthCheck implements HealthCheck {
-
     private static final String STATE = "state";
-
     final GoogleOAuthConfig config;
 
     @Inject
@@ -44,9 +42,7 @@ public class GoogleHealthCheck implements HealthCheck {
             s.connect(new InetSocketAddress("oauth2.googleapis.com", 443), 2000);
             return r.up().withData(STATE, "reachable").build();
         } catch (Exception e) {
-            return r.up().withData(STATE, "unreachable")
-                    .withData("error", e.getMessage())
-                    .build();
+            return r.up().withData(STATE, "unreachable").withData("error", e.getMessage()).build();
         }
     }
 }

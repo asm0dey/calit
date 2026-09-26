@@ -23,9 +23,7 @@ import site.asm0dey.calit.domain.MeetingTypeHost;
  */
 @ApplicationScoped
 public class WriteTargetResolver {
-
     private static final Logger LOG = Logger.getLogger(WriteTargetResolver.class);
-
     /**
      * The write-calendar picker's sentinel form value meaning "leave the stored override exactly as
      * it is" (including a dangling one). Both {@code AdminResource} (creator) and
@@ -52,12 +50,16 @@ public class WriteTargetResolver {
         return host == null ? null : ref(host.googleCredentialId, host.googleCalendarId);
     }
 
-    /** True when {@code ref} names one of this owner's currently selected calendars. */
+    /**
+     * True when {@code ref} names one of this owner's currently selected calendars.
+     */
     public boolean owns(Long ownerId, CalendarRef ref) {
         return ref != null && GoogleCalendar.findOwned(ownerId, ref.credentialId(), ref.googleCalendarId()) != null;
     }
 
-    /** The calendar this host writes {@code type} on, or null when they have no write calendar at all. */
+    /**
+     * The calendar this host writes {@code type} on, or null when they have no write calendar at all.
+     */
     public GoogleCalendar resolveCalendar(Long ownerId, MeetingType type) {
         CalendarRef override = writeOverride(ownerId, type);
         if (override != null) {
@@ -67,13 +69,20 @@ public class WriteTargetResolver {
                 return live;
             }
             LOG.warnf(
-                    "Meeting type %s: write-calendar override %s (credential %s, owner %d) is no longer selected; falling back to the write target",
-                    type.id, override.googleCalendarId(), override.credentialId(), ownerId);
+                    "Meeting type %s: write-calendar override %s (credential %s, owner %d) is no longer "
+                    + "selected; falling back to the write target",
+                    type.id,
+                    override.googleCalendarId(),
+                    override.credentialId(),
+                    ownerId
+            );
         }
         return GoogleCalendar.writeTarget(ownerId);
     }
 
-    /** {@link #resolveCalendar} as an address for {@link CalendarPort}, or null when there is none. */
+    /**
+     * {@link #resolveCalendar} as an address for {@link CalendarPort}, or null when there is none.
+     */
     public CalendarRef resolve(Long ownerId, MeetingType type) {
         return address(resolveCalendar(ownerId, type));
     }

@@ -2,7 +2,6 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -17,7 +16,6 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class HostSuggestTest {
-
     @Transactional
     MeetingType seedAdminType(String slug) {
         return MultiHostFixtures.meetingType(1L, slug, 30);
@@ -47,8 +45,7 @@ class HostSuggestTest {
 
     @Transactional
     void seedAcceptedCohostRow(Long typeId, Long ownerId) {
-        MeetingTypeHost.of(typeId, ownerId, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED)
-                .persist();
+        MeetingTypeHost.of(typeId, ownerId, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED).persist();
     }
 
     @Test
@@ -61,14 +58,15 @@ class HostSuggestTest {
         AppUser alreadyHost = seedCandidate("volhost" + uniq);
         seedAcceptedCohostRow(t.id, alreadyHost.id);
 
-        String body = given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/hosts?q=vol&typeId=" + t.id)
-                .then()
-                .statusCode(200)
-                .contentType("application/json")
-                .extract()
-                .asString();
+        String body = given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/hosts?q=vol&typeId=" + t.id)
+            .then()
+            .statusCode(200)
+            .contentType("application/json")
+            .extract()
+            .asString();
 
         org.hamcrest.MatcherAssert.assertThat(body, containsString(eligible.username));
         org.hamcrest.MatcherAssert.assertThat(body, not(containsString(disabled.username)));
@@ -81,24 +79,26 @@ class HostSuggestTest {
         var uniq = System.nanoTime();
         MeetingType t = seedAdminType("host-suggest-self-" + uniq);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/hosts?q=admin&typeId=" + t.id)
-                .then()
-                .statusCode(200)
-                .body(not(containsString("\"admin\"")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/hosts?q=admin&typeId=" + t.id)
+            .then()
+            .statusCode(200)
+            .body(not(containsString("\"admin\"")));
     }
 
     @Test
     void unauthenticatedIsRejected() {
         // Form-auth redirects unauthenticated browser requests to /login (302/303) rather than
         // a bare 401 — same convention asserted for other /me* routes in ReservedRouteTest.
-        given().redirects()
-                .follow(false)
-                .when()
-                .get("/me/hosts?q=vol&typeId=1")
-                .then()
-                .statusCode(anyOf(is(302), is(303), is(401)));
+        given()
+            .redirects()
+            .follow(false)
+            .when()
+            .get("/me/hosts?q=vol&typeId=1")
+            .then()
+            .statusCode(anyOf(is(302), is(303), is(401)));
     }
 
     @Test
@@ -106,24 +106,26 @@ class HostSuggestTest {
         var uniq = System.nanoTime();
         MeetingType t = seedAdminType("host-suggest-blank-" + uniq);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/hosts?q=&typeId=" + t.id)
-                .then()
-                .statusCode(200)
-                .body(containsString("[]"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/hosts?q=&typeId=" + t.id)
+            .then()
+            .statusCode(200)
+            .body(containsString("[]"));
     }
 
     @Test
     void meetingTypeDetailPageContainsTypeaheadScriptMarker() {
         MeetingType t = seedAdminType("host-suggest-marker-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types/" + t.id)
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_HOST_TYPEAHEAD"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types/" + t.id)
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_HOST_TYPEAHEAD"));
     }
 
     /**
@@ -144,12 +146,13 @@ class HostSuggestTest {
         AppUser eligibleElsewhere = seedCandidate("foreignhost" + uniq);
         MeetingType foreignType = seedForeignType(owner.id, "foreign-" + uniq);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/hosts?q=" + eligibleElsewhere.username.substring(0, 10) + "&typeId=" + foreignType.id)
-                .then()
-                .statusCode(200)
-                .body(is("[]"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/hosts?q=" + eligibleElsewhere.username.substring(0, 10) + "&typeId=" + foreignType.id)
+            .then()
+            .statusCode(200)
+            .body(is("[]"));
     }
 
     @Transactional
@@ -157,20 +160,23 @@ class HostSuggestTest {
         return MultiHostFixtures.meetingType(ownerId, slug, 30);
     }
 
-    /** {@code q=%} must not defeat prefix semantics via unescaped LIKE metacharacters. */
+    /**
+     * {@code q=%} must not defeat prefix semantics via unescaped LIKE metacharacters.
+     */
     @Test
     void likeMetacharactersInQueryDoNotMatchAll() {
         var uniq = System.nanoTime();
         MeetingType t = seedAdminType("host-suggest-like-" + uniq);
         seedCandidate("volodya" + uniq);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .queryParam("q", "%")
-                .queryParam("typeId", t.id)
-                .when()
-                .get("/me/hosts")
-                .then()
-                .statusCode(200)
-                .body(is("[]"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .queryParam("q", "%")
+            .queryParam("typeId", t.id)
+            .when()
+            .get("/me/hosts")
+            .then()
+            .statusCode(200)
+            .body(is("[]"));
     }
 }

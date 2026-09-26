@@ -1,21 +1,20 @@
 package site.asm0dey.calit.user;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class AppUserPersistenceTest {
-
     @Test
     @TestTransaction
     void createAdminSyncsRolesAndPersists() {
         AppUser u = AppUser.create("Root-User", "hash-placeholder", true);
         u.persist();
         assertNotNull(u.id);
-        assertEquals("root-user", u.username); // normalized
+        // normalized
+        assertEquals("root-user", u.username);
         assertEquals("user,admin", u.roles);
         assertTrue(u.isAdmin);
         assertTrue(u.enabled);

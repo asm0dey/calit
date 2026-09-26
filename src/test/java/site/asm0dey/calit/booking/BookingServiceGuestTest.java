@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
@@ -26,18 +25,15 @@ import site.asm0dey.calit.google.GoogleCredential;
 
 @QuarkusTest
 class BookingServiceGuestTest {
-
     @Inject
     BookingService bookingService;
-
     @InjectMock
     CalendarPort calendarPort;
-
     // Owner tz Europe/Amsterdam. Derive a future weekday from now() so the slot is never in the past.
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
-    private static final LocalDate DAY =
-            Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
-    private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant(); // 09:00 local
+    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    // 09:00 local
+    private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant();
 
     @BeforeEach
     void init() {
@@ -77,11 +73,12 @@ class BookingServiceGuestTest {
         });
     }
 
-    /** The earliest available slot start for the seeded type (always tomorrow, so +1 h is never near end-of-day). */
+    /**
+     * The earliest available slot start for the seeded type (always tomorrow, so +1 h is never near end-of-day).
+     */
     private Instant firstSlot() {
         MeetingType t = MeetingType.findBySlug(1L, "guest-svc");
-        var from =
-                java.time.LocalDate.now(java.time.ZoneId.of("Europe/Amsterdam")).plusDays(1);
+        var from = java.time.LocalDate.now(java.time.ZoneId.of("Europe/Amsterdam")).plusDays(1);
         var slots = bookingService.availableSlots(t, from, from.plusDays(10));
         return slots.getFirst().start().toInstant();
     }
@@ -92,25 +89,48 @@ class BookingServiceGuestTest {
         // and enough valid ones to exceed the cap of 10.
         List<String> raw = new java.util.ArrayList<>();
         raw.add("ana@example.com");
-        raw.add("ANA@example.com"); // case-insensitive dup -> dropped
-        raw.add("sam@example.com"); // the invitee -> dropped
-        raw.add("not-an-email"); // invalid -> dropped
-        for (var i = 0; i < 12; i++) raw.add("g" + i + "@example.com"); // plenty, to hit the cap
+        // case-insensitive dup -> dropped
+        raw.add("ANA@example.com");
+        // the invitee -> dropped
+        raw.add("sam@example.com");
+        // invalid -> dropped
+        raw.add("not-an-email");
+        // plenty, to hit the cap
+        for (var i = 0; i < 12; i++) {
+            raw.add("g" + i + "@example.com");
+        }
 
-        Booking b = bookingService.book(
-                1L, "guest-svc", firstSlot(), "Sam", "sam@example.com", Map.of(), null, null, "en", raw);
+        Booking b =
+                bookingService.book(
+                        1L,
+                        "guest-svc",
+                        firstSlot(),
+                        "Sam",
+                        "sam@example.com",
+                        Map.of(),
+                        null,
+                        null,
+                        "en",
+                        raw
+        );
 
         List<BookingGuest> guests = BookingGuest.activeForBooking(b.id);
         assertEquals(BookingService.MAX_GUESTS_PER_BOOKING, guests.size(), "capped at the max");
-        assertTrue(guests.stream().noneMatch(g -> g.email.equalsIgnoreCase("sam@example.com")), "invitee dropped");
-        assertTrue(guests.stream().noneMatch(g -> g.email.equals("not-an-email")), "invalid dropped");
-        assertEquals(
-                guests.size(),
-                guests.stream().map(g -> g.email.toLowerCase()).distinct().count(),
-                "deduped");
+        assertTrue(guests
+            .stream()
+            .noneMatch(g -> g.email.equalsIgnoreCase("sam@example.com")), "invitee dropped");
+        assertTrue(guests
+            .stream()
+            .noneMatch(g -> g.email.equals("not-an-email")), "invalid dropped");
+        assertEquals(guests.size(), guests
+            .stream()
+            .map(g -> g.email.toLowerCase())
+            .distinct()
+            .count(), "deduped");
         assertTrue(guests.stream().allMatch(g -> g.ownerId.equals(1L)), "owner-scoped");
-        assertTrue(
-                guests.stream().allMatch(g -> g.declineToken != null && !g.declineToken.isBlank()), "decline tokens");
+        assertTrue(guests
+            .stream()
+            .allMatch(g -> g.declineToken != null && !g.declineToken.isBlank()), "decline tokens");
     }
 
     @Test
@@ -126,17 +146,22 @@ class BookingServiceGuestTest {
                 null,
                 null,
                 "en",
-                List.of("ana@example.com", "bob@example.com"));
-        assertEquals(0, b.icsSequence); // check in-memory; findById here would cache stale icsSequence in S_test
-
+                List.of("ana@example.com", "bob@example.com")
+        );
+        // check in-memory; findById here would cache stale icsSequence in S_test
+        assertEquals(0, b.icsSequence);
         // Move to a different free slot, drop bob, keep ana, add cyd.
         var newStart = start.plusSeconds(3600);
         bookingService.reschedule(b.manageToken, newStart, List.of("ana@example.com", "cyd@example.com"));
 
         List<BookingGuest> active = BookingGuest.activeForBooking(b.id);
         assertEquals(2, active.size());
-        assertTrue(active.stream().anyMatch(g -> g.email.equals("ana@example.com")), "ana kept");
-        assertTrue(active.stream().anyMatch(g -> g.email.equals("cyd@example.com")), "cyd added");
+        assertTrue(active
+            .stream()
+            .anyMatch(g -> g.email.equals("ana@example.com")), "ana kept");
+        assertTrue(active
+            .stream()
+            .anyMatch(g -> g.email.equals("cyd@example.com")), "cyd added");
         BookingGuest bob = BookingGuest.findInBooking(b.id, "bob@example.com");
         assertEquals(GuestStatus.REMOVED, bob.status, "bob removed");
         assertEquals(1, Booking.<Booking>findById(b.id).icsSequence, "sequence bumped once");
@@ -155,9 +180,10 @@ class BookingServiceGuestTest {
                 null,
                 null,
                 "en",
-                List.of("ana@example.com"));
-
-        bookingService.reschedule(b.manageToken, start.plusSeconds(3600)); // 2-arg overload -> null guests
+                List.of("ana@example.com")
+        );
+        // 2-arg overload -> null guests
+        bookingService.reschedule(b.manageToken, start.plusSeconds(3600));
 
         assertEquals(1, BookingGuest.activeForBooking(b.id).size(), "guests preserved by the no-guest overload");
     }
@@ -170,8 +196,17 @@ class BookingServiceGuestTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-g", null, "https://calendar.google.com/evt-g", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-g", null, "https://calendar.google.com/evt-g", null));
 
         bookingService.book(
                 1L,
@@ -183,19 +218,21 @@ class BookingServiceGuestTest {
                 "tok-g",
                 "",
                 "en",
-                List.of("g1@example.com", "g2@example.com"));
+                List.of("g1@example.com", "g2@example.com")
+        );
 
         verify(calendarPort, times(1))
-                .createEvent(
-                        anyLong(),
-                        any(),
-                        anyString(),
-                        anyString(),
-                        eq(SLOT_09),
-                        any(),
-                        eq(List.of("sam@example.com", "owner@example.com", "g1@example.com", "g2@example.com")),
-                        anyBoolean(),
-                        any());
+            .createEvent(
+                    anyLong(),
+                    any(),
+                    anyString(),
+                    anyString(),
+                    eq(SLOT_09),
+                    any(),
+                    eq(List.of("sam@example.com", "owner@example.com", "g1@example.com", "g2@example.com")),
+                    anyBoolean(),
+                    any()
+            );
     }
 
     @Test
@@ -210,15 +247,16 @@ class BookingServiceGuestTest {
                 null,
                 null,
                 "en",
-                List.of("ana@example.com"));
+                List.of("ana@example.com")
+        );
         // Load in a fresh session so ana is NOT cached in S_test; otherwise declineGuest (separate session)
         // commits DECLINED but the next findById hits S_test's stale INVITED entry.
-        BookingGuest ana = QuarkusTransaction.requiringNew()
-                .call(() -> BookingGuest.activeForBooking(b.id).getFirst());
+        BookingGuest ana = QuarkusTransaction
+            .requiringNew()
+            .call(() -> BookingGuest.activeForBooking(b.id).getFirst());
 
         bookingService.declineGuest(ana.declineToken);
         assertEquals(GuestStatus.DECLINED, BookingGuest.<BookingGuest>findById(ana.id).status);
-
         // Second call is a no-op, not an error.
         bookingService.declineGuest(ana.declineToken);
         assertEquals(GuestStatus.DECLINED, BookingGuest.<BookingGuest>findById(ana.id).status);
@@ -232,8 +270,17 @@ class BookingServiceGuestTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-d", null, "https://calendar.google.com/evt-d", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-d", null, "https://calendar.google.com/evt-d", null));
 
         Booking b = bookingService.book(
                 1L,
@@ -245,22 +292,26 @@ class BookingServiceGuestTest {
                 "tok-d",
                 "",
                 "en",
-                List.of("g1@example.com", "g2@example.com"));
+                List.of("g1@example.com", "g2@example.com")
+        );
 
-        BookingGuest g1 = BookingGuest.<BookingGuest>allForBooking(b.id).stream()
-                .filter(g -> g.email.equals("g1@example.com"))
-                .findFirst()
-                .orElseThrow();
+        BookingGuest g1 = BookingGuest
+            .<BookingGuest>allForBooking(b.id)
+            .stream()
+            .filter(g -> g.email.equals("g1@example.com"))
+            .findFirst()
+            .orElseThrow();
         bookingService.declineGuest(g1.declineToken);
 
         verify(calendarPort, times(1))
-                .updateEvent(
-                        anyLong(),
-                        any(),
-                        eq("evt-d"),
-                        eq(SLOT_09),
-                        eq(SLOT_09.plusSeconds(3600)),
-                        eq(List.of("sam@example.com", "owner@example.com", "g2@example.com")));
+            .updateEvent(
+                    anyLong(),
+                    any(),
+                    eq("evt-d"),
+                    eq(SLOT_09),
+                    eq(SLOT_09.plusSeconds(3600)),
+                    eq(List.of("sam@example.com", "owner@example.com", "g2@example.com"))
+            );
     }
 
     @Test
@@ -277,8 +328,17 @@ class BookingServiceGuestTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-ref", null, "https://calendar.google.com/evt-ref", ref));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-ref", null, "https://calendar.google.com/evt-ref", ref));
 
         Booking b = bookingService.book(
                 1L,
@@ -290,12 +350,15 @@ class BookingServiceGuestTest {
                 "tok-ref",
                 "",
                 "en",
-                List.of("g1@example.com"));
+                List.of("g1@example.com")
+        );
 
-        BookingGuest g1 = BookingGuest.<BookingGuest>allForBooking(b.id).stream()
-                .filter(g -> g.email.equals("g1@example.com"))
-                .findFirst()
-                .orElseThrow();
+        BookingGuest g1 = BookingGuest
+            .<BookingGuest>allForBooking(b.id)
+            .stream()
+            .filter(g -> g.email.equals("g1@example.com"))
+            .findFirst()
+            .orElseThrow();
 
         bookingService.declineGuest(g1.declineToken);
 
@@ -303,8 +366,9 @@ class BookingServiceGuestTest {
     }
 
     // --- helpers ---
-
-    /** Seed a real GoogleCredential row so a booking's google_credential_id FK holds. */
+    /**
+     * Seed a real GoogleCredential row so a booking's google_credential_id FK holds.
+     */
     private static GoogleCredential seedCredential(String sub) {
         GoogleCredential cred = new GoogleCredential();
         cred.ownerId = 1L;
@@ -336,7 +400,8 @@ class BookingServiceGuestTest {
         t.slug = slug;
         t.durationMinutes = 60;
         t.minNoticeMinutes = 0;
-        t.horizonDays = 50_000; // keep the DAY slot inside the horizon regardless of run date
+        // keep the DAY slot inside the horizon regardless of run date
+        t.horizonDays = 50_000;
         t.locationType = location;
         t.requiresApproval = requiresApproval;
         t.persist();

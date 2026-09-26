@@ -4,7 +4,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -16,7 +15,6 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class GoogleConfigStartupLogTest {
-
     private static GoogleOAuthConfig configWith(String clientId, String clientSecret) {
         var oauth = mock(GoogleOAuthConfig.OAuth.class);
         when(oauth.clientId()).thenReturn(clientId);
@@ -34,7 +32,6 @@ class GoogleConfigStartupLogTest {
         var config = configWith("", "");
 
         new GoogleConfigStartupLog(config).logConfig(new StartupEvent());
-
         // Taking the degraded branch is observable: the URI accessors are never reached.
         verify(config.oauth(), never()).redirectUri();
         verify(config.oauth(), never()).loginRedirectUri();

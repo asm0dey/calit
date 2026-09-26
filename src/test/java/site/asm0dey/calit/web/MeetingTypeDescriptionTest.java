@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -22,10 +21,11 @@ import site.asm0dey.calit.domain.OwnerSettings;
  */
 @QuarkusTest
 class MeetingTypeDescriptionTest {
-
     private static final String NOTE = "Please select the appropriate date and time for our therapy session.";
 
-    /** The public pages 404-ish into "not ready yet" until the owner has settings. */
+    /**
+     * The public pages 404-ish into "not ready yet" until the owner has settings.
+     */
     @Transactional
     void seedOwnerSettings() {
         OwnerSettings s = OwnerSettings.forOwner(1L);
@@ -39,34 +39,38 @@ class MeetingTypeDescriptionTest {
         s.persist();
     }
 
-    /** Create a type through the real admin form, returning its slug. */
+    /**
+     * Create a type through the real admin form, returning its slug.
+     */
     private static String createType(String slug, String description) {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Described Type")
-                .formParam("slug", slug)
-                .formParam("description", description)
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "GOOGLE_MEET")
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                .when()
-                .post("/me/meeting-types")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Described Type")
+            .formParam("slug", slug)
+            .formParam("description", description)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "GOOGLE_MEET")
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            .when()
+            .post("/me/meeting-types")
+            .then()
+            .statusCode(200);
         return slug;
     }
 
     @Test
     void createFormExposesDescriptionField() {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(containsString("name=\"description\""));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .body(containsString("name=\"description\""));
     }
 
     @Test
@@ -95,13 +99,14 @@ class MeetingTypeDescriptionTest {
         createType(slug, NOTE);
         MeetingType t = MeetingType.findBySlug(1L, slug);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types/" + t.id)
-                .then()
-                .statusCode(200)
-                .body(containsString("name=\"description\""))
-                .body(containsString(NOTE));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types/" + t.id)
+            .then()
+            .statusCode(200)
+            .body(containsString("name=\"description\""))
+            .body(containsString(NOTE));
     }
 
     @Test
@@ -110,25 +115,25 @@ class MeetingTypeDescriptionTest {
         createType(slug, "old note");
         MeetingType t = MeetingType.findBySlug(1L, slug);
 
-        String body = given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Described Type")
-                .formParam("slug", slug)
-                .formParam("description", NOTE)
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "GOOGLE_MEET")
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                .when()
-                .post("/me/meeting-types/" + t.id + "/edit")
-                .then()
-                .statusCode(200)
-                .extract()
-                .body()
-                .asString();
-
+        String body = given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Described Type")
+            .formParam("slug", slug)
+            .formParam("description", NOTE)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "GOOGLE_MEET")
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            .when()
+            .post("/me/meeting-types/" + t.id + "/edit")
+            .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
         // Asserted on the re-rendered detail page, not a re-read entity: the test thread's
         // persistence context still holds the pre-edit instance, so findBySlug would hand back a
         // stale first-level-cache hit rather than the committed row.

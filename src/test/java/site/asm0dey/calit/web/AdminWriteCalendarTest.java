@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
@@ -28,7 +27,6 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class AdminWriteCalendarTest {
-
     @AfterEach
     @Transactional
     void cleanup() {
@@ -81,17 +79,15 @@ class AdminWriteCalendarTest {
         var credId = seedOwnerCalendars();
         var typeId = seedType(credId, "unticked@example.com");
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types/" + typeId)
-                .then()
-                .statusCode(200)
-                .body(containsString("data-write-calendar-dangling"))
-                // Qute can't reference the WriteTargetResolver.KEEP constant directly -- the
-                // template hardcodes its literal, so this test is the guarantee that the two
-                // stay in sync (b50235c unified the constant precisely so the save paths, and
-                // this render, can't silently diverge on the sentinel string).
-                .body(containsString("value=\"" + WriteTargetResolver.KEEP + "\""));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types/" + typeId)
+            .then()
+            .statusCode(200)
+            .body(containsString("data-write-calendar-dangling"))
+            // this render, can't silently diverge on the sentinel string).
+            .body(containsString("value=\"" + WriteTargetResolver.KEEP + "\""));
     }
 
     @Test
@@ -102,13 +98,14 @@ class AdminWriteCalendarTest {
         var credId = seedOwnerCalendars();
         var typeId = seedType(credId, "work@example.com");
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types/" + typeId)
-                .then()
-                .statusCode(200)
-                .body(containsString("value=\"" + credId + ":work@example.com\" selected"))
-                .body(not(containsString("value=\"\" selected")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types/" + typeId)
+            .then()
+            .statusCode(200)
+            .body(containsString("value=\"" + credId + ":work@example.com\" selected"))
+            .body(not(containsString("value=\"\" selected")));
     }
 
     @Test
@@ -117,12 +114,13 @@ class AdminWriteCalendarTest {
         seedOwnerCalendars();
         var typeId = seedType(null, "was-on-a-disconnected-account@example.com");
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types/" + typeId)
-                .then()
-                .statusCode(200)
-                .body(containsString("data-write-calendar-dangling"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types/" + typeId)
+            .then()
+            .statusCode(200)
+            .body(containsString("data-write-calendar-dangling"));
     }
 
     @Test
@@ -149,21 +147,22 @@ class AdminWriteCalendarTest {
         // to survive so they can fix it once they reconnect.
         var typeId = seedType(null, "was-on-a-disconnected-account@example.com");
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Write cal")
-                .formParam("slug", "write-cal-" + typeId)
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "PHONE")
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                // Deliberately no "writeCalendar" formParam at all.
-                .when()
-                .post("/me/meeting-types/" + typeId + "/edit")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Write cal")
+            .formParam("slug", "write-cal-" + typeId)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "PHONE")
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            // Deliberately no "writeCalendar" formParam at all.
+            .when()
+            .post("/me/meeting-types/" + typeId + "/edit")
+            .then()
+            .statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
         assertNull(t.googleCredentialId);
@@ -177,8 +176,8 @@ class AdminWriteCalendarTest {
         seedUpcomingBooking(typeId, credId, "default@example.com");
 
         edit(typeId, credId + ":work@example.com")
-                .statusCode(200)
-                .body(containsString("stay on the calendar they were created on"));
+            .statusCode(200)
+            .body(containsString("stay on the calendar they were created on"));
     }
 
     @Test
@@ -193,13 +192,12 @@ class AdminWriteCalendarTest {
         seedUpcomingBooking(typeId, credId, "elsewhere@example.com");
 
         edit(typeId, credId + ":work@example.com")
-                .statusCode(200)
-                .body(not(containsString("stay on the calendar they were created on")));
-
+            .statusCode(200)
+            .body(not(containsString("stay on the calendar they were created on")));
         // Positive control: an actual move still says so.
         edit(typeId, credId + ":default@example.com")
-                .statusCode(200)
-                .body(containsString("stay on the calendar they were created on"));
+            .statusCode(200)
+            .body(containsString("stay on the calendar they were created on"));
     }
 
     @Test
@@ -222,9 +220,9 @@ class AdminWriteCalendarTest {
         seedUpcomingBooking(typeId, credId, "default@example.com");
 
         edit(typeId, credId + ":work@example.com")
-                .statusCode(200)
-                .body(containsString("stay on the calendar they were created on: 1"))
-                .body(not(containsString("1 upcoming bookings")));
+            .statusCode(200)
+            .body(containsString("stay on the calendar they were created on: 1"))
+            .body(not(containsString("1 upcoming bookings")));
     }
 
     @Test
@@ -251,40 +249,44 @@ class AdminWriteCalendarTest {
     }
 
     private io.restassured.response.ValidatableResponse edit(Long typeId, String writeCalendar) {
-        return given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Write cal")
-                .formParam("slug", "write-cal-" + typeId)
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "PHONE")
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                .formParam("writeCalendar", writeCalendar)
-                .when()
-                .post("/me/meeting-types/" + typeId + "/edit")
-                .then();
+        return given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Write cal")
+            .formParam("slug", "write-cal-" + typeId)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "PHONE")
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            .formParam("writeCalendar", writeCalendar)
+            .when()
+            .post("/me/meeting-types/" + typeId + "/edit")
+            .then();
     }
 
     private io.restassured.response.ValidatableResponse create(String slug, String writeCalendar) {
-        return given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Write cal")
-                .formParam("slug", slug)
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "PHONE")
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                .formParam("writeCalendar", writeCalendar)
-                .when()
-                .post("/me/meeting-types")
-                .then();
+        return given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Write cal")
+            .formParam("slug", slug)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "PHONE")
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            .formParam("writeCalendar", writeCalendar)
+            .when()
+            .post("/me/meeting-types")
+            .then();
     }
 
-    /** Owner 1: one account, a write target and a second selected calendar. Returns the credential id. */
+    /**
+     * Owner 1: one account, a write target and a second selected calendar. Returns the credential id.
+     */
     @Transactional
     Long seedOwnerCalendars() {
         GoogleCredential c = new GoogleCredential();
@@ -297,7 +299,9 @@ class AdminWriteCalendarTest {
         return c.id;
     }
 
-    /** Another user's connected calendar — must never be selectable for owner 1. */
+    /**
+     * Another user's connected calendar — must never be selectable for owner 1.
+     */
     @Transactional
     Long seedForeignCalendar() {
         AppUser other = AppUser.create("write-cal-other", "x", false);
@@ -325,7 +329,9 @@ class AdminWriteCalendarTest {
         return t.id;
     }
 
-    /** One CONFIRMED booking a week out whose Google event lives on {@code calendarId}. */
+    /**
+     * One CONFIRMED booking a week out whose Google event lives on {@code calendarId}.
+     */
     @Transactional
     void seedUpcomingBooking(Long typeId, Long credId, String calendarId) {
         Booking b = new Booking();

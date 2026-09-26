@@ -15,7 +15,6 @@ import java.time.Instant;
  */
 @ApplicationScoped
 public class ChannelStamp {
-
     @Transactional
     @ActivateRequestContext
     public void stamp(Long channelId, boolean ok, Instant at) {
@@ -25,8 +24,12 @@ public class ChannelStamp {
         // the channel was deleted between dispatch and delivery; nothing to record.
         // The ternary picks the COLUMN, not the call: both branches are compile-time literals, so
         // nothing caller-supplied reaches the query.
-        int updated = NotificationChannel.update(
-                (ok ? "lastSuccessAt" : "lastFailureAt") + " = ?1 where id = ?2", at, channelId);
+        int updated =
+                NotificationChannel.update(
+                        (ok ? "lastSuccessAt" : "lastFailureAt") + " = ?1 where id = ?2",
+                        at,
+                        channelId
+        );
         if (updated == 0) {
             return;
         }

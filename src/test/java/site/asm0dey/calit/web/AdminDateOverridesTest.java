@@ -4,7 +4,6 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
@@ -14,49 +13,66 @@ import site.asm0dey.calit.domain.DateOverride;
 
 @QuarkusTest
 class AdminDateOverridesTest {
-
     @Transactional
     void seedOverride() {
         // A global day-off override (no windows) for a fixed date.
         DateOverride o = new DateOverride();
         o.ownerId = 1L;
         o.meetingTypeId = null;
-        o.overrideDate = java.time.LocalDate.of(2026, 12, 25); // Christmas — blocked
-        o.windows = new java.util.ArrayList<>(); // empty = day off
+        // Christmas — blocked
+        o.overrideDate = java.time.LocalDate.of(2026, 12, 25);
+        // empty = day off
+        o.windows = new java.util.ArrayList<>();
         o.persist();
     }
 
     @Test
     void pageRendersExistingOverridesAndCreateForm() {
         seedOverride();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/date-overrides")
-                .then()
-                .statusCode(200)
-                .body(containsString("2026-12-25")) // existing override listed
-                .body(containsString("day off")) // empty-windows label
-                .body(containsString("name=\"date\"")) // create form date input
-                .body(containsString("name=\"windowStart\"")) // window start input
-                .body(containsString("name=\"windowEnd\"")) // window end input
-                .body(containsString("name=\"meetingTypeId\"")); // type selector (global option)
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/date-overrides")
+            .then()
+            .statusCode(200)
+            // existing override listed
+            .body(containsString("2026-12-25"))
+            // empty-windows label
+            .body(containsString("day off"))
+            // create form date input
+            .body(containsString("name=\"date\""))
+            // window start input
+            .body(containsString("name=\"windowStart\""))
+            // window end input
+            .body(containsString("name=\"windowEnd\""))
+            // type selector (global option)
+            .body(containsString("name=\"meetingTypeId\""));
     }
 
     @Test
     void createOverrideWithWindowsViaForm() {
         long before = DateOverride.count();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("date", "2026-07-01")
-                .formParam("meetingTypeId", "") // empty = global
-                .formParam("windowStart", "10:00") // one window 10:00–14:00
-                .formParam("windowEnd", "14:00")
-                .when()
-                .post("/me/date-overrides")
-                .then()
-                .statusCode(200)
-                .body(containsString("2026-07-01"))
-                .body(containsString("10:00"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("date", "2026-07-01")
+            // empty = global
+            .formParam(
+                    // empty = global
+            "meetingTypeId",
+                    "")
+            // one window 10:00–14:00
+            .formParam(
+                    // one window 10:00–14:00
+            "windowStart",
+                    "10:00")
+            .formParam("windowEnd", "14:00")
+            .when()
+            .post("/me/date-overrides")
+            .then()
+            .statusCode(200)
+            .body(containsString("2026-07-01"))
+            .body(containsString("10:00"));
 
         org.junit.jupiter.api.Assertions.assertEquals(before + 1, DateOverride.count());
     }
@@ -64,16 +80,17 @@ class AdminDateOverridesTest {
     @Test
     void createDayOffOverrideWithNoWindows() {
         // No windowStart/windowEnd at all → an override with zero windows (day off / blocked).
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("date", "2026-08-15")
-                .formParam("meetingTypeId", "")
-                .when()
-                .post("/me/date-overrides")
-                .then()
-                .statusCode(200)
-                .body(containsString("2026-08-15"))
-                .body(containsString("day off"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("date", "2026-08-15")
+            .formParam("meetingTypeId", "")
+            .when()
+            .post("/me/date-overrides")
+            .then()
+            .statusCode(200)
+            .body(containsString("2026-08-15"))
+            .body(containsString("day off"));
     }
 
     @Test
@@ -82,14 +99,15 @@ class AdminDateOverridesTest {
         // an unguarded LocalDate.parse(date) into a clean 400 here — verified empirically, not
         // assumed. This test pins that behaviour.
         long before = DateOverride.count();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("date", "not-a-date")
-                .formParam("meetingTypeId", "")
-                .when()
-                .post("/me/date-overrides")
-                .then()
-                .statusCode(400);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("date", "not-a-date")
+            .formParam("meetingTypeId", "")
+            .when()
+            .post("/me/date-overrides")
+            .then()
+            .statusCode(400);
 
         org.junit.jupiter.api.Assertions.assertEquals(before, DateOverride.count());
     }
@@ -100,31 +118,29 @@ class AdminDateOverridesTest {
         // non-numeric id 500ed until AdminResource.createOverride was given an explicit guard that
         // throws BadRequestException (JAX-RS maps that to 400 with no extra mapper needed).
         long before = DateOverride.count();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("date", "2026-07-01")
-                .formParam("meetingTypeId", "not-a-number")
-                .when()
-                .post("/me/date-overrides")
-                .then()
-                .statusCode(400);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("date", "2026-07-01")
+            .formParam("meetingTypeId", "not-a-number")
+            .when()
+            .post("/me/date-overrides")
+            .then()
+            .statusCode(400);
 
         org.junit.jupiter.api.Assertions.assertEquals(before, DateOverride.count());
     }
 
     @Test
     void dateOverridesPageRequiresAuth() {
-        given().redirects()
-                .follow(false)
-                .when()
-                .get("/me/date-overrides")
-                .then()
-                .statusCode(302);
+        given().redirects().follow(false).when().get("/me/date-overrides").then().statusCode(302);
     }
 
     private static final String PAST_MARKER = "id=\"past-overrides\"";
 
-    /** Seeds one global day-off override on the given date for owner 1. */
+    /**
+     * Seeds one global day-off override on the given date for owner 1.
+     */
     @Transactional
     void seedOverrideOn(LocalDate date) {
         DateOverride o = new DateOverride();
@@ -136,14 +152,15 @@ class AdminDateOverridesTest {
     }
 
     private String pageBody() {
-        return given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/date-overrides")
-                .then()
-                .statusCode(200)
-                .extract()
-                .body()
-                .asString();
+        return given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/date-overrides")
+            .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
     }
 
     @Test

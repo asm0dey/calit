@@ -24,11 +24,10 @@ import site.asm0dey.calit.user.CurrentOwner;
  * (1100) which would run BEFORE MeOwnerFilter (1100 < 5000), leaving CurrentOwner unset on /me routes.
  */
 @Provider
-@Priority(Priorities.USER + 100) // 5100 — runs AFTER MeOwnerFilter (5000)
+// 5100 — runs AFTER MeOwnerFilter (5000)
+@Priority(Priorities.USER + 100)
 public class LocaleResolutionFilter implements ContainerRequestFilter {
-
     final CurrentOwner currentOwner;
-
     final ActiveLocale activeLocale;
 
     @Inject
@@ -53,7 +52,8 @@ public class LocaleResolutionFilter implements ContainerRequestFilter {
         String rawPath = ctx.getUriInfo().getRequestUri().getRawPath();
         // Guard: avoid redirect loops back to the /lang/... switch endpoint
         if (rawPath.startsWith("/lang/")) {
-            return "%2F"; // URL-encoded "/"
+            // URL-encoded "/"
+            return "%2F";
         }
         String rawQuery = ctx.getUriInfo().getRequestUri().getRawQuery();
         var raw = (rawQuery != null && !rawQuery.isEmpty()) ? rawPath + "?" + rawQuery : rawPath;
@@ -63,13 +63,17 @@ public class LocaleResolutionFilter implements ContainerRequestFilter {
     private Locale resolve(ContainerRequestContext ctx) {
         // Shareable per-request override: ?lang=xx wins over owner/cookie/header. Ephemeral — sets no cookie.
         String q = ctx.getUriInfo().getQueryParameters().getFirst("lang");
-        if (q != null && AppLocales.isSupported(q)) return AppLocales.pick(q);
+        if (q != null && AppLocales.isSupported(q)) {
+            return AppLocales.pick(q);
+        }
         if (currentOwner.isSet()) {
             OwnerSettings s = OwnerSettings.forOwner(currentOwner.id());
             return AppLocales.pick(s != null ? s.locale : null);
         }
         Cookie c = ctx.getCookies().get("calit_lang");
-        if (c != null && AppLocales.isSupported(c.getValue())) return AppLocales.pick(c.getValue());
+        if (c != null && AppLocales.isSupported(c.getValue())) {
+            return AppLocales.pick(c.getValue());
+        }
         return AppLocales.fromAcceptLanguage(ctx.getHeaderString("Accept-Language"));
     }
 }

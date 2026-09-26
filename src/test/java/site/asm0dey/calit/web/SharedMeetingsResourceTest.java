@@ -6,7 +6,6 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -40,16 +39,12 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class SharedMeetingsResourceTest {
-
     @Inject
     BookingService bookingService;
-
     @Inject
     MeetingHosts meetingHosts;
-
     @InjectMock
     CalendarPort calendarPort;
-
     private static final ZoneId AMS = ZoneId.of("Europe/Amsterdam");
 
     private Instant nextMonday(int hour) {
@@ -64,19 +59,21 @@ class SharedMeetingsResourceTest {
         return u;
     }
 
-    /** Admin (id 1) is a PENDING co-host of a type created by a different owner. */
+    /**
+     * Admin (id 1) is a PENDING co-host of a type created by a different owner.
+     */
     @Transactional
     MeetingType seedAdminPendingCohost(String slug) {
         AppUser creator = seedOtherOwner("pending-creator-" + System.nanoTime());
         MeetingType t = MultiHostFixtures.meetingType(creator.id, slug, 30);
-        MeetingTypeHost.of(t.id, creator.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED)
-                .persist();
-        MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING)
-                .persist();
+        MeetingTypeHost.of(t.id, creator.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED).persist();
+        MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING).persist();
         return t;
     }
 
-    /** Admin (id 1) is an ACCEPTED co-host of a type created by a different owner. */
+    /**
+     * Admin (id 1) is an ACCEPTED co-host of a type created by a different owner.
+     */
     @Transactional
     MeetingType seedAdminAcceptedCohost(String slug) {
         AppUser creator = seedOtherOwner("acc-creator-" + System.nanoTime());
@@ -85,7 +82,9 @@ class SharedMeetingsResourceTest {
 
     record Seeded(MeetingType type, Long creatorId) {}
 
-    /** Admin (id 1) is an ACCEPTED co-host, both hosts bookable Monday, for the revoke/booking tests. */
+    /**
+     * Admin (id 1) is an ACCEPTED co-host, both hosts bookable Monday, for the revoke/booking tests.
+     */
     @Transactional
     Seeded seedBookableAdminAcceptedCohost(String slug) {
         AppUser creator = seedOtherOwner("book-creator-" + System.nanoTime());
@@ -98,50 +97,50 @@ class SharedMeetingsResourceTest {
 
     private void stubOrganizerOnCreator(Long creatorId) {
         when(calendarPort.isConnected(creatorId)).thenReturn(true);
-        when(calendarPort.isConnected(argThat(id -> id != null && !id.equals(creatorId))))
-                .thenReturn(false);
+        when(calendarPort.isConnected(argThat(id -> id != null && !id.equals(creatorId)))).thenReturn(false);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
+            .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
     }
 
     // ---- Dashboard consent: GET /me/shared/requests ----
-
     @Test
     void requestsShowsPendingInviteWithAcceptAndDeclineForms() {
         MeetingType t = seedAdminPendingCohost("dash-pending-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared/requests")
-                .then()
-                .statusCode(200)
-                .body(containsString(t.name))
-                .body(containsString("action=\"/me/shared/requests/" + t.id + "/accept\""))
-                .body(containsString("action=\"/me/shared/requests/" + t.id + "/decline\""));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared/requests")
+            .then()
+            .statusCode(200)
+            .body(containsString(t.name))
+            .body(containsString("action=\"/me/shared/requests/" + t.id + "/accept\""))
+            .body(containsString("action=\"/me/shared/requests/" + t.id + "/decline\""));
     }
 
     @Test
     void requestsIsEmptyWhenNoPendingInvites() {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared/requests")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("/accept\"")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared/requests")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("/accept\"")));
     }
 
     // ---- Dashboard consent: POST accept / decline ----
-
     @Test
     void acceptFlipsCallersOwnPendingRowToAccepted() {
         MeetingType t = seedAdminPendingCohost("dash-accept-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/shared/requests/" + t.id + "/accept")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/shared/requests/" + t.id + "/accept")
+            .then()
+            .statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(t.id, 1L);
         assertNotNull(h, "row must still exist after accept");
@@ -155,13 +154,13 @@ class SharedMeetingsResourceTest {
         // A second, unrelated type admin has no row on at all.
         MeetingType unrelated = seedTypeOwnedBy(creator.id, "dash-accept-unrelated-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/shared/requests/" + unrelated.id + "/accept")
-                .then()
-                .statusCode(404);
-
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/shared/requests/" + unrelated.id + "/accept")
+            .then()
+            .statusCode(404);
         // sanity: the real pending row for `t` is untouched by the 404 attempt on `unrelated`
         MeetingTypeHost h = MeetingTypeHost.find(t.id, 1L);
         assertEquals(MeetingTypeHost.PENDING, h.status);
@@ -176,12 +175,13 @@ class SharedMeetingsResourceTest {
     void declineRemovesCallersOwnPendingRow() {
         MeetingType t = seedAdminPendingCohost("dash-decline-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/shared/requests/" + t.id + "/decline")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/shared/requests/" + t.id + "/decline")
+            .then()
+            .statusCode(200);
 
         assertNull(MeetingTypeHost.find(t.id, 1L), "declined row must be removed");
     }
@@ -191,54 +191,56 @@ class SharedMeetingsResourceTest {
         AppUser creator = seedOtherOwner("not-pending-creator2-" + System.nanoTime());
         MeetingType unrelated = seedTypeOwnedBy(creator.id, "dash-decline-scope-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/shared/requests/" + unrelated.id + "/decline")
-                .then()
-                .statusCode(404);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/shared/requests/" + unrelated.id + "/decline")
+            .then()
+            .statusCode(404);
     }
 
     // ---- Availability editor: GET happy path + PENDING-host 404 ----
-
     @Test
     void availabilityEditorRendersForAcceptedCohost() {
         MeetingType t = seedAdminAcceptedCohost("avail-get-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared/" + t.id + "/availability")
-                .then()
-                .statusCode(200)
-                .body(containsString(t.name));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared/" + t.id + "/availability")
+            .then()
+            .statusCode(200)
+            .body(containsString(t.name));
     }
 
     @Test
     void availabilityEditorReturns404ForPendingCohost() {
         MeetingType t = seedAdminPendingCohost("avail-pending-get-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared/" + t.id + "/availability")
-                .then()
-                .statusCode(404);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared/" + t.id + "/availability")
+            .then()
+            .statusCode(404);
     }
 
     // ---- Availability bulk save ----
-
     @Test
     void bulkSavePersistsRulesUnderCallersOwnOwnerId() {
         MeetingType t = seedAdminAcceptedCohost("avail-bulk-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("frameDay", "MONDAY")
-                .formParam("frameStart", "09:00")
-                .formParam("frameEnd", "17:00")
-                .when()
-                .post("/me/shared/" + t.id + "/availability/bulk")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("frameDay", "MONDAY")
+            .formParam("frameStart", "09:00")
+            .formParam("frameEnd", "17:00")
+            .when()
+            .post("/me/shared/" + t.id + "/availability/bulk")
+            .then()
+            .statusCode(200);
 
         List<AvailabilityRule> rules = AvailabilityRule.list("ownerId = ?1 and meetingTypeId = ?2", 1L, t.id);
         assertEquals(1, rules.size(), "rule must be persisted under admin's own owner_id + this typeId");
@@ -246,23 +248,22 @@ class SharedMeetingsResourceTest {
     }
 
     // ---- Date overrides: add + delete ----
-
     @Test
     void addOverridePersistsOverrideAndWindowsUnderCallersOwnOwnerId() {
         MeetingType t = seedAdminAcceptedCohost("override-add-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("date", "2030-01-15")
-                .formParam("windowStart", "10:00")
-                .formParam("windowEnd", "12:00")
-                .when()
-                .post("/me/shared/" + t.id + "/date-overrides")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("date", "2030-01-15")
+            .formParam("windowStart", "10:00")
+            .formParam("windowEnd", "12:00")
+            .when()
+            .post("/me/shared/" + t.id + "/date-overrides")
+            .then()
+            .statusCode(200);
 
-        DateOverride o = DateOverride.find("ownerId = ?1 and meetingTypeId = ?2", 1L, t.id)
-                .firstResult();
+        DateOverride o = DateOverride.find("ownerId = ?1 and meetingTypeId = ?2", 1L, t.id).firstResult();
         assertNotNull(o, "override must be persisted under admin's own owner_id + this typeId");
         assertEquals(LocalDate.parse("2030-01-15"), o.overrideDate);
         List<DateOverrideWindow> windows = DateOverrideWindow.list("dateOverrideId", o.id);
@@ -272,26 +273,26 @@ class SharedMeetingsResourceTest {
     @Test
     void deleteOverrideRemovesCallersOwnOverrideAndWindows() {
         MeetingType t = seedAdminAcceptedCohost("override-delete-" + System.nanoTime());
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("date", "2030-02-20")
-                .formParam("windowStart", "09:00")
-                .formParam("windowEnd", "11:00")
-                .when()
-                .post("/me/shared/" + t.id + "/date-overrides")
-                .then()
-                .statusCode(200);
-        DateOverride o = DateOverride.find("ownerId = ?1 and meetingTypeId = ?2", 1L, t.id)
-                .firstResult();
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("date", "2030-02-20")
+            .formParam("windowStart", "09:00")
+            .formParam("windowEnd", "11:00")
+            .when()
+            .post("/me/shared/" + t.id + "/date-overrides")
+            .then()
+            .statusCode(200);
+        DateOverride o = DateOverride.find("ownerId = ?1 and meetingTypeId = ?2", 1L, t.id).firstResult();
         assertNotNull(o);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/shared/" + t.id + "/date-overrides/" + o.id + "/delete")
-                .then()
-                .statusCode(200);
-
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/shared/" + t.id + "/date-overrides/" + o.id + "/delete")
+            .then()
+            .statusCode(200);
         // Note: a count query (not findById) -- the entity was already loaded into this test
         // thread's persistence context above, so findById would return the stale JPA-identity-mapped
         // instance instead of re-querying (JPA's EntityManager.find semantics never re-hit the DB
@@ -300,22 +301,29 @@ class SharedMeetingsResourceTest {
         assertEquals(0, DateOverrideWindow.count("dateOverrideId", o.id), "windows must be gone too");
     }
 
-    /** deleteOverride's owner-scope guard: admin cannot delete another host's override on the same type. */
+    /**
+     * deleteOverride's owner-scope guard: admin cannot delete another host's override on the same type.
+     */
     @Test
     void deleteOverrideCannotRemoveAnotherOwnersOverrideOnSameType() {
         AppUser creator = seedOtherOwner("override-owner-creator-" + System.nanoTime());
         MeetingType t = seedAcceptedTwoHostType(creator.id, 1L, "override-scope-" + System.nanoTime());
         DateOverride other = seedOverrideForOwner(creator.id, t.id, LocalDate.parse("2030-03-10"));
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/shared/" + t.id + "/date-overrides/" + other.id + "/delete")
-                .then()
-                .statusCode(200); // requireAcceptedHost passes (admin IS an accepted host of this type)
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/shared/" + t.id + "/date-overrides/" + other.id + "/delete")
+            .then()
+            // requireAcceptedHost passes (admin IS an accepted host of this type)
+            .statusCode(200);
 
         assertEquals(
-                1, DateOverride.count("id = ?1", other.id), "another owner's override must survive the delete attempt");
+                1,
+                DateOverride.count("id = ?1", other.id),
+                "another owner's override must survive the delete attempt"
+        );
     }
 
     @Transactional
@@ -334,19 +342,19 @@ class SharedMeetingsResourceTest {
     }
 
     // ---- Buffers ----
-
     @Test
     void saveBuffersSetsCallersOwnHostRow() {
         MeetingType t = seedAdminAcceptedCohost("buffers-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("bufferBeforeMinutes", "15")
-                .formParam("bufferAfterMinutes", "20")
-                .when()
-                .post("/me/shared/" + t.id + "/buffers")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("bufferBeforeMinutes", "15")
+            .formParam("bufferAfterMinutes", "20")
+            .when()
+            .post("/me/shared/" + t.id + "/buffers")
+            .then()
+            .statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(t.id, 1L);
         assertEquals(15, h.bufferBeforeMinutes);
@@ -354,17 +362,17 @@ class SharedMeetingsResourceTest {
     }
 
     // ---- Self-revoke ----
-
     @Test
     void revokeWithNoFutureBookingsRemovesHostImmediately() {
         var seeded = seedBookableAdminAcceptedCohost("revoke-none-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/shared/" + seeded.type().id + "/revoke")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/shared/" + seeded.type().id + "/revoke")
+            .then()
+            .statusCode(200);
 
         assertNull(MeetingTypeHost.find(seeded.type().id, 1L), "co-host row removed immediately");
     }
@@ -383,19 +391,20 @@ class SharedMeetingsResourceTest {
                 "tok",
                 "",
                 "en",
-                List.of());
+                List.of()
+        );
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/shared/" + seeded.type().id + "/revoke")
-                .then()
-                .statusCode(200)
-                // the count-agnostic wording, asserted in full: a bare containsString("1") stayed
-                // green through the rewording and would stay green through the next one too.
-                .body(containsString("Upcoming bookings for this shared meeting type: 1"))
-                .body(containsString("choice=keep"))
-                .body(containsString("choice=cancel"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/shared/" + seeded.type().id + "/revoke")
+            .then()
+            .statusCode(200)
+            // green through the rewording and would stay green through the next one too.
+            .body(containsString("Upcoming bookings for this shared meeting type: 1"))
+            .body(containsString("choice=keep"))
+            .body(containsString("choice=cancel"));
 
         assertNotNull(MeetingTypeHost.find(seeded.type().id, 1L), "co-host row must survive the interstitial");
     }
@@ -414,14 +423,16 @@ class SharedMeetingsResourceTest {
                 "tok",
                 "",
                 "en",
-                List.of());
+                List.of()
+        );
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/shared/" + seeded.type().id + "/revoke?choice=keep")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/shared/" + seeded.type().id + "/revoke?choice=keep")
+            .then()
+            .statusCode(200);
 
         assertNull(MeetingTypeHost.find(seeded.type().id, 1L), "co-host row removed on keep");
         for (Booking row : Booking.<Booking>group(lead.groupId)) {
@@ -443,14 +454,16 @@ class SharedMeetingsResourceTest {
                 "tok",
                 "",
                 "en",
-                List.of());
+                List.of()
+        );
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/shared/" + seeded.type().id + "/revoke?choice=cancel")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/shared/" + seeded.type().id + "/revoke?choice=cancel")
+            .then()
+            .statusCode(200);
 
         assertNull(MeetingTypeHost.find(seeded.type().id, 1L), "co-host row removed on cancel");
         for (Booking row : Booking.<Booking>group(lead.groupId)) {

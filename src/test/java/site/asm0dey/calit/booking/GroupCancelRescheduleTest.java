@@ -3,7 +3,6 @@ package site.asm0dey.calit.booking;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -31,15 +30,11 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class GroupCancelRescheduleTest {
-
     @Inject
     BookingService bookingService;
-
     @InjectMock
     CalendarPort calendarPort;
-
     private static final ZoneId AMS = ZoneId.of("Europe/Amsterdam");
-
     // CDI observer counting fired BookingRescheduled events (same pattern as BookServiceTest).
     static final AtomicInteger RESCHEDULED = new AtomicInteger();
 
@@ -52,7 +47,9 @@ class GroupCancelRescheduleTest {
         return mon.atTime(hour, 0).atZone(AMS).toInstant();
     }
 
-    /** Admin (id 1, "pasha") as creator + a second accepted co-host ("volodya"), both with rules covering Monday. */
+    /**
+     * Admin (id 1, "pasha") as creator + a second accepted co-host ("volodya"), both with rules covering Monday.
+     */
     private MeetingType groupType(boolean approval) {
         MultiHostFixtures.settings(1L, "pasha");
         AppUser v = MultiHostFixtures.enabledUser("volodya");
@@ -80,29 +77,44 @@ class GroupCancelRescheduleTest {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
+            .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
     }
 
     // --- (a) cancel: any host cancels -> all rows CANCELLED, deleteEvent called once ---
-
     @Test
     @TestTransaction
     void anyHostCancelMarksAllRowsCancelledAndDeletesEventOnce() {
         stubOrganizerOnCreator();
-        groupType(false); // auto-confirm -> event created immediately
+        // auto-confirm -> event created immediately
+        groupType(false);
 
-        Booking lead = bookingService.book(
-                1L, "intro", nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday(10),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
         List<Booking> rows = Booking.group(lead.groupId);
         assertEquals(2, rows.size());
         rows.forEach(r -> assertEquals(BookingStatus.CONFIRMED, r.status));
-
         // The co-host (not the creator/organizer) initiates the cancel -> keyed by ITS manageToken.
-        Booking cohostRow =
-                rows.stream().filter(r -> !r.ownerId.equals(1L)).findFirst().orElseThrow();
+        Booking cohostRow = rows
+            .stream()
+            .filter(r -> !r.ownerId.equals(1L))
+            .findFirst()
+            .orElseThrow();
         bookingService.cancel(cohostRow.manageToken, true);
 
-        Booking.<Booking>group(lead.groupId).forEach(r -> assertEquals(BookingStatus.CANCELLED, r.status));
+        Booking
+            .<Booking>group(lead.groupId)
+            .forEach(r -> assertEquals(BookingStatus.CANCELLED, r.status));
         verify(calendarPort, times(1)).deleteEvent(1L, null, "evt");
         assertNull(Booking.<Booking>leadOfGroup(lead.groupId, 1L).googleEventId);
     }
@@ -110,46 +122,72 @@ class GroupCancelRescheduleTest {
     // --- (a2) final-review fix: cancelling a CONFIRMED group whose organizer has since disconnected
     // Google must still succeed (all rows -> CANCELLED, local event refs cleared) without attempting
     // the remote deleteEvent call, mirroring cancelSingle's isConnected guard ---
-
     @Test
     @TestTransaction
     void cancelGroupWhoseOrganizerDisconnectedGoogleSucceedsWithoutCallingDeleteEvent() {
         stubOrganizerOnCreator();
-        groupType(false); // auto-confirm -> event created immediately
+        // auto-confirm -> event created immediately
+        groupType(false);
 
-        Booking lead = bookingService.book(
-                1L, "intro", nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday(10),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
         List<Booking> rows = Booking.group(lead.groupId);
         assertEquals(2, rows.size());
         rows.forEach(r -> assertEquals(BookingStatus.CONFIRMED, r.status));
-
         // The organizer (creator, owner id 1) disconnects Google after confirmation.
         when(calendarPort.isConnected(1L)).thenReturn(false);
 
-        Booking cohostRow =
-                rows.stream().filter(r -> !r.ownerId.equals(1L)).findFirst().orElseThrow();
+        Booking cohostRow = rows
+            .stream()
+            .filter(r -> !r.ownerId.equals(1L))
+            .findFirst()
+            .orElseThrow();
         assertDoesNotThrow(() -> bookingService.cancel(cohostRow.manageToken, true));
 
-        Booking.<Booking>group(lead.groupId).forEach(r -> assertEquals(BookingStatus.CANCELLED, r.status));
+        Booking
+            .<Booking>group(lead.groupId)
+            .forEach(r -> assertEquals(BookingStatus.CANCELLED, r.status));
         verify(calendarPort, never()).deleteEvent(anyLong(), any(), anyString());
         assertNull(Booking.<Booking>leadOfGroup(lead.groupId, 1L).googleEventId);
     }
 
     // --- (b) invitee reschedule of an approval group -> all rows back to PENDING + event deleted ---
-
     @Test
     @TestTransaction
     void inviteeRescheduleOfApprovalGroupResetsAllToPendingAndDeletesEvent() {
         stubOrganizerOnCreator();
         groupType(true);
 
-        Booking lead = bookingService.book(
-                1L, "intro", nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday(10),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
         List<Booking> rows = Booking.group(lead.groupId);
         bookingService.approve(rows.get(0).id);
-        bookingService.approve(rows.get(1).id); // last approval -> event created
+        // last approval -> event created
+        bookingService.approve(rows.get(1).id);
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
 
         Booking freshLead = Booking.leadOfGroup(lead.groupId, 1L);
         // invitee-initiated (byOwner=false via the 2-arg overload)
@@ -163,31 +201,43 @@ class GroupCancelRescheduleTest {
         verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), anyString());
         // no second event is created on a re-approval reschedule
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 
     // --- (c) host-initiated reschedule of an approval group -> initiating host stays CONFIRMED, others PENDING ---
-
     @Test
     @TestTransaction
     void hostInitiatedRescheduleOfApprovalGroupKeepsInitiatorConfirmedOthersPending() {
         stubOrganizerOnCreator();
         groupType(true);
 
-        Booking lead = bookingService.book(
-                1L, "intro", nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday(10),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
         List<Booking> rows = Booking.group(lead.groupId);
         bookingService.approve(rows.get(0).id);
         bookingService.approve(rows.get(1).id);
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
 
-        Booking cohostRow = Booking.<Booking>group(lead.groupId).stream()
-                .filter(r -> !r.ownerId.equals(1L))
-                .findFirst()
-                .orElseThrow();
+        Booking cohostRow =
+                Booking
+            .<Booking>group(lead.groupId)
+            .stream()
+            .filter(r -> !r.ownerId.equals(1L))
+            .findFirst()
+            .orElseThrow();
         long cohostId = cohostRow.ownerId;
-
         // The co-host reschedules from their own /me -> initiatorOwnerId = their own owner id.
         bookingService.reschedule(cohostRow.manageToken, nextMonday(13), null, true, cohostId);
 
@@ -203,21 +253,30 @@ class GroupCancelRescheduleTest {
     }
 
     // --- (d) single-host: owner reschedule of approval type stays CONFIRMED; invitee reschedule reverts ---
-
     @Test
     @TestTransaction
     void singleHostOwnerRescheduleOfApprovalTypeStaysConfirmed() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-s", "meet-s", "cal-s", null));
+            .thenReturn(new CreatedEvent("evt-s", "meet-s", "cal-s", null));
         singleHostType("solo-approval", true);
 
         Booking b = bookingService.book(
-                1L, "solo-approval", nextMonday(10), "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+                1L,
+                "solo-approval",
+                nextMonday(10),
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of()
+        );
         bookingService.approve(b.id);
         assertEquals(BookingStatus.CONFIRMED, Booking.<Booking>findById(b.id).status);
-
-        bookingService.reschedule(b.manageToken, nextMonday(13), null, true); // owner-initiated
+        // owner-initiated
+        bookingService.reschedule(b.manageToken, nextMonday(13), null, true);
 
         Booking loaded = Booking.findById(b.id);
         assertEquals(BookingStatus.CONFIRMED, loaded.status, "owner-initiated reschedule stays confirmed");
@@ -232,15 +291,25 @@ class GroupCancelRescheduleTest {
     void singleHostInviteeRescheduleOfApprovalTypeRevertsToPending() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-s2", "meet-s2", "cal-s2", null));
+            .thenReturn(new CreatedEvent("evt-s2", "meet-s2", "cal-s2", null));
         singleHostType("solo-approval-2", true);
 
         Booking b = bookingService.book(
-                1L, "solo-approval-2", nextMonday(10), "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+                1L,
+                "solo-approval-2",
+                nextMonday(10),
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of()
+        );
         bookingService.approve(b.id);
         assertEquals(BookingStatus.CONFIRMED, Booking.<Booking>findById(b.id).status);
-
-        bookingService.reschedule(b.manageToken, nextMonday(13)); // invitee-initiated (2-arg overload)
+        // invitee-initiated (2-arg overload)
+        bookingService.reschedule(b.manageToken, nextMonday(13));
 
         Booking loaded = Booking.findById(b.id);
         assertEquals(BookingStatus.PENDING, loaded.status, "invitee-initiated reschedule reverts to pending");
@@ -252,20 +321,31 @@ class GroupCancelRescheduleTest {
 
     // --- (e) Task 11 review fix: group reschedule to an adjacent slot must not be falsely rejected
     // by the group's OWN sibling rows, which still sit at the old time until the move loop runs ---
-
     @Test
     @TestTransaction
     void groupRescheduleToAdjacentSlotSucceedsDespiteSiblingRowsAtOldTime() {
         stubOrganizerOnCreator();
-        MeetingType type = groupType(false); // auto-confirm
+        // auto-confirm
+        MeetingType type = groupType(false);
         // A non-zero buffer makes the new (adjacent) slot's BUFFERED interval overlap the group's own
         // OLD (unbuffered) occupied interval: [10:00,11:00) booked, buffered 11:00 slot -> [10:45,12:15).
         type.bufferBeforeMinutes = 15;
         type.bufferAfterMinutes = 15;
         type.persist();
 
-        Booking lead = bookingService.book(
-                1L, "intro", nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday(10),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
         List<Booking> rows = Booking.group(lead.groupId);
         assertEquals(2, rows.size());
 
@@ -275,30 +355,42 @@ class GroupCancelRescheduleTest {
         // BookingConflictException (409), even though the group is only shifting by one hour.
         assertDoesNotThrow(() -> bookingService.reschedule(freshLead.manageToken, nextMonday(11)));
 
-        Booking.<Booking>group(lead.groupId)
-                .forEach(r -> assertEquals(nextMonday(11), r.startUtc, "every group row moved to the new time"));
+        Booking
+            .<Booking>group(lead.groupId)
+            .forEach(r -> assertEquals(nextMonday(11), r.startUtc, "every group row moved to the new time"));
     }
 
     // --- (f) Task 11 review fix: auto-confirm group reschedule deletes the old event and creates a
     // new one, moves every row, and fires BookingRescheduled (rows stay CONFIRMED, never PENDING) ---
-
     @Test
     @TestTransaction
     void autoConfirmGroupRescheduleDeletesOldEventAndCreatesNewOne() {
         stubOrganizerOnCreator();
-        groupType(false); // auto-confirm
+        // auto-confirm
+        groupType(false);
 
-        Booking lead = bookingService.book(
-                1L, "intro", nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday(10),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
         List<Booking> rows = Booking.group(lead.groupId);
         rows.forEach(r -> assertEquals(BookingStatus.CONFIRMED, r.status));
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
 
         Booking freshLead = Booking.leadOfGroup(lead.groupId, 1L);
         var rescheduledBefore = RESCHEDULED.get();
-
-        bookingService.reschedule(freshLead.manageToken, nextMonday(15)); // invitee-initiated, far shift
+        // invitee-initiated, far shift
+        bookingService.reschedule(freshLead.manageToken, nextMonday(15));
 
         Booking.<Booking>group(lead.groupId).forEach(r -> {
             assertEquals(BookingStatus.CONFIRMED, r.status, "auto-confirm group reschedule stays confirmed");
@@ -306,7 +398,7 @@ class GroupCancelRescheduleTest {
         });
         verify(calendarPort, times(1)).deleteEvent(1L, null, "evt");
         verify(calendarPort, times(2))
-                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
         assertEquals(rescheduledBefore + 1, RESCHEDULED.get(), "BookingRescheduled fired once");
     }
 }

@@ -2,7 +2,6 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -16,8 +15,9 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class PublicI18nTest {
-
-    /** Seeds alice with one public meeting type — idempotent, safe to call before each test. */
+    /**
+     * Seeds alice with one public meeting type — idempotent, safe to call before each test.
+     */
     @Transactional
     void seedAlice() {
         AppUser alice = AppUser.findByUsername("alice");
@@ -50,35 +50,38 @@ class PublicI18nTest {
     @Test
     void publicUserLandingRendersGermanViaCookie() {
         seedAlice();
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/alice")
-                .then()
-                .statusCode(200)
-                .body(containsString("<html lang=\"de\""))
-                .body(containsString("Termin buchen"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/alice")
+            .then()
+            .statusCode(200)
+            .body(containsString("<html lang=\"de\""))
+            .body(containsString("Termin buchen"));
     }
 
     @Test
     void publicUserLandingRendersEnglishByDefault() {
         seedAlice();
-        given().when()
-                .get("/alice")
-                .then()
-                .statusCode(200)
-                .body(containsString("<html lang=\"en\""))
-                .body(containsString("Book a meeting"));
+        given()
+            .when()
+            .get("/alice")
+            .then()
+            .statusCode(200)
+            .body(containsString("<html lang=\"en\""))
+            .body(containsString("Book a meeting"));
     }
 
     @Test
     void germanUserLandingHasGermanTitle() {
         seedAlice();
-        given().cookie("calit_lang", "de")
-                .when()
-                .get("/alice")
-                .then()
-                .statusCode(200)
-                .body(containsString("<title>Termin buchen</title>"));
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/alice")
+            .then()
+            .statusCode(200)
+            .body(containsString("<title>Termin buchen</title>"));
     }
 
     @Test

@@ -8,7 +8,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -33,19 +32,17 @@ import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
 
-/** A booking's Google event is created on the meeting type's write calendar, not blindly on the default. */
+/**
+ * A booking's Google event is created on the meeting type's write calendar, not blindly on the default.
+ */
 @QuarkusTest
 class BookingWriteTargetOverrideTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @Inject
     BookingService bookingService;
-
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
-    private static final LocalDate DAY =
-            Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
     private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant();
 
     @Test
@@ -59,16 +56,17 @@ class BookingWriteTargetOverrideTest {
         book("book-override", credId, "work@example.com");
 
         verify(calendarPort)
-                .createEvent(
-                        eq(1L),
-                        eq(new CalendarRef(credId, "work@example.com")),
-                        anyString(),
-                        anyString(),
-                        any(),
-                        any(),
-                        any(),
-                        anyBoolean(),
-                        any());
+            .createEvent(
+                    eq(1L),
+                    eq(new CalendarRef(credId, "work@example.com")),
+                    anyString(),
+                    anyString(),
+                    any(),
+                    any(),
+                    any(),
+                    anyBoolean(),
+                    any()
+            );
     }
 
     @Test
@@ -81,16 +79,17 @@ class BookingWriteTargetOverrideTest {
         book("book-default", null, null);
 
         verify(calendarPort)
-                .createEvent(
-                        eq(1L),
-                        eq(new CalendarRef(credId, "default@example.com")),
-                        anyString(),
-                        anyString(),
-                        any(),
-                        any(),
-                        any(),
-                        anyBoolean(),
-                        any());
+            .createEvent(
+                    eq(1L),
+                    eq(new CalendarRef(credId, "default@example.com")),
+                    anyString(),
+                    anyString(),
+                    any(),
+                    any(),
+                    any(),
+                    anyBoolean(),
+                    any()
+            );
     }
 
     @Test
@@ -103,16 +102,17 @@ class BookingWriteTargetOverrideTest {
         book("book-dangling", credId, "unticked@example.com");
 
         verify(calendarPort)
-                .createEvent(
-                        eq(1L),
-                        eq(new CalendarRef(credId, "default@example.com")),
-                        anyString(),
-                        anyString(),
-                        any(),
-                        any(),
-                        any(),
-                        anyBoolean(),
-                        any());
+            .createEvent(
+                    eq(1L),
+                    eq(new CalendarRef(credId, "default@example.com")),
+                    anyString(),
+                    anyString(),
+                    any(),
+                    any(),
+                    any(),
+                    anyBoolean(),
+                    any()
+            );
     }
 
     @Test
@@ -123,7 +123,7 @@ class BookingWriteTargetOverrideTest {
         book("book-degraded", null, null);
 
         verify(calendarPort, never())
-                .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
 
     /**
@@ -161,7 +161,6 @@ class BookingWriteTargetOverrideTest {
         cohostRow.googleCredentialId = cohostCredId;
         cohostRow.googleCalendarId = "cohost-override@example.com";
         cohostRow.persist();
-
         // Only the cohost is Google-connected. MeetingHosts.chooseOrganizer picks the creator ONLY
         // when the creator is connected, else the lowest-id connected host -- with the creator
         // disconnected here, the cohost is the sole connected candidate, so it is unambiguously the
@@ -170,30 +169,49 @@ class BookingWriteTargetOverrideTest {
         when(calendarPort.isConnected(cohostId)).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-1", null, null, null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-1", null, null, null));
 
         bookingService.book(1L, t.slug, SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
 
         verify(calendarPort)
-                .createEvent(
-                        eq(cohostId),
-                        eq(new CalendarRef(cohostCredId, "cohost-override@example.com")),
-                        anyString(),
-                        anyString(),
-                        any(),
-                        any(),
-                        any(),
-                        anyBoolean(),
-                        any());
+            .createEvent(
+                    eq(cohostId),
+                    eq(new CalendarRef(cohostCredId, "cohost-override@example.com")),
+                    anyString(),
+                    anyString(),
+                    any(),
+                    any(),
+                    any(),
+                    anyBoolean(),
+                    any()
+            );
     }
 
     private void stubGoogle() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-1", null, null, null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-1", null, null, null));
     }
 
     /**

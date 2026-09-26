@@ -2,7 +2,6 @@ package site.asm0dey.calit.user;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.AfterEach;
@@ -10,9 +9,10 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class FirstRunLegalPagesTest {
-
     private void deleteAllUsers() {
-        QuarkusTransaction.requiringNew().run(() -> AppUser.deleteAll());
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> AppUser.deleteAll());
     }
 
     // Never leave the shared DB at zero users (mirrors SetupFlowTest).
@@ -20,8 +20,7 @@ class FirstRunLegalPagesTest {
     void restoreBaseline() {
         QuarkusTransaction.requiringNew().run(() -> {
             if (AppUser.count() == 0) {
-                AppUser.create("admin", new PasswordHasher().hash("testpass"), true)
-                        .persist();
+                AppUser.create("admin", new PasswordHasher().hash("testpass"), true).persist();
             }
         });
     }
@@ -29,24 +28,26 @@ class FirstRunLegalPagesTest {
     @Test
     void privacyReachableWithNoUsers() {
         deleteAllUsers();
-        given().redirects()
-                .follow(false)
-                .when()
-                .get("/privacy")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_LEGAL_PRIVACY"));
+        given()
+            .redirects()
+            .follow(false)
+            .when()
+            .get("/privacy")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_LEGAL_PRIVACY"));
     }
 
     @Test
     void termsReachableWithNoUsers() {
         deleteAllUsers();
-        given().redirects()
-                .follow(false)
-                .when()
-                .get("/terms")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_LEGAL_TERMS"));
+        given()
+            .redirects()
+            .follow(false)
+            .when()
+            .get("/terms")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_LEGAL_TERMS"));
     }
 }

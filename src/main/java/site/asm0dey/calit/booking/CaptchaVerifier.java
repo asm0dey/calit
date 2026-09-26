@@ -19,7 +19,6 @@ import org.altcha.altcha.v1.Altcha;
  */
 @ApplicationScoped
 public class CaptchaVerifier {
-
     final CaptchaProviderConfig providerConfig;
 
     @Inject
@@ -28,15 +27,19 @@ public class CaptchaVerifier {
     }
 
     // SEC-SSRF-01: bound the synchronous booking-path call so a hung upstream can't pin a thread.
-    private final HttpClient http = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .build();
-
-    /** Matches the success flag in the siteverify JSON, tolerating whitespace: {@code "success" : true}. */
+    private final HttpClient http = HttpClient
+        .newBuilder()
+        .connectTimeout(Duration.ofSeconds(5))
+        .followRedirects(HttpClient.Redirect.NORMAL)
+        .build();
+    /**
+     * Matches the success flag in the siteverify JSON, tolerating whitespace: {@code "success" : true}.
+     */
     private static final Pattern SUCCESS = Pattern.compile("\"success\"\\s*:\\s*true");
 
-    /** Enforces the active provider. Throws AbuseException (400) when the presented token is invalid. */
+    /**
+     * Enforces the active provider. Throws AbuseException (400) when the presented token is invalid.
+     */
     public void verify(String turnstileToken, String altchaSolution) {
         switch (providerConfig.provider()) {
             case "turnstile" -> verifyTurnstile(turnstileToken);
@@ -52,8 +55,7 @@ public class CaptchaVerifier {
             throw new AbuseException("Missing ALTCHA solution");
         }
         try {
-            boolean ok = Altcha.verifySolution(
-                    solution, providerConfig.altchaHmacKey().orElse(""), true);
+            boolean ok = Altcha.verifySolution(solution, providerConfig.altchaHmacKey().orElse(""), true);
             if (!ok) {
                 throw new AbuseException("ALTCHA verification failed");
             }
@@ -71,12 +73,14 @@ public class CaptchaVerifier {
         try {
             var body = "secret="
                     + URLEncoder.encode(providerConfig.turnstileSecret().orElse(""), StandardCharsets.UTF_8)
-                    + "&response=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
-            var req = HttpRequest.newBuilder(URI.create(providerConfig.turnstileVerifyUrl()))
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .timeout(Duration.ofSeconds(10))
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
+                    + "&response="
+                    + URLEncoder.encode(token, StandardCharsets.UTF_8);
+            var req = HttpRequest
+                .newBuilder(URI.create(providerConfig.turnstileVerifyUrl()))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .timeout(Duration.ofSeconds(10))
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() != 200 || !SUCCESS.matcher(resp.body()).find()) {
                 throw new AbuseException("Turnstile verification failed");

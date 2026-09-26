@@ -3,7 +3,6 @@ package site.asm0dey.calit.privacy;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
@@ -29,16 +28,16 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 @TestProfile(PrivacyPolicyGoogleUnconfiguredTest.BlankGoogleClientId.class)
 class PrivacyPolicyGoogleUnconfiguredTest {
-
     @Test
     void googleSectionsAreAbsentWhenGoogleIsUnconfigured() {
-        given().when()
-                .get("/privacy")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_LEGAL_PRIVACY"))
-                .body(not(containsString("Limited Use disclosure")))
-                .body(not(containsString("How Google user data is used")));
+        given()
+            .when()
+            .get("/privacy")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_LEGAL_PRIVACY"))
+            .body(not(containsString("Limited Use disclosure")))
+            .body(not(containsString("How Google user data is used")));
     }
 
     /**
@@ -48,12 +47,13 @@ class PrivacyPolicyGoogleUnconfiguredTest {
      */
     @Test
     void dataSharingFallsBackToTheNoThirdPartySentenceWhenNothingIsConfigured() {
-        given().when()
-                .get("/privacy")
-                .then()
-                .statusCode(200)
-                .body(containsString("does not send your data to any third party"))
-                .body(not(containsString("This deployment sends data to:")));
+        given()
+            .when()
+            .get("/privacy")
+            .then()
+            .statusCode(200)
+            .body(containsString("does not send your data to any third party"))
+            .body(not(containsString("This deployment sends data to:")));
     }
 
     public static class BlankGoogleClientId implements QuarkusTestProfile {

@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -25,16 +24,14 @@ import site.asm0dey.calit.user.AppUser;
  * upcoming held booking of the type exists, whoever owns the row.
  */
 @QuarkusTest
-@TestSecurity(
-        user = "admin",
-        roles = {"user", "admin"})
+@TestSecurity(user = "admin", roles = {"user", "admin"})
 class MeetingTypeDeletionTest {
-
     private static final String REFUSAL = "still has upcoming bookings";
 
     private static Long seedType() {
-        return QuarkusTransaction.requiringNew()
-                .call(() -> MultiHostFixtures.meetingType(1L, "doomed-" + UUID.randomUUID(), 30).id);
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> MultiHostFixtures.meetingType(1L, "doomed-" + UUID.randomUUID(), 30).id);
     }
 
     private static Long seedBooking(Long ownerId, Long typeId, long startDaysFromNow, BookingStatus status) {
@@ -55,22 +52,27 @@ class MeetingTypeDeletionTest {
     }
 
     private static void postDelete(Long typeId, boolean expectRefusal) {
-        var response = given().contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/meeting-types/" + typeId + "/delete")
-                .then()
-                .statusCode(200);
+        var response = given()
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/meeting-types/" + typeId + "/delete")
+            .then()
+            .statusCode(200);
         if (expectRefusal) {
             response.body(containsString(REFUSAL));
         }
     }
 
     private static MeetingType type(Long id) {
-        return QuarkusTransaction.requiringNew().call(() -> MeetingType.findById(id));
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> MeetingType.findById(id));
     }
 
     private static Booking booking(Long id) {
-        return QuarkusTransaction.requiringNew().call(() -> Booking.findById(id));
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findById(id));
     }
 
     @Test
@@ -100,14 +102,17 @@ class MeetingTypeDeletionTest {
     @Test
     void anUpcomingCohostRowBlocksTheDelete() {
         var typeId = seedType();
-        Long cohostId =
-                QuarkusTransaction.requiringNew().call(() -> MultiHostFixtures.enabledUser("typedel-cohost").id);
+        Long cohostId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> MultiHostFixtures.enabledUser("typedel-cohost").id);
         var cohostRow = seedBooking(cohostId, typeId, 5, BookingStatus.PENDING);
 
         postDelete(typeId, true);
 
         assertNotNull(type(typeId));
         assertNotNull(booking(cohostRow), "another host's upcoming row must not be cascaded away");
-        assertEquals(1L, QuarkusTransaction.requiringNew().call(() -> AppUser.count("id", cohostId)));
+        assertEquals(1L, QuarkusTransaction
+            .requiringNew()
+            .call(() -> AppUser.count("id", cohostId)));
     }
 }

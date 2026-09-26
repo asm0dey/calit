@@ -1,7 +1,6 @@
 package site.asm0dey.calit.email;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -9,7 +8,6 @@ import site.asm0dey.calit.i18n.AppMessageResolver;
 
 @QuarkusTest
 class EmailLocaleHebrewTest {
-
     @Inject
     AppMessageResolver messages;
 

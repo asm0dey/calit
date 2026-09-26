@@ -1,7 +1,6 @@
 package site.asm0dey.calit.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -18,11 +17,12 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class BookingLocaleTest {
-
     @Inject
     BookingService bookingService;
 
-    /** Seeds an owner with settings, a meeting type, and a wide weekly availability window. */
+    /**
+     * Seeds an owner with settings, a meeting type, and a wide weekly availability window.
+     */
     private MeetingType seedOwnerAndType(String username) {
         AppUser u = new AppUser();
         u.username = username;
@@ -63,12 +63,13 @@ class BookingLocaleTest {
     @TestTransaction
     void bookStoresProvidedLocale() {
         MeetingType t = seedOwnerAndType("locale-de-user");
-        var slot = ZonedDateTime.now(ZoneId.of("UTC"))
-                .plusDays(2)
-                .withHour(10)
-                .withMinute(0)
-                .withSecond(0)
-                .withNano(0);
+        var slot = ZonedDateTime
+            .now(ZoneId.of("UTC"))
+            .plusDays(2)
+            .withHour(10)
+            .withMinute(0)
+            .withSecond(0)
+            .withNano(0);
 
         Booking b = bookingService.book(
                 t.ownerId,
@@ -80,7 +81,8 @@ class BookingLocaleTest {
                 null,
                 null,
                 "de",
-                java.util.List.of());
+                java.util.List.of()
+        );
 
         assertEquals("de", b.locale);
     }
@@ -89,12 +91,13 @@ class BookingLocaleTest {
     @TestTransaction
     void bookFallsBackToEnForUnsupportedLocale() {
         MeetingType t = seedOwnerAndType("locale-xx-user");
-        var slot = ZonedDateTime.now(ZoneId.of("UTC"))
-                .plusDays(2)
-                .withHour(11)
-                .withMinute(0)
-                .withSecond(0)
-                .withNano(0);
+        var slot = ZonedDateTime
+            .now(ZoneId.of("UTC"))
+            .plusDays(2)
+            .withHour(11)
+            .withMinute(0)
+            .withSecond(0)
+            .withNano(0);
 
         Booking b = bookingService.book(
                 t.ownerId,
@@ -106,7 +109,8 @@ class BookingLocaleTest {
                 null,
                 null,
                 "xx",
-                java.util.List.of());
+                java.util.List.of()
+        );
 
         assertEquals("en", b.locale);
     }
@@ -115,12 +119,13 @@ class BookingLocaleTest {
     @TestTransaction
     void bookFallsBackToEnForNullLocale() {
         MeetingType t = seedOwnerAndType("locale-null-user");
-        var slot = ZonedDateTime.now(ZoneId.of("UTC"))
-                .plusDays(2)
-                .withHour(12)
-                .withMinute(0)
-                .withSecond(0)
-                .withNano(0);
+        var slot = ZonedDateTime
+            .now(ZoneId.of("UTC"))
+            .plusDays(2)
+            .withHour(12)
+            .withMinute(0)
+            .withSecond(0)
+            .withNano(0);
 
         Booking b = bookingService.book(
                 t.ownerId,
@@ -132,7 +137,8 @@ class BookingLocaleTest {
                 null,
                 null,
                 null,
-                java.util.List.of());
+                java.util.List.of()
+        );
 
         assertEquals("en", b.locale);
     }

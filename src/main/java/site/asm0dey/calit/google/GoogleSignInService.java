@@ -26,12 +26,12 @@ import site.asm0dey.calit.user.Usernames;
  */
 @ApplicationScoped
 public class GoogleSignInService {
-
     final boolean signupEnabled;
 
     @Inject
     public GoogleSignInService(
-            @ConfigProperty(name = "calit.signup.enabled", defaultValue = "false") boolean signupEnabled) {
+            @ConfigProperty(name = "calit.signup.enabled", defaultValue = "false") boolean signupEnabled
+    ) {
         this.signupEnabled = signupEnabled;
     }
 
@@ -46,7 +46,8 @@ public class GoogleSignInService {
             List<Long> owners = OwnerSettings.findOwnerIdsByEmail(identity.email());
             if (owners.size() == 1) {
                 AppUser linked = AppUser.findById(owners.getFirst());
-                linked.googleSub = identity.sub(); // managed entity -> dirty-checked in this tx
+                // managed entity -> dirty-checked in this tx
+                linked.googleSub = identity.sub();
                 return linked;
             }
             if (owners.size() > 1) {
@@ -64,7 +65,6 @@ public class GoogleSignInService {
         String username = Usernames.uniquify(Usernames.fromEmail(identity.email()), AppUser::usernameUnavailable);
         AppUser u = AppUser.createGoogleUser(username, identity.sub());
         u.persist();
-
         // Seed the row so the first-login wizard (/me/setup) can pre-fill the email.
         OwnerSettings.seed(u.id, identity.email());
         return u;

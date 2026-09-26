@@ -24,18 +24,18 @@ import site.asm0dey.calit.audit.AuditLog;
  */
 @ApplicationScoped
 public class AppUserIdentityProvider implements IdentityProvider<UsernamePasswordAuthenticationRequest> {
-
     final PasswordHasher passwordHasher;
-
     final LoginTicketService loginTickets;
-
     final Clock clock;
-
     final AuditLog audit;
 
     @Inject
     public AppUserIdentityProvider(
-            PasswordHasher passwordHasher, LoginTicketService loginTickets, Clock clock, AuditLog audit) {
+            PasswordHasher passwordHasher,
+            LoginTicketService loginTickets,
+            Clock clock,
+            AuditLog audit
+    ) {
         this.passwordHasher = passwordHasher;
         this.loginTickets = loginTickets;
         this.clock = clock;
@@ -49,7 +49,9 @@ public class AppUserIdentityProvider implements IdentityProvider<UsernamePasswor
 
     @Override
     public Uni<SecurityIdentity> authenticate(
-            UsernamePasswordAuthenticationRequest request, AuthenticationRequestContext context) {
+            UsernamePasswordAuthenticationRequest request,
+            AuthenticationRequestContext context
+    ) {
         return context.runBlocking(() -> authenticateBlocking(request));
     }
 

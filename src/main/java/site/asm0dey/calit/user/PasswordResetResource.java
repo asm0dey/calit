@@ -24,15 +24,10 @@ import site.asm0dey.calit.i18n.AppMessages;
  */
 @Path("/")
 public class PasswordResetResource {
-
     final PasswordResetService resetService;
-
     final PasswordHasher passwordHasher;
-
     final EmailService emailService;
-
     final AppMessageResolver messages;
-
     final ActiveLocale activeLocale;
 
     @Inject
@@ -42,7 +37,8 @@ public class PasswordResetResource {
             EmailService emailService,
             AppMessageResolver messages,
             ActiveLocale activeLocale,
-            @ConfigProperty(name = "app.base-url") String baseUrl) {
+            @ConfigProperty(name = "app.base-url") String baseUrl
+    ) {
         this.resetService = resetService;
         this.passwordHasher = passwordHasher;
         this.emailService = emailService;
@@ -84,7 +80,8 @@ public class PasswordResetResource {
                         os.ownerEmail,
                         baseUrl + "/reset-password?token=" + token,
                         now.plus(PasswordResetService.TTL),
-                        AppLocales.pick(os.locale));
+                        AppLocales.pick(os.locale)
+                );
             }
         }
         // Always the same response — never disclose whether the account exists.
@@ -116,10 +113,9 @@ public class PasswordResetResource {
             return html(Response.Status.BAD_REQUEST, Templates.reset(m.auth_reset_title(), null, true));
         }
         user.passwordHash = passwordHasher.hash(password);
-        user.mustChangePassword = false; // managed entity in this tx — flushed on commit
-        return Response.status(Response.Status.FOUND)
-                .location(URI.create("/login"))
-                .build();
+        // managed entity in this tx — flushed on commit
+        user.mustChangePassword = false;
+        return Response.status(Response.Status.FOUND).location(URI.create("/login")).build();
     }
 
     private static Response html(Response.Status status, TemplateInstance body) {

@@ -3,13 +3,11 @@ package site.asm0dey.calit.web.og;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.awt.Font;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class TextRunsTest {
-
     static final CardFonts FONTS = new CardFonts();
 
     @Test

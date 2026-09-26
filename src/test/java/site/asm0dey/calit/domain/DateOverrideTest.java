@@ -1,7 +1,6 @@
 package site.asm0dey.calit.domain;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import java.time.LocalDate;
@@ -10,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class DateOverrideTest {
-
     private static final LocalDate D = LocalDate.of(2026, 7, 1);
 
     @Test
@@ -29,12 +27,10 @@ class DateOverrideTest {
         type.slug = "do-pertype-wins";
         type.durationMinutes = 30;
         type.persist();
-
         // Global override for the date (09:00-10:00).
         DateOverride global = override(null, D);
         global.persist();
         window(global, "09:00", "10:00");
-
         // Per-type override for the same date (13:00-14:00) — should win.
         DateOverride typed = override(type.id, D);
         typed.persist();
@@ -52,7 +48,6 @@ class DateOverrideTest {
         DateOverride global = override(null, D);
         global.persist();
         window(global, "08:00", "09:00");
-
         // A meeting type with no per-type override falls through to the global one.
         DateOverride resolved = DateOverride.resolve(1L, 987_654L, D);
         assertEquals(global.id, resolved.id);
@@ -63,11 +58,13 @@ class DateOverrideTest {
     @TestTransaction
     void emptyWindowsOverrideResolvesAsDayOff() {
         DateOverride dayOff = override(null, D);
-        dayOff.persist(); // no windows added
+        // no windows added
+        dayOff.persist();
 
         DateOverride resolved = DateOverride.resolve(1L, 555L, D);
         assertEquals(dayOff.id, resolved.id);
-        assertTrue(resolved.windows.isEmpty()); // empty = day off (caller blocks the day)
+        // empty = day off (caller blocks the day)
+        assertTrue(resolved.windows.isEmpty());
     }
 
     @Test
@@ -86,7 +83,6 @@ class DateOverrideTest {
     }
 
     // --- helpers ---
-
     private DateOverride override(Long meetingTypeId, LocalDate date) {
         DateOverride o = new DateOverride();
         o.ownerId = 1L;

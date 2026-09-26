@@ -19,11 +19,8 @@ import site.asm0dey.calit.i18n.AppMessages;
  */
 @Path("/setup")
 public class SetupResource {
-
     final PasswordHasher passwordHasher;
-
     final AppMessageResolver messages;
-
     final ActiveLocale activeLocale;
 
     @Inject
@@ -35,7 +32,8 @@ public class SetupResource {
 
     @CheckedTemplate
     public static class Templates {
-        private Templates() {}
+        private Templates() {
+        }
 
         public static native TemplateInstance setup(String title, boolean error);
     }
@@ -58,28 +56,30 @@ public class SetupResource {
         try {
             normalized = Usernames.validateNew(username, AppUser::usernameUnavailable);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Templates.setup(m.auth_setup_title(), true))
-                    .type(MediaType.TEXT_HTML)
-                    .build();
+            return Response
+                .status(Response.Status.BAD_REQUEST)
+                .entity(Templates.setup(m.auth_setup_title(), true))
+                .type(MediaType.TEXT_HTML)
+                .build();
         }
         if (password == null || password.isBlank()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Templates.setup(m.auth_setup_title(), true))
-                    .type(MediaType.TEXT_HTML)
-                    .build();
+            return Response
+                .status(Response.Status.BAD_REQUEST)
+                .entity(Templates.setup(m.auth_setup_title(), true))
+                .type(MediaType.TEXT_HTML)
+                .build();
         }
         AppUser u = AppUser.create(normalized, passwordHasher.hash(password), true);
         u.mustChangePassword = false;
         u.settingsComplete = false;
         u.persist();
         OwnerSettings.seed(u.id, null);
-        return Response.status(Response.Status.FOUND)
-                .location(URI.create("/login"))
-                .build();
+        return Response.status(Response.Status.FOUND).location(URI.create("/login")).build();
     }
 
-    /** 404 once the instance has any user. */
+    /**
+     * 404 once the instance has any user.
+     */
     private void requireUnbootstrapped() {
         if (AppUser.count() > 0) {
             throw new NotFoundException();

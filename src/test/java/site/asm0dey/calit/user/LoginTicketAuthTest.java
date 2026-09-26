@@ -1,7 +1,6 @@
 package site.asm0dey.calit.user;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.credential.PasswordCredential;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -15,13 +14,10 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class LoginTicketAuthTest {
-
     @Inject
     AppUserIdentityProvider provider;
-
     @Inject
     LoginTicketService tickets;
-
     private static final java.time.Instant FIXED = java.time.Instant.parse("2026-06-12T12:00:00Z");
 
     @BeforeEach
@@ -53,10 +49,10 @@ class LoginTicketAuthTest {
         AppUser other = AppUser.createGoogleUser("someone-else", "sub-se");
         other.persistAndFlush();
         String token = tickets.issue(u.id, FIXED);
-
         // Token is valid but submitted under the wrong username -> reject (defence in depth).
-        assertThrows(
-                AuthenticationFailedException.class, () -> provider.authenticateBlocking(req("someone-else", token)));
+        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(
+                req("someone-else", token)
+        ));
     }
 
     @Test
@@ -76,9 +72,9 @@ class LoginTicketAuthTest {
         u.enabled = false;
         u.persistAndFlush();
         String token = tickets.issue(u.id, FIXED);
-
         // A valid ticket must NOT log in a disabled account (the enabled gate).
-        assertThrows(
-                AuthenticationFailedException.class, () -> provider.authenticateBlocking(req("disabled-tkt", token)));
+        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(
+                req("disabled-tkt", token)
+        ));
     }
 }

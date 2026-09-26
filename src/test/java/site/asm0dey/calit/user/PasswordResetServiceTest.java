@@ -1,7 +1,6 @@
 package site.asm0dey.calit.user;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class PasswordResetServiceTest {
-
     @Inject
     PasswordResetService reset;
 
@@ -62,10 +60,8 @@ class PasswordResetServiceTest {
         // Admin user is always id 1 (test infra).
         var now = Instant.now();
         String token = reset.issue(1L, now, Duration.ofHours(48));
-
         // Still valid 40 minutes later (would be dead under the 30-min default).
         assertNotNull(reset.consume(token, now.plusSeconds(40 * 60)));
-
         // A fresh token is expired just after its 48h window.
         String token2 = reset.issue(1L, now, Duration.ofHours(48));
         assertNull(reset.consume(token2, now.plus(Duration.ofHours(48)).plusSeconds(1)));

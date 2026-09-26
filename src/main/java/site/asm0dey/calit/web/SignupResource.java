@@ -19,20 +19,15 @@ import site.asm0dey.calit.user.Usernames;
 
 @Path("/signup")
 public class SignupResource {
-
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance signup(String title, String error, OgCard og);
     }
 
     final boolean signupEnabled;
-
     final PasswordHasher passwordHasher;
-
     final AppMessageResolver messages;
-
     final ActiveLocale activeLocale;
-
     final OgCards ogCards;
 
     @Inject
@@ -41,7 +36,8 @@ public class SignupResource {
             AppMessageResolver messages,
             ActiveLocale activeLocale,
             @ConfigProperty(name = "calit.signup.enabled", defaultValue = "false") boolean signupEnabled,
-            OgCards ogCards) {
+            OgCards ogCards
+    ) {
         this.passwordHasher = passwordHasher;
         this.messages = messages;
         this.activeLocale = activeLocale;
@@ -49,7 +45,9 @@ public class SignupResource {
         this.ogCards = ogCards;
     }
 
-    /** When signup is disabled the whole resource is invisible: behave exactly like no route. */
+    /**
+     * When signup is disabled the whole resource is invisible: behave exactly like no route.
+     */
     private void requireEnabled() {
         if (!signupEnabled) {
             throw new NotFoundException();
@@ -73,18 +71,21 @@ public class SignupResource {
         String title = messages.forLocale(activeLocale.current()).auth_signup_title();
         String normalized;
         try {
-            normalized =
-                    Usernames.validateNew(username, AppUser::usernameUnavailable); // throws on invalid/reserved/taken
+            normalized = Usernames
+                // throws on invalid/reserved/taken
+                .validateNew(username, AppUser::usernameUnavailable);
         } catch (IllegalArgumentException _) {
             String error = messages.forLocale(activeLocale.current()).auth_signup_error();
-            return Response.ok(Templates.signup(title, error, ogCards.product("/signup")))
-                    .build();
+            return Response.ok(Templates.signup(title, error, ogCards.product("/signup"))).build();
         }
         AppUser u = AppUser.create(normalized, passwordHasher.hash(password), false);
-        u.mustChangePassword = false; // self-chosen password → no forced reset
-        u.settingsComplete = false; // still needs the first-login settings wizard
+        // self-chosen password → no forced reset
+        u.mustChangePassword = false;
+        // still needs the first-login settings wizard
+        u.settingsComplete = false;
         u.persist();
-        OwnerSettings.seed(u.id, null); // NOT NULL placeholders; the wizard overwrites them
+        // NOT NULL placeholders; the wizard overwrites them
+        OwnerSettings.seed(u.id, null);
         // Registered — send them to log in; the wizard kicks in at /me after login.
         return Response.seeOther(UriBuilder.fromUri("/login").build()).build();
     }

@@ -7,7 +7,6 @@ package site.asm0dey.calit.booking;
  * (e.g. {@code MeetingHostsMutationTest}, {@code SlugCollisionTest}) keep passing unchanged.
  */
 public class HostRuleException extends IllegalStateException {
-
     public final String messageKey;
     public final transient Object[] args;
 

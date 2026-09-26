@@ -24,11 +24,14 @@ import java.time.format.DateTimeFormatter;
  */
 @TemplateExtension
 public class DisplayExtensions {
-
-    /** Namespace used for {@code {display:of(...)}} calls in templates. */
+    /**
+     * Namespace used for {@code {display:of(...)}} calls in templates.
+     */
     static final String NAMESPACE = "display";
 
-    /** Title-cases an enum's {@code name()} into space-separated words. Null -> "". */
+    /**
+     * Title-cases an enum's {@code name()} into space-separated words. Null -> "".
+     */
     public static String display(Enum<?> e) {
         if (e == null) {
             return "";
@@ -47,7 +50,9 @@ public class DisplayExtensions {
         return sb.toString();
     }
 
-    /** Namespace form, e.g. {@code {display:of(lt)}}; delegates to {@link #display(Enum)}. */
+    /**
+     * Namespace form, e.g. {@code {display:of(lt)}}; delegates to {@link #display(Enum)}.
+     */
     @TemplateExtension(namespace = NAMESPACE)
     public static String of(Enum<?> e) {
         return display(e);
@@ -64,7 +69,9 @@ public class DisplayExtensions {
         return e == null ? "" : e.name();
     }
 
-    /** Mirrors AdminResource#renderManage's manage-hub date/time format for the no-JS fallback. */
+    /**
+     * Mirrors AdminResource#renderManage's manage-hub date/time format for the no-JS fallback.
+     */
     private static final DateTimeFormatter WHEN_FMT = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)");
 
     /**

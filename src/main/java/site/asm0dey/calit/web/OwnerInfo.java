@@ -18,11 +18,8 @@ import site.asm0dey.calit.user.CurrentOwner;
 @Named("owner")
 @RequestScoped
 public class OwnerInfo {
-
     final CurrentOwner currentOwner;
-
     private OwnerSettings cached;
-
     private boolean loaded;
 
     @Inject
@@ -30,7 +27,9 @@ public class OwnerInfo {
         this.currentOwner = currentOwner;
     }
 
-    /** Memoized so a template reading several accessors costs one query per request. */
+    /**
+     * Memoized so a template reading several accessors costs one query per request.
+     */
     private OwnerSettings settings() {
         if (!loaded) {
             cached = currentOwner.isSet() ? OwnerSettings.forOwner(currentOwner.id()) : null;

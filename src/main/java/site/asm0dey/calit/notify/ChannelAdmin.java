@@ -15,20 +15,16 @@ import org.alexmond.notify4j.ChannelCatalog;
 import org.alexmond.notify4j.Notifications;
 import org.alexmond.notify4j.SendResult;
 
-/** Everything the /me/settings channel handlers do, kept out of the already-large AdminResource. */
+/**
+ * Everything the /me/settings channel handlers do, kept out of the already-large AdminResource.
+ */
 @ApplicationScoped
 public class ChannelAdmin {
-
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
     private static final int LABEL_MAX = 64;
-
     private final ChannelCatalog catalog = ChannelCatalog.standard();
-
     final ChannelPolicy policy;
-
     final ChannelMessageRenderer renderer;
-
     final NotifyConfig config;
 
     @Inject
@@ -41,16 +37,21 @@ public class ChannelAdmin {
     public List<ChannelRow> rows(Long ownerId, ZoneId zone) {
         List<ChannelRow> rows = new ArrayList<>();
         for (NotificationChannel c : NotificationChannel.forOwner(ownerId)) {
-            var descriptor = catalog.tryParse(c.url).flatMap(p -> catalog.describe(p.scheme()));
-            rows.add(new ChannelRow(
-                    c.id,
-                    c.label,
-                    policy.redact(c.url),
-                    descriptor.map(d -> d.displayName()).orElse(""),
-                    descriptor.map(d -> d.docsUrl()).orElse(null),
-                    stamp(c.lastSuccessAt, zone),
-                    stamp(c.lastFailureAt, zone),
-                    c.defaultEnabled));
+            var descriptor = catalog
+                .tryParse(c.url)
+                .flatMap(p -> catalog.describe(p.scheme()));
+            rows.add(
+                    new ChannelRow(
+                            c.id,
+                            c.label,
+                            policy.redact(c.url),
+                            descriptor.map(d -> d.displayName()).orElse(""),
+                            descriptor.map(d -> d.docsUrl()).orElse(null),
+                            stamp(c.lastSuccessAt, zone),
+                            stamp(c.lastFailureAt, zone),
+                            c.defaultEnabled
+                    )
+            );
         }
         return rows;
     }
@@ -73,9 +74,10 @@ public class ChannelAdmin {
             if (submitted.isEmpty()) {
                 continue;
             }
-            NotificationChannel existing = parseId(value(ids, i))
-                    .map(id -> NotificationChannel.ownedBy(id, ownerId))
-                    .orElse(null);
+            NotificationChannel existing =
+                    parseId(value(ids, i))
+                .map(id -> NotificationChannel.ownedBy(id, ownerId))
+                .orElse(null);
             var url = resolveUrl(submitted, existing);
             NotificationChannel row = existing;
             if (row == null) {
@@ -114,7 +116,9 @@ public class ChannelAdmin {
         return submitted;
     }
 
-    /** Applies the submitted label, falling back to the policy default and truncating to {@link #LABEL_MAX}. */
+    /**
+     * Applies the submitted label, falling back to the policy default and truncating to {@link #LABEL_MAX}.
+     */
     private void applyLabel(NotificationChannel row, String rawLabel, String url) {
         var label = rawLabel.trim();
         row.label = label.isEmpty() ? policy.defaultLabel(url) : label;
@@ -127,7 +131,8 @@ public class ChannelAdmin {
     public void delete(Long ownerId, Long channelId) {
         NotificationChannel c = NotificationChannel.ownedBy(channelId, ownerId);
         if (c != null) {
-            c.delete(); // link rows cascade in the DB (ON DELETE CASCADE)
+            // link rows cascade in the DB (ON DELETE CASCADE)
+            c.delete();
         }
     }
 
@@ -148,10 +153,12 @@ public class ChannelAdmin {
         if (submitted.isEmpty()) {
             return false;
         }
-        NotificationChannel existing = parseId(value(ids, index))
-                .map(id -> NotificationChannel.ownedBy(id, ownerId))
-                .orElse(null);
-        var url = resolveUrl(submitted, existing); // throws ChannelRejected, mapped to a page error
+        NotificationChannel existing =
+                parseId(value(ids, index))
+            .map(id -> NotificationChannel.ownedBy(id, ownerId))
+            .orElse(null);
+        // throws ChannelRejected, mapped to a page error
+        var url = resolveUrl(submitted, existing);
         try {
             // interactiveHttp(), not http(): the owner is on the other end of this request.
             SendResult r = Notifications.sendOnce(List.of(url), renderer.test(locale), config.interactiveHttp());

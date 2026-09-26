@@ -33,9 +33,7 @@ import site.asm0dey.calit.web.og.CardRenderer;
  */
 @Path("/")
 public class OgImageResource {
-
     static final int MAX_AGE_SECONDS = 3600;
-
     final CardRenderer renderer;
 
     @Inject
@@ -77,7 +75,10 @@ public class OgImageResource {
     @Path("/og/{user}/{slug}.png")
     @Produces("image/png")
     public Response meetingType(
-            @Context Request request, @PathParam("user") String user, @PathParam("slug") String slug) {
+            @Context Request request,
+            @PathParam("user") String user,
+            @PathParam("slug") String slug
+    ) {
         AppUser owner = AppUser.findByUsername(user);
         // Same enumeration-oracle guard as owner() above (calit-h8mb): a disabled owner's type
         // must fall back to the product card, not render their real name/type/duration/location.
@@ -104,10 +105,11 @@ public class OgImageResource {
 
     static String meta(MeetingType type) {
         List<Integer> durations = MeetingTypeDuration.allowedDurations(type);
-        var lengths = durations.stream()
-                .map(String::valueOf)
-                .reduce((a, b) -> a + " · " + b)
-                .orElse("");
+        var lengths = durations
+            .stream()
+            .map(String::valueOf)
+            .reduce((a, b) -> a + " · " + b)
+            .orElse("");
         return lengths + " min · " + location(type);
     }
 
@@ -128,15 +130,9 @@ public class OgImageResource {
         // literal "public" token the spec requires. Set the header text directly instead.
         var cacheControl = "public, max-age=" + MAX_AGE_SECONDS;
         if (preconditionFailed != null) {
-            return preconditionFailed
-                    .tag(etag)
-                    .header("Cache-Control", cacheControl)
-                    .build();
+            return preconditionFailed.tag(etag).header("Cache-Control", cacheControl).build();
         }
-        return Response.ok(body, "image/png")
-                .tag(etag)
-                .header("Cache-Control", cacheControl)
-                .build();
+        return Response.ok(body, "image/png").tag(etag).header("Cache-Control", cacheControl).build();
     }
 
     static String sha256(String input) {

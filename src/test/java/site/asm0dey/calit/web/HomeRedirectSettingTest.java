@@ -2,7 +2,6 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
@@ -25,7 +24,6 @@ import site.asm0dey.calit.domain.OwnerSettings;
  */
 @QuarkusTest
 class HomeRedirectSettingTest {
-
     @Inject
     EntityManager em;
 
@@ -50,52 +48,54 @@ class HomeRedirectSettingTest {
         seedOwnerSettings();
 
         given().when().get("/me/settings").then().statusCode(200).body(containsString("name=\"homeRedirectEnabled\""));
-
         // The literal rendered markup is brittle against a daisyUI class/attribute-order bump; the
         // checked *state* is verified against the persisted domain value instead.
         org.junit.jupiter.api.Assertions.assertTrue(
-                readHomeRedirectEnabled(), "home redirect must default to enabled on a freshly-seeded row");
+                readHomeRedirectEnabled(),
+                "home redirect must default to enabled on a freshly-seeded row"
+        );
     }
 
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void optingOutMakesHomeRenderTheProductPageAgain() {
         seedOwnerSettings();
-
         // Before opting out: the seeded row defaults to enabled, so / must already redirect.
         given().redirects().follow(false).when().get("/").then().statusCode(303);
-
         // Unchecked box => field absent from the POST.
-        given().formParam("ownerName", "Admin")
-                .formParam("ownerEmail", "admin@example.com")
-                .formParam("timezone", "UTC")
-                .formParam("locale", "en")
-                .when()
-                .post("/me/settings")
-                .then()
-                .statusCode(200);
+        given()
+            .formParam("ownerName", "Admin")
+            .formParam("ownerEmail", "admin@example.com")
+            .formParam("timezone", "UTC")
+            .formParam("locale", "en")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(200);
 
-        given().redirects()
-                .follow(false)
-                .when()
-                .get("/")
-                .then()
-                .statusCode(200)
-                .body(containsString("Self-hosted scheduling"));
+        given()
+            .redirects()
+            .follow(false)
+            .when()
+            .get("/")
+            .then()
+            .statusCode(200)
+            .body(containsString("Self-hosted scheduling"));
     }
 
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void optingBackInRestoresTheRedirect() {
-        given().formParam("ownerName", "Admin")
-                .formParam("ownerEmail", "admin@example.com")
-                .formParam("timezone", "UTC")
-                .formParam("locale", "en")
-                .formParam("homeRedirectEnabled", "on")
-                .when()
-                .post("/me/settings")
-                .then()
-                .statusCode(200);
+        given()
+            .formParam("ownerName", "Admin")
+            .formParam("ownerEmail", "admin@example.com")
+            .formParam("timezone", "UTC")
+            .formParam("locale", "en")
+            .formParam("homeRedirectEnabled", "on")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(200);
 
         given().redirects().follow(false).when().get("/").then().statusCode(303);
     }

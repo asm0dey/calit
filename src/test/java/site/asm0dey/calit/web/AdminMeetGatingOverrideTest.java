@@ -2,7 +2,6 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -21,7 +20,6 @@ import site.asm0dey.calit.google.GoogleCredential;
  */
 @QuarkusTest
 class AdminMeetGatingOverrideTest {
-
     @Inject
     EntityManager em;
 
@@ -35,20 +33,21 @@ class AdminMeetGatingOverrideTest {
 
     @Test
     void meetAllowedWhenTheTypeOverridesToAMeetCapableCalendar() {
-        var typeId = seed(false, true); // default cannot Meet, override can
+        // default cannot Meet, override can
+        var typeId = seed(false, true);
         editWithLocation(typeId, "GOOGLE_MEET").statusCode(200);
     }
 
     @Test
     void meetRejectedWhenTheTypeOverridesToANonMeetCalendar() {
-        var typeId = seed(true, false); // default can Meet, override cannot
+        // default can Meet, override cannot
+        var typeId = seed(true, false);
         // Not a bare 400: the Host lands back on the detail page with a localized message and a
         // usable form, and nothing is persisted (calit-w7gq).
         editWithLocation(typeId, "GOOGLE_MEET")
-                .statusCode(200)
-                // Qute HTML-escapes the apostrophe in "can't" (renders as "can&#39;t"); assert on
-                // the unescaped tail of the message instead of fighting the entity encoding.
-                .body(containsString("create Google Meet links"));
+            .statusCode(200)
+            // the unescaped tail of the message instead of fighting the entity encoding.
+            .body(containsString("create Google Meet links"));
 
         MeetingType t = MeetingType.findById(typeId);
         org.junit.jupiter.api.Assertions.assertEquals(MeetingType.LocationType.PHONE, t.locationType);
@@ -63,45 +62,51 @@ class AdminMeetGatingOverrideTest {
      */
     @Test
     void aMeetRejectionRollsBackTheWriteCalendarMoveSubmittedInTheSameSave() {
-        var typeId = seed(false, true); // the write target cannot Meet, the override can
+        // the write target cannot Meet, the override can
+        var typeId = seed(false, true);
         var credId = ownerCredentialId();
-
         // The type is seeded on the Meet-capable override. This save asks for GOOGLE_MEET *and*
         // moves the type onto default@example.com, which cannot mint Meet links -- so it is the
         // combination, not either field alone, that must be refused.
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Meet override")
-                .formParam("slug", "meet-override-" + typeId)
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "GOOGLE_MEET")
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                .formParam("writeCalendar", credId + ":default@example.com")
-                .when()
-                .post("/me/meeting-types/" + typeId + "/edit")
-                .then()
-                .statusCode(200)
-                .body(containsString("create Google Meet links"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Meet override")
+            .formParam("slug", "meet-override-" + typeId)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "GOOGLE_MEET")
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            .formParam("writeCalendar", credId + ":default@example.com")
+            .when()
+            .post("/me/meeting-types/" + typeId + "/edit")
+            .then()
+            .statusCode(200)
+            .body(containsString("create Google Meet links"));
 
         MeetingType t = reload(typeId);
         org.junit.jupiter.api.Assertions.assertEquals(
                 "override@example.com",
                 t.googleCalendarId,
-                "the write-calendar move must roll back with the save that was refused");
+                "the write-calendar move must roll back with the save that was refused"
+        );
         org.junit.jupiter.api.Assertions.assertEquals(MeetingType.LocationType.PHONE, t.locationType);
     }
 
-    /** Reload from the DB, bypassing the test thread's first-level cache (the POST runs its own tx). */
+    /**
+     * Reload from the DB, bypassing the test thread's first-level cache (the POST runs its own tx).
+     */
     @Transactional
     MeetingType reload(Long typeId) {
         em.clear();
         return MeetingType.findById(typeId);
     }
 
-    /** The single credential {@link #seed} creates for owner 1. */
+    /**
+     * The single credential {@link #seed} creates for owner 1.
+     */
     private static Long ownerCredentialId() {
         return GoogleCredential.<GoogleCredential>find("ownerId", 1L).firstResult().id;
     }
@@ -111,50 +116,55 @@ class AdminMeetGatingOverrideTest {
         var typeId = seed(true, false);
         // Owner-scoped routes resolve locale from OwnerSettings, not the calit_lang cookie
         // (LocaleResolutionFilter) -- set it the same way AdminI18nTest does.
-        given().cookie("quarkus-credential", FormAuth.login())
-                .formParam("ownerName", "Admin")
-                .formParam("ownerEmail", "admin@example.com")
-                .formParam("timezone", "UTC")
-                .formParam("locale", "de")
-                .when()
-                .post("/me/settings")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .formParam("ownerName", "Admin")
+            .formParam("ownerEmail", "admin@example.com")
+            .formParam("timezone", "UTC")
+            .formParam("locale", "de")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(200);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Meet override")
-                .formParam("slug", "meet-override-" + typeId)
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "GOOGLE_MEET")
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                .when()
-                .post("/me/meeting-types/" + typeId + "/edit")
-                .then()
-                .statusCode(200)
-                .body(containsString("keine Google-Meet-Links erstellen"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Meet override")
+            .formParam("slug", "meet-override-" + typeId)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "GOOGLE_MEET")
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            .when()
+            .post("/me/meeting-types/" + typeId + "/edit")
+            .then()
+            .statusCode(200)
+            .body(containsString("keine Google-Meet-Links erstellen"));
     }
 
     private io.restassured.response.ValidatableResponse editWithLocation(Long typeId, String locationType) {
-        return given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Meet override")
-                .formParam("slug", "meet-override-" + typeId)
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", locationType)
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                .when()
-                .post("/me/meeting-types/" + typeId + "/edit")
-                .then();
+        return given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Meet override")
+            .formParam("slug", "meet-override-" + typeId)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", locationType)
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            .when()
+            .post("/me/meeting-types/" + typeId + "/edit")
+            .then();
     }
 
-    /** Owner 1 gets a write target + a second calendar, and a type overriding onto the second. */
+    /**
+     * Owner 1 gets a write target + a second calendar, and a type overriding onto the second.
+     */
     @Transactional
     Long seed(boolean defaultSupportsMeet, boolean overrideSupportsMeet) {
         GoogleCredential c = new GoogleCredential();

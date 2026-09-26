@@ -7,7 +7,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -29,10 +28,8 @@ import site.asm0dey.calit.google.CreatedEvent;
 
 @QuarkusTest
 class InviteeEditDetailsTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @Inject
     BookingService bookingService;
 
@@ -67,17 +64,17 @@ class InviteeEditDetailsTest {
         }
         var slot = bookingService.availableSlots(t, now(), now().plusDays(14)).getFirst();
         return bookingService.book(
-                        1L,
-                        "invitee-edit",
-                        slot.start().toInstant(),
-                        "Pat",
-                        "pat@example.com",
-                        java.util.Map.of(),
-                        "",
-                        "",
-                        "en",
-                        List.of())
-                .manageToken;
+                1L,
+                "invitee-edit",
+                slot.start().toInstant(),
+                "Pat",
+                "pat@example.com",
+                java.util.Map.of(),
+                "",
+                "",
+                "en",
+                List.of()
+        ).manageToken;
     }
 
     @Test
@@ -85,15 +82,16 @@ class InviteeEditDetailsTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-ie", "https://meet.google.com/ie", "h", null));
+            .thenReturn(new CreatedEvent("evt-ie", "https://meet.google.com/ie", "h", null));
         var token = seed();
-        given().when()
-                .get("/booking/" + token + "/manage")
-                .then()
-                .statusCode(200)
-                .body(containsString("/booking/" + token + "/edit-details"))
-                .body(containsString("name=\"title\""))
-                .body(containsString("name=\"description\""));
+        given()
+            .when()
+            .get("/booking/" + token + "/manage")
+            .then()
+            .statusCode(200)
+            .body(containsString("/booking/" + token + "/edit-details"))
+            .body(containsString("name=\"title\""))
+            .body(containsString("name=\"description\""));
     }
 
     @Test
@@ -101,18 +99,21 @@ class InviteeEditDetailsTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var token = seed();
 
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("title", "Roadmap sync")
-                .formParam("description", "Q3 planning")
-                .formParam("guests", "ana@example.com")
-                .when()
-                .post("/booking/" + token + "/edit-details")
-                .then()
-                .statusCode(200)
-                .body(containsString("value=\"Roadmap sync\""))
-                .body(containsString("/booking/" + token + "/edit-details"));
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("title", "Roadmap sync")
+            .formParam("description", "Q3 planning")
+            .formParam("guests", "ana@example.com")
+            .when()
+            .post("/booking/" + token + "/edit-details")
+            .then()
+            .statusCode(200)
+            .body(containsString("value=\"Roadmap sync\""))
+            .body(containsString("/booking/" + token + "/edit-details"));
 
-        Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findByManageToken(token));
+        Booking after = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findByManageToken(token));
         assertEquals("Roadmap sync", after.title);
         assertEquals("Q3 planning", after.description);
     }
@@ -123,37 +124,41 @@ class InviteeEditDetailsTest {
         var token = seed();
         bookingService.updateDetails(token, "Roadmap sync", null, List.of(), false);
 
-        given().when()
-                .get("/booking/" + token + "/cancel")
-                .then()
-                .statusCode(200)
-                .body(containsString("Roadmap sync")); // effectiveTitle, not the type name
+        given()
+            .when()
+            .get("/booking/" + token + "/cancel")
+            .then()
+            .statusCode(200)
+            // effectiveTitle, not the type name
+            .body(containsString("Roadmap sync"));
     }
 
     // The app validates title/description by CHARACTER count (<= 2000), but Quarkus limits each form
     // attribute by BYTE size (quarkus.http.limits.max-form-attribute-size). With the 2048-byte default,
     // a multibyte description within the 2000-char cap exceeds 2048 bytes and was rejected with an opaque
     // HTTP 413 before ever reaching the 422 validator. The limit is raised so app validation is authoritative.
-
     @Test
     void multibyteDescriptionWithinCharLimitIsAcceptedNot413() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var token = seed();
         // 2000 Hebrew chars = 4000 UTF-8 bytes: within the 2000-char app cap, but ~2x the old 2048-byte limit.
         var desc = "א".repeat(2000);
-
         // Force UTF-8 form encoding so the multibyte bytes on the wire match a real browser POST from our
         // UTF-8 pages (RestAssured's default content charset would mangle Hebrew to '?').
-        given().config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("title", "Kickoff")
-                .formParam("description", desc)
-                .when()
-                .post("/booking/" + token + "/edit-details")
-                .then()
-                .statusCode(200); // reaches the app + passes validation, not a raw 413
+        given()
+            .config(RestAssured.config().encoderConfig(encoderConfig().defaultContentCharset("UTF-8")))
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("title", "Kickoff")
+            .formParam("description", desc)
+            .when()
+            .post("/booking/" + token + "/edit-details")
+            .then()
+            // reaches the app + passes validation, not a raw 413
+            .statusCode(200);
 
-        Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findByManageToken(token));
+        Booking after = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findByManageToken(token));
         assertEquals(desc, after.description);
     }
 
@@ -165,11 +170,12 @@ class InviteeEditDetailsTest {
         // app's clean 422 ("Description is too long."), not the transport-layer 413.
         var desc = "א".repeat(2001);
 
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("description", desc)
-                .when()
-                .post("/booking/" + token + "/edit-details")
-                .then()
-                .statusCode(422);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("description", desc)
+            .when()
+            .post("/booking/" + token + "/edit-details")
+            .then()
+            .statusCode(422);
     }
 }

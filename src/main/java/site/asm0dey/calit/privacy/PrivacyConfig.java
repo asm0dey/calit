@@ -12,7 +12,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  */
 @ApplicationScoped
 public class PrivacyConfig {
-
     /**
      * Retention windows longer than this are clamped — here, in {@code RetentionScheduler}'s SQL,
      * and in {@code AdminResource.parseRetentionDays}. An unclamped huge value (however it got into
@@ -22,20 +21,21 @@ public class PrivacyConfig {
      * ~100 years is effectively unbounded for any real deployment.
      */
     public static final int MAX_RETENTION_DAYS = 36500;
-
     final boolean inviteeErasure;
-
     final Optional<Integer> retentionDays;
 
     @Inject
     public PrivacyConfig(
             @ConfigProperty(name = "calit.privacy.invitee-erasure", defaultValue = "true") boolean inviteeErasure,
-            @ConfigProperty(name = "calit.retention.booking-days") Optional<Integer> retentionDays) {
+            @ConfigProperty(name = "calit.retention.booking-days") Optional<Integer> retentionDays
+    ) {
         this.inviteeErasure = inviteeErasure;
         this.retentionDays = retentionDays;
     }
 
-    /** When false, the manage page shows the operator's contact address instead of the erase button. */
+    /**
+     * When false, the manage page shows the operator's contact address instead of the erase button.
+     */
     public boolean inviteeErasureEnabled() {
         return inviteeErasure;
     }
@@ -45,6 +45,8 @@ public class PrivacyConfig {
      * to {@link #MAX_RETENTION_DAYS}.
      */
     public Optional<Integer> bookingRetentionDays() {
-        return retentionDays.filter(d -> d > 0).map(d -> Math.min(d, MAX_RETENTION_DAYS));
+        return retentionDays
+            .filter(d -> d > 0)
+            .map(d -> Math.min(d, MAX_RETENTION_DAYS));
     }
 }

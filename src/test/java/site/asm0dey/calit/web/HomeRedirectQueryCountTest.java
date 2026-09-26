@@ -2,7 +2,6 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
@@ -29,7 +28,6 @@ import site.asm0dey.calit.domain.OwnerSettings;
  */
 @QuarkusTest
 class HomeRedirectQueryCountTest {
-
     @Inject
     EntityManagerFactory emf;
 
@@ -54,8 +52,8 @@ class HomeRedirectQueryCountTest {
         assertEquals(
                 1,
                 statistics.getPrepareStatementCount(),
-                "the redirect preference must resolve in one statement, not an app_user find plus an"
-                        + " owner_settings find");
+                "the redirect preference must resolve in one statement, not an app_user find plus an" + " owner_settings find"
+        );
     }
 
     @Test

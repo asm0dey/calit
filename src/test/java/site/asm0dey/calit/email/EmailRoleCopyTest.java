@@ -2,7 +2,6 @@ package site.asm0dey.calit.email;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.qute.Location;
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
@@ -14,47 +13,41 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class EmailRoleCopyTest {
-
     @Inject
     @Location("email/requested.html")
     Template requested;
-
     @Inject
     @Location("email/confirmation.html")
     Template confirmation;
-
     @Inject
     @Location("email/cancellation.html")
     Template cancellation;
 
     private static TemplateInstance base(Template t, String role) {
-        return t.instance()
-                .setLocale(Locale.ENGLISH)
-                .data("lang", "en")
-                .data("recipientRole", role)
-                .data("recipientRoleDisplay", role)
-                .data("greetingName", "invitee".equals(role) ? "Sam Invitee" : "Olivia Owner")
-                .data("inviteeName", "Sam Invitee")
-                .data("inviteeEmail", "sam@example.com")
-                .data("ownerName", "Olivia Owner")
-                .data("byOwner", false)
-                .data("hostSelfCancel", false)
-                .data("meetingTypeName", "Intro call")
-                .data("startTime", "Wed, 1 Jul 2026, 09:00")
-                .data("oldStartTime", "Tue, 30 Jun 2026, 09:00")
-                .data("durationMinutes", 30)
-                .data("location", null)
-                .data("isMeetLink", false)
-                .data("manageUrl", "https://calit.example/booking/tok/manage")
-                .data("ownerManageUrl", "https://calit.example/me/bookings/42/manage")
-                .data("cancelUrl", "https://calit.example/booking/tok/cancel")
-                .data(
-                        "approveUrl",
-                        "invitee".equals(role) ? null : "https://calit.example/me/bookings/42/approve?t=abc")
-                .data(
-                        "declineUrl",
-                        "invitee".equals(role) ? null : "https://calit.example/me/bookings/42/decline?t=abc")
-                .data("answers", List.of());
+        return t
+            .instance()
+            .setLocale(Locale.ENGLISH)
+            .data("lang", "en")
+            .data("recipientRole", role)
+            .data("recipientRoleDisplay", role)
+            .data("greetingName", "invitee".equals(role) ? "Sam Invitee" : "Olivia Owner")
+            .data("inviteeName", "Sam Invitee")
+            .data("inviteeEmail", "sam@example.com")
+            .data("ownerName", "Olivia Owner")
+            .data("byOwner", false)
+            .data("hostSelfCancel", false)
+            .data("meetingTypeName", "Intro call")
+            .data("startTime", "Wed, 1 Jul 2026, 09:00")
+            .data("oldStartTime", "Tue, 30 Jun 2026, 09:00")
+            .data("durationMinutes", 30)
+            .data("location", null)
+            .data("isMeetLink", false)
+            .data("manageUrl", "https://calit.example/booking/tok/manage")
+            .data("ownerManageUrl", "https://calit.example/me/bookings/42/manage")
+            .data("cancelUrl", "https://calit.example/booking/tok/cancel")
+            .data("approveUrl", "invitee".equals(role) ? null : "https://calit.example/me/bookings/42/approve?t=abc")
+            .data("declineUrl", "invitee".equals(role) ? null : "https://calit.example/me/bookings/42/decline?t=abc")
+            .data("answers", List.of());
     }
 
     @Test
@@ -90,7 +83,8 @@ class EmailRoleCopyTest {
         assertTrue(body.contains("Invitee:"), "owner copy carries the invitee label");
         assertTrue(
                 body.contains("Sam Invitee (<a href=\"mailto:sam@example.com\">sam@example.com</a>)"),
-                "owner copy shows the address, mailto-linked, beside the name");
+                "owner copy shows the address, mailto-linked, beside the name"
+        );
     }
 
     @Test
@@ -105,32 +99,30 @@ class EmailRoleCopyTest {
         assertTrue(body.contains("Invitee:"), "owner copy carries the invitee label");
         assertTrue(
                 body.contains("Sam Invitee (<a href=\"mailto:sam@example.com\">sam@example.com</a>)"),
-                "owner copy shows the address, mailto-linked, beside the name");
+                "owner copy shows the address, mailto-linked, beside the name"
+        );
     }
 
     @Test
     void hostCancelOwnerCopySaysTheHostCancelledAndNamesTheInvitee() {
-        String body = base(cancellation, "owner")
-                .data("byOwner", true)
-                .data("hostSelfCancel", true)
-                .render();
+        String body = base(cancellation, "owner").data("byOwner", true).data("hostSelfCancel", true).render();
         assertTrue(
                 body.contains("You cancelled your meeting with Sam Invitee."),
-                "host who cancelled reads an active line naming the invitee");
+                "host who cancelled reads an active line naming the invitee"
+        );
         assertFalse(
                 body.contains("Your booking has been cancelled."),
-                "host copy must not reuse the invitee's passive string");
+                "host copy must not reuse the invitee's passive string"
+        );
     }
 
     @Test
     void groupHostCancelNonActorOwnerCopyStaysPassive() {
-        String body = base(cancellation, "owner")
-                .data("byOwner", true)
-                .data("hostSelfCancel", false)
-                .render();
+        String body = base(cancellation, "owner").data("byOwner", true).data("hostSelfCancel", false).render();
         assertTrue(
                 body.contains("Your booking has been cancelled."),
-                "non-acting co-host reads the passive fallback, unchanged from before this fix");
+                "non-acting co-host reads the passive fallback, unchanged from before this fix"
+        );
         assertFalse(body.contains("You cancelled"), "non-acting co-host copy must not claim the recipient cancelled");
     }
 

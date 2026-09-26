@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -20,7 +19,6 @@ import site.asm0dey.calit.google.CalendarUnavailableException;
 
 @QuarkusTest
 class PublicPageUnavailableTest {
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -61,10 +59,11 @@ class PublicPageUnavailableTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenThrow(new CalendarUnavailableException("down"));
 
-        given().when()
-                .get("/admin/intro-unavail")
-                .then()
-                .statusCode(200)
-                .body(containsString("Scheduling temporarily unavailable"));
+        given()
+            .when()
+            .get("/admin/intro-unavail")
+            .then()
+            .statusCode(200)
+            .body(containsString("Scheduling temporarily unavailable"));
     }
 }

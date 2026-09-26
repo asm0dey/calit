@@ -3,7 +3,6 @@ package site.asm0dey.calit.booking;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -24,10 +23,8 @@ import site.asm0dey.calit.google.CreatedEvent;
 
 @QuarkusTest
 class UpdateDetailsTest {
-
     @Inject
     BookingService bookingService;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -59,11 +56,19 @@ class UpdateDetailsTest {
             r.meetingTypeId = null;
             r.persist();
         }
-        var slot = bookingService
-                .availableSlots(t, LocalDate.now(), LocalDate.now().plusDays(14))
-                .getFirst();
+        var slot = bookingService.availableSlots(t, LocalDate.now(), LocalDate.now().plusDays(14)).getFirst();
         return bookingService.book(
-                1L, slug, slot.start().toInstant(), "Pat", "pat@example.com", Map.of(), "", "", "en", List.of());
+                1L,
+                slug,
+                slot.start().toInstant(),
+                "Pat",
+                "pat@example.com",
+                Map.of(),
+                "",
+                "",
+                "en",
+                List.of()
+        );
     }
 
     @Test
@@ -71,20 +76,30 @@ class UpdateDetailsTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-ud", null, "h", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-ud", null, "h", null));
         Booking b = seedConfirmed("upd-1");
         int beforeSeq = b.icsSequence;
 
         bookingService.updateDetails(b.manageToken, "Roadmap sync", "Q3 planning", List.of(), true);
 
-        Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findById(b.id));
+        Booking after = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findById(b.id));
         assertEquals("Roadmap sync", after.title);
         assertEquals("Q3 planning", after.description);
         assertTrue(after.icsSequence > beforeSeq, "sequence bumped");
         verify(calendarPort, times(1))
-                .updateEventDetails(
-                        anyLong(), any(), eq("evt-ud"), eq("Roadmap sync with Pat"), eq("Q3 planning"), any());
+            .updateEventDetails(anyLong(), any(), eq("evt-ud"), eq("Roadmap sync with Pat"), eq("Q3 planning"), any());
     }
 
     @Test
@@ -94,7 +109,9 @@ class UpdateDetailsTest {
 
         bookingService.updateDetails(b.manageToken, null, null, List.of("ana@example.com"), false);
 
-        List<BookingGuest> guests = QuarkusTransaction.requiringNew().call(() -> BookingGuest.activeForBooking(b.id));
+        List<BookingGuest> guests = QuarkusTransaction
+            .requiringNew()
+            .call(() -> BookingGuest.activeForBooking(b.id));
         assertEquals(1, guests.size());
         assertEquals("ana@example.com", guests.getFirst().email);
     }
@@ -107,7 +124,9 @@ class UpdateDetailsTest {
 
         bookingService.updateDetails(b.manageToken, "   ", "  ", List.of(), true);
 
-        Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findById(b.id));
+        Booking after = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findById(b.id));
         assertNull(after.title, "blank title → null → falls back to type name");
         assertNull(after.description);
     }
@@ -117,16 +136,27 @@ class UpdateDetailsTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-noop", null, "h", null));
-        Booking b = seedConfirmed("upd-4"); // no override, no guests
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-noop", null, "h", null));
+        // no override, no guests
+        Booking b = seedConfirmed("upd-4");
         int beforeSeq = b.icsSequence;
         clearInvocations(calendarPort);
-
         // Same as current state: null title/description, empty guest set → true no-op.
         bookingService.updateDetails(b.manageToken, null, null, List.of(), true);
 
-        Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findById(b.id));
+        Booking after = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findById(b.id));
         assertEquals(beforeSeq, after.icsSequence, "no-op must not bump the sequence");
         verify(calendarPort, never()).updateEventDetails(anyLong(), any(), any(), any(), any(), any());
     }
@@ -135,8 +165,12 @@ class UpdateDetailsTest {
     void updateDetailsRejectsOverlongTitle() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         Booking b = seedConfirmed("upd-5");
-        assertThrows(
-                BookingValidationException.class,
-                () -> bookingService.updateDetails(b.manageToken, "x".repeat(201), null, List.of(), true));
+        assertThrows(BookingValidationException.class, () -> bookingService.updateDetails(
+                b.manageToken,
+                "x".repeat(201),
+                null,
+                List.of(),
+                true
+        ));
     }
 }

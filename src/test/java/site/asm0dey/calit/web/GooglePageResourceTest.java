@@ -3,7 +3,6 @@ package site.asm0dey.calit.web;
 import static io.restassured.RestAssured.given;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import java.util.List;
@@ -14,60 +13,64 @@ import site.asm0dey.calit.google.GoogleCredential;
 
 @QuarkusTest
 class GooglePageResourceTest {
-
     @io.quarkus.test.InjectMock
     CalendarListPort calendarListPort;
 
     @Test
     void disconnectBlockedWhenItHoldsWriteTargetAndOtherAccountsRemain() {
         var credId = seedTwoAccountsWriteOnFirst();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .post("/me/google/accounts/" + credId + "/delete")
-                .then()
-                .statusCode(409);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .post("/me/google/accounts/" + credId + "/delete")
+            .then()
+            .statusCode(409);
     }
 
     @Test
     void disconnectAllowedForLastAccount() {
         var credId = seedSingleAccount();
-        given().cookie("quarkus-credential", FormAuth.login())
-                .redirects()
-                .follow(false)
-                .when()
-                .post("/me/google/accounts/" + credId + "/delete")
-                .then()
-                .statusCode(303);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .when()
+            .post("/me/google/accounts/" + credId + "/delete")
+            .then()
+            .statusCode(303);
     }
 
     @Test
     void getRendersConnectButtonWhenNoAccounts() {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/google")
-                .then()
-                .statusCode(200)
-                .body(org.hamcrest.Matchers.containsString("Connect a Google account"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/google")
+            .then()
+            .statusCode(200)
+            .body(org.hamcrest.Matchers.containsString("Connect a Google account"));
     }
 
     @Test
     void savePersistsSelectedReadAndWriteTarget() {
         var credId = seedSingleAccount();
         when(calendarListPort.listCalendars(any()))
-                .thenReturn(List.of(
-                        new CalendarListPort.RemoteCalendar("c1", "C1"),
-                        new CalendarListPort.RemoteCalendar("c2", "C2")));
-        given().cookie("quarkus-credential", FormAuth.login())
-                .redirects()
-                .follow(false)
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("read", credId + ":c1")
-                .formParam("read", credId + ":c2")
-                .formParam("writeTarget", credId + ":c1")
-                .when()
-                .post("/me/google/calendars")
-                .then()
-                .statusCode(303);
+            .thenReturn(List.of(
+                    new CalendarListPort.RemoteCalendar("c1", "C1"),
+                    new CalendarListPort.RemoteCalendar("c2", "C2")
+            ));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("read", credId + ":c1")
+            .formParam("read", credId + ":c2")
+            .formParam("writeTarget", credId + ":c1")
+            .when()
+            .post("/me/google/calendars")
+            .then()
+            .statusCode(303);
 
         assertWriteTarget(credId, "c1");
         assertReadForBusy(credId, "c1", true);
@@ -78,17 +81,19 @@ class GooglePageResourceTest {
     void saveWithoutWriteTargetReturns400() {
         var credId = seedSingleAccount();
         when(calendarListPort.listCalendars(any()))
-                .thenReturn(List.of(
-                        new CalendarListPort.RemoteCalendar("c1", "C1"),
-                        new CalendarListPort.RemoteCalendar("c2", "C2")));
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("read", credId + ":c1")
-                .formParam("read", credId + ":c2")
-                .when()
-                .post("/me/google/calendars")
-                .then()
-                .statusCode(400);
+            .thenReturn(List.of(
+                    new CalendarListPort.RemoteCalendar("c1", "C1"),
+                    new CalendarListPort.RemoteCalendar("c2", "C2")
+            ));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("read", credId + ":c1")
+            .formParam("read", credId + ":c2")
+            .when()
+            .post("/me/google/calendars")
+            .then()
+            .statusCode(400);
     }
 
     @Test
@@ -97,19 +102,18 @@ class GooglePageResourceTest {
         var xId = ids[0];
         var yId = ids[1];
         // Only X is ever listed (Y is needsReconnect, so production code never lists it).
-        when(calendarListPort.listCalendars(any()))
-                .thenReturn(List.of(new CalendarListPort.RemoteCalendar("x1", "X1")));
-        given().cookie("quarkus-credential", FormAuth.login())
-                .redirects()
-                .follow(false)
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("read", xId + ":x1")
-                .formParam("writeTarget", xId + ":x1")
-                .when()
-                .post("/me/google/calendars")
-                .then()
-                .statusCode(303);
-
+        when(calendarListPort.listCalendars(any())).thenReturn(List.of(new CalendarListPort.RemoteCalendar("x1", "X1")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("read", xId + ":x1")
+            .formParam("writeTarget", xId + ":x1")
+            .when()
+            .post("/me/google/calendars")
+            .then()
+            .statusCode(303);
         // Regression: flagged account Y's saved read calendar must still exist.
         assertCalendarExists(yId, "y1");
         // And X's chosen write target persisted.
@@ -122,19 +126,23 @@ class GooglePageResourceTest {
         var xId = ids[0];
         // The live listing blows up the way a 403 SERVICE_DISABLED does in production.
         when(calendarListPort.listCalendars(any()))
-                .thenThrow(new java.io.UncheckedIOException(
-                        "calendarList.list failed: HTTP 403 — Google Calendar API has not been used in project 1",
-                        new java.io.IOException("403")));
+            .thenThrow(
+                    new java.io.UncheckedIOException(
+                            "calendarList.list failed: HTTP 403 — Google Calendar API has not been used in project 1",
+                            new java.io.IOException("403")
+                    )
+            );
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/google")
-                .then()
-                .statusCode(200)
-                // The error banner is rendered...
-                .body(org.hamcrest.Matchers.containsString("reach Google for one or more accounts"))
-                // ...and the saved calendar for the healthy account is still listed, not wiped.
-                .body(org.hamcrest.Matchers.containsString("X1"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/google")
+            .then()
+            .statusCode(200)
+            // The error banner is rendered...
+            .body(org.hamcrest.Matchers.containsString("reach Google for one or more accounts"))
+            // ...and the saved calendar for the healthy account is still listed, not wiped.
+            .body(org.hamcrest.Matchers.containsString("X1"));
 
         assertCalendarExists(xId, "x1");
     }
@@ -146,18 +154,22 @@ class GooglePageResourceTest {
         var yId = ids[1];
         // Google dies between page render and save: every listing attempt throws.
         when(calendarListPort.listCalendars(any()))
-                .thenThrow(new java.io.UncheckedIOException(
-                        "calendarList.list failed: HTTP 403", new java.io.IOException("403")));
-
+            .thenThrow(
+                    new java.io.UncheckedIOException(
+                            "calendarList.list failed: HTTP 403",
+                            new java.io.IOException("403")
+                    )
+            );
         // The form carries nothing usable, so the write target must be preserved from the DB.
-        given().cookie("quarkus-credential", FormAuth.login())
-                .redirects()
-                .follow(false)
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/google/calendars")
-                .then()
-                .statusCode(303);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/google/calendars")
+            .then()
+            .statusCode(303);
 
         assertWriteTarget(xId, "x1");
         assertCalendarExists(yId, "y1");
@@ -166,7 +178,10 @@ class GooglePageResourceTest {
     @Transactional
     void assertWriteTarget(long credId, String googleCalId) {
         long n = GoogleCalendar.count(
-                "googleCredentialId = ?1 and googleCalendarId = ?2 and writeTarget = true", credId, googleCalId);
+                "googleCredentialId = ?1 and googleCalendarId = ?2 and writeTarget = true",
+                credId,
+                googleCalId
+        );
         org.junit.jupiter.api.Assertions.assertEquals(1, n, "expected " + googleCalId + " to be the write target");
     }
 
@@ -176,22 +191,28 @@ class GooglePageResourceTest {
                 "googleCredentialId = ?1 and googleCalendarId = ?2 and readForBusy = ?3",
                 credId,
                 googleCalId,
-                expected);
-        org.junit.jupiter.api.Assertions.assertEquals(1, n, "expected readForBusy=" + expected + " for " + googleCalId);
+                expected
+        );
+        org.junit.jupiter.api.Assertions.assertEquals(1, n, "expected readForBusy="
+                + expected
+                + " for "
+                + googleCalId);
     }
 
     @Transactional
     void assertCalendarExists(long credId, String googleCalId) {
         long n = GoogleCalendar.count("googleCredentialId = ?1 and googleCalendarId = ?2", credId, googleCalId);
         org.junit.jupiter.api.Assertions.assertEquals(
-                1, n, "expected calendar " + googleCalId + " to still exist for credential " + credId);
+                1,
+                n,
+                "expected calendar " + googleCalId + " to still exist for credential " + credId
+        );
     }
 
     @Transactional
     long[] seedHealthyXAndFlaggedY() {
-        long ownerId = site.asm0dey.calit.user.AppUser.<site.asm0dey.calit.user.AppUser>find("username", "admin")
-                .firstResult()
-                .id;
+        long ownerId =
+                site.asm0dey.calit.user.AppUser.<site.asm0dey.calit.user.AppUser>find("username", "admin").firstResult().id;
         GoogleCredential x = cred(ownerId, "sub-X");
         x.persist();
         GoogleCredential y = cred(ownerId, "sub-Y");
@@ -220,9 +241,8 @@ class GooglePageResourceTest {
 
     @Transactional
     long seedTwoAccountsWriteOnFirst() {
-        long ownerId = site.asm0dey.calit.user.AppUser.<site.asm0dey.calit.user.AppUser>find("username", "admin")
-                .firstResult()
-                .id;
+        long ownerId =
+                site.asm0dey.calit.user.AppUser.<site.asm0dey.calit.user.AppUser>find("username", "admin").firstResult().id;
         GoogleCredential a = cred(ownerId, "sub-A");
         a.persist();
         GoogleCredential b = cred(ownerId, "sub-B");
@@ -240,9 +260,8 @@ class GooglePageResourceTest {
 
     @Transactional
     long seedSingleAccount() {
-        long ownerId = site.asm0dey.calit.user.AppUser.<site.asm0dey.calit.user.AppUser>find("username", "admin")
-                .firstResult()
-                .id;
+        long ownerId =
+                site.asm0dey.calit.user.AppUser.<site.asm0dey.calit.user.AppUser>find("username", "admin").firstResult().id;
         GoogleCredential a = cred(ownerId, "sub-A");
         a.persist();
         return a.id;

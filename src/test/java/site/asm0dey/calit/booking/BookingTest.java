@@ -1,7 +1,6 @@
 package site.asm0dey.calit.booking;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import java.time.Instant;
@@ -12,7 +11,6 @@ import site.asm0dey.calit.domain.MeetingType;
 
 @QuarkusTest
 class BookingTest {
-
     // meeting_type_id is a real FK; create a MeetingType inside each @TestTransaction
     // and use its generated id (a literal id would violate the FK constraint — same pattern as AvailabilityRuleTest).
     private Long createMeetingType(String slug) {
@@ -61,25 +59,33 @@ class BookingTest {
         var base = Instant.parse("2026-06-08T07:00:00Z");
         // Non-overlapping held slots to satisfy the booking_no_overlap_held DB constraint
         // while still both falling within the 06:00-08:00 query window.
-        persistBooking(base, base.plusSeconds(900), BookingStatus.CONFIRMED); // 07:00-07:15 held
-        persistBooking(base.plusSeconds(900), base.plusSeconds(1800), BookingStatus.PENDING); // 07:15-07:30 held
-        persistBooking(
-                base.plusSeconds(7200), base.plusSeconds(9000), BookingStatus.CONFIRMED); // 09:00-09:30 (out of window)
-        persistBooking(
-                base.plusSeconds(3600),
-                base.plusSeconds(4500),
-                BookingStatus.CANCELLED); // 08:00-08:15 cancelled, ignored
-        persistBooking(
-                base.plusSeconds(4500),
-                base.plusSeconds(5400),
-                BookingStatus.DECLINED); // 08:15-08:30 declined, ignored
-
+        // 07:00-07:15 held
+        persistBooking(base, base.plusSeconds(900), BookingStatus.CONFIRMED);
+        // 07:15-07:30 held
+        persistBooking(base.plusSeconds(900), base.plusSeconds(1800), BookingStatus.PENDING);
+        persistBooking(base
+            // 09:00-09:30 (out of window)
+            .plusSeconds(7200), base
+            // 09:00-09:30 (out of window)
+            .plusSeconds(9000), BookingStatus.CONFIRMED);
+        persistBooking(base
+            // 08:00-08:15 cancelled, ignored
+            .plusSeconds(3600), base
+            // 08:00-08:15 cancelled, ignored
+            .plusSeconds(4500), BookingStatus.CANCELLED);
+        persistBooking(base
+            // 08:15-08:30 declined, ignored
+            .plusSeconds(4500), base
+            // 08:15-08:30 declined, ignored
+            .plusSeconds(5400), BookingStatus.DECLINED);
         // Window 06:00-08:00 catches the CONFIRMED + PENDING holds, not CANCELLED/DECLINED.
         List<Booking> hits = Booking.heldOverlapping(1L, base.minusSeconds(3600), base.plusSeconds(3600));
 
         assertEquals(2, hits.size());
-        assertTrue(
-                hits.stream().allMatch(x -> x.status == BookingStatus.PENDING || x.status == BookingStatus.CONFIRMED));
+        assertTrue(hits
+            .stream()
+            .allMatch(x -> x.status == BookingStatus.PENDING || x.status == BookingStatus.CONFIRMED)
+        );
     }
 
     @Test
@@ -89,7 +95,8 @@ class BookingTest {
                 Instant.parse("2026-06-08T07:00:00Z"),
                 Instant.parse("2026-06-08T07:30:00Z"),
                 BookingStatus.PENDING,
-                "tok-abc");
+                "tok-abc"
+        );
 
         Booking loaded = Booking.findByManageToken("tok-abc");
 

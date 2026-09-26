@@ -9,8 +9,8 @@ import java.util.List;
  * Pure interval algebra for busy time. No Google or CDI dependencies — unit-tested directly.
  */
 public final class BusyIntervals {
-
-    private BusyIntervals() {}
+    private BusyIntervals() {
+    }
 
     /**
      * Sort the given intervals by start, then collapse any that overlap or merely touch

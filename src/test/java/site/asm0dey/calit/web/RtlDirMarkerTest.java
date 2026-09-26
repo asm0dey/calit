@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
@@ -22,7 +21,6 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class RtlDirMarkerTest {
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -67,13 +65,14 @@ class RtlDirMarkerTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seed();
-        given().cookie("calit_lang", "he")
-                .when()
-                .get("/rtltest/rtl-intro")
-                .then()
-                .statusCode(200)
-                .body(containsString("lang=\"he\""))
-                .body(containsString("dir=\"rtl\""));
+        given()
+            .cookie("calit_lang", "he")
+            .when()
+            .get("/rtltest/rtl-intro")
+            .then()
+            .statusCode(200)
+            .body(containsString("lang=\"he\""))
+            .body(containsString("dir=\"rtl\""));
     }
 
     @Test
@@ -81,12 +80,13 @@ class RtlDirMarkerTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seed();
-        given().cookie("calit_lang", "en")
-                .when()
-                .get("/rtltest/rtl-intro")
-                .then()
-                .statusCode(200)
-                .body(containsString("lang=\"en\""))
-                .body(containsString("dir=\"ltr\""));
+        given()
+            .cookie("calit_lang", "en")
+            .when()
+            .get("/rtltest/rtl-intro")
+            .then()
+            .statusCode(200)
+            .body(containsString("lang=\"en\""))
+            .body(containsString("dir=\"ltr\""));
     }
 }

@@ -18,15 +18,17 @@ import java.util.HexFormat;
  */
 @ApplicationScoped
 public class LoginTicketService {
-
-    /** A ticket is only valid this long after issue — just enough to bridge the auto-submit form. */
+    /**
+     * A ticket is only valid this long after issue — just enough to bridge the auto-submit form.
+     */
     public static final Duration TTL = Duration.ofMinutes(2);
-
     // Non-static: keep SecureRandom out of the native image heap (build-time seed is rejected).
     private final SecureRandom RNG = new SecureRandom();
     private static final Base64.Encoder B64URL = Base64.getUrlEncoder().withoutPadding();
 
-    /** Mint a ticket for {@code userId}, persist its hash, and return the raw token (shown once). */
+    /**
+     * Mint a ticket for {@code userId}, persist its hash, and return the raw token (shown once).
+     */
     @Transactional
     public String issue(Long userId, Instant now) {
         var raw = new byte[32];
@@ -56,7 +58,8 @@ public class LoginTicketService {
         }
         Long userId = t.userId;
         Instant expiry = t.expiresAt;
-        t.delete(); // single-use: gone whether or not it was still valid
+        // single-use: gone whether or not it was still valid
+        t.delete();
         if (expiry.isBefore(now)) {
             return null;
         }

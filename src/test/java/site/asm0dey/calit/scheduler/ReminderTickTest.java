@@ -2,7 +2,6 @@ package site.asm0dey.calit.scheduler;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -16,7 +15,6 @@ import site.asm0dey.calit.domain.MeetingType;
 
 @QuarkusTest
 class ReminderTickTest {
-
     @Inject
     ReminderScheduler scheduler;
 
@@ -25,15 +23,20 @@ class ReminderTickTest {
         // reminder.booking_id REFERENCES booking(id): seed a real booking to attach reminders to
         // (Plan 6 deviation -- the plan used bookingId=1L which has no booking row -> FK violation).
         var bookingId = seedBooking();
-        var dueId = persistReminder(bookingId, Instant.now().minus(1, ChronoUnit.MINUTES), null); // due, unsent
-        var futureId = persistReminder(bookingId, Instant.now().plus(1, ChronoUnit.HOURS), null); // not due yet
+        // due, unsent
+        var dueId = persistReminder(bookingId, Instant.now().minus(1, ChronoUnit.MINUTES), null);
+        // not due yet
+        var futureId = persistReminder(bookingId, Instant.now().plus(1, ChronoUnit.HOURS), null);
         var sentId = persistReminder(
                 bookingId,
                 Instant.now().minus(1, ChronoUnit.HOURS),
-                Instant.now().minus(30, ChronoUnit.MINUTES)); // already sent
+                Instant
+                    .now()
+                    // already sent
+                    .minus(30, ChronoUnit.MINUTES)
+        );
 
         scheduler.dispatchDueReminders();
-
         // Only the due+unsent reminder is now marked sent.
         assertNotNull(reloadSentAt(dueId), "due reminder must be marked sent");
         assertNull(reloadSentAt(futureId), "not-yet-due reminder must stay unsent");
@@ -77,6 +80,8 @@ class ReminderTickTest {
     }
 
     private Instant reloadSentAt(Long id) {
-        return QuarkusTransaction.requiringNew().call(() -> ((Reminder) Reminder.findById(id)).sentAt);
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> ((Reminder) Reminder.findById(id)).sentAt);
     }
 }

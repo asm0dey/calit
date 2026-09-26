@@ -16,7 +16,6 @@ import java.util.Locale;
  */
 @ApplicationScoped
 public class AdminMessageResolver {
-
     public AdminMessages forLocale(Locale locale) {
         Locale l = locale != null ? locale : AppLocales.DEFAULT;
         if (l.getLanguage().equals(AppLocales.DEFAULT.getLanguage())) {

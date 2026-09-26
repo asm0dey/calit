@@ -1,11 +1,9 @@
 package site.asm0dey.calit.user;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import org.junit.jupiter.api.Test;
 
 class PasswordHasherTest {
-
     private final PasswordHasher hasher = new PasswordHasher();
 
     @Test

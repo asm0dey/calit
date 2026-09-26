@@ -2,7 +2,6 @@ package site.asm0dey.calit.migration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -15,24 +14,31 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class V8MigrationTest {
-
     @Inject
     EntityManager em;
 
     private boolean hasOwnerIdColumn(String table) {
-        Long count = ((Number) em.createNativeQuery("select count(*) from information_schema.columns "
-                                + "where table_name = :t and column_name = 'owner_id'")
-                        .setParameter("t", table)
-                        .getSingleResult())
-                .longValue();
+        Long count = ((Number) em
+            .createNativeQuery(
+                    "select count(*) from information_schema.columns " + "where table_name = :t and column_name = 'owner_id'"
+            )
+            .setParameter("t", table)
+            .getSingleResult())
+            .longValue();
         return count == 1L;
     }
 
     @Test
     @Transactional
     void ownerIdAddedToAllSixRootTables() {
-        for (String t : new String[] {
-            "owner_settings", "meeting_type", "booking", "google_credential", "google_calendar", "booking_field"
+        for (String t :
+                new String[] {
+                "owner_settings",
+                "meeting_type",
+                "booking",
+                "google_credential",
+                "google_calendar",
+                "booking_field"
         }) {
             assertTrue(hasOwnerIdColumn(t), "owner_id missing on " + t);
         }
@@ -47,36 +53,40 @@ class V8MigrationTest {
         // date_override_window stays parent-scoped — it must NOT gain an owner_id.
         assertTrue(
                 !hasOwnerIdColumn("date_override_window"),
-                "date_override_window must stay parent-scoped (no owner_id)");
+                "date_override_window must stay parent-scoped (no owner_id)"
+        );
     }
 
     @Test
     @Transactional
     void globalBookingFieldSeedRowDeleted() {
-        Long count = ((Number) em.createNativeQuery(
-                                "select count(*) from booking_field where meeting_type_id is null and owner_id is null")
-                        .getSingleResult())
-                .longValue();
+        Long count = ((Number) em
+            .createNativeQuery("select count(*) from booking_field where meeting_type_id is null and owner_id is null")
+            .getSingleResult())
+            .longValue();
         assertEquals(0L, count, "the V1 global description field must be gone");
     }
 
     @Test
     @Transactional
     void ownerIdIsNotNullOnAllOwnedTables() {
-        for (String t : new String[] {
-            "owner_settings",
-            "meeting_type",
-            "booking",
-            "booking_field",
-            "availability_rule",
-            "date_override",
-            "google_credential",
-            "google_calendar"
+        for (String t :
+                new String[] {
+                "owner_settings",
+                "meeting_type",
+                "booking",
+                "booking_field",
+                "availability_rule",
+                "date_override",
+                "google_credential",
+                "google_calendar"
         }) {
-            var nullable = (String) em.createNativeQuery("select is_nullable from information_schema.columns "
-                            + "where table_name = :t and column_name = 'owner_id'")
-                    .setParameter("t", t)
-                    .getSingleResult();
+            var nullable = (String) em
+                .createNativeQuery(
+                        "select is_nullable from information_schema.columns " + "where table_name = :t and column_name = 'owner_id'"
+                )
+                .setParameter("t", t)
+                .getSingleResult();
             assertEquals("NO", nullable, "owner_id must be NOT NULL on " + t);
         }
     }
@@ -85,15 +95,17 @@ class V8MigrationTest {
     @Transactional
     void slugUniqueIsPerOwnerNotGlobal() {
         // Global single-column unique on slug must be gone; the composite (owner_id, slug) takes its place.
-        Long globalUnique = ((Number)
-                        em.createNativeQuery("select count(*) from information_schema.table_constraints tc "
-                                        + "join information_schema.key_column_usage kcu on tc.constraint_name = kcu.constraint_name "
-                                        + "where tc.table_name = 'meeting_type' and tc.constraint_type = 'UNIQUE' "
-                                        + "and kcu.column_name = 'slug' "
-                                        + "and (select count(*) from information_schema.key_column_usage k2 "
-                                        + "     where k2.constraint_name = tc.constraint_name) = 1")
-                                .getSingleResult())
-                .longValue();
+        Long globalUnique = ((Number) em
+            .createNativeQuery(
+                    "select count(*) from information_schema.table_constraints tc "
+                    + "join information_schema.key_column_usage kcu on tc.constraint_name = kcu.constraint_name "
+                    + "where tc.table_name = 'meeting_type' and tc.constraint_type = 'UNIQUE' "
+                    + "and kcu.column_name = 'slug' "
+                    + "and (select count(*) from information_schema.key_column_usage k2 "
+                    + "     where k2.constraint_name = tc.constraint_name) = 1"
+            )
+            .getSingleResult())
+            .longValue();
         assertEquals(0L, globalUnique, "single-column slug UNIQUE must be replaced by (owner_id, slug)");
     }
 }

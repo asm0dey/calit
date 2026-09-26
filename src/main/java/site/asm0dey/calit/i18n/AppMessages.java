@@ -10,11 +10,11 @@ import io.quarkus.qute.i18n.MessageBundle;
  *
  * Keys follow <area>_<screen>_<what>: pub_*, adm_*, auth_*, email_*, common_*.
  */
-@MessageBundle // default namespace "msg"
+// default namespace "msg"
+@MessageBundle
 // S100: snake_case method names are intentional — Qute maps each @Message method name to its .properties key.
 @SuppressWarnings("java:S100")
 public interface AppMessages {
-
     @Message("Cancel")
     String common_cancel();
 
@@ -22,7 +22,6 @@ public interface AppMessages {
     String common_language();
 
     // ---- Landing page (index.html at /) ----
-
     @Message("calit — scheduling you own")
     String pub_index_title();
 
@@ -53,24 +52,34 @@ public interface AppMessages {
     @Message("Self-hosted · Open source · Multi-user")
     String pub_landing_eyebrow();
 
-    /** Text before the italic emphasis in the hero h1. */
+    /**
+     * Text before the italic emphasis in the hero h1.
+     */
     @Message("The scheduling app you")
     String pub_landing_hero_h1_pre();
 
-    /** The italic-emphasized fragment of the hero h1. */
+    /**
+     * The italic-emphasized fragment of the hero h1.
+     */
     @Message("actually own")
     String pub_landing_hero_h1_em();
 
-    /** Hero sub-heading, fragment before &lt;strong&gt;. */
-    @Message(
-            "calit gives every user their own scheduling space — a personal booking page, availability, and Google Calendar — running entirely on")
+    /**
+     * Hero sub-heading, fragment before &lt;strong&gt;.
+     */
+    @Message("calit gives every user their own scheduling space — a personal booking page, availability,"
+            + " and Google Calendar — running entirely on")
     String pub_landing_hero_sub_pre();
 
-    /** The strong-emphasised word in the hero sub ("your" server). */
+    /**
+     * The strong-emphasised word in the hero sub ("your" server).
+     */
     @Message("your")
     String pub_landing_hero_sub_strong();
 
-    /** Hero sub-heading, fragment after &lt;strong&gt;. */
+    /**
+     * Hero sub-heading, fragment after &lt;strong&gt;.
+     */
     @Message("server. No SaaS, no per-seat pricing, no lock-in.")
     String pub_landing_hero_sub_post();
 
@@ -98,19 +107,23 @@ public interface AppMessages {
     @Message("One app. Three surfaces.")
     String pub_landing_gallery_h2();
 
-    @Message(
-            "A public page for invitees, a personal landing for every user, and an owner console to run it all — each isolated to its owner, served from the same self-hosted instance.")
+    @Message("A public page for invitees, a personal landing for every user, and an owner console to "
+            + "run it all — each isolated to its owner, served from the same self-hosted instance.")
     String pub_landing_gallery_lede();
 
     @Message("The owner console")
     String pub_landing_cap_console_title();
 
-    /** Gallery caption for the owner console card. Plain text — /me rendered separately. */
-    @Message(
-            "Manage meeting types, availability, booking fields, Google sync, and — for admins — the whole team's users at")
+    /**
+     * Gallery caption for the owner console card. Plain text — /me rendered separately.
+     */
+    @Message("Manage meeting types, availability, booking fields, Google sync, and — for admins — the "
+            + "whole team's users at")
     String pub_landing_cap_console_desc_pre();
 
-    /** Gallery caption for the per-user landing card. Plain text — /their-name rendered separately. */
+    /**
+     * Gallery caption for the per-user landing card. Plain text — /their-name rendered separately.
+     */
     @Message("Every user gets")
     String pub_landing_cap_landing_pre();
 
@@ -132,8 +145,8 @@ public interface AppMessages {
     @Message("Built to be run, not rented.")
     String pub_landing_features_h2();
 
-    @Message(
-            "Everything you expect from a scheduling tool — plus true multi-tenancy and the peace of mind of owning your data.")
+    @Message("Everything you expect from a scheduling tool — plus true multi-tenancy and the peace of "
+            + "mind of owning your data.")
     String pub_landing_features_lede();
 
     @Message("Isolation")
@@ -142,8 +155,8 @@ public interface AppMessages {
     @Message("Per-user tenancy")
     String pub_landing_feat_isolation_h3();
 
-    @Message(
-            "Every meeting type, booking, and setting carries an owner. One user can never see or touch another's data.")
+    @Message("Every meeting type, booking, and setting carries an owner. One user can never see or "
+            + "touch another's data.")
     String pub_landing_feat_isolation_p();
 
     @Message("Calendar")
@@ -152,8 +165,8 @@ public interface AppMessages {
     @Message("Google sync & Meet")
     String pub_landing_feat_calendar_h3();
 
-    @Message(
-            "Connect each user's own Google account. Bookings create events and auto-generate a Meet link — or run fully degraded.")
+    @Message("Connect each user's own Google account. Bookings create events and auto-generate a Meet "
+            + "link — or run fully degraded.")
     String pub_landing_feat_calendar_p();
 
     @Message("Group meetings")
@@ -162,8 +175,8 @@ public interface AppMessages {
     @Message("Meetings that need everyone")
     String pub_landing_feat_multihost_h3();
 
-    @Message(
-            "A meeting type can require several hosts. calit only offers slots when every host is free, books one event on every calendar, and each co-host confirms before it goes live.")
+    @Message("A meeting type can require several hosts. calit only offers slots when every host is free,"
+            + " books one event on every calendar, and each co-host confirms before it goes live.")
     String pub_landing_feat_multihost_p();
 
     @Message("Control")
@@ -181,8 +194,8 @@ public interface AppMessages {
     @Message("Real authentication")
     String pub_landing_feat_trust_h3();
 
-    @Message(
-            "Passwords hashed with argon2id, stateless encrypted cookies, instant lockout — no embedded admin password.")
+    @Message("Passwords hashed with argon2id, stateless encrypted cookies, instant lockout — no "
+            + "embedded admin password.")
     String pub_landing_feat_trust_p();
 
     @Message("Defense")
@@ -191,8 +204,8 @@ public interface AppMessages {
     @Message("Abuse protection")
     String pub_landing_feat_defense_h3();
 
-    @Message(
-            "Cloudflare Turnstile, a honeypot, and a per-email daily cap guard every public booking form out of the box.")
+    @Message("Cloudflare Turnstile, a honeypot, and a per-email daily cap guard every public booking "
+            + "form out of the box.")
     String pub_landing_feat_defense_p();
 
     @Message("Ops")
@@ -201,8 +214,8 @@ public interface AppMessages {
     @Message("One binary + Postgres")
     String pub_landing_feat_ops_h3();
 
-    @Message(
-            "A single Quarkus app and a database. Self-host it anywhere, invite your team, done. Opt-in public sign-up too.")
+    @Message("A single Quarkus app and a database. Self-host it anywhere, invite your team, done. Opt-"
+            + "in public sign-up too.")
     String pub_landing_feat_ops_p();
 
     @Message("Get started")
@@ -211,8 +224,8 @@ public interface AppMessages {
     @Message("Spin up your own in minutes.")
     String pub_landing_close_h2();
 
-    @Message(
-            "Point it at a Postgres database and open the site — the first visit creates your admin account. No license, no waitlist, no seat math.")
+    @Message("Point it at a Postgres database and open the site — the first visit creates your admin "
+            + "account. No license, no waitlist, no seat math.")
     String pub_landing_close_p();
 
     @Message("Open your dashboard")
@@ -225,7 +238,6 @@ public interface AppMessages {
     String pub_landing_footer_meta();
 
     // ---- User landing page (landing.html at /{username}) ----
-
     @Message("Book a meeting")
     String pub_user_title();
 
@@ -239,7 +251,6 @@ public interface AppMessages {
     String pub_user_choose_time();
 
     // ---- Booking page (book.html) ----
-
     @Message("Book —")
     String pub_book_title_prefix();
 
@@ -250,7 +261,6 @@ public interface AppMessages {
     String pub_book_guests_hint();
 
     // ---- Guest decline pages ----
-
     @Message("Decline invitation")
     String pub_guest_decline_confirm_title();
 
@@ -318,7 +328,6 @@ public interface AppMessages {
     String pub_book_btn_confirm();
 
     // ---- Confirmation page (confirmation.html) ----
-
     @Message("Request sent")
     String pub_conf_title_pending();
 
@@ -328,8 +337,8 @@ public interface AppMessages {
     @Message("Request sent — pending owner approval")
     String pub_conf_h1_pending();
 
-    @Message(
-            "Thanks, {inviteeName}. Your requested time is held while {meetingTypeName}'s owner reviews it. You'll get an email once it's approved or declined.")
+    @Message("Thanks, {inviteeName}. Your requested time is held while {meetingTypeName}'s owner "
+            + "reviews it. You'll get an email once it's approved or declined.")
     String pub_conf_pending_desc(String inviteeName, String meetingTypeName);
 
     @Message("You're booked, {inviteeName}!")
@@ -361,7 +370,6 @@ public interface AppMessages {
     String pub_conf_manage_link();
 
     // ---- Cancelled page (cancelled.html) ----
-
     @Message("Booking cancelled")
     String pub_cancelled_title();
 
@@ -375,7 +383,6 @@ public interface AppMessages {
     String pub_cancelled_btn();
 
     // ---- Public — booking-summary labels + invitee cancel confirmation ----
-
     @Message("Meeting:")
     String pub_booking_meeting_label();
 
@@ -398,7 +405,6 @@ public interface AppMessages {
     String pub_cancel_keep_btn();
 
     // ---- Invitee erasure (eraseConfirm.html / erased.html) ----
-
     @Message("Erase your data")
     String pub_erase_confirm_title();
 
@@ -482,7 +488,6 @@ public interface AppMessages {
     String pub_erase_disabled_notice_no_contact();
 
     // ---- Manage booking page (manage.html) ----
-
     @Message("Manage booking")
     String pub_manage_title();
 
@@ -529,7 +534,6 @@ public interface AppMessages {
     String pub_manage_download_data();
 
     // ---- Unavailable page (unavailable.html) ----
-
     @Message("Scheduling temporarily unavailable")
     String pub_unavailable_title();
 
@@ -540,7 +544,6 @@ public interface AppMessages {
     String pub_unavailable_desc();
 
     // ---- Not-ready page (notReady.html) ----
-
     @Message("Not available yet")
     String pub_not_ready_title();
 
@@ -551,7 +554,6 @@ public interface AppMessages {
     String pub_not_ready_desc();
 
     // ---- Host-pending page (hostPending.html) ----
-
     @Message("Not bookable yet")
     String pub_host_pending_title();
 
@@ -562,15 +564,13 @@ public interface AppMessages {
     String pub_host_pending_desc();
 
     // ---- Co-host consent page (ConsentResource) ----
-
     @Message("Co-host invitation")
     String pub_consent_confirm_title();
 
     @Message("Accept co-hosting \"{typeName}\" with {creatorName}?")
     String pub_consent_confirm_h1(String typeName, String creatorName);
 
-    @Message(
-            "Accepting adds you as a co-host: your own availability applies, and every booking needs both of you free.")
+    @Message("Accepting adds you as a co-host: your own availability applies, and every booking needs both of you free.")
     String pub_consent_confirm_desc();
 
     @Message("Accept")
@@ -595,7 +595,6 @@ public interface AppMessages {
     String pub_consent_declined_desc();
 
     // ---- Email subjects ----
-
     @Message("Booking request received: {meetingTypeName}")
     String email_requested_subject(String meetingTypeName);
 
@@ -631,7 +630,6 @@ public interface AppMessages {
 
     // ---- Channel notifications ----
     // Titles reuse the email_*_subject keys above wherever an equivalent one exists.
-
     @Message("{inviteeName} · {when}")
     String channel_body(String inviteeName, String when);
 
@@ -657,25 +655,31 @@ public interface AppMessages {
     String channel_test_body();
 
     // ---- Email date/time formatting ----
-
-    /** strftime-like pattern used to format booking date/time in email bodies. */
+    /**
+     * strftime-like pattern used to format booking date/time in email bodies.
+     */
     @Message("EEEE, d MMMM yyyy 'at' HH:mm")
     String email_datetime_pattern();
 
-    /** 12-hour variant of {@link #email_datetime_pattern()}, used when a host chose {@code h12}. */
+    /**
+     * 12-hour variant of {@link #email_datetime_pattern()}, used when a host chose {@code h12}.
+     */
     @Message("EEEE, d MMMM yyyy 'at' h:mm a")
     String email_datetime_pattern_h12();
 
     // ---- Email body — shared labels ----
-
-    /** Greeting line used in most booking emails. */
+    /**
+     * Greeting line used in most booking emails.
+     */
     @Message("Hi {name},")
     String email_body_greeting(String name);
 
     @Message("Meeting:")
     String email_body_meeting_label();
 
-    /** Owner-copy-only label naming the person who booked; the address follows it. */
+    /**
+     * Owner-copy-only label naming the person who booked; the address follows it.
+     */
     @Message("Invitee:")
     String email_body_invitee_label();
 
@@ -731,7 +735,6 @@ public interface AppMessages {
     String email_body_requested_time_label();
 
     // ---- Email body — confirmation ----
-
     @Message("Booking confirmed")
     String email_confirmation_title();
 
@@ -739,7 +742,6 @@ public interface AppMessages {
     String email_confirmation_body();
 
     // ---- Email body — requested ----
-
     @Message("Booking request received")
     String email_requested_title();
 
@@ -747,7 +749,6 @@ public interface AppMessages {
     String email_requested_body();
 
     // ---- Email body — reminder ----
-
     @Message("Booking reminder")
     String email_reminder_title();
 
@@ -755,7 +756,6 @@ public interface AppMessages {
     String email_reminder_body();
 
     // ---- Email body — cancellation ----
-
     @Message("Booking cancelled")
     String email_cancellation_title();
 
@@ -766,7 +766,6 @@ public interface AppMessages {
     String email_cancellation_was_scheduled();
 
     // ---- Email body — reschedule ----
-
     @Message("Booking rescheduled")
     String email_reschedule_title();
 
@@ -780,7 +779,6 @@ public interface AppMessages {
     String email_reschedule_new_time();
 
     // ---- Email body — owner-copy variants (name the invitee) ----
-
     @Message("{name} requested a booking. Review it to approve or decline.")
     String email_requested_body_owner(String name);
 
@@ -793,7 +791,9 @@ public interface AppMessages {
     @Message("{name} rescheduled their booking.")
     String email_reschedule_body_owner(String name);
 
-    /** Invitee copy when the host drove the reschedule; {name} is the owner's display name. */
+    /**
+     * Invitee copy when the host drove the reschedule; {name} is the owner's display name.
+     */
     @Message("{name} rescheduled your booking.")
     String email_reschedule_body_by_owner(String name);
 
@@ -812,15 +812,21 @@ public interface AppMessages {
     @Message("Description:")
     String email_updated_description_label();
 
-    /** Host's copy when the invitee drove the cancellation; {name} is the invitee's display name. */
+    /**
+     * Host's copy when the invitee drove the cancellation; {name} is the invitee's display name.
+     */
     @Message("{name} cancelled their booking.")
     String email_cancellation_body_owner(String name);
 
-    /** Host's own copy when the host drove the cancellation; {name} is the invitee's display name. */
+    /**
+     * Host's own copy when the host drove the cancellation; {name} is the invitee's display name.
+     */
     @Message("You cancelled your meeting with {name}.")
     String email_cancellation_body_owner_self(String name);
 
-    /** Invitee copy when the host drove the cancellation; {name} is the owner's display name. */
+    /**
+     * Invitee copy when the host drove the cancellation; {name} is the owner's display name.
+     */
     @Message("{name} cancelled your booking.")
     String email_cancellation_body_by_owner(String name);
 
@@ -837,7 +843,6 @@ public interface AppMessages {
     String email_body_decline_link_text();
 
     // ---- Email body — declined ----
-
     @Message("Booking declined")
     String email_declined_title();
 
@@ -845,7 +850,6 @@ public interface AppMessages {
     String email_declined_body();
 
     // ---- Email body — password reset ----
-
     @Message("Reset your calit password")
     String email_password_reset_title();
 
@@ -861,12 +865,11 @@ public interface AppMessages {
     @Message("Or paste this link into your browser:")
     String email_paste_link_hint();
 
-    @Message(
-            "This link expires in 30 minutes and can be used once. If you didn't request this, ignore this email — your password stays unchanged.")
+    @Message("This link expires in 30 minutes and can be used once. If you didn't request this, ignore "
+            + "this email — your password stays unchanged.")
     String email_password_reset_expiry();
 
     // ---- Email body — invite ----
-
     @Message("You're invited to calit")
     String email_invite_subject();
 
@@ -882,12 +885,11 @@ public interface AppMessages {
     @Message("Activate your account")
     String email_invite_btn();
 
-    @Message(
-            "This link expires in 48 hours and can be used once. If you didn't expect this invitation, you can safely ignore this email.")
+    @Message("This link expires in 48 hours and can be used once. If you didn't expect this invitation, "
+            + "you can safely ignore this email.")
     String email_invite_expiry();
 
     // ---- Email body — Google disconnected ----
-
     @Message("Reconnect your Google Calendar")
     String email_google_disconnected_title();
 
@@ -897,34 +899,32 @@ public interface AppMessages {
     @Message("calit can no longer access your Google Calendar account {accountEmail}.")
     String email_google_disconnected_body(String accountEmail);
 
-    @Message(
-            "While it stays disconnected, your booking page is paused — new bookings are blocked so nobody can book over events calit can't see.")
+    @Message("While it stays disconnected, your booking page is paused — new bookings are blocked so "
+            + "nobody can book over events calit can't see.")
     String email_google_disconnected_paused();
 
     @Message("Reconnect Google Calendar")
     String email_google_disconnected_btn();
 
-    @Message(
-            "This usually happens when access was revoked, your password changed, or the connection sat unused for a long time. Reconnecting takes a few seconds.")
+    @Message("This usually happens when access was revoked, your password changed, or the connection "
+            + "sat unused for a long time. Reconnecting takes a few seconds.")
     String email_google_disconnected_why();
 
     // ---- Email body — host consent ----
-
     @Message("Co-host invitation")
     String email_host_consent_title();
 
     @Message("Hi {name},")
     String email_host_consent_greeting(String name);
 
-    @Message(
-            "{creatorName} invited you to co-host \"{meetingTypeName}\" on calit. Accept to start receiving bookings together.")
+    @Message("{creatorName} invited you to co-host \\\"{meetingTypeName}\\\" on calit. Accept to start "
+            + "receiving bookings together.")
     String email_host_consent_body(String creatorName, String meetingTypeName);
 
     @Message("Accept co-host invitation")
     String email_host_consent_cta();
 
     // ---- Auth / bootstrap pages ----
-
     // -- Login page --
     @Message("Sign in — calit")
     String auth_login_title();
@@ -1056,8 +1056,8 @@ public interface AppMessages {
     @Message("Username invalid, reserved, or taken — try another.")
     String auth_setup_error();
 
-    @Message(
-            "That username can't be used — it may be invalid, reserved, or already taken. Use 2–64 lowercase letters or digits, with single hyphens between.")
+    @Message("That username can't be used — it may be invalid, reserved, or already taken. Use 2–64 "
+            + "lowercase letters or digits, with single hyphens between.")
     String auth_signup_error();
 
     @Message("Username")

@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -31,19 +30,14 @@ import site.asm0dey.calit.privacy.PrivacyService;
 
 @QuarkusTest
 class BookingResourceTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @Inject
     PrivacyService privacy;
-
     // Owner tz Europe/Amsterdam. Derive a future weekday from now() so the slot is never in the past.
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
-    private static final LocalDate DAY =
-            Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
-    private static final String SLOT_09_UTC =
-            DAY.atTime(9, 0).atZone(ZONE).toInstant().toString();
+    private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
+    private static final String SLOT_09_UTC = DAY.atTime(9, 0).atZone(ZONE).toInstant().toString();
 
     @BeforeEach
     @AfterEach
@@ -59,7 +53,8 @@ class BookingResourceTest {
                 BookingStatus.CANCELLED,
                 List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED),
                 dayStart,
-                dayEnd);
+                dayEnd
+        );
     }
 
     @BeforeEach
@@ -82,22 +77,37 @@ class BookingResourceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-rest", "https://meet.google.com/rest-1234-xyz", "h", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-rest", "https://meet.google.com/rest-1234-xyz", "h", null));
 
-        given().contentType("application/json")
-                .body(
-                        "{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
-                                + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\","
-                                + "\"answers\":{\"description\":\"Quarterly sync\"},\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(201)
-                .body("meetLink", is("https://meet.google.com/rest-1234-xyz"))
-                .body("status", is("CONFIRMED"))
-                .body("manageToken", notNullValue())
-                .body("answers.description", is("Quarterly sync"));
+        given()
+            .contentType("application/json")
+            .body(
+                    "{\"user\":\"admin\",\"slug\":\""
+                    + slug
+                    + "\",\"startUtc\":\""
+                    + SLOT_09_UTC
+                    + "\","
+                    + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\","
+                    + "\"answers\":{\"description\":\"Quarterly sync\"},\"turnstileToken\":\"tok\",\"honeypot\":\"\"}"
+            )
+            .when()
+            .post("/api/bookings")
+            .then()
+            .statusCode(201)
+            .body("meetLink", is("https://meet.google.com/rest-1234-xyz"))
+            .body("status", is("CONFIRMED"))
+            .body("manageToken", notNullValue())
+            .body("answers.description", is("Quarterly sync"));
     }
 
     @Test
@@ -106,17 +116,23 @@ class BookingResourceTest {
         seedTypeWithRequiredField(slug, "company");
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-
         // Body omits the required "company" answer -> 422 (not 409: input is wrong, slot is fine).
-        given().contentType("application/json")
-                .body("{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
-                        + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\","
-                        + "\"answers\":{},\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(422)
-                .body(containsString("company"));
+        given()
+            .contentType("application/json")
+            .body(
+                    "{\"user\":\"admin\",\"slug\":\""
+                    + slug
+                    + "\",\"startUtc\":\""
+                    + SLOT_09_UTC
+                    + "\","
+                    + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\","
+                    + "\"answers\":{},\"turnstileToken\":\"tok\",\"honeypot\":\"\"}"
+            )
+            .when()
+            .post("/api/bookings")
+            .then()
+            .statusCode(422)
+            .body(containsString("company"));
     }
 
     @Test
@@ -129,31 +145,53 @@ class BookingResourceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-avail", "https://meet.google.com/av-1-2", "h", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-avail", "https://meet.google.com/av-1-2", "h", null));
 
-        given().contentType("application/json")
-                .body(
-                        "{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
-                                + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(201);
+        given()
+            .contentType("application/json")
+            .body(
+                    "{\"user\":\"admin\",\"slug\":\""
+                    + slug
+                    + "\",\"startUtc\":\""
+                    + SLOT_09_UTC
+                    + "\","
+                    + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}"
+            )
+            .when()
+            .post("/api/bookings")
+            .then()
+            .statusCode(201);
     }
 
     @Test
     void unknownUserReturns404() {
         var slug = "rest-unknown-" + System.nanoTime();
-        seedType(slug); // belongs to admin (owner 1)
-        given().contentType("application/json")
-                .body(
-                        "{\"user\":\"ghost\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
-                                + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(404);
+        // belongs to admin (owner 1)
+        seedType(slug);
+        given()
+            .contentType("application/json")
+            .body(
+                    "{\"user\":\"ghost\",\"slug\":\""
+                    + slug
+                    + "\",\"startUtc\":\""
+                    + SLOT_09_UTC
+                    + "\","
+                    + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}"
+            )
+            .when()
+            .post("/api/bookings")
+            .then()
+            .statusCode(404);
     }
 
     @Test
@@ -163,25 +201,34 @@ class BookingResourceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-x", "https://meet.google.com/a-b-c", "h", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-x", "https://meet.google.com/a-b-c", "h", null));
 
-        var body = "{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
+        var body = "{\"user\":\"admin\",\"slug\":\""
+                + slug
+                + "\",\"startUtc\":\""
+                + SLOT_09_UTC
+                + "\","
                 + "\"inviteeName\":\"First\",\"inviteeEmail\":\"first@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}";
-        given().contentType("application/json")
-                .body(body)
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(201);
+        given().contentType("application/json").body(body).when().post("/api/bookings").then().statusCode(201);
 
-        given().contentType("application/json")
-                .body(body)
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(409)
-                .body(containsString("not available"));
+        given()
+            .contentType("application/json")
+            .body(body)
+            .when()
+            .post("/api/bookings")
+            .then()
+            .statusCode(409)
+            .body(containsString("not available"));
     }
 
     @Test
@@ -192,32 +239,52 @@ class BookingResourceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
-                        anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt-cancel", "https://meet.google.com/cn-1-2", "h", null));
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-cancel", "https://meet.google.com/cn-1-2", "h", null));
 
-        String token = given().contentType("application/json")
-                .body(
-                        "{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
-                                + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(201)
-                .extract()
-                .path("manageToken");
+        String token = given()
+            .contentType("application/json")
+            .body(
+                    "{\"user\":\"admin\",\"slug\":\""
+                    + slug
+                    + "\",\"startUtc\":\""
+                    + SLOT_09_UTC
+                    + "\","
+                    + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}"
+            )
+            .when()
+            .post("/api/bookings")
+            .then()
+            .statusCode(201)
+            .extract()
+            .path("manageToken");
 
         given().when().delete("/api/bookings/" + token).then().statusCode(204);
-
         // The 09:00 slot is bookable again: re-booking the same slot now succeeds (it would 409
         // "not available" if the cancel had not freed it). Replaces the deleted JSON /available probe.
-        given().contentType("application/json")
-                .body(
-                        "{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
-                                + "\"inviteeName\":\"Sam Two\",\"inviteeEmail\":\"sam2@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(201);
+        given()
+            .contentType("application/json")
+            .body(
+                    "{\"user\":\"admin\",\"slug\":\""
+                    + slug
+                    + "\",\"startUtc\":\""
+                    + SLOT_09_UTC
+                    + "\","
+                    + "\"inviteeName\":\"Sam Two\",\"inviteeEmail\":\"sam2@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}"
+            )
+            .when()
+            .post("/api/bookings")
+            .then()
+            .statusCode(201);
     }
 
     @Test
@@ -228,12 +295,13 @@ class BookingResourceTest {
         var token = ErasureFixtures.seedPastBooking();
         privacy.eraseByManageToken(token);
 
-        given().contentType("application/json")
-                .body("{\"newStartUtc\":\"" + SLOT_09_UTC + "\"}")
-                .when()
-                .post("/api/bookings/" + token + "/reschedule")
-                .then()
-                .statusCode(404);
+        given()
+            .contentType("application/json")
+            .body("{\"newStartUtc\":\"" + SLOT_09_UTC + "\"}")
+            .when()
+            .post("/api/bookings/" + token + "/reschedule")
+            .then()
+            .statusCode(404);
 
         given().when().delete("/api/bookings/" + token).then().statusCode(404);
     }
@@ -244,14 +312,21 @@ class BookingResourceTest {
         // invitee-email validation that protects the web form rejects header/BCC injection here too.
         var slug = "rest-crlf-" + System.nanoTime();
         seedType(slug);
-        given().contentType("application/json")
-                .body("{\"user\":\"admin\",\"slug\":\"" + slug + "\",\"startUtc\":\"" + SLOT_09_UTC + "\","
-                        + "\"inviteeName\":\"Attacker\",\"inviteeEmail\":\"a@b.com\\r\\nBcc: x@evil.com\","
-                        + "\"answers\":{},\"turnstileToken\":\"tok\",\"honeypot\":\"\"}")
-                .when()
-                .post("/api/bookings")
-                .then()
-                .statusCode(422);
+        given()
+            .contentType("application/json")
+            .body(
+                    "{\"user\":\"admin\",\"slug\":\""
+                    + slug
+                    + "\",\"startUtc\":\""
+                    + SLOT_09_UTC
+                    + "\","
+                    + "\"inviteeName\":\"Attacker\",\"inviteeEmail\":\"a@b.com\\r\\nBcc: x@evil.com\","
+                    + "\"answers\":{},\"turnstileToken\":\"tok\",\"honeypot\":\"\"}"
+            )
+            .when()
+            .post("/api/bookings")
+            .then()
+            .statusCode(422);
     }
 
     void seedType(String slug) {
@@ -276,7 +351,9 @@ class BookingResourceTest {
         });
     }
 
-    /** Seeds a type plus a required per-type custom field (so its form requires {@code fieldKey}). */
+    /**
+     * Seeds a type plus a required per-type custom field (so its form requires {@code fieldKey}).
+     */
     void seedTypeWithRequiredField(String slug, String fieldKey) {
         QuarkusTransaction.requiringNew().run(() -> {
             MeetingType t = new MeetingType();

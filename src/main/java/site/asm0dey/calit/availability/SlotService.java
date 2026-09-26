@@ -18,7 +18,6 @@ import site.asm0dey.calit.domain.*;
 
 @ApplicationScoped
 public class SlotService {
-
     /**
      * Raw bookable windows derived from work hours only.
      * Conflict/busy/buffer subtraction is applied by Plan 3 on top of this output.
@@ -56,7 +55,12 @@ public class SlotService {
      * lattice so they can actually intersect.
      */
     public List<TimeSlot> generateRawSlots(
-            MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to, ZoneId latticeZone) {
+            MeetingType type,
+            Long hostOwnerId,
+            LocalDate from,
+            LocalDate to,
+            ZoneId latticeZone
+    ) {
         return generateRawSlots(type, hostOwnerId, from, to, latticeZone, type.durationMinutes);
     }
 
@@ -67,16 +71,22 @@ public class SlotService {
      * length (ADR-0003). Only the slot BODY varies.
      */
     public List<TimeSlot> generateRawSlots(
-            MeetingType type, Long hostOwnerId, LocalDate from, LocalDate to, ZoneId latticeZone, int durationMinutes) {
+            MeetingType type,
+            Long hostOwnerId,
+            LocalDate from,
+            LocalDate to,
+            ZoneId latticeZone,
+            int durationMinutes
+    ) {
         OwnerSettings settings = OwnerSettings.forOwner(hostOwnerId);
         if (settings == null) {
-            throw new IllegalStateException("Owner settings not configured for owner " + hostOwnerId
-                    + "; set them via /me/settings before generating slots.");
+            throw new IllegalStateException(
+                    "Owner settings not configured for owner " + hostOwnerId + "; set them via /me/settings before generating slots."
+            );
         }
         ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(settings.timezone));
         Availability availability = loadAvailability(type, hostOwnerId, from, to);
         List<TimeSlot> slots = new ArrayList<>();
-
         // Cadence: an explicit interval wins; otherwise the SHORTEST allowed length, so the lattice
         // stays put when the Invitee switches. Not the chosen length, and not the default.
         // Math.max(1, ...) is deliberate belt-and-braces, not defensive noise: a zero step makes both
@@ -87,8 +97,9 @@ public class SlotService {
         int step = Math.max(
                 1,
                 (type.slotIntervalMinutes != null && type.slotIntervalMinutes > 0)
-                        ? type.slotIntervalMinutes
-                        : MeetingTypeDuration.shortestAllowed(type));
+                ? type.slotIntervalMinutes
+                : MeetingTypeDuration.shortestAllowed(type)
+        );
         // Instant has no plusMinutes, but it does take a TemporalAmount — so carry both spans as
         // Durations rather than as bare second counts multiplied by 60 at each use.
         var body = Duration.ofMinutes(durationMinutes);
@@ -113,7 +124,13 @@ public class SlotService {
      * historical behaviour, including per-window anchoring on a multi-window day.
      */
     private static void addWindowAnchored(
-            List<TimeSlot> slots, ZoneId zone, Instant windowStart, Instant windowEnd, Duration gap, Duration body) {
+            List<TimeSlot> slots,
+            ZoneId zone,
+            Instant windowStart,
+            Instant windowEnd,
+            Duration gap,
+            Duration body
+    ) {
         for (var s = windowStart; !s.plus(body).isAfter(windowEnd); s = s.plus(gap)) {
             slots.add(new TimeSlot(s.atZone(zone), s.plus(body).atZone(zone)));
         }
@@ -137,9 +154,11 @@ public class SlotService {
             Instant windowStart,
             Instant windowEnd,
             int step,
-            Duration body) {
+            Duration body
+    ) {
         var latticeRules = latticeZone.getRules();
-        for (var day = windowStart.atZone(latticeZone).toLocalDate();
+        for (
+                var day = windowStart.atZone(latticeZone).toLocalDate();
                 !day.atStartOfDay(latticeZone).toInstant().isAfter(windowEnd);
                 day = day.plusDays(1)) {
             for (var minute = 0; minute < 1440; minute += step) {
@@ -177,13 +196,16 @@ public class SlotService {
     public ZoneId latticeZoneFor(MeetingType type) {
         OwnerSettings creator = OwnerSettings.forOwner(type.ownerId);
         if (creator == null) {
-            throw new IllegalStateException("Owner settings not configured for owner " + type.ownerId
-                    + "; set them via /me/settings before generating slots.");
+            throw new IllegalStateException(
+                    "Owner settings not configured for owner " + type.ownerId + "; set them via /me/settings before generating slots."
+            );
         }
         return ZoneId.of(OwnerSettings.coerceZone(creator.timezone));
     }
 
-    /** A bookable [start, end) time-of-day window for one day, from either an override or a weekly rule. */
+    /**
+     * A bookable [start, end) time-of-day window for one day, from either an override or a weekly rule.
+     */
     record Window(LocalTime start, LocalTime end) {}
 
     /**
@@ -195,8 +217,8 @@ public class SlotService {
             Map<LocalDate, DateOverride> typedOverrides,
             Map<LocalDate, DateOverride> globalOverrides,
             Map<DayOfWeek, List<AvailabilityRule>> typedRules,
-            Map<DayOfWeek, List<AvailabilityRule>> globalRules) {
-
+            Map<DayOfWeek, List<AvailabilityRule>> globalRules
+    ) {
         /**
          * The day's bookable windows. A {@link DateOverride} for the date REPLACES weekly hours: its
          * windows are used as-is (empty list => day off => no windows). When no override exists, the
@@ -214,14 +236,17 @@ public class SlotService {
                 override = globalOverrides.get(date);
             }
             if (override != null) {
-                return override.windows.stream()
-                        .map(w -> new Window(w.startTime, w.endTime))
-                        .toList();
+                return override.windows
+                    .stream()
+                    .map(w -> new Window(w.startTime, w.endTime))
+                    .toList();
             }
             var week = typedRules.isEmpty() ? globalRules : typedRules;
-            return week.getOrDefault(date.getDayOfWeek(), List.<AvailabilityRule>of()).stream()
-                    .map(r -> new Window(r.startTime, r.endTime))
-                    .toList();
+            return week
+                .getOrDefault(date.getDayOfWeek(), List.<AvailabilityRule>of())
+                .stream()
+                .map(r -> new Window(r.startTime, r.endTime))
+                .toList();
         }
     }
 
@@ -235,29 +260,33 @@ public class SlotService {
         List<AvailabilityRule> rules = AvailabilityRule.list(
                 "ownerId = ?1 and (meetingTypeId = ?2 or meetingTypeId is null) order by startTime",
                 hostOwnerId,
-                type.id);
-        Map<DayOfWeek, List<AvailabilityRule>> typedRules = rules.stream()
-                .filter(r -> type.id.equals(r.meetingTypeId))
-                .collect(Collectors.groupingBy(r -> r.dayOfWeek));
+                type.id
+        );
+        Map<DayOfWeek, List<AvailabilityRule>> typedRules =
+                rules
+            .stream()
+            .filter(r -> type.id.equals(r.meetingTypeId))
+            .collect(Collectors.groupingBy(r -> r.dayOfWeek));
         Map<DayOfWeek, List<AvailabilityRule>> globalRules =
-                rules.stream().filter(r -> r.meetingTypeId == null).collect(Collectors.groupingBy(r -> r.dayOfWeek));
-
+                rules
+            .stream()
+            .filter(r -> r.meetingTypeId == null)
+            .collect(Collectors.groupingBy(r -> r.dayOfWeek));
         // 2) Overrides in range: per-type and this owner's global, keyed by date (first row wins on
         //    a duplicate date+scope, which the unique index should already prevent).
         List<DateOverride> overrides = DateOverride.list(
-                "ownerId = ?1 and (meetingTypeId = ?2 or meetingTypeId is null) "
-                        + "and overrideDate >= ?3 and overrideDate <= ?4",
+                "ownerId = ?1 and (meetingTypeId = ?2 or meetingTypeId is null) " + "and overrideDate >= ?3 and overrideDate <= ?4",
                 hostOwnerId,
                 type.id,
                 from,
-                to);
+                to
+        );
         Map<LocalDate, DateOverride> typedOverrides = new HashMap<>();
         Map<LocalDate, DateOverride> globalOverrides = new HashMap<>();
         for (DateOverride o : overrides) {
             Map<LocalDate, DateOverride> target = type.id.equals(o.meetingTypeId) ? typedOverrides : globalOverrides;
             target.putIfAbsent(o.overrideDate, o);
         }
-
         // 3) Windows: for every override actually selected (per-type beats global on a given date,
         //    but both scopes can apply on different dates, so load windows for all selected ones).
         //    One query, grouped by override id, preserving start-time ordering. Empty = day off.
@@ -265,10 +294,10 @@ public class SlotService {
         selected.addAll(globalOverrides.values());
         if (!selected.isEmpty()) {
             List<Long> ids = selected.stream().map(o -> o.id).toList();
-            Map<Long, List<DateOverrideWindow>> windowsByOverride =
-                    DateOverrideWindow.<DateOverrideWindow>list("dateOverrideId in ?1 order by startTime asc", ids)
-                            .stream()
-                            .collect(Collectors.groupingBy(w -> w.dateOverrideId));
+            Map<Long, List<DateOverrideWindow>> windowsByOverride = DateOverrideWindow
+                .<DateOverrideWindow>list("dateOverrideId in ?1 order by startTime asc", ids)
+                .stream()
+                .collect(Collectors.groupingBy(w -> w.dateOverrideId));
             for (DateOverride o : selected) {
                 o.windows = windowsByOverride.getOrDefault(o.id, List.of());
             }

@@ -3,7 +3,6 @@ package site.asm0dey.calit.notify;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import com.sun.net.httpserver.HttpServer;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
@@ -36,10 +35,10 @@ import site.asm0dey.calit.test.MultiHostFixtures;
  */
 @QuarkusTest
 class ChannelDeliveryTest {
-
-    /** Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide. */
+    /**
+     * Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide.
+     */
     static int port;
-
     static HttpServer server;
     static CountDownLatch hit;
     static final AtomicInteger status = new AtomicInteger(200);
@@ -59,12 +58,13 @@ class ChannelDeliveryTest {
 
     @AfterAll
     static void stopStub() {
-        if (server != null) server.stop(0);
+        if (server != null) {
+            server.stop(0);
+        }
     }
 
     @Inject
     Event<BookingConfirmed> confirmed;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -107,19 +107,28 @@ class ChannelDeliveryTest {
         });
     }
 
-    /** AFTER_SUCCESS observers need a committed transaction to fire from. */
+    /**
+     * AFTER_SUCCESS observers need a committed transaction to fire from.
+     */
     private void fireConfirmed(Long bookingId) {
-        QuarkusTransaction.requiringNew().run(() -> confirmed.fire(new BookingConfirmed(bookingId)));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> confirmed.fire(new BookingConfirmed(bookingId)));
     }
 
     // S2925: polling for an async DB write with no latch to observe it; a single fixed sleep would be worse.
     @SuppressWarnings("java:S2925")
     private NotificationChannel await(Long channelId, boolean success) throws InterruptedException {
         assertTrue(hit.await(10, TimeUnit.SECONDS), "the stub never received a POST");
-        for (var i = 0; i < 100; i++) { // the timestamp write happens just after the POST returns
+        for (var i = 0; i < 100; i++) {
+            // the timestamp write happens just after the POST returns
             NotificationChannel c =
-                    QuarkusTransaction.requiringNew().call(() -> NotificationChannel.findById(channelId));
-            if ((success ? c.lastSuccessAt : c.lastFailureAt) != null) return c;
+                    QuarkusTransaction
+                .requiringNew()
+                .call(() -> NotificationChannel.findById(channelId));
+            if ((success ? c.lastSuccessAt : c.lastFailureAt) != null) {
+                return c;
+            }
             Thread.sleep(50);
         }
         fail("delivery outcome was never stamped");
@@ -151,7 +160,9 @@ class ChannelDeliveryTest {
     void anotherOwnersChannelIsNeverDelivered() throws InterruptedException {
         // Another owner's channel; the booking below belongs to owner 1. notification_channel.owner_id
         // is FK-constrained to app_user, so the second owner has to actually exist.
-        Long other = QuarkusTransaction.requiringNew().call(() -> MultiHostFixtures.enabledUser("other-owner").id);
+        Long other = QuarkusTransaction
+            .requiringNew()
+            .call(() -> MultiHostFixtures.enabledUser("other-owner").id);
         channel(other);
         fireConfirmed(booking());
 

@@ -21,24 +21,23 @@ import site.asm0dey.calit.crypto.EncryptedStringConverter;
 @Entity
 @Table(name = "notification_channel")
 public class NotificationChannel extends PanacheEntityBase {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
-
     @Column(name = "owner_id", nullable = false)
     public Long ownerId;
-
-    /** Secret-bearing (bot tokens, webhook secrets): encrypted at rest, never logged, never rendered raw. */
+    /**
+     * Secret-bearing (bot tokens, webhook secrets): encrypted at rest, never logged, never rendered raw.
+     */
     @Column(nullable = false, columnDefinition = "text")
     @Convert(converter = EncryptedStringConverter.class)
     public String url;
-
-    /** The owner's own name for this channel. Plain text — holds no secret, so the override list can
-     * render without decrypting every URL. Defaulted from the channel's display name when left blank. */
+    /**
+     * The owner's own name for this channel. Plain text — holds no secret, so the override list can
+     * render without decrypting every URL. Defaulted from the channel's display name when left blank.
+     */
     @Column(length = 64)
     public String label;
-
     /**
      * Whether this channel is in the owner's inherit set — the channels a meeting type notifies when
      * it has no override of its own. A channel with this off still delivers for any meeting type that
@@ -47,13 +46,10 @@ public class NotificationChannel extends PanacheEntityBase {
      */
     @Column(name = "default_enabled", nullable = false)
     public boolean defaultEnabled = true;
-
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
-
     @Column(name = "last_success_at")
     public Instant lastSuccessAt;
-
     @Column(name = "last_failure_at")
     public Instant lastFailureAt;
 
@@ -61,7 +57,9 @@ public class NotificationChannel extends PanacheEntityBase {
         return list("ownerId = ?1 order by id", ownerId);
     }
 
-    /** This owner's channel by id, or null — the owner-scoping guard for every /me handler. */
+    /**
+     * This owner's channel by id, or null — the owner-scoping guard for every /me handler.
+     */
     public static NotificationChannel ownedBy(Long id, Long ownerId) {
         return find("id = ?1 and ownerId = ?2", id, ownerId).firstResult();
     }

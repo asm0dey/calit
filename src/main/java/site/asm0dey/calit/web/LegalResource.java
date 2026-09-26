@@ -27,28 +27,31 @@ import site.asm0dey.calit.notify.NotificationChannel;
  */
 @Path("/")
 public class LegalResource {
-
     @CheckedTemplate
     public static class Templates {
-        private Templates() {}
+        private Templates() {
+        }
 
         public static native TemplateInstance privacy(
-                String title, OgCard og, RawString override, boolean anyChannelConfigured);
+                String title,
+                OgCard og,
+                RawString override,
+                boolean anyChannelConfigured
+        );
 
         public static native TemplateInstance terms(String title, OgCard og, RawString override);
     }
 
     final OgCards ogCards;
-
     final Optional<String> privacyPolicyPath;
-
     final Optional<String> termsPath;
 
     @Inject
     public LegalResource(
             OgCards ogCards,
             @ConfigProperty(name = "app.privacy-policy-path") Optional<String> privacyPolicyPath,
-            @ConfigProperty(name = "app.terms-path") Optional<String> termsPath) {
+            @ConfigProperty(name = "app.terms-path") Optional<String> termsPath
+    ) {
         this.ogCards = ogCards;
         this.privacyPolicyPath = privacyPolicyPath;
         this.termsPath = termsPath;
@@ -64,7 +67,8 @@ public class LegalResource {
                 "Privacy Policy",
                 ogCards.product("/privacy"),
                 fragment(privacyPolicyPath),
-                NotificationChannel.count() > 0);
+                NotificationChannel.count() > 0
+        );
     }
 
     @GET
@@ -84,15 +88,13 @@ public class LegalResource {
      * config value is not an application error worth a trace dump on every request.
      */
     private RawString fragment(Optional<String> path) {
-        return path.filter(p -> !p.isBlank())
-                .map(p -> {
-                    try {
-                        return new RawString(Files.readString(java.nio.file.Path.of(p)));
-                    } catch (IOException | InvalidPathException e) {
-                        Log.warnf("Could not read legal fragment %s (%s); serving the shipped copy", p, e.getMessage());
-                        return null;
-                    }
-                })
-                .orElse(null);
+        return path.filter(p -> !p.isBlank()).map(p -> {
+            try {
+                return new RawString(Files.readString(java.nio.file.Path.of(p)));
+            } catch (IOException | InvalidPathException e) {
+                Log.warnf("Could not read legal fragment %s (%s); serving the shipped copy", p, e.getMessage());
+                return null;
+            }
+        }).orElse(null);
     }
 }

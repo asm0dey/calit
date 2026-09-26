@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.HttpHeaders;
 import com.google.api.client.http.HttpResponseException;
@@ -29,8 +28,9 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class DeleteEventAlreadyGoneTest {
-
-    /** Wire a port whose events.delete(...).execute() fails with the given exception. */
+    /**
+     * Wire a port whose events.delete(...).execute() fails with the given exception.
+     */
     private static GoogleCalendarPort portThatFailsWith(IOException failure) throws IOException {
         var tokens = mock(GoogleTokenService.class);
         when(tokens.validAccessToken(any(), any())).thenReturn("access-token");
@@ -50,11 +50,12 @@ class DeleteEventAlreadyGoneTest {
     }
 
     private static GoogleJsonResponseException status(int code, String reason) {
-        return new GoogleJsonResponseException(
-                new HttpResponseException.Builder(code, reason, new HttpHeaders()), null);
+        return new GoogleJsonResponseException(new HttpResponseException.Builder(code, reason, new HttpHeaders()), null);
     }
 
-    /** deleteEvent reads the owner's write target from the DB; give owner 1 one. */
+    /**
+     * deleteEvent reads the owner's write target from the DB; give owner 1 one.
+     */
     private static void seedWriteTarget(String sub) {
         GoogleCredential c = new GoogleCredential();
         c.ownerId = 1L;

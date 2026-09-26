@@ -8,11 +8,13 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
  * username/password login provider and the trusted (session re-establishment) provider.
  */
 final class AppUserSecurityIdentities {
-    private AppUserSecurityIdentities() {}
+    private AppUserSecurityIdentities() {
+    }
 
     static SecurityIdentity of(AppUser user) {
-        QuarkusSecurityIdentity.Builder builder =
-                QuarkusSecurityIdentity.builder().setPrincipal(() -> user.username);
+        QuarkusSecurityIdentity.Builder builder = QuarkusSecurityIdentity
+            .builder()
+            .setPrincipal(() -> user.username);
         if (user.roles != null && !user.roles.isBlank()) {
             for (String role : user.roles.split(",")) {
                 var trimmed = role.trim();

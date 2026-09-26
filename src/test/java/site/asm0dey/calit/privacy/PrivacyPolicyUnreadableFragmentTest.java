@@ -2,7 +2,6 @@ package site.asm0dey.calit.privacy;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
@@ -19,7 +18,6 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 @TestProfile(PrivacyPolicyUnreadableFragmentTest.UnreadablePath.class)
 class PrivacyPolicyUnreadableFragmentTest {
-
     @Test
     void anUnreadableOverridePathFallsBackToTheShippedCopy() {
         given().when().get("/privacy").then().statusCode(200).body(containsString("CALIT_LEGAL_PRIVACY"));
@@ -28,7 +26,9 @@ class PrivacyPolicyUnreadableFragmentTest {
     public static class UnreadablePath implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
-            return Map.of("app.privacy-policy-path", "/nonexistent/path/does-not-exist-" + System.nanoTime() + ".html");
+            return Map.of("app.privacy-policy-path", "/nonexistent/path/does-not-exist-"
+                    + System.nanoTime()
+                    + ".html");
         }
     }
 }

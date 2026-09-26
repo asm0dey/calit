@@ -2,7 +2,6 @@ package site.asm0dey.calit.google;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import java.time.Instant;
@@ -10,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class GoogleCredentialReconnectFieldsTest {
-
     @Test
     @TestTransaction
     void persistsAndReadsReconnectTrackingFields() {

@@ -13,14 +13,18 @@ import site.asm0dey.calit.user.PasswordResetToken;
  * different package.
  */
 public final class TokenFixtures {
-
-    /** The seeded admin owner — DatabaseResetCallback guarantees id 1, and both tables' user_id
-     * cascades from app_user, so a real row is required. */
+    /**
+     * The seeded admin owner — DatabaseResetCallback guarantees id 1, and both tables' user_id
+     * cascades from app_user, so a real row is required.
+     */
     private static final Long USER = 1L;
 
-    private TokenFixtures() {}
+    private TokenFixtures() {
+    }
 
-    /** Persists a password-reset token expiring at {@code expiresAt}. Returns its id. */
+    /**
+     * Persists a password-reset token expiring at {@code expiresAt}. Returns its id.
+     */
     public static Long seedResetToken(Instant expiresAt) {
         return QuarkusTransaction.requiringNew().call(() -> {
             var t = new PasswordResetToken();
@@ -32,12 +36,18 @@ public final class TokenFixtures {
         });
     }
 
-    /** Row count for a password-reset token id — 0 once purged. */
+    /**
+     * Row count for a password-reset token id — 0 once purged.
+     */
     public static long countResetToken(Long id) {
-        return QuarkusTransaction.requiringNew().call(() -> PasswordResetToken.count("id", id));
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> PasswordResetToken.count("id", id));
     }
 
-    /** Persists a login ticket expiring at {@code expiresAt}. Returns its id. */
+    /**
+     * Persists a login ticket expiring at {@code expiresAt}. Returns its id.
+     */
     public static Long seedLoginTicket(Instant expiresAt) {
         return QuarkusTransaction.requiringNew().call(() -> {
             var t = new LoginTicket();
@@ -49,8 +59,12 @@ public final class TokenFixtures {
         });
     }
 
-    /** Row count for a login-ticket id — 0 once purged. */
+    /**
+     * Row count for a login-ticket id — 0 once purged.
+     */
     public static long countLoginTicket(Long id) {
-        return QuarkusTransaction.requiringNew().call(() -> LoginTicket.count("id", id));
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> LoginTicket.count("id", id));
     }
 }

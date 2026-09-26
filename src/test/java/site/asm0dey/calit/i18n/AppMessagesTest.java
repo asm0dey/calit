@@ -1,7 +1,6 @@
 package site.asm0dey.calit.i18n;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.qute.i18n.Localized;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.Test;
 class AppMessagesTest {
     @Inject
     AppMessages en;
-
     @Inject
     @Localized("de") AppMessages de;
 

@@ -1,18 +1,17 @@
 package site.asm0dey.calit.email;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class EmailOutboxTest {
-
     @Test
     void enqueuePersistsADueUnsentRow() {
-        Long id = QuarkusTransaction.requiringNew()
-                .call(() -> EmailOutbox.enqueue("a@b.com", "Subj", "<p>hi</p>", new byte[] {1, 2}, null, "boom"));
+        Long id = QuarkusTransaction
+            .requiringNew()
+            .call(() -> EmailOutbox.enqueue("a@b.com", "Subj", "<p>hi</p>", new byte[] {1, 2}, null, "boom"));
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox r = EmailOutbox.findById(id);
@@ -27,8 +26,10 @@ class EmailOutboxTest {
 
     @Test
     void backoffBumpsAttemptsAndPushesNextAttempt() {
-        Long id = QuarkusTransaction.requiringNew()
-                .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
+        Long id =
+                QuarkusTransaction
+            .requiringNew()
+            .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox r = EmailOutbox.findById(id);
@@ -42,16 +43,21 @@ class EmailOutboxTest {
 
     @Test
     void attemptCapMarksRowDead() {
-        Long id = QuarkusTransaction.requiringNew()
-                .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
+        Long id =
+                QuarkusTransaction
+            .requiringNew()
+            .call(() -> EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null));
 
-        QuarkusTransaction.requiringNew().run(() -> {
-            EmailOutbox r = EmailOutbox.findById(id);
-            r.attempts = 9; // next failure is the 10th -> dead
-            r.deadOrBackoff("still down");
-            assertEquals(10, r.attempts);
-            assertNull(r.nextAttemptAt, "capped row is dead: excluded from the claim query");
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                EmailOutbox r = EmailOutbox.findById(id);
+                // next failure is the 10th -> dead
+                r.attempts = 9;
+                r.deadOrBackoff("still down");
+                assertEquals(10, r.attempts);
+                assertNull(r.nextAttemptAt, "capped row is dead: excluded from the claim query");
+            });
     }
 
     @Test

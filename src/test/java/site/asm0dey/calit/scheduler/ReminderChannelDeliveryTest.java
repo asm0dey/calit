@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import com.sun.net.httpserver.HttpServer;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
@@ -39,10 +38,10 @@ import site.asm0dey.calit.test.MultiHostFixtures;
  */
 @QuarkusTest
 class ReminderChannelDeliveryTest {
-
-    /** Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide. */
+    /**
+     * Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide.
+     */
     static int port;
-
     static HttpServer server;
     static CountDownLatch hit;
 
@@ -61,12 +60,13 @@ class ReminderChannelDeliveryTest {
 
     @AfterAll
     static void stopStub() {
-        if (server != null) server.stop(0);
+        if (server != null) {
+            server.stop(0);
+        }
     }
 
     @Inject
     ReminderScheduler scheduler;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -88,43 +88,54 @@ class ReminderChannelDeliveryTest {
         assertNull(c.lastFailureAt);
     }
 
-    /** Owner 1 (the always-seeded admin) with settings, a confirmed booking, a due reminder, a channel. */
+    /**
+     * Owner 1 (the always-seeded admin) with settings, a confirmed booking, a due reminder, a channel.
+     */
     private Long seed() {
-        return QuarkusTransaction.requiringNew().call(() -> {
-            MultiHostFixtures.settings(1L, "Owner");
-            MeetingType type = MultiHostFixtures.meetingType(1L, "remind-me-" + System.nanoTime(), 30);
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                MultiHostFixtures.settings(1L, "Owner");
+                MeetingType type = MultiHostFixtures.meetingType(1L, "remind-me-" + System.nanoTime(), 30);
 
-            Booking b = new Booking();
-            b.ownerId = 1L;
-            b.meetingTypeId = type.id;
-            b.inviteeName = "Sam Invitee";
-            b.inviteeEmail = "sam@example.com";
-            var start = Instant.now().plus(500, ChronoUnit.HOURS);
-            b.startUtc = start;
-            b.endUtc = start.plus(30, ChronoUnit.MINUTES);
-            b.status = BookingStatus.CONFIRMED;
-            b.manageToken = UUID.randomUUID().toString();
-            b.createdAt = Instant.now();
-            b.persist();
+                Booking b = new Booking();
+                b.ownerId = 1L;
+                b.meetingTypeId = type.id;
+                b.inviteeName = "Sam Invitee";
+                b.inviteeEmail = "sam@example.com";
+                var start = Instant.now().plus(500, ChronoUnit.HOURS);
+                b.startUtc = start;
+                b.endUtc = start.plus(30, ChronoUnit.MINUTES);
+                b.status = BookingStatus.CONFIRMED;
+                b.manageToken = UUID.randomUUID().toString();
+                b.createdAt = Instant.now();
+                b.persist();
 
-            Reminder r = new Reminder();
-            r.bookingId = b.id;
-            r.sendAt = Instant.now().minus(1, ChronoUnit.MINUTES); // due
-            r.kind = Reminder.KIND_REMINDER;
-            r.sentAt = null; // unsent
-            r.persist();
+                Reminder r = new Reminder();
+                r.bookingId = b.id;
+                // due
+                r.sendAt = Instant.now().minus(1, ChronoUnit.MINUTES);
+                r.kind = Reminder.KIND_REMINDER;
+                // unsent
+                r.sentAt = null;
+                r.persist();
 
-            return MultiHostFixtures.channel(1L, "ntfy+http://localhost:" + port + "/calit", "Stub").id;
-        });
+                return MultiHostFixtures.channel(1L, "ntfy+http://localhost:" + port + "/calit", "Stub").id;
+            });
     }
 
     // S2925: polling for an async DB write with no latch to observe it; a single fixed sleep would be worse.
     @SuppressWarnings("java:S2925")
     private NotificationChannel awaitStamp(Long channelId) throws InterruptedException {
-        for (var i = 0; i < 100; i++) { // the timestamp write happens just after the POST returns
+        for (var i = 0; i < 100; i++) {
+            // the timestamp write happens just after the POST returns
             NotificationChannel c =
-                    QuarkusTransaction.requiringNew().call(() -> NotificationChannel.findById(channelId));
-            if (c.lastSuccessAt != null) return c;
+                    QuarkusTransaction
+                .requiringNew()
+                .call(() -> NotificationChannel.findById(channelId));
+            if (c.lastSuccessAt != null) {
+                return c;
+            }
             Thread.sleep(50);
         }
         fail("delivery outcome was never stamped");

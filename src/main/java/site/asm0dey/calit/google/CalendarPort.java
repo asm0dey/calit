@@ -8,7 +8,6 @@ import java.util.List;
  * downstream tests replace it with a Mockito {@code @InjectMock}.
  */
 public interface CalendarPort {
-
     /**
      * True iff Google is connected for the given owner — i.e. a {@link GoogleCredential}
      * (with refresh token) exists.
@@ -16,7 +15,9 @@ public interface CalendarPort {
      */
     boolean isConnected(Long ownerId);
 
-    /** Merged busy intervals across the given owner's read-for-busy calendars within [from, to). */
+    /**
+     * Merged busy intervals across the given owner's read-for-busy calendars within [from, to).
+     */
     List<BusyInterval> freeBusy(Long ownerId, Instant from, Instant to);
 
     /**
@@ -40,7 +41,8 @@ public interface CalendarPort {
             Instant end,
             List<String> attendeeEmails,
             boolean createMeetLink,
-            String locationText);
+            String locationText
+    );
 
     /**
      * Move an existing event to a new time window and replace its attendee list (reschedule / guest
@@ -49,7 +51,13 @@ public interface CalendarPort {
      * @param ref where the event lives; null resolves the owner's write target (pre-V26 rows)
      */
     void updateEvent(
-            Long ownerId, CalendarRef ref, String eventId, Instant start, Instant end, List<String> attendeeEmails);
+            Long ownerId,
+            CalendarRef ref,
+            String eventId,
+            Instant start,
+            Instant end,
+            List<String> attendeeEmails
+    );
 
     /**
      * Patch an existing event's summary + description (and re-sync attendees), leaving its time
@@ -65,7 +73,8 @@ public interface CalendarPort {
             String eventId,
             String summary,
             String description,
-            List<String> attendeeEmails);
+            List<String> attendeeEmails
+    );
 
     /**
      * Remove an existing event (cancel); {@code sendUpdates=all}. This operation is idempotent: an

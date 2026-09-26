@@ -32,19 +32,12 @@ import site.asm0dey.calit.email.HostDelivery;
 // S6813: CDI field injection is the established pattern across this codebase's beans.
 @SuppressWarnings("java:S6813")
 public class NotificationDispatcher {
-
     final BookingSnapshotLoader snapshots;
-
     final ChannelRouter router;
-
     final ChannelMessageRenderer renderer;
-
     final ChannelPolicy policy;
-
     final Event<ChannelDelivery> deliveries;
-
     final ChannelStamp stamp;
-
     final DeliveryExecutor executor;
 
     @Inject
@@ -55,7 +48,8 @@ public class NotificationDispatcher {
             ChannelPolicy policy,
             Event<ChannelDelivery> deliveries,
             ChannelStamp stamp,
-            DeliveryExecutor executor) {
+            DeliveryExecutor executor
+    ) {
         this.snapshots = snapshots;
         this.router = router;
         this.renderer = renderer;
@@ -66,7 +60,6 @@ public class NotificationDispatcher {
     }
 
     // --- CDI observers: fire only after the booking transaction commits. ---
-
     void onRequested(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingRequested e) {
         dispatch(e.bookingId(), HostNotification.Requested::new);
     }
@@ -97,13 +90,17 @@ public class NotificationDispatcher {
 
     void onGuestDeclined(@Observes(during = TransactionPhase.AFTER_SUCCESS) GuestDeclined e) {
         BookingGuest g = guest(e.guestId());
-        if (g == null) return;
+        if (g == null) {
+            return;
+        }
         dispatch(e.bookingId(), (s, h) -> new HostNotification.GuestDeclined(s, h, g));
     }
 
     void onGuestRemoved(@Observes(during = TransactionPhase.AFTER_SUCCESS) GuestRemoved e) {
         BookingGuest g = guest(e.guestId());
-        if (g == null) return;
+        if (g == null) {
+            return;
+        }
         dispatch(e.bookingId(), (s, h) -> new HostNotification.GuestRemoved(s, h, g));
     }
 
@@ -119,20 +116,22 @@ public class NotificationDispatcher {
                 OwnerSettings settings = OwnerSettings.forOwner(e.cohostOwnerId());
                 return type == null || settings == null ? null : new Object[] {type, settings};
             });
-            if (loaded == null) return;
+            if (loaded == null) {
+                return;
+            }
             MeetingType type = (MeetingType) loaded[0];
             OwnerSettings settings = (OwnerSettings) loaded[1];
             fanOut(
                     settings,
                     type.id,
-                    new HostNotification.ConsentRequested(type, HostNotification.Host.of(settings), e.consentToken()));
+                    new HostNotification.ConsentRequested(type, HostNotification.Host.of(settings), e.consentToken())
+            );
         } catch (RuntimeException ex) {
             Log.warn("channel notification failed for host consent", ex);
         }
     }
 
     // --- explicit dispatch: the two paths that have no event to observe ---
-
     /**
      * Reminders carry no CDI event. {@code ReminderScheduler} claims the due row, stamps {@code
      * sent_at} and enqueues the email in ONE transaction -- the durable-outbox path that replaced
@@ -157,7 +156,6 @@ public class NotificationDispatcher {
     }
 
     // --- internals ---
-
     /**
      * Guarded like {@link #dispatch}: its own {@code requiringNew} transaction can fail (pool
      * exhaustion), and an escape here would land as an ERROR with a stack trace attributed to this
@@ -165,7 +163,9 @@ public class NotificationDispatcher {
      */
     private static BookingGuest guest(Long guestId) {
         try {
-            return QuarkusTransaction.requiringNew().call(() -> BookingGuest.findById(guestId));
+            return QuarkusTransaction
+                .requiringNew()
+                .call(() -> BookingGuest.findById(guestId));
         } catch (RuntimeException e) {
             Log.warnf(e, "channel notification failed loading guest %d", guestId);
             return null;
@@ -180,7 +180,9 @@ public class NotificationDispatcher {
     private void dispatch(Long bookingId, BiFunction<BookingSnapshot, HostNotification.Host, HostNotification> f) {
         try {
             BookingSnapshot s = snapshots.load(bookingId);
-            if (s == null) return;
+            if (s == null) {
+                return;
+            }
             List<OwnerSettings> recipients = s.hostDeliveries().isEmpty()
                     ? List.of(s.owner())
                     : s.hostDeliveries().stream().map(HostDelivery::settings).toList();
@@ -196,9 +198,12 @@ public class NotificationDispatcher {
 
     private void fanOut(OwnerSettings settings, Long meetingTypeId, HostNotification n) {
         List<NotificationChannel> channels =
-                QuarkusTransaction.requiringNew().call(() -> router.channelsFor(settings.ownerId, meetingTypeId));
+                QuarkusTransaction
+            .requiringNew()
+            .call(() -> router.channelsFor(settings.ownerId, meetingTypeId));
         if (channels.isEmpty()) {
-            return; // no channel URL means no channel notifications: email only, as today
+            // no channel URL means no channel notifications: email only, as today
+            return;
         }
         Message message = renderer.render(n);
         for (NotificationChannel c : channels) {
@@ -216,7 +221,9 @@ public class NotificationDispatcher {
                 // own. Guarded so one unstampable row cannot abort the remaining channels.
                 try {
                     var at = Instant.now();
-                    QuarkusTransaction.requiringNew().run(() -> stamp.stamp(c.id, false, at));
+                    QuarkusTransaction
+                        .requiringNew()
+                        .run(() -> stamp.stamp(c.id, false, at));
                 } catch (RuntimeException e) {
                     Log.warnf(e, "could not stamp channel %d", c.id);
                 }

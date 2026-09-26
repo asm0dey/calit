@@ -2,20 +2,19 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.Cookie;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class RememberMeTest {
-
     private Cookie loginCookie(boolean remember) {
-        var req = given().redirects()
-                .follow(false)
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("j_username", "admin")
-                .formParam("j_password", "testpass");
+        var req = given()
+            .redirects()
+            .follow(false)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("j_username", "admin")
+            .formParam("j_password", "testpass");
         if (remember) {
             req = req.queryParam("remember", "true");
         }

@@ -11,16 +11,22 @@ import jakarta.persistence.EntityManager;
  * transaction before persisting any owner-scoped row.
  */
 public final class TestOwners {
-    private TestOwners() {}
+    private TestOwners() {
+    }
 
-    /** Insert (id, 'owner<id>') into app_user if absent, so owner_id={@code id} satisfies the FK. */
+    /**
+     * Insert (id, 'owner<id>') into app_user if absent, so owner_id={@code id} satisfies the FK.
+     */
     public static void ensure(EntityManager em, long id) {
-        em.createNativeQuery("insert into app_user (id, username, password_hash, roles, is_admin, enabled, "
-                        + "must_change_password, settings_complete, created_at) "
-                        + "values (?1, ?2, 'x', 'user', false, true, false, false, now()) "
-                        + "on conflict (id) do nothing")
-                .setParameter(1, id)
-                .setParameter(2, "owner" + id)
-                .executeUpdate();
+        em
+            .createNativeQuery(
+                    "insert into app_user (id, username, password_hash, roles, is_admin, enabled, "
+                    + "must_change_password, settings_complete, created_at) "
+                    + "values (?1, ?2, 'x', 'user', false, true, false, false, now()) "
+                    + "on conflict (id) do nothing"
+            )
+            .setParameter(1, id)
+            .setParameter(2, "owner" + id)
+            .executeUpdate();
     }
 }

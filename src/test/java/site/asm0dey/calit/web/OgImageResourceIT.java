@@ -4,7 +4,6 @@ import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -23,19 +22,19 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusIntegrationTest
 class OgImageResourceIT {
-
     static final byte[] PNG_MAGIC = {(byte) 0x89, 'P', 'N', 'G'};
 
     @Test
     void productCardRendersFromThePackagedArtifact() throws IOException {
-        byte[] body = given().when()
-                .get("/og.png")
-                .then()
-                .statusCode(200)
-                .contentType("image/png")
-                .header("Cache-Control", "public, max-age=3600")
-                .extract()
-                .asByteArray();
+        byte[] body = given()
+            .when()
+            .get("/og.png")
+            .then()
+            .statusCode(200)
+            .contentType("image/png")
+            .header("Cache-Control", "public, max-age=3600")
+            .extract()
+            .asByteArray();
 
         assertArrayEquals(PNG_MAGIC, Arrays.copyOf(body, 4));
 

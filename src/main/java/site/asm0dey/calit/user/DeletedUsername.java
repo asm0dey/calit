@@ -21,15 +21,15 @@ import java.time.Instant;
 @Entity
 @Table(name = "deleted_username")
 public class DeletedUsername extends PanacheEntityBase {
-
     @Id
     @Column(name = "username_sha256")
     public String usernameSha256;
-
     @Column(name = "deleted_at", nullable = false)
     public Instant deletedAt;
 
-    /** Tombstone {@code username} (normalized internally) forever. */
+    /**
+     * Tombstone {@code username} (normalized internally) forever.
+     */
     public static void tombstone(String username) {
         var row = new DeletedUsername();
         row.usernameSha256 = LoginTicketService.sha256Hex(Usernames.normalize(username));
@@ -37,7 +37,9 @@ public class DeletedUsername extends PanacheEntityBase {
         row.persist();
     }
 
-    /** True when {@code username} (normalized internally) belonged to a previously-deleted account. */
+    /**
+     * True when {@code username} (normalized internally) belonged to a previously-deleted account.
+     */
     public static boolean isTombstoned(String username) {
         return count("usernameSha256", LoginTicketService.sha256Hex(Usernames.normalize(username))) > 0;
     }

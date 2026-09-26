@@ -2,7 +2,6 @@ package site.asm0dey.calit.web.og;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.awt.Font;
@@ -17,7 +16,6 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class CardFontsTest {
-
     @Inject
     CardFonts fonts;
 
@@ -42,7 +40,8 @@ class CardFontsTest {
     void chipIsFraunces() {
         assertTrue(
                 fonts.chip().getFontName().startsWith("Fraunces"),
-                "chip font should be a Fraunces instance, got " + fonts.chip().getFontName());
+                "chip font should be a Fraunces instance, got " + fonts.chip().getFontName()
+        );
     }
 
     @Test

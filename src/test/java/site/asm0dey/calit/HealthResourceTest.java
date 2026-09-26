@@ -2,7 +2,6 @@ package site.asm0dey.calit;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.is;
-
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 

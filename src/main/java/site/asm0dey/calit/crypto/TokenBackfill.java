@@ -17,11 +17,8 @@ import org.jboss.logging.Logger;
  */
 @ApplicationScoped
 public class TokenBackfill {
-
     private static final Logger LOG = Logger.getLogger(TokenBackfill.class);
-
     final EntityManager em;
-
     final TokenCipher cipher;
 
     @Inject
@@ -37,10 +34,13 @@ public class TokenBackfill {
 
     void encryptLegacy() {
         @SuppressWarnings("unchecked")
-        List<Object[]> rows = em.createNativeQuery("select id, refresh_token, access_token from google_credential "
-                        + "where refresh_token not like 'enc:v1:%' or access_token not like 'enc:v1:%' "
-                        + "for update skip locked")
-                .getResultList();
+        List<Object[]> rows = em
+            .createNativeQuery(
+                    "select id, refresh_token, access_token from google_credential "
+                    + "where refresh_token not like 'enc:v1:%' or access_token not like 'enc:v1:%' "
+                    + "for update skip locked"
+            )
+            .getResultList();
         var migrated = 0;
         for (Object[] row : rows) {
             Long id = ((Number) row[0]).longValue();
@@ -56,12 +56,14 @@ public class TokenBackfill {
                 changed = true;
             }
             if (changed) {
-                em.createNativeQuery(
-                                "update google_credential set refresh_token = :r, access_token = :a where id = :id")
-                        .setParameter("r", refresh)
-                        .setParameter("a", access)
-                        .setParameter("id", id)
-                        .executeUpdate();
+                em
+                    .createNativeQuery(
+                            "update google_credential set refresh_token = :r, access_token = :a where id = :id"
+                    )
+                    .setParameter("r", refresh)
+                    .setParameter("a", access)
+                    .setParameter("id", id)
+                    .executeUpdate();
                 migrated++;
             }
         }

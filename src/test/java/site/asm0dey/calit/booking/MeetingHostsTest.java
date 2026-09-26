@@ -3,7 +3,6 @@ package site.asm0dey.calit.booking;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -19,13 +18,10 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class MeetingHostsTest {
-
     @Inject
     MeetingHosts meetingHosts;
-
     @Inject
     EntityManager em;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -35,8 +31,7 @@ class MeetingHostsTest {
         MeetingType t = MultiHostFixtures.meetingType(1L, "intro", 30);
         t.bufferBeforeMinutes = 5;
         t.bufferAfterMinutes = 10;
-        MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED)
-                .persist();
+        MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED).persist();
         MeetingTypeHost c = MeetingTypeHost.of(t.id, cohost.id, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING);
         c.persist();
         return t;
@@ -47,7 +42,9 @@ class MeetingHostsTest {
     void notBookableUntilAllAccepted() {
         MeetingType t = multiHostType();
         assertFalse(meetingHosts.bookable(t));
-        MeetingTypeHost.forType(t.id).forEach(h -> h.status = MeetingTypeHost.ACCEPTED);
+        MeetingTypeHost
+            .forType(t.id)
+            .forEach(h -> h.status = MeetingTypeHost.ACCEPTED);
         em.flush();
         assertTrue(meetingHosts.bookable(t));
         assertEquals(2, meetingHosts.hostOwnerIds(t).size());
@@ -59,11 +56,17 @@ class MeetingHostsTest {
         MeetingType t = multiHostType();
         // Accept the co-host row so hostOwnerIds(t) returns both hosts, exercising the
         // fallback loop (with only the PENDING row, hostOwnerIds would return just [1]).
-        MeetingTypeHost.forType(t.id).forEach(h -> h.status = MeetingTypeHost.ACCEPTED);
+        MeetingTypeHost
+            .forType(t.id)
+            .forEach(h -> h.status = MeetingTypeHost.ACCEPTED);
         em.flush();
         List<Long> hosts = meetingHosts.hostOwnerIds(t);
         assertEquals(2, hosts.size());
-        var cohostId = hosts.stream().filter(id -> !id.equals(1L)).findFirst().orElseThrow();
+        var cohostId = hosts
+            .stream()
+            .filter(id -> !id.equals(1L))
+            .findFirst()
+            .orElseThrow();
 
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(cohostId)).thenReturn(false);
@@ -82,10 +85,13 @@ class MeetingHostsTest {
     void perHostBufferOverridesType() {
         MeetingType t = multiHostType();
         MeetingTypeHost creator = MeetingTypeHost.find(t.id, 1L);
-        creator.bufferBeforeMinutes = 20; // override
+        // override
+        creator.bufferBeforeMinutes = 20;
         em.flush();
-        assertEquals(20, meetingHosts.effectiveBufferBefore(t, 1L, t.durationMinutes)); // overridden
-        assertEquals(10, meetingHosts.effectiveBufferAfter(t, 1L, t.durationMinutes)); // inherits type
+        // overridden
+        assertEquals(20, meetingHosts.effectiveBufferBefore(t, 1L, t.durationMinutes));
+        // inherits type
+        assertEquals(10, meetingHosts.effectiveBufferAfter(t, 1L, t.durationMinutes));
     }
 
     @Test
@@ -108,8 +114,7 @@ class MeetingHostsTest {
         assertFalse(meetingHosts.eligibleCohost(t.id, creatorOwnerId, creator));
 
         AppUser alreadyHost = MultiHostFixtures.enabledUser("already-host");
-        MeetingTypeHost.of(t.id, alreadyHost.id, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING)
-                .persist();
+        MeetingTypeHost.of(t.id, alreadyHost.id, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING).persist();
         assertFalse(meetingHosts.eligibleCohost(t.id, creatorOwnerId, alreadyHost));
 
         AppUser fresh = MultiHostFixtures.enabledUser("fresh-candidate");

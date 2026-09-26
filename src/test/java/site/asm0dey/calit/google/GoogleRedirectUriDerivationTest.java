@@ -1,7 +1,6 @@
 package site.asm0dey.calit.google;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -14,15 +13,12 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class GoogleRedirectUriDerivationTest {
-
     @Inject
     GoogleOAuthConfig config;
 
     @Test
     void redirectUrisDeriveFromAppBaseUrl() {
         assertEquals("http://localhost:8080/api/google/callback", config.oauth().redirectUri());
-        assertEquals(
-                "http://localhost:8080/api/google/login/callback",
-                config.oauth().loginRedirectUri());
+        assertEquals("http://localhost:8080/api/google/login/callback", config.oauth().loginRedirectUri());
     }
 }

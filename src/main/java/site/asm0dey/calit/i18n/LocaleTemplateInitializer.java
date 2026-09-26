@@ -22,8 +22,9 @@ import java.util.Locale;
  */
 @ApplicationScoped
 public class LocaleTemplateInitializer implements TemplateInstance.Initializer {
-
-    /** Called once at startup by EngineProducer — registers this bean as a template initializer. */
+    /**
+     * Called once at startup by EngineProducer — registers this bean as a template initializer.
+     */
     void onEngineBuilder(@Observes EngineBuilder builder) {
         builder.addTemplateInstanceInitializer(this);
     }

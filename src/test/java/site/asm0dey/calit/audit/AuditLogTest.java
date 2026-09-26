@@ -2,7 +2,6 @@ package site.asm0dey.calit.audit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import org.junit.jupiter.api.Test;
 
 /**
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.Test;
  * asserted directly without scraping the JBoss log.
  */
 class AuditLogTest {
-
     @Test
     void safeStripsCarriageReturnAndNewline() {
         // A forged second line "AUDIT actor=evil..." injected via a field must be flattened to spaces.

@@ -12,48 +12,39 @@ import java.util.stream.Collectors;
 @Entity
 @Table(name = "meeting_type_host")
 public class MeetingTypeHost extends PanacheEntityBase {
-
     public static final String PENDING = "PENDING";
     public static final String ACCEPTED = "ACCEPTED";
     public static final String CREATOR = "CREATOR";
     public static final String COHOST = "COHOST";
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
-
     @Column(name = "meeting_type_id", nullable = false)
     public Long meetingTypeId;
-
     @Column(name = "owner_id", nullable = false)
     public Long ownerId;
-
     @Column(nullable = false, length = 16)
     public String status;
-
     @Column(nullable = false, length = 16)
     public String role;
-
     @Column(name = "consent_token")
     public UUID consentToken;
-
     @Column(name = "buffer_before_minutes")
     public Integer bufferBeforeMinutes;
-
     @Column(name = "buffer_after_minutes")
     public Integer bufferAfterMinutes;
-
-    /** This host's own write-calendar override for this shared type (Google's calendar id); null = their default. */
+    /**
+     * This host's own write-calendar override for this shared type (Google's calendar id); null = their default.
+     */
     @Column(name = "google_calendar_id", columnDefinition = "text")
     public String googleCalendarId;
-
-    /** The connected account {@link #googleCalendarId} belongs to; nulled when that account is disconnected. */
+    /**
+     * The connected account {@link #googleCalendarId} belongs to; nulled when that account is disconnected.
+     */
     @Column(name = "google_credential_id")
     public Long googleCredentialId;
-
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
-
     @Column(name = "responded_at")
     public Instant respondedAt;
 
@@ -80,20 +71,23 @@ public class MeetingTypeHost extends PanacheEntityBase {
     }
 
     public static MeetingTypeHost find(Long meetingTypeId, Long ownerId) {
-        return find("meetingTypeId = ?1 and ownerId = ?2", meetingTypeId, ownerId)
-                .firstResult();
+        return find("meetingTypeId = ?1 and ownerId = ?2", meetingTypeId, ownerId).firstResult();
     }
 
     public static MeetingTypeHost findByConsentToken(String token) {
         return find("consentToken", UUID.fromString(token)).firstResult();
     }
 
-    /** Rows where this owner is a co-host (any status), for their "Shared" list. */
+    /**
+     * Rows where this owner is a co-host (any status), for their "Shared" list.
+     */
     public static List<MeetingTypeHost> cohostedTypesFor(Long ownerId) {
         return list("ownerId = ?1 and role = ?2", ownerId, COHOST);
     }
 
-    /** True once the type has any co-host row (i.e. it is multi-host). */
+    /**
+     * True once the type has any co-host row (i.e. it is multi-host).
+     */
     public static boolean isMultiHost(Long meetingTypeId) {
         return count("meetingTypeId = ?1 and role = ?2", meetingTypeId, COHOST) > 0;
     }
@@ -106,8 +100,10 @@ public class MeetingTypeHost extends PanacheEntityBase {
         if (typeIds.isEmpty()) {
             return Set.of();
         }
-        return MeetingTypeHost.<MeetingTypeHost>list("role = ?1 and meetingTypeId in ?2", COHOST, typeIds).stream()
-                .map(h -> h.meetingTypeId)
-                .collect(Collectors.toSet());
+        return MeetingTypeHost
+            .<MeetingTypeHost>list("role = ?1 and meetingTypeId in ?2", COHOST, typeIds)
+            .stream()
+            .map(h -> h.meetingTypeId)
+            .collect(Collectors.toSet());
     }
 }

@@ -2,7 +2,6 @@ package site.asm0dey.calit.google;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -12,7 +11,6 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class GoogleSignInServiceTest {
-
     @Inject
     GoogleSignInService signIn;
 
@@ -56,18 +54,18 @@ class GoogleSignInServiceTest {
         s.timezone = "UTC";
         s.persistAndFlush();
 
-        GoogleSignInException ex = assertThrows(
-                GoogleSignInException.class,
-                () -> signIn.resolveOrProvision(new GoogleIdentity("sub-x", "unv@x.com", false)));
+        GoogleSignInException ex = assertThrows(GoogleSignInException.class, () -> signIn.resolveOrProvision(
+                new GoogleIdentity("sub-x", "unv@x.com", false)
+        ));
         assertEquals(GoogleSignInException.Reason.SIGNUP_DISABLED, ex.reason);
     }
 
     @Test
     @TestTransaction
     void unknownIdentityRejectedWhenSignupDisabled() {
-        GoogleSignInException ex = assertThrows(
-                GoogleSignInException.class,
-                () -> signIn.resolveOrProvision(new GoogleIdentity("sub-none", "new@x.com", true)));
+        GoogleSignInException ex = assertThrows(GoogleSignInException.class, () -> signIn.resolveOrProvision(
+                new GoogleIdentity("sub-none", "new@x.com", true)
+        ));
         assertEquals(GoogleSignInException.Reason.SIGNUP_DISABLED, ex.reason);
     }
 }

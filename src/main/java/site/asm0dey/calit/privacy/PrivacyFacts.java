@@ -16,17 +16,11 @@ import site.asm0dey.calit.booking.CaptchaProviderConfig;
 @Named("privacy")
 @ApplicationScoped
 public class PrivacyFacts {
-
     final boolean googleConfigured;
-
     final boolean oidcConfigured;
-
     final Optional<String> smtpHost;
-
     final boolean mailerMocked;
-
     final CaptchaProviderConfig captchaProviderConfig;
-
     final PrivacyConfig config;
 
     @Inject
@@ -36,7 +30,8 @@ public class PrivacyFacts {
             @ConfigProperty(name = "quarkus.mailer.host") Optional<String> smtpHost,
             @ConfigProperty(name = "quarkus.mailer.mock", defaultValue = "false") boolean mailerMocked,
             CaptchaProviderConfig captchaProviderConfig,
-            PrivacyConfig config) {
+            PrivacyConfig config
+    ) {
         this.googleConfigured = googleClientId.filter(s -> !s.isBlank()).isPresent();
         this.oidcConfigured = oidcEnabled;
         this.smtpHost = smtpHost;
@@ -80,7 +75,9 @@ public class PrivacyFacts {
         return config.inviteeErasureEnabled();
     }
 
-    /** Instance retention window in days, or null when bookings are kept indefinitely. */
+    /**
+     * Instance retention window in days, or null when bookings are kept indefinitely.
+     */
     public Integer getRetentionDays() {
         return config.bookingRetentionDays().orElse(null);
     }

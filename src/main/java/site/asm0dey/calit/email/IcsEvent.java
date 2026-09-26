@@ -18,8 +18,8 @@ public record IcsEvent(
         Instant end,
         IcsMethod method,
         int sequence,
-        boolean attendeeRsvp) {
-
+        boolean attendeeRsvp
+) {
     public static Builder builder() {
         return new Builder();
     }
@@ -104,7 +104,8 @@ public record IcsEvent(
                     end,
                     method,
                     sequence,
-                    attendeeRsvp);
+                    attendeeRsvp
+            );
         }
     }
 }

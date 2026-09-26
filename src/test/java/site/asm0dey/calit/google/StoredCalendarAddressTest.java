@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import com.google.api.services.calendar.Calendar;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
@@ -25,7 +24,6 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class StoredCalendarAddressTest {
-
     private Calendar.Events events;
     private GoogleTokenService tokens;
 
@@ -132,7 +130,8 @@ class StoredCalendarAddressTest {
     @Transactional
     void updateEventPatchesTheStoredCalendarNotTheWriteTarget() throws IOException {
         var credId = seedWriteTarget("sub-update-stored", "default@example.com");
-        seedOwnerSettings(); // updateEvent's eventTime() needs the owner's timezone
+        // updateEvent's eventTime() needs the owner's timezone
+        seedOwnerSettings();
         GoogleCalendarPort port = portForPatch();
 
         port.updateEvent(
@@ -141,7 +140,8 @@ class StoredCalendarAddressTest {
                 "evt-upd",
                 Instant.parse("2026-01-01T10:00:00Z"),
                 Instant.parse("2026-01-01T10:30:00Z"),
-                List.of());
+                List.of()
+        );
 
         verify(events).patch(eq("stored@example.com"), eq("evt-upd"), any());
     }
@@ -153,12 +153,20 @@ class StoredCalendarAddressTest {
         GoogleCalendarPort port = portForPatch();
 
         port.updateEventDetails(
-                1L, new CalendarRef(credId, "stored@example.com"), "evt-upd-2", "New summary", "New desc", List.of());
+                1L,
+                new CalendarRef(credId, "stored@example.com"),
+                "evt-upd-2",
+                "New summary",
+                "New desc",
+                List.of()
+        );
 
         verify(events).patch(eq("stored@example.com"), eq("evt-upd-2"), any());
     }
 
-    /** A port whose events.delete(...).execute() succeeds, capturing the calendar id it was called with. */
+    /**
+     * A port whose events.delete(...).execute() succeeds, capturing the calendar id it was called with.
+     */
     private GoogleCalendarPort port() throws IOException {
         tokens = mock(GoogleTokenService.class);
         when(tokens.validAccessToken(any(), any())).thenReturn("access-token");
@@ -176,7 +184,9 @@ class StoredCalendarAddressTest {
         return new GoogleCalendarPort(tokens, clientFactory);
     }
 
-    /** A port whose events.patch(...).execute() succeeds, capturing the calendar id it was called with. */
+    /**
+     * A port whose events.patch(...).execute() succeeds, capturing the calendar id it was called with.
+     */
     private GoogleCalendarPort portForPatch() throws IOException {
         tokens = mock(GoogleTokenService.class);
         when(tokens.validAccessToken(any(), any())).thenReturn("access-token");
@@ -194,7 +204,9 @@ class StoredCalendarAddressTest {
         return new GoogleCalendarPort(tokens, clientFactory);
     }
 
-    /** Owner 1's timezone, required by updateEvent's eventTime(); not otherwise seeded per-test. */
+    /**
+     * Owner 1's timezone, required by updateEvent's eventTime(); not otherwise seeded per-test.
+     */
     private static void seedOwnerSettings() {
         site.asm0dey.calit.domain.OwnerSettings s = new site.asm0dey.calit.domain.OwnerSettings();
         s.ownerId = 1L;
@@ -204,7 +216,9 @@ class StoredCalendarAddressTest {
         s.persist();
     }
 
-    /** Owner 1 gets one connected account and one write-target calendar. Returns the credential id. */
+    /**
+     * Owner 1 gets one connected account and one write-target calendar. Returns the credential id.
+     */
     private static Long seedWriteTarget(String sub, String calendarId) {
         GoogleCredential c = new GoogleCredential();
         c.ownerId = 1L;

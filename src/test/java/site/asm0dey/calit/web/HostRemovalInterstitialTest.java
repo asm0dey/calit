@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -36,16 +35,12 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class HostRemovalInterstitialTest {
-
     @Inject
     BookingService bookingService;
-
     @Inject
     MeetingHosts meetingHosts;
-
     @InjectMock
     CalendarPort calendarPort;
-
     private static final ZoneId AMS = ZoneId.of("Europe/Amsterdam");
 
     private Instant nextMonday(int hour) {
@@ -55,7 +50,9 @@ class HostRemovalInterstitialTest {
 
     record Seeded(MeetingType type, Long cohostId) {}
 
-    /** Admin (id 1, "pasha") as creator + a second accepted co-host, both bookable on Monday. */
+    /**
+     * Admin (id 1, "pasha") as creator + a second accepted co-host, both bookable on Monday.
+     */
     @Transactional
     Seeded seedGroupType(String slug) {
         MultiHostFixtures.settings(1L, "pasha");
@@ -71,7 +68,7 @@ class HostRemovalInterstitialTest {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
+            .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
     }
 
     @Test
@@ -79,23 +76,34 @@ class HostRemovalInterstitialTest {
         stubOrganizerOnCreator();
         var seeded = seedGroupType("interstitial-confirm-" + System.nanoTime());
         bookingService.book(
-                1L, seeded.type().slug, nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+                1L,
+                seeded.type().slug,
+                nextMonday(10),
+                "Sam",
+                "sam@x.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of()
+        );
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/meeting-types/" + seeded.type().id + "/hosts/" + seeded.cohostId() + "/remove")
-                .then()
-                .statusCode(200)
-                // the count-agnostic wording, asserted in full: a bare containsString("1") stayed
-                // green through the rewording and would stay green through the next one too. The
-                // leading "{username}'s" is dropped -- Qute HTML-escapes the apostrophe.
-                .body(containsString("upcoming bookings on this meeting type: 1"))
-                .body(containsString("choice=keep"))
-                .body(containsString("choice=cancel"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/meeting-types/" + seeded.type().id + "/hosts/" + seeded.cohostId() + "/remove")
+            .then()
+            .statusCode(200)
+            // leading "{username}'s" is dropped -- Qute HTML-escapes the apostrophe.
+            .body(containsString("upcoming bookings on this meeting type: 1"))
+            .body(containsString("choice=keep"))
+            .body(containsString("choice=cancel"));
 
         assertNotNull(
-                MeetingTypeHost.find(seeded.type().id, seeded.cohostId()), "cohost row must survive the interstitial");
+                MeetingTypeHost.find(seeded.type().id, seeded.cohostId()),
+                "cohost row must survive the interstitial"
+        );
     }
 
     @Test
@@ -103,14 +111,25 @@ class HostRemovalInterstitialTest {
         stubOrganizerOnCreator();
         var seeded = seedGroupType("interstitial-keep-" + System.nanoTime());
         Booking lead = bookingService.book(
-                1L, seeded.type().slug, nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+                1L,
+                seeded.type().slug,
+                nextMonday(10),
+                "Sam",
+                "sam@x.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of()
+        );
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/meeting-types/" + seeded.type().id + "/hosts/" + seeded.cohostId() + "/remove?choice=keep")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/meeting-types/" + seeded.type().id + "/hosts/" + seeded.cohostId() + "/remove?choice=keep")
+            .then()
+            .statusCode(200);
 
         assertNull(MeetingTypeHost.find(seeded.type().id, seeded.cohostId()), "cohost row removed on keep");
         for (Booking row : Booking.<Booking>group(lead.groupId)) {
@@ -123,14 +142,25 @@ class HostRemovalInterstitialTest {
         stubOrganizerOnCreator();
         var seeded = seedGroupType("interstitial-cancel-" + System.nanoTime());
         Booking lead = bookingService.book(
-                1L, seeded.type().slug, nextMonday(10), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+                1L,
+                seeded.type().slug,
+                nextMonday(10),
+                "Sam",
+                "sam@x.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of()
+        );
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/meeting-types/" + seeded.type().id + "/hosts/" + seeded.cohostId() + "/remove?choice=cancel")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/meeting-types/" + seeded.type().id + "/hosts/" + seeded.cohostId() + "/remove?choice=cancel")
+            .then()
+            .statusCode(200);
 
         assertNull(MeetingTypeHost.find(seeded.type().id, seeded.cohostId()), "cohost row removed on cancel");
         for (Booking row : Booking.<Booking>group(lead.groupId)) {
@@ -142,12 +172,13 @@ class HostRemovalInterstitialTest {
     void removeWithNoFutureBookingsRemovesImmediatelyNoInterstitial() {
         var seeded = seedGroupType("interstitial-none-" + System.nanoTime());
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/meeting-types/" + seeded.type().id + "/hosts/" + seeded.cohostId() + "/remove")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/meeting-types/" + seeded.type().id + "/hosts/" + seeded.cohostId() + "/remove")
+            .then()
+            .statusCode(200);
 
         assertNull(MeetingTypeHost.find(seeded.type().id, seeded.cohostId()), "cohost row removed immediately");
     }

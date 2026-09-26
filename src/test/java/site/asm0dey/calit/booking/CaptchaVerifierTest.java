@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
 import jakarta.inject.Inject;
@@ -21,12 +20,9 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class CaptchaVerifierTest {
-
     static final String KEY = "test-hmac-secret";
-
     @Inject
     CaptchaVerifier verifier;
-
     @InjectSpy
     CaptchaProviderConfig providerConfig;
 
@@ -36,19 +32,26 @@ class CaptchaVerifierTest {
         when(providerConfig.altchaHmacKey()).thenReturn(Optional.of(KEY));
     }
 
-    /** Build the exact base64 payload the ALTCHA widget would POST after solving. */
+    /**
+     * Build the exact base64 payload the ALTCHA widget would POST after solving.
+     */
     static String validPayload() throws Exception {
-        var opts = new Altcha.ChallengeOptions()
-                .algorithm(Altcha.Algorithm.SHA256)
-                .maxNumber(100000)
-                .hmacKey(KEY);
+        var opts = new Altcha.ChallengeOptions().algorithm(Altcha.Algorithm.SHA256).maxNumber(100000).hmacKey(KEY);
         Altcha.Challenge ch = Altcha.createChallenge(opts);
         Altcha.Solution sol =
                 Altcha.solveChallenge(ch.challenge(), ch.salt(), Altcha.Algorithm.SHA256, ch.maxnumber(), 0);
         // salt is hex + "?expires=...&" — URL-encoded, contains no JSON-special chars.
-        String json = "{\"algorithm\":\"" + ch.algorithm() + "\",\"challenge\":\"" + ch.challenge()
-                + "\",\"number\":" + sol.number() + ",\"salt\":\"" + ch.salt()
-                + "\",\"signature\":\"" + ch.signature() + "\"}";
+        String json = "{\"algorithm\":\""
+                + ch.algorithm()
+                + "\",\"challenge\":\""
+                + ch.challenge()
+                + "\",\"number\":"
+                + sol.number()
+                + ",\"salt\":\""
+                + ch.salt()
+                + "\",\"signature\":\""
+                + ch.signature()
+                + "\"}";
         return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -58,16 +61,24 @@ class CaptchaVerifierTest {
      */
     static String payloadSignedWith(String hmacKey, long expiresInSeconds) throws Exception {
         var opts = new Altcha.ChallengeOptions()
-                .algorithm(Altcha.Algorithm.SHA256)
-                .maxNumber(100000)
-                .hmacKey(hmacKey)
-                .expiresInSeconds(expiresInSeconds);
+            .algorithm(Altcha.Algorithm.SHA256)
+            .maxNumber(100000)
+            .hmacKey(hmacKey)
+            .expiresInSeconds(expiresInSeconds);
         Altcha.Challenge ch = Altcha.createChallenge(opts);
         Altcha.Solution sol =
                 Altcha.solveChallenge(ch.challenge(), ch.salt(), Altcha.Algorithm.SHA256, ch.maxnumber(), 0);
-        String json = "{\"algorithm\":\"" + ch.algorithm() + "\",\"challenge\":\"" + ch.challenge()
-                + "\",\"number\":" + sol.number() + ",\"salt\":\"" + ch.salt()
-                + "\",\"signature\":\"" + ch.signature() + "\"}";
+        String json = "{\"algorithm\":\""
+                + ch.algorithm()
+                + "\",\"challenge\":\""
+                + ch.challenge()
+                + "\",\"number\":"
+                + sol.number()
+                + ",\"salt\":\""
+                + ch.salt()
+                + "\",\"signature\":\""
+                + ch.signature()
+                + "\"}";
         return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 

@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
@@ -25,10 +24,8 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class BookPageTurnstileEnabledTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @InjectSpy
     CaptchaProviderConfig providerConfig;
 
@@ -38,7 +35,8 @@ class BookPageTurnstileEnabledTest {
         if (owner == null) {
             owner = AppUser.create("bob", "x", false);
             owner.persistAndFlush();
-        } // create() builds but does not persist; flush to assign id
+        }
+        // create() builds but does not persist; flush to assign id
         Long ownerId = owner.id;
         MeetingType.delete("ownerId = ?1 and slug = ?2", ownerId, "turnstile-type");
         OwnerSettings s = OwnerSettings.forOwner(ownerId);
@@ -76,16 +74,17 @@ class BookPageTurnstileEnabledTest {
         when(providerConfig.turnstileSiteKey()).thenReturn(Optional.of("1x00000000000000000000AA"));
         seed();
 
-        given().when()
-                .get("/bob/turnstile-type")
-                .then()
-                .statusCode(200)
-                // The Turnstile widget div carries the public site key ...
-                .body(containsString("class=\"cf-turnstile\""))
-                .body(containsString("data-sitekey=\"1x00000000000000000000AA\""))
-                // ... and the loader script is present.
-                .body(containsString("challenges.cloudflare.com/turnstile/v0/api.js"))
-                // Honeypot still present.
-                .body(containsString("name=\"website\""));
+        given()
+            .when()
+            .get("/bob/turnstile-type")
+            .then()
+            .statusCode(200)
+            // The Turnstile widget div carries the public site key ...
+            .body(containsString("class=\"cf-turnstile\""))
+            .body(containsString("data-sitekey=\"1x00000000000000000000AA\""))
+            // ... and the loader script is present.
+            .body(containsString("challenges.cloudflare.com/turnstile/v0/api.js"))
+            // Honeypot still present.
+            .body(containsString("name=\"website\""));
     }
 }

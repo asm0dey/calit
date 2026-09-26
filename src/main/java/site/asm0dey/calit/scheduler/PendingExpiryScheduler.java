@@ -46,15 +46,10 @@ import site.asm0dey.calit.notify.NotificationDispatcher;
  */
 @ApplicationScoped
 public class PendingExpiryScheduler {
-
     final int holdHours;
-
     final int graceSeconds;
-
     final EntityManager em;
-
     final EmailService emailService;
-
     final NotificationDispatcher channels;
 
     @Inject
@@ -63,7 +58,8 @@ public class PendingExpiryScheduler {
             EmailService emailService,
             NotificationDispatcher channels,
             @ConfigProperty(name = "calit.approval.hold-hours", defaultValue = "24") int holdHours,
-            @ConfigProperty(name = "calit.scheduler.grace-seconds", defaultValue = "30") int graceSeconds) {
+            @ConfigProperty(name = "calit.scheduler.grace-seconds", defaultValue = "30") int graceSeconds
+    ) {
         this.em = em;
         this.emailService = emailService;
         this.channels = channels;
@@ -84,10 +80,13 @@ public class PendingExpiryScheduler {
         claimAndDeclineExpired();
     }
 
-    /** Advisory-lock key-space prefix for a group; must never collide with {@link #SINGLE_LOCK_PREFIX}. */
+    /**
+     * Advisory-lock key-space prefix for a group; must never collide with {@link #SINGLE_LOCK_PREFIX}.
+     */
     private static final String GROUP_LOCK_PREFIX = "group:";
-
-    /** Advisory-lock key-space prefix for a single-host booking (no group); see {@link #GROUP_LOCK_PREFIX}. */
+    /**
+     * Advisory-lock key-space prefix for a single-host booking (no group); see {@link #GROUP_LOCK_PREFIX}.
+     */
     private static final String SINGLE_LOCK_PREFIX = "booking:";
 
     /**
@@ -110,28 +109,34 @@ public class PendingExpiryScheduler {
      */
     void claimAndDeclineExpired() {
         List<Long> declined = new ArrayList<>();
-        QuarkusTransaction.requiringNew().run(() -> {
-            @SuppressWarnings("unchecked")
-            List<Object[]> candidates = em.createNativeQuery("SELECT id, group_id FROM booking "
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                @SuppressWarnings("unchecked")
+                List<Object[]> candidates = em
+                    .createNativeQuery(
+                            "SELECT id, group_id FROM booking "
                             + "WHERE status = 'PENDING' "
                             + "AND LEAST(created_at + (:holdHours * INTERVAL '1 hour'), start_utc) "
                             + "    <= now() + make_interval(secs => :graceSeconds) "
                             + "ORDER BY created_at "
-                            + "LIMIT 50")
+                            + "LIMIT 50"
+                    )
                     .setParameter("holdHours", holdHours)
                     .setParameter("graceSeconds", (double) graceSeconds)
                     .getResultList();
 
-            for (Object[] row : candidates) {
-                Long id = ((Number) row[0]).longValue();
-                // Defensive parse: driver/Hibernate version can return a uuid column as either
-                // java.util.UUID or its String form from a scalar native query.
-                var groupId = row[1] == null ? null : UUID.fromString(row[1].toString());
-                processCandidate(id, groupId, declined);
-            }
-        });
+                for (Object[] row : candidates) {
+                    Long id = ((Number) row[0]).longValue();
+                    // Defensive parse: driver/Hibernate version can return a uuid column as either
+                    // java.util.UUID or its String form from a scalar native query.
+                    var groupId = row[1] == null ? null : UUID.fromString(row[1].toString());
+                    processCandidate(id, groupId, declined);
+                }
+            });
         for (Long bookingId : declined) {
-            channels.notifyDeclined(bookingId); // swallows its own failures
+            // swallows its own failures
+            channels.notifyDeclined(bookingId);
         }
     }
 
@@ -154,17 +159,17 @@ public class PendingExpiryScheduler {
         // keeps the group and single-booking key spaces disjoint (a group_id and a booking
         // id could otherwise theoretically collide once hashed).
         var lockKey = groupId != null ? GROUP_LOCK_PREFIX + groupId : SINGLE_LOCK_PREFIX + id;
-        boolean owns =
-                Boolean.TRUE.equals(em.createNativeQuery("select pg_try_advisory_xact_lock(hashtextextended(?1, 0))")
-                        .setParameter(1, lockKey)
-                        .getSingleResult());
+        boolean owns = Boolean.TRUE.equals(em
+            .createNativeQuery("select pg_try_advisory_xact_lock(hashtextextended(?1, 0))")
+            .setParameter(1, lockKey)
+            .getSingleResult()
+        );
         if (!owns) {
             // Another tick already owns this group/booking this round -- it will process
             // (or has already processed) it under its own advisory lock. We hold NO row
             // lock on this candidate, so skipping here can never block or deadlock anyone.
             return;
         }
-
         // We now exclusively own this group/booking for the round. Nobody else can be
         // concurrently declining it, but its status may have changed since the lock-free
         // SELECT above -- either a sibling candidate row of the SAME group earlier in THIS
@@ -174,7 +179,6 @@ public class PendingExpiryScheduler {
         if (b.status != BookingStatus.PENDING) {
             return;
         }
-
         // Multi-host: the hold window elapsing on ANY row without full approval means the
         // whole conceptual meeting failed to convene -- decline every row in the group, not
         // just the one that happened to be claimed, and send a single declined email (fanned
@@ -205,10 +209,13 @@ public class PendingExpiryScheduler {
         }
         for (Booking r : Booking.<Booking>group(b.groupId)) {
             if (r.status == BookingStatus.DECLINED) {
-                continue; // already declined (e.g. by a concurrent host action); idempotent skip
+                // already declined (e.g. by a concurrent host action); idempotent skip
+                continue;
             }
-            r.status = BookingStatus.DECLINED; // flipped while holding the group's advisory lock
-            Reminder.deleteUnsentFor(r.id); // was ReminderScheduler.onDeclined observer
+            // flipped while holding the group's advisory lock
+            r.status = BookingStatus.DECLINED;
+            // was ReminderScheduler.onDeclined observer
+            Reminder.deleteUnsentFor(r.id);
         }
         declined.add(lead.id);
         // Guard covers a render/load failure (throws before any persist): the flip +
@@ -216,25 +223,30 @@ public class PendingExpiryScheduler {
         // whole tx pre-commit and the row is reclaimed next tick -- the crash-safety
         // guarantee.
         try {
-            emailService.enqueueDeclined(lead.id); // durable, same tx
+            // durable, same tx
+            emailService.enqueueDeclined(lead.id);
         } catch (Exception ex) {
             Log.errorf(
                     ex,
                     "declined enqueue failed for group %s lead booking %d (declined, mail dropped)",
                     b.groupId,
-                    lead.id);
+                    lead.id
+            );
         }
     }
 
     private void declineSingle(Long id, Booking b, List<Long> declined) {
-        b.status = BookingStatus.DECLINED; // flipped while holding this booking's advisory lock
-        Reminder.deleteUnsentFor(id); // was ReminderScheduler.onDeclined observer
+        // flipped while holding this booking's advisory lock
+        b.status = BookingStatus.DECLINED;
+        // was ReminderScheduler.onDeclined observer
+        Reminder.deleteUnsentFor(id);
         declined.add(id);
         // Guard covers a render/load failure (throws before any persist): the flip + cleanup
         // still commit, one mail dropped. A crash (not caught) rolls back the whole tx pre-commit
         // and the row is reclaimed next tick -- the crash-safety guarantee.
         try {
-            emailService.enqueueDeclined(id); // was EmailService.onDeclined observer; durable, same tx
+            // was EmailService.onDeclined observer; durable, same tx
+            emailService.enqueueDeclined(id);
         } catch (Exception ex) {
             Log.errorf(ex, "declined enqueue failed for booking %d (declined, mail dropped)", id);
         }

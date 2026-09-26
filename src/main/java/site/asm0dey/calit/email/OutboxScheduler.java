@@ -24,11 +24,8 @@ import java.util.List;
  */
 @ApplicationScoped
 public class OutboxScheduler {
-
     private static final int BATCH = 20;
-
     final EntityManager em;
-
     final MailSender mailSender;
 
     @Inject
@@ -42,35 +39,46 @@ public class OutboxScheduler {
         dispatchDueMail();
     }
 
-    /** Package-private so tests can drive one tick deterministically. */
+    /**
+     * Package-private so tests can drive one tick deterministically.
+     */
     void dispatchDueMail() {
-        QuarkusTransaction.requiringNew().run(() -> {
-            @SuppressWarnings("unchecked")
-            List<Number> ids = em.createNativeQuery("SELECT id FROM email_outbox "
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                @SuppressWarnings("unchecked")
+                List<Number> ids = em
+                    .createNativeQuery(
+                            "SELECT id FROM email_outbox "
                             + "WHERE sent_at IS NULL AND next_attempt_at <= now() "
                             + "ORDER BY next_attempt_at "
                             + "FOR UPDATE SKIP LOCKED "
-                            + "LIMIT " + BATCH)
+                            + "LIMIT "
+                            + BATCH
+                    )
                     .getResultList();
 
-            for (Number n : ids) {
-                EmailOutbox r = EmailOutbox.findById(n.longValue());
-                if (r == null) {
-                    // can't happen (row is locked in this tx) -- guard so a stray null never
-                    // aborts the batch and discards already-sent rows' progress
-                    continue;
-                }
-                if (r.pastDeadline(Instant.now())) {
-                    r.markExpired(); // e.g. reset-token already expired -- don't deliver a dead link
-                } else {
-                    try {
-                        mailSender.sendNow(null, r.recipient, r.subject, r.htmlBody, r.icsBytes);
-                        r.sentAt = Instant.now(); // marked within the lock-holding tx
-                    } catch (Exception e) {
-                        r.deadOrBackoff(e.getMessage()); // bump attempts / reschedule / mark dead
+                for (Number n : ids) {
+                    EmailOutbox r = EmailOutbox.findById(n.longValue());
+                    if (r == null) {
+                        // can't happen (row is locked in this tx) -- guard so a stray null never
+                        // aborts the batch and discards already-sent rows' progress
+                        continue;
+                    }
+                    if (r.pastDeadline(Instant.now())) {
+                        // e.g. reset-token already expired -- don't deliver a dead link
+                        r.markExpired();
+                    } else {
+                        try {
+                            mailSender.sendNow(null, r.recipient, r.subject, r.htmlBody, r.icsBytes);
+                            // marked within the lock-holding tx
+                            r.sentAt = Instant.now();
+                        } catch (Exception e) {
+                            // bump attempts / reschedule / mark dead
+                            r.deadOrBackoff(e.getMessage());
+                        }
                     }
                 }
-            }
-        });
+            });
     }
 }

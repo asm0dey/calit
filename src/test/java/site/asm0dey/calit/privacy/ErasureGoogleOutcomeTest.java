@@ -9,7 +9,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -27,12 +26,9 @@ import site.asm0dey.calit.google.CalendarPort;
  */
 @QuarkusTest
 class ErasureGoogleOutcomeTest {
-
     private static final String EVENT = "evt-erase";
-
     @Inject
     PrivacyService privacy;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -41,7 +37,9 @@ class ErasureGoogleOutcomeTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
     }
 
-    /** Gives a seeded booking a stored Google event and returns its manage token. */
+    /**
+     * Gives a seeded booking a stored Google event and returns its manage token.
+     */
     private static String withGoogleEvent(Long id) {
         return QuarkusTransaction.requiringNew().call(() -> {
             Booking b = Booking.findById(id);
@@ -52,7 +50,9 @@ class ErasureGoogleOutcomeTest {
     }
 
     private static Booking reload(Long id) {
-        return QuarkusTransaction.requiringNew().call(() -> Booking.findById(id));
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findById(id));
     }
 
     @Test

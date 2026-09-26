@@ -20,14 +20,11 @@ import java.util.stream.Collectors;
 @Entity
 @Table(name = "notification_channel_meeting_type")
 public class NotificationChannelMeetingType extends PanacheEntityBase {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
-
     @Column(name = "channel_id", nullable = false)
     public Long channelId;
-
     @Column(name = "meeting_type_id", nullable = false)
     public Long meetingTypeId;
 
@@ -36,7 +33,10 @@ public class NotificationChannelMeetingType extends PanacheEntityBase {
     }
 
     public static Set<Long> linkedChannelIds(Long meetingTypeId) {
-        return forType(meetingTypeId).stream().map(l -> l.channelId).collect(Collectors.toSet());
+        return forType(meetingTypeId)
+            .stream()
+            .map(l -> l.channelId)
+            .collect(Collectors.toSet());
     }
 
     /**
@@ -44,13 +44,15 @@ public class NotificationChannelMeetingType extends PanacheEntityBase {
      * {@code ownChannelIds} and re-creates one per id in {@code keepChannelIds}. Another host's
      * links on the same type are never touched, because they name channels this host does not own.
      */
-    public static void replaceLinks(
-            Long meetingTypeId, Collection<Long> ownChannelIds, Collection<Long> keepChannelIds) {
+    public static void replaceLinks(Long meetingTypeId, Collection<Long> ownChannelIds, Collection<Long> keepChannelIds) {
         if (!ownChannelIds.isEmpty()) {
             delete("meetingTypeId = ?1 and channelId in ?2", meetingTypeId, ownChannelIds);
         }
         for (Long channelId : keepChannelIds) {
-            if (!ownChannelIds.contains(channelId)) continue; // never link a channel this host does not own
+            // never link a channel this host does not own
+            if (!ownChannelIds.contains(channelId)) {
+                continue;
+            }
             var link = new NotificationChannelMeetingType();
             link.meetingTypeId = meetingTypeId;
             link.channelId = channelId;

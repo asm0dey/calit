@@ -21,11 +21,8 @@ import org.alexmond.notify4j.SendResult;
  */
 @ApplicationScoped
 public class ChannelSender {
-
     final NotifyConfig config;
-
     final ChannelPolicy policy;
-
     final ChannelStamp stamp;
 
     @Inject

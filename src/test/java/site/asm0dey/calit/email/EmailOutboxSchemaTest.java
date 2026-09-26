@@ -1,7 +1,6 @@
 package site.asm0dey.calit.email;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -11,7 +10,9 @@ import org.junit.jupiter.api.Test;
 class EmailOutboxSchemaTest {
     @Test
     void tableExistsAndMapsCleanly() {
-        long n = QuarkusTransaction.requiringNew().call(() -> EmailOutbox.count());
+        long n = QuarkusTransaction
+            .requiringNew()
+            .call(() -> EmailOutbox.count());
         assertEquals(0L, n);
     }
 }

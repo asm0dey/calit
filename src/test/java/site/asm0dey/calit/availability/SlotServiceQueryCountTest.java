@@ -2,7 +2,6 @@ package site.asm0dey.calit.availability;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -23,14 +22,12 @@ import site.asm0dey.calit.domain.*;
  */
 @QuarkusTest
 class SlotServiceQueryCountTest {
-
     @Inject
     SlotService slotService;
-
     @Inject
     EntityManagerFactory emf;
-
-    private static final LocalDate FROM = LocalDate.of(2026, 6, 8); // Monday
+    // Monday
+    private static final LocalDate FROM = LocalDate.of(2026, 6, 8);
 
     private Statistics stats() {
         return emf.unwrap(SessionFactory.class).getStatistics();
@@ -50,12 +47,10 @@ class SlotServiceQueryCountTest {
         window(o, "13:00", "14:00");
 
         Statistics statistics = stats();
-
         // 30-day horizon.
         statistics.clear();
         slotService.generateRawSlots(t, FROM, FROM.plusDays(30));
         long count30 = statistics.getPrepareStatementCount();
-
         // 60-day horizon — must issue the SAME number of statements (constant, not linear).
         statistics.clear();
         slotService.generateRawSlots(t, FROM, FROM.plusDays(60));
@@ -65,11 +60,11 @@ class SlotServiceQueryCountTest {
         assertEquals(
                 count30,
                 count60,
-                "query count must be constant in the horizon (30d=" + count30 + ", 60d=" + count60 + ")");
+                "query count must be constant in the horizon (30d=" + count30 + ", 60d=" + count60 + ")"
+        );
     }
 
     // --- helpers ---
-
     private void seedSettings(String zone) {
         OwnerSettings s = OwnerSettings.forOwner(1L);
         if (s == null) {

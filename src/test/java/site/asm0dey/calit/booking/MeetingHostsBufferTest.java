@@ -1,7 +1,6 @@
 package site.asm0dey.calit.booking;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -12,9 +11,7 @@ import site.asm0dey.calit.domain.MeetingTypeHost;
 
 @QuarkusTest
 class MeetingHostsBufferTest {
-
     private static final Long OWNER = 1L;
-
     @Inject
     MeetingHosts meetingHosts;
 
@@ -43,7 +40,9 @@ class MeetingHostsBufferTest {
         return t;
     }
 
-    /** ADR-0002: the max is over the overrides actually SET; an unset one is not a 10-minute floor. */
+    /**
+     * ADR-0002: the max is over the overrides actually SET; an unset one is not a 10-minute floor.
+     */
     @Test
     void neitherSetFallsBackToTheTypeBuffer() {
         MeetingType t = seed("buf-none", null, null);

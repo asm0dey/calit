@@ -28,31 +28,27 @@ import java.util.concurrent.TimeUnit;
  */
 @ApplicationScoped
 public class DeliveryExecutor {
-
     private static final int CORE_THREADS = 2;
-
     private static final int MAX_THREADS = 6;
-
     private static final int QUEUE_CAPACITY = 1000;
-
     private final ExecutorService pool;
-
     private final NotificationOptions options;
 
     public DeliveryExecutor() {
-        this.pool = new ThreadPoolExecutor(
-                CORE_THREADS,
-                MAX_THREADS,
-                60L,
-                TimeUnit.SECONDS,
-                new ArrayBlockingQueue<>(QUEUE_CAPACITY),
-                // Daemon threads: a stuck send must never hold JVM shutdown open.
-                Thread.ofPlatform().name("calit-notify-", 0).daemon(true).factory(),
-                (r, e) -> Log.warn("channel delivery dropped: delivery queue full"));
+        this.pool = new ThreadPoolExecutor(CORE_THREADS, MAX_THREADS, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(
+                QUEUE_CAPACITY
+        ), Thread
+            .ofPlatform()
+            .name("calit-notify-", 0)
+            .daemon(true)
+            // Daemon threads: a stuck send must never hold JVM shutdown open.
+            .factory(), (r, e) -> Log.warn("channel delivery dropped: delivery queue full"));
         this.options = NotificationOptions.ofExecutor(pool);
     }
 
-    /** Pass to {@code Event.fireAsync} so the delivery never lands on the shared worker pool. */
+    /**
+     * Pass to {@code Event.fireAsync} so the delivery never lands on the shared worker pool.
+     */
     public NotificationOptions options() {
         return options;
     }

@@ -4,14 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 
 class CardRendererTest {
-
     static final CardRenderer RENDERER = new CardRenderer(new CardFonts());
 
     static BufferedImage decode(byte[] png) throws Exception {
@@ -52,8 +50,13 @@ class CardRendererTest {
 
     @Test
     void longNamesStillFit() throws Exception {
-        byte[] png = RENDERER.render(new CardRenderer.Card(
-                "Ada Lovelace", "Quarterly architecture review and roadmap planning session", "15, 30 or 60 min"));
+        byte[] png = RENDERER.render(
+                new CardRenderer.Card(
+                        "Ada Lovelace",
+                        "Quarterly architecture review and roadmap planning session",
+                        "15, 30 or 60 min"
+                )
+        );
         assertEquals(1200, decode(png).getWidth());
     }
 
@@ -83,8 +86,7 @@ class CardRendererTest {
     void pathologicalSingleWordIsEllipsizedAndFitsTheSafeSquare() {
         // A single unbroken word cannot be wrapped, so the fit ladder's last stage (ellipsize) must
         // still catch it and keep it inside the safe square — not overflow past x=915.
-        var unbrokenWord =
-                "Supercalifragilisticexpialidociousantidisestablishmentarianismfloccinaucinihilipilification";
+        var unbrokenWord = "Supercalifragilisticexpialidociousantidisestablishmentarianismfloccinaucinihilipilification";
         var probe = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
         var g = probe.createGraphics();
 
@@ -98,7 +100,8 @@ class CardRendererTest {
         int maxWidth = CardRenderer.SAFE_X1 - CardRenderer.SAFE_X0 - 40;
         assertTrue(
                 TextRuns.width(g, lines.getFirst()) <= maxWidth,
-                "ellipsized line must fit the safe square, width was " + TextRuns.width(g, lines.getFirst()));
+                "ellipsized line must fit the safe square, width was " + TextRuns.width(g, lines.getFirst())
+        );
         g.dispose();
     }
 }

@@ -17,12 +17,11 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  */
 @ApplicationScoped
 public class MailSender {
-
-    /** ponytail: the only attachment calit sends. Generalize if a second type ever appears. */
+    /**
+     * ponytail: the only attachment calit sends. Generalize if a second type ever appears.
+     */
     private static final String ICS_FILENAME = "invite.ics";
-
     private static final String ICS_CONTENT_TYPE = "text/calendar; charset=UTF-8; method=REQUEST";
-
     final Mailer mailer;
 
     @Inject
@@ -31,10 +30,14 @@ public class MailSender {
         this.mailFrom = mailFrom;
     }
 
-    /** Bare sending address; the per-message display name (when present) is prefixed onto this. */
+    /**
+     * Bare sending address; the per-message display name (when present) is prefixed onto this.
+     */
     final String mailFrom;
 
-    /** Direct send; throws on SMTP failure. {@code fromName} null → From left to config default. */
+    /**
+     * Direct send; throws on SMTP failure. {@code fromName} null → From left to config default.
+     */
     public void sendNow(String fromName, String to, String subject, String html, byte[] ics) {
         Mail mail = Mail.withHtml(to, subject, html);
         if (fromName != null) {
@@ -46,7 +49,9 @@ public class MailSender {
         mailer.send(mail);
     }
 
-    /** Try direct; on any failure, durably queue to the outbox for retry (no usefulness deadline). */
+    /**
+     * Try direct; on any failure, durably queue to the outbox for retry (no usefulness deadline).
+     */
     public void send(String fromName, String to, String subject, String html, byte[] ics) {
         send(fromName, to, subject, html, ics, null, MailTag.none());
     }
@@ -75,13 +80,13 @@ public class MailSender {
      * ponytail: the outbox does not persist {@code fromName}; a retried mail sends with the
      * config-default From (cosmetic only).
      */
-    public void send(
-            String fromName, String to, String subject, String html, byte[] ics, Instant notAfter, MailTag tag) {
+    public void send(String fromName, String to, String subject, String html, byte[] ics, Instant notAfter, MailTag tag) {
         try {
             sendNow(fromName, to, subject, html, ics);
         } catch (Exception e) {
-            QuarkusTransaction.requiringNew()
-                    .run(() -> EmailOutbox.enqueue(to, subject, html, ics, notAfter, e.getMessage(), tag));
+            QuarkusTransaction
+                .requiringNew()
+                .run(() -> EmailOutbox.enqueue(to, subject, html, ics, notAfter, e.getMessage(), tag));
             Log.warnf(e, "SMTP send failed, queued to outbox: to=%s subject=%s", to, subject);
         }
     }

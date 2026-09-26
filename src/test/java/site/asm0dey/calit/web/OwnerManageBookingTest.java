@@ -6,7 +6,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -29,14 +28,14 @@ import site.asm0dey.calit.google.CalendarPort;
 
 @QuarkusTest
 class OwnerManageBookingTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @Inject
     BookingService bookingService;
 
-    /** Seeds an auto (no-approval) PHONE meeting and books it → CONFIRMED. Returns its id. */
+    /**
+     * Seeds an auto (no-approval) PHONE meeting and books it → CONFIRMED. Returns its id.
+     */
     @Transactional
     Long seedConfirmedBooking() {
         OwnerSettings s = OwnerSettings.forOwner(1L);
@@ -79,8 +78,10 @@ class OwnerManageBookingTest {
                 "",
                 "",
                 "en",
-                List.of());
-        return b.id; // CONFIRMED (no approval)
+                List.of()
+        );
+        // CONFIRMED (no approval)
+        return b.id;
     }
 
     @Test
@@ -88,33 +89,30 @@ class OwnerManageBookingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var id = seedConfirmedBooking();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/bookings/" + id + "/manage")
-                .then()
-                .statusCode(200)
-                .body(containsString("/me/bookings/" + id + "/reschedule"))
-                .body(containsString("/me/bookings/" + id + "/cancel"))
-                .body(containsString("Pat"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/bookings/" + id + "/manage")
+            .then()
+            .statusCode(200)
+            .body(containsString("/me/bookings/" + id + "/reschedule"))
+            .body(containsString("/me/bookings/" + id + "/cancel"))
+            .body(containsString("Pat"));
     }
 
     @Test
     void managePageReturns404ForUnknownBooking() {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/bookings/999999/manage")
-                .then()
-                .statusCode(404);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/bookings/999999/manage")
+            .then()
+            .statusCode(404);
     }
 
     @Test
     void managePageRequiresAuth() {
-        given().redirects()
-                .follow(false)
-                .when()
-                .get("/me/bookings/1/manage")
-                .then()
-                .statusCode(302);
+        given().redirects().follow(false).when().get("/me/bookings/1/manage").then().statusCode(302);
     }
 
     @Test
@@ -126,22 +124,25 @@ class OwnerManageBookingTest {
         // pick a different available slot from the type's availability
         MeetingType type = MeetingType.findById(before.meetingTypeId);
         var slots = bookingService.availableSlots(type, now(), now().plusDays(14));
-        var target = slots.stream()
-                .map(s -> s.start().toInstant())
-                .filter(i -> !i.equals(before.startUtc))
-                .findFirst()
-                .orElseThrow();
+        var target = slots
+            .stream()
+            .map(s -> s.start().toInstant())
+            .filter(i -> !i.equals(before.startUtc))
+            .findFirst()
+            .orElseThrow();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", target.toString())
-                .when()
-                .post("/me/bookings/" + id + "/reschedule")
-                .then()
-                .statusCode(200);
-
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", target.toString())
+            .when()
+            .post("/me/bookings/" + id + "/reschedule")
+            .then()
+            .statusCode(200);
         // Load in a fresh transaction so the test's L1 cache does not return the pre-POST snapshot.
-        Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findById(id));
+        Booking after = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findById(id));
         org.junit.jupiter.api.Assertions.assertEquals(target, after.startUtc);
         org.junit.jupiter.api.Assertions.assertTrue(after.icsSequence > beforeSeq, "sequence bumped");
     }
@@ -151,18 +152,23 @@ class OwnerManageBookingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var id = seedConfirmedBooking();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/me/bookings/" + id + "/cancel")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/bookings/" + id + "/cancel")
+            .then()
+            .statusCode(200);
 
-        Booking after = QuarkusTransaction.requiringNew().call(() -> Booking.findById(id));
+        Booking after = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findById(id));
         org.junit.jupiter.api.Assertions.assertEquals(site.asm0dey.calit.booking.BookingStatus.CANCELLED, after.status);
     }
 
-    /** Seeds a confirmed booking that has one active guest; returns [bookingId, guestId]. */
+    /**
+     * Seeds a confirmed booking that has one active guest; returns [bookingId, guestId].
+     */
     @Transactional
     long[] seedConfirmedBookingWithGuest(long bookingId) {
         BookingGuest g = new BookingGuest();
@@ -184,22 +190,27 @@ class OwnerManageBookingTest {
 
         Booking before = Booking.findById(bookingId);
         MeetingType type = MeetingType.findById(before.meetingTypeId);
-        var target = bookingService.availableSlots(type, now(), now().plusDays(14)).stream()
-                .map(s -> s.start().toInstant())
-                .filter(i -> !i.equals(before.startUtc))
-                .findFirst()
-                .orElseThrow();
+        var target = bookingService
+            .availableSlots(type, now(), now().plusDays(14))
+            .stream()
+            .map(s -> s.start().toInstant())
+            .filter(i -> !i.equals(before.startUtc))
+            .findFirst()
+            .orElseThrow();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", target.toString())
-                .when()
-                .post("/me/bookings/" + bookingId + "/reschedule")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", target.toString())
+            .when()
+            .post("/me/bookings/" + bookingId + "/reschedule")
+            .then()
+            .statusCode(200);
 
         List<BookingGuest> afterGuests =
-                QuarkusTransaction.requiringNew().call(() -> BookingGuest.activeForBooking(bookingId));
+                QuarkusTransaction
+            .requiringNew()
+            .call(() -> BookingGuest.activeForBooking(bookingId));
         assertEquals(1, afterGuests.size(), "guest must be preserved across owner reschedule");
         assertEquals("guest@example.com", afterGuests.getFirst().email);
     }
@@ -210,12 +221,13 @@ class OwnerManageBookingTest {
         var bookingId = seedConfirmedBooking();
         seedConfirmedBookingWithGuest(bookingId);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/bookings/" + bookingId + "/manage")
-                .then()
-                .statusCode(200)
-                .body(containsString("guest@example.com"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/bookings/" + bookingId + "/manage")
+            .then()
+            .statusCode(200)
+            .body(containsString("guest@example.com"));
     }
 
     @Test
@@ -223,15 +235,15 @@ class OwnerManageBookingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var id = seedConfirmedBooking();
         var before = ((Booking) Booking.findById(id)).startUtc;
-
         // Log in as a second, non-owning user (admin id 1 is the owner; create + login a different user).
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", before.toString())
-                .when()
-                .post("/me/bookings/999999/reschedule")
-                .then()
-                .statusCode(404);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", before.toString())
+            .when()
+            .post("/me/bookings/999999/reschedule")
+            .then()
+            .statusCode(404);
 
         org.junit.jupiter.api.Assertions.assertEquals(before, ((Booking) Booking.findById(id)).startUtc);
     }

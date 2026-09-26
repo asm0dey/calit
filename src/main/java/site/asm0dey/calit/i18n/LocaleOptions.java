@@ -19,7 +19,6 @@ import java.util.Locale;
 @RequestScoped
 @Unremovable
 public class LocaleOptions {
-
     final ActiveLocale activeLocale;
 
     @Inject

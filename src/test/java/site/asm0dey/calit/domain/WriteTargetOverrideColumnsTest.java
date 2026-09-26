@@ -2,7 +2,6 @@ package site.asm0dey.calit.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import java.util.UUID;
@@ -10,10 +9,11 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 
-/** The per-(type, host) write-calendar override columns round-trip, and default to "unset". */
+/**
+ * The per-(type, host) write-calendar override columns round-trip, and default to "unset".
+ */
 @QuarkusTest
 class WriteTargetOverrideColumnsTest {
-
     @Test
     @TestTransaction
     void meetingTypeStoresTheOverride() {

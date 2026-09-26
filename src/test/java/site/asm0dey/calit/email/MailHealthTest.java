@@ -3,7 +3,6 @@ package site.asm0dey.calit.email;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -18,7 +17,6 @@ import site.asm0dey.calit.health.SmtpHealthCheck;
 // #195: MailHealth is the single seam four UI surfaces read to decide whether to warn about mail.
 @QuarkusTest
 class MailHealthTest {
-
     @Inject
     MailHealth mailHealth;
 
@@ -28,7 +26,9 @@ class MailHealthTest {
     @SuppressWarnings("java:S1612")
     @BeforeEach
     void clean() {
-        QuarkusTransaction.requiringNew().run(() -> EmailOutbox.deleteAll());
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> EmailOutbox.deleteAll());
     }
 
     @Test
@@ -46,25 +46,33 @@ class MailHealthTest {
         assertEquals(0L, mailHealth.status().deadLetters(), "clean outbox has no dead letters");
         assertFalse(mailHealth.status().hasDeadLetters());
 
-        QuarkusTransaction.requiringNew().run(() -> {
-            park("dead@example.com", null); // next_attempt_at null = given up on
-            park("retrying@example.com", Instant.now()); // still scheduled = not dead
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                // next_attempt_at null = given up on
+                park("dead@example.com", null);
+                // still scheduled = not dead
+                park("retrying@example.com", Instant.now());
+            });
 
         assertEquals(
                 1L,
                 mailHealth.status().deadLetters(),
-                "only rows we've given up on count -- a row still in backoff is not a dead letter");
+                "only rows we've given up on count -- a row still in backoff is not a dead letter"
+        );
         assertTrue(mailHealth.status().hasDeadLetters());
     }
 
     @Test
     void sentRowsAreNotDeadLetters() {
-        QuarkusTransaction.requiringNew().run(() -> {
-            EmailOutbox r = parkRow("delivered@example.com", null);
-            r.sentAt = Instant.now(); // delivered on a retry, then parked-row bookkeeping cleared it
-            r.persist();
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                EmailOutbox r = parkRow("delivered@example.com", null);
+                // delivered on a retry, then parked-row bookkeeping cleared it
+                r.sentAt = Instant.now();
+                r.persist();
+            });
 
         assertEquals(0L, mailHealth.status().deadLetters(), "a row that eventually sent is not a dead letter");
     }
@@ -73,7 +81,9 @@ class MailHealthTest {
     void undeliveredForFindsMailStillOwedToAnAddress() {
         assertFalse(mailHealth.undeliveredFor("guest@example.com"), "nothing parked -> nothing owed");
 
-        QuarkusTransaction.requiringNew().run(() -> park("guest@example.com", Instant.now()));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> park("guest@example.com", Instant.now()));
         assertTrue(mailHealth.undeliveredFor("guest@example.com"), "a parked, unsent row means mail is owed");
 
         assertFalse(mailHealth.undeliveredFor("someone.else@example.com"), "scoped to the address asked about");
@@ -81,10 +91,13 @@ class MailHealthTest {
 
     @Test
     void undeliveredForCountsGivenUpMailToo() {
-        QuarkusTransaction.requiringNew().run(() -> park("gone@example.com", null));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> park("gone@example.com", null));
         assertTrue(
                 mailHealth.undeliveredFor("gone@example.com"),
-                "a dead letter is the strongest form of undelivered -- it will never arrive");
+                "a dead letter is the strongest form of undelivered -- it will never arrive"
+        );
     }
 
     @Test
@@ -121,27 +134,28 @@ class MailHealthTest {
         // forever, on every owner's dashboard. Drive each spelling end to end -- through a real
         // MailHealth built over a real SmtpHealthCheck -- rather than comparing string constants,
         // so the assertion fails if the mapping breaks anywhere along the way.
-
         // A socket we own, so the port is genuinely open: "reachable" -> OK.
         try (var listening = new ServerSocket(0)) {
             var ok = new MailHealth(new SmtpHealthCheck(false, Optional.of("127.0.0.1"), listening.getLocalPort()));
             assertEquals(
                     MailHealth.State.OK,
                     ok.status().state(),
-                    "an SMTP port that accepts connections must map to OK -- this is the 'reachable' spelling");
+                    "an SMTP port that accepts connections must map to OK -- this is the 'reachable' spelling"
+            );
         }
-
         // Port 2 refuses fast: "unreachable" -> UNREACHABLE (never the UNCONFIGURED default).
         var down = new MailHealth(new SmtpHealthCheck(false, Optional.of("localhost"), 2));
         assertEquals(
                 MailHealth.State.UNREACHABLE,
                 down.status().state(),
-                "a configured-but-dead SMTP host must map to UNREACHABLE, not the UNCONFIGURED default");
+                "a configured-but-dead SMTP host must map to UNREACHABLE, not the UNCONFIGURED default"
+        );
 
         var mocked = new SmtpHealthCheck(true, Optional.empty(), 587).call();
         assertEquals(
                 "mocked-or-unconfigured",
                 mocked.getData().orElseThrow().get("state"),
-                "the mocked/unconfigured spelling is MailHealth's default branch");
+                "the mocked/unconfigured spelling is MailHealth's default branch"
+        );
     }
 }

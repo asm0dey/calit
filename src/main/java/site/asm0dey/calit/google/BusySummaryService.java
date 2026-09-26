@@ -12,7 +12,6 @@ import java.util.List;
  */
 @ApplicationScoped
 public class BusySummaryService {
-
     private final CalendarPort calendarPort;
 
     @Inject
@@ -20,7 +19,9 @@ public class BusySummaryService {
         this.calendarPort = calendarPort;
     }
 
-    /** Total busy minutes in [from, to), using the port's already-merged intervals. */
+    /**
+     * Total busy minutes in [from, to), using the port's already-merged intervals.
+     */
     public long busyMinutes(Long ownerId, Instant from, Instant to) {
         List<BusyInterval> busy = calendarPort.freeBusy(ownerId, from, to);
         long total = 0;

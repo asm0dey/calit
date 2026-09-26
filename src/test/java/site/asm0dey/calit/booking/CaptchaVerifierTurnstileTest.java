@@ -3,7 +3,6 @@ package site.asm0dey.calit.booking;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
-
 import com.sun.net.httpserver.HttpServer;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
@@ -27,10 +26,10 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 class CaptchaVerifierTurnstileTest {
-
-    /** Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide. */
+    /**
+     * Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide.
+     */
     static int port;
-
     static HttpServer server;
 
     @BeforeAll
@@ -59,7 +58,6 @@ class CaptchaVerifierTurnstileTest {
 
     @Inject
     CaptchaVerifier verifier;
-
     @InjectSpy
     CaptchaProviderConfig providerConfig;
 

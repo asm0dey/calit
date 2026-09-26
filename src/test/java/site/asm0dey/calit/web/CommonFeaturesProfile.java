@@ -15,9 +15,14 @@ public class CommonFeaturesProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
         return Map.of(
-                "calit.signup.enabled", "true",
-                "calit.scheduler.grace-seconds", "120",
-                "app.google-site-verification", "tok_calit_test_123",
-                "calit.oidc.admin-group", "calit-admins");
+                "calit.signup.enabled",
+                "true",
+                "calit.scheduler.grace-seconds",
+                "120",
+                "app.google-site-verification",
+                "tok_calit_test_123",
+                "calit.oidc.admin-group",
+                "calit-admins"
+        );
     }
 }

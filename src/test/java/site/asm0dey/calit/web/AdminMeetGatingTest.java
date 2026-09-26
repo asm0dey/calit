@@ -3,7 +3,6 @@ package site.asm0dey.calit.web;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
@@ -19,7 +18,6 @@ import site.asm0dey.calit.google.GoogleCredential;
  */
 @QuarkusTest
 class AdminMeetGatingTest {
-
     // POST commits in its own request transaction, so clean the Google rows seeded here after each test.
     @AfterEach
     @Transactional
@@ -30,7 +28,8 @@ class AdminMeetGatingTest {
 
     @Transactional
     void seedWriteTarget(boolean supportsMeet) {
-        var ownerId = 1L; // FormAuth.login() authenticates admin = owner 1
+        // FormAuth.login() authenticates admin = owner 1
+        var ownerId = 1L;
         GoogleCredential c = new GoogleCredential();
         c.ownerId = ownerId;
         c.refreshToken = "rt";
@@ -50,85 +49,88 @@ class AdminMeetGatingTest {
     @Test
     void formHidesMeetWhenWriteTargetCannotMeet() {
         seedWriteTarget(false);
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("value=\"GOOGLE_MEET\"")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("value=\"GOOGLE_MEET\"")));
     }
 
     @Test
     void formShowsMeetWhenWriteTargetSupportsMeet() {
         seedWriteTarget(true);
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(containsString("value=\"GOOGLE_MEET\""));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .body(containsString("value=\"GOOGLE_MEET\""));
     }
 
     @Test
     void createMeetRejectedWhenWriteTargetCannotMeet() {
         seedWriteTarget(false);
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Blocked Meet")
-                .formParam("slug", "blocked-meet-" + System.nanoTime())
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "GOOGLE_MEET")
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                .when()
-                .post("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                // Qute HTML-escapes the apostrophe in "can't" (renders as "can&#39;t"); assert on
-                // the unescaped tail of the message instead of fighting the entity encoding.
-                .body(containsString("create Google Meet links"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Blocked Meet")
+            .formParam("slug", "blocked-meet-" + System.nanoTime())
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "GOOGLE_MEET")
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            .when()
+            .post("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            // the unescaped tail of the message instead of fighting the entity encoding.
+            .body(containsString("create Google Meet links"));
 
-        org.junit.jupiter.api.Assertions.assertNull(
-                MeetingType.find("slug like ?1", "blocked-meet-%").firstResult());
+        org.junit.jupiter.api.Assertions.assertNull(MeetingType.find("slug like ?1", "blocked-meet-%").firstResult());
     }
 
     @Test
     void createPhoneAllowedWhenWriteTargetCannotMeet() {
         seedWriteTarget(false);
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Phone OK")
-                .formParam("slug", "phone-ok-" + System.nanoTime())
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "PHONE")
-                .formParam("locationDetail", "+1-555")
-                .formParam("slotIntervalMinutes", "")
-                .when()
-                .post("/me/meeting-types")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Phone OK")
+            .formParam("slug", "phone-ok-" + System.nanoTime())
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "PHONE")
+            .formParam("locationDetail", "+1-555")
+            .formParam("slotIntervalMinutes", "")
+            .when()
+            .post("/me/meeting-types")
+            .then()
+            .statusCode(200);
     }
 
     @Test
     void createMeetAllowedWhenWriteTargetSupportsMeet() {
         seedWriteTarget(true);
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("name", "Meet OK")
-                .formParam("slug", "meet-ok-" + System.nanoTime())
-                .formParam("durationMinutes", "30")
-                .formParam("minNoticeMinutes", "0")
-                .formParam("horizonDays", "60")
-                .formParam("locationType", "GOOGLE_MEET")
-                .formParam("locationDetail", "")
-                .formParam("slotIntervalMinutes", "")
-                .when()
-                .post("/me/meeting-types")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Meet OK")
+            .formParam("slug", "meet-ok-" + System.nanoTime())
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "GOOGLE_MEET")
+            .formParam("locationDetail", "")
+            .formParam("slotIntervalMinutes", "")
+            .when()
+            .post("/me/meeting-types")
+            .then()
+            .statusCode(200);
     }
 }

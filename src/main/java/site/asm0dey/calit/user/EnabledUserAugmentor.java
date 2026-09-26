@@ -16,7 +16,6 @@ import jakarta.enterprise.context.control.ActivateRequestContext;
  */
 @ApplicationScoped
 public class EnabledUserAugmentor implements SecurityIdentityAugmentor {
-
     @Override
     public Uni<SecurityIdentity> augment(SecurityIdentity identity, AuthenticationRequestContext context) {
         if (identity.isAnonymous()) {
@@ -40,10 +39,11 @@ public class EnabledUserAugmentor implements SecurityIdentityAugmentor {
         AppUser user = AppUser.findByUsername(username);
         if (user == null || !user.enabled) {
             // Drop all roles -> anonymous-equivalent identity; guarded paths will 401/redirect.
-            return QuarkusSecurityIdentity.builder()
-                    .setPrincipal(identity.getPrincipal())
-                    .setAnonymous(true)
-                    .build();
+            return QuarkusSecurityIdentity
+                .builder()
+                .setPrincipal(identity.getPrincipal())
+                .setAnonymous(true)
+                .build();
         }
         return identity;
     }

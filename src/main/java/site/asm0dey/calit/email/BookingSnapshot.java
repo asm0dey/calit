@@ -18,4 +18,5 @@ public record BookingSnapshot(
         OwnerSettings owner,
         ZoneId zone,
         List<EmailService.AnswerLine> answers,
-        List<HostDelivery> hostDeliveries) {}
+        List<HostDelivery> hostDeliveries
+) {}

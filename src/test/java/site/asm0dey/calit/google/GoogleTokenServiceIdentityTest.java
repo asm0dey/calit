@@ -1,7 +1,6 @@
 package site.asm0dey.calit.google;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -10,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class GoogleTokenServiceIdentityTest {
-
     @Inject
     GoogleOAuthConfig config;
 
@@ -39,24 +37,33 @@ class GoogleTokenServiceIdentityTest {
     @Test
     void failedRefreshFlagsNeedsReconnectInSeparateTransaction() {
         var now = Instant.now();
-        Long credId = io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().call(() -> {
-            GoogleCredential c = new GoogleCredential();
-            c.ownerId = 1L;
-            c.refreshToken = "rt";
-            c.googleSub = "sub-fail";
-            c.accessToken = "old";
-            c.accessTokenExpiry = now.minusSeconds(60); // already expired
-            c.persist();
-            return c.id;
-        });
+        Long credId = io.quarkus.narayana.jta.QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                GoogleCredential c = new GoogleCredential();
+                c.ownerId = 1L;
+                c.refreshToken = "rt";
+                c.googleSub = "sub-fail";
+                c.accessToken = "old";
+                // already expired
+                c.accessTokenExpiry = now.minusSeconds(60);
+                c.persist();
+                return c.id;
+            });
         var svc = new FailingRefreshService(config);
         GoogleCredential c =
-                io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().call(() -> GoogleCredential.findById(credId));
+                io.quarkus.narayana.jta.QuarkusTransaction
+            .requiringNew()
+            .call(() -> GoogleCredential.findById(credId));
         org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> svc.validAccessToken(c, now));
         GoogleCredential reloaded =
-                io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().call(() -> GoogleCredential.findById(credId));
+                io.quarkus.narayana.jta.QuarkusTransaction
+            .requiringNew()
+            .call(() -> GoogleCredential.findById(credId));
         org.junit.jupiter.api.Assertions.assertTrue(
-                reloaded.needsReconnect, "needsReconnect must be committed despite the rethrow");
+                reloaded.needsReconnect,
+                "needsReconnect must be committed despite the rethrow"
+        );
     }
 
     @Test
@@ -65,7 +72,8 @@ class GoogleTokenServiceIdentityTest {
         var svc = new StubService(config);
         var now = Instant.now();
         svc.exchangeCode(1L, "code-1", now);
-        svc.exchangeCode(1L, "code-2", now); // same sub -> upsert, not duplicate
+        // same sub -> upsert, not duplicate
+        svc.exchangeCode(1L, "code-2", now);
         assertEquals(1, GoogleCredential.countForOwner(1L));
         assertEquals("me@example.com", GoogleCredential.findByOwnerAndSub(1L, "sub-123").accountEmail);
     }

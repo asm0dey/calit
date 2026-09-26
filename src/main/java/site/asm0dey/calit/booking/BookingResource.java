@@ -22,9 +22,7 @@ import site.asm0dey.calit.user.Usernames;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class BookingResource {
-
     final BookingService bookingService;
-
     final ActiveLocale activeLocale;
 
     @Inject
@@ -42,7 +40,8 @@ public class BookingResource {
             Map<String, String> answers,
             String turnstileToken,
             String altchaSolution,
-            String honeypot) {}
+            String honeypot
+    ) {}
 
     public record RescheduleRequest(String newStartUtc) {}
 
@@ -79,7 +78,8 @@ public class BookingResource {
                 req.altchaSolution(),
                 req.honeypot(),
                 locale,
-                List.of());
+                List.of()
+        );
         return Response.status(Response.Status.CREATED).entity(b).build();
     }
 
@@ -96,7 +96,6 @@ public class BookingResource {
         bookingService.cancel(manageToken);
         return Response.noContent().build();
     }
-
     // NOTE: owner approve/decline are NOT exposed here. They are owner actions keyed by numeric id
     // and live only behind the authenticated, owner-scoped /me/bookings/{id}/approve|decline handlers
     // (AdminResource). A public /api/bookings/{id}/approve would be owner-blind (cross-owner) since

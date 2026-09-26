@@ -3,7 +3,6 @@ package site.asm0dey.calit.google;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
@@ -15,7 +14,6 @@ import org.mockito.Mockito;
 
 @QuarkusTest
 class GoogleCalendarResourceTest {
-
     @InjectMock
     CalendarListPort calendarListPort;
 
@@ -44,18 +42,21 @@ class GoogleCalendarResourceTest {
 
     @Test
     void listsGoogleCalendars() {
-        Mockito.when(calendarListPort.listCalendars())
-                .thenReturn(List.of(
-                        new CalendarListPort.RemoteCalendar("work@example.com", "Work"),
-                        new CalendarListPort.RemoteCalendar("personal@example.com", "Personal")));
+        Mockito
+            .when(calendarListPort.listCalendars())
+            .thenReturn(List.of(
+                    new CalendarListPort.RemoteCalendar("work@example.com", "Work"),
+                    new CalendarListPort.RemoteCalendar("personal@example.com", "Personal")
+            ));
 
-        given().cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
-                .when()
-                .get("/api/google/calendars")
-                .then()
-                .statusCode(200)
-                .body("googleCalendarId", hasItem("work@example.com"))
-                .body("summary", hasItem("Personal"));
+        given()
+            .cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
+            .when()
+            .get("/api/google/calendars")
+            .then()
+            .statusCode(200)
+            .body("googleCalendarId", hasItem("work@example.com"))
+            .body("summary", hasItem("Personal"));
     }
 
     @Test
@@ -64,27 +65,30 @@ class GoogleCalendarResourceTest {
         var readId = "read-" + System.nanoTime() + "@example.com";
 
         var body = "{\"calendars\":["
-                + "{\"googleCalendarId\":\"" + readId
+                + "{\"googleCalendarId\":\""
+                + readId
                 + "\",\"summary\":\"Read\",\"readForBusy\":true,\"writeTarget\":false},"
-                + "{\"googleCalendarId\":\"" + writeId
+                + "{\"googleCalendarId\":\""
+                + writeId
                 + "\",\"summary\":\"Write\",\"readForBusy\":false,\"writeTarget\":true}"
                 + "]}";
 
-        given().cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
-                .contentType("application/json")
-                .body(body)
-                .when()
-                .post("/api/google/calendars")
-                .then()
-                .statusCode(200);
-
+        given()
+            .cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
+            .contentType("application/json")
+            .body(body)
+            .when()
+            .post("/api/google/calendars")
+            .then()
+            .statusCode(200);
         // The write target query returns exactly the one flagged calendar.
-        given().cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
-                .when()
-                .get("/api/google/calendars/write-target")
-                .then()
-                .statusCode(200)
-                .body("googleCalendarId", is(writeId));
+        given()
+            .cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
+            .when()
+            .get("/api/google/calendars/write-target")
+            .then()
+            .statusCode(200)
+            .body("googleCalendarId", is(writeId));
     }
 
     @Test
@@ -92,36 +96,39 @@ class GoogleCalendarResourceTest {
         // 1) Save a valid selection (one read + one write target).
         var writeId = "keep-write@example.com";
         var body = "{\"calendars\":["
-                + "{\"googleCalendarId\":\"" + writeId
+                + "{\"googleCalendarId\":\""
+                + writeId
                 + "\",\"summary\":\"Write\",\"readForBusy\":true,\"writeTarget\":true}"
                 + "]}";
-        given().cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
-                .contentType("application/json")
-                .body(body)
-                .when()
-                .post("/api/google/calendars")
-                .then()
-                .statusCode(200);
-
+        given()
+            .cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
+            .contentType("application/json")
+            .body(body)
+            .when()
+            .post("/api/google/calendars")
+            .then()
+            .statusCode(200);
         // 2) A subsequent INVALID save (two write targets) must be rejected...
-        var bad = "{\"calendars\":["
+        var bad =
+                "{\"calendars\":["
                 + "{\"googleCalendarId\":\"a@example.com\",\"summary\":\"A\",\"readForBusy\":true,\"writeTarget\":true},"
                 + "{\"googleCalendarId\":\"b@example.com\",\"summary\":\"B\",\"readForBusy\":true,\"writeTarget\":true}"
                 + "]}";
-        given().cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
-                .contentType("application/json")
-                .body(bad)
-                .when()
-                .post("/api/google/calendars")
-                .then()
-                .statusCode(400);
-
+        given()
+            .cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
+            .contentType("application/json")
+            .body(bad)
+            .when()
+            .post("/api/google/calendars")
+            .then()
+            .statusCode(400);
         // 3) ...and the original write target must still be there (delete rolled back).
-        given().cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
-                .when()
-                .get("/api/google/calendars/write-target")
-                .then()
-                .statusCode(200)
-                .body("googleCalendarId", org.hamcrest.Matchers.is(writeId));
+        given()
+            .cookie("quarkus-credential", site.asm0dey.calit.web.FormAuth.login())
+            .when()
+            .get("/api/google/calendars/write-target")
+            .then()
+            .statusCode(200)
+            .body("googleCalendarId", org.hamcrest.Matchers.is(writeId));
     }
 }

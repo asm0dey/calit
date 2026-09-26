@@ -8,7 +8,6 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.Event;
 import io.quarkus.test.junit.QuarkusTest;
@@ -19,10 +18,11 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 
-/** createEvent inserts on the calendar it is given, and falls back to the write target. */
+/**
+ * createEvent inserts on the calendar it is given, and falls back to the write target.
+ */
 @QuarkusTest
 class CreateEventTargetTest {
-
     private Calendar.Events events;
     private GoogleTokenService tokens;
 
@@ -43,7 +43,8 @@ class CreateEventTargetTest {
                 Instant.parse("2026-01-01T10:30:00Z"),
                 List.of("a@example.com"),
                 false,
-                null);
+                null
+        );
 
         verify(events).insert(eqCalendar("work@example.com"), any());
         assertEquals("work@example.com", created.calendar().googleCalendarId());
@@ -66,7 +67,8 @@ class CreateEventTargetTest {
                 Instant.parse("2026-01-01T10:30:00Z"),
                 List.of(),
                 false,
-                null);
+                null
+        );
 
         verify(events).insert(eqCalendar("default@example.com"), any());
     }
@@ -77,7 +79,6 @@ class CreateEventTargetTest {
         seedOwnerSettings();
         var credId = seedWriteTarget("sub-create-dangling", "default@example.com");
         GoogleCalendarPort port = port();
-
         // No GoogleCalendar row for "gone@example.com": the picker's choice was unticked since.
         port.createEvent(
                 1L,
@@ -88,17 +89,22 @@ class CreateEventTargetTest {
                 Instant.parse("2026-01-01T10:30:00Z"),
                 List.of(),
                 false,
-                null);
+                null
+        );
 
         verify(events).insert(eqCalendar("default@example.com"), any());
     }
 
-    /** Readability helper: Mockito's eq() for the calendar-id argument of events.insert. */
+    /**
+     * Readability helper: Mockito's eq() for the calendar-id argument of events.insert.
+     */
     private static String eqCalendar(String calendarId) {
         return argThat(calendarId::equals);
     }
 
-    /** A port whose events.insert(...).execute() returns a fixed event. */
+    /**
+     * A port whose events.insert(...).execute() returns a fixed event.
+     */
     private GoogleCalendarPort port() throws IOException {
         tokens = mock(GoogleTokenService.class);
         when(tokens.validAccessToken(any(), any())).thenReturn("access-token");
@@ -118,7 +124,9 @@ class CreateEventTargetTest {
         return new GoogleCalendarPort(tokens, clientFactory);
     }
 
-    /** createEvent's eventTime() reads the owner's zone from OwnerSettings. */
+    /**
+     * createEvent's eventTime() reads the owner's zone from OwnerSettings.
+     */
     private static void seedOwnerSettings() {
         OwnerSettings s = new OwnerSettings();
         s.ownerId = 1L;
@@ -128,7 +136,9 @@ class CreateEventTargetTest {
         s.persist();
     }
 
-    /** Owner 1 gets one connected account and one write-target calendar. Returns the credential id. */
+    /**
+     * Owner 1 gets one connected account and one write-target calendar. Returns the credential id.
+     */
     private static Long seedWriteTarget(String sub, String calendarId) {
         GoogleCredential c = new GoogleCredential();
         c.ownerId = 1L;
@@ -146,7 +156,9 @@ class CreateEventTargetTest {
         return c.id;
     }
 
-    /** A second selected (non-default) calendar on the same account. */
+    /**
+     * A second selected (non-default) calendar on the same account.
+     */
     private static void seedCalendar(Long credId, String calendarId) {
         GoogleCalendar c = new GoogleCalendar();
         c.ownerId = 1L;

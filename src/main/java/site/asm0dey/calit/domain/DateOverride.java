@@ -22,22 +22,19 @@ import java.util.List;
 @Entity
 @Table(name = "date_override")
 public class DateOverride extends PanacheEntityBase {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
-
     @Column(name = "owner_id", nullable = false)
     public Long ownerId;
-
-    /** Null = this owner's global override (all their types); otherwise scoped to this meeting type.
-     *  Either way it carries {@link #ownerId}. */
+    /**
+     * Null = this owner's global override (all their types); otherwise scoped to this meeting type.
+     *  Either way it carries {@link #ownerId}.
+     */
     @Column(name = "meeting_type_id")
     public Long meetingTypeId;
-
     @Column(name = "override_date", nullable = false)
     public LocalDate overrideDate;
-
     /**
      * Bookable windows for this date. Empty = day off (caller emits no slots).
      * Populated by {@link #resolve}; not persisted by this entity.
@@ -55,22 +52,28 @@ public class DateOverride extends PanacheEntityBase {
      */
     public static DateOverride resolve(Long ownerId, Long meetingTypeId, LocalDate date) {
         DateOverride typed = find(
-                        "ownerId = ?1 and meetingTypeId = ?2 and overrideDate = ?3", ownerId, meetingTypeId, date)
-                .firstResult();
+                "ownerId = ?1 and meetingTypeId = ?2 and overrideDate = ?3",
+                ownerId,
+                meetingTypeId,
+                date
+        )
+            .firstResult();
         if (typed != null) {
             typed.windows = DateOverrideWindow.list("dateOverrideId = ?1 order by startTime asc", typed.id);
             return typed;
         }
-        DateOverride global = find("ownerId = ?1 and meetingTypeId is null and overrideDate = ?2", ownerId, date)
-                .firstResult();
+        DateOverride global =
+                find("ownerId = ?1 and meetingTypeId is null and overrideDate = ?2", ownerId, date).firstResult();
         if (global != null) {
             global.windows = DateOverrideWindow.list("dateOverrideId = ?1 order by startTime asc", global.id);
         }
         return global;
     }
 
-    /** Explicit accessor: {@link #windows} is @Transient, so Panache does not synthesize
-     *  a getter for it. Qute (CheckedTemplate) resolves {@code o.windows} via this method. */
+    /**
+     * Explicit accessor: {@link #windows} is @Transient, so Panache does not synthesize
+     *  a getter for it. Qute (CheckedTemplate) resolves {@code o.windows} via this method.
+     */
     public List<DateOverrideWindow> getWindows() {
         return windows;
     }

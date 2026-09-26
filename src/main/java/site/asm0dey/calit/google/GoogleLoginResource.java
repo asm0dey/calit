@@ -21,18 +21,17 @@ import site.asm0dey.calit.user.LoginTicketService;
  */
 @Path("/api/google/login")
 public class GoogleLoginResource {
-
     private static final org.jboss.logging.Logger LOG = org.jboss.logging.Logger.getLogger(GoogleLoginResource.class);
 
     @CheckedTemplate
     public static class Templates {
-        private Templates() {}
+        private Templates() {
+        }
 
         public static native TemplateInstance bridge(String username, String token);
     }
 
     private static final String NOTICE_GENERIC = "google";
-
     private final GoogleLoginService loginService;
     private final GoogleSignInService signInService;
     private final LoginTicketService loginTickets;
@@ -43,7 +42,8 @@ public class GoogleLoginResource {
             GoogleLoginService loginService,
             GoogleSignInService signInService,
             LoginTicketService loginTickets,
-            java.time.Clock clock) {
+            java.time.Clock clock
+    ) {
         this.loginService = loginService;
         this.signInService = signInService;
         this.loginTickets = loginTickets;
@@ -52,16 +52,20 @@ public class GoogleLoginResource {
 
     @GET
     public Response start() {
-        return Response.status(Response.Status.FOUND)
-                .location(URI.create(loginService.buildConsentUrl(clock.instant())))
-                .build();
+        return Response
+            .status(Response.Status.FOUND)
+            .location(URI.create(loginService.buildConsentUrl(clock.instant())))
+            .build();
     }
 
     @GET
     @Path("/callback")
     @Produces(MediaType.TEXT_HTML)
     public Response callback(
-            @QueryParam("code") String code, @QueryParam("state") String state, @QueryParam("error") String error) {
+            @QueryParam("code") String code,
+            @QueryParam("state") String state,
+            @QueryParam("error") String error
+    ) {
         var now = clock.instant();
         if (error != null) {
             return redirectToLogin(NOTICE_GENERIC);
@@ -89,20 +93,21 @@ public class GoogleLoginResource {
                     switch (e.reason) {
                         case SIGNUP_DISABLED -> "google_signup_disabled";
                         case AMBIGUOUS_EMAIL -> "google_ambiguous";
-                    });
+                    }
+            );
         }
 
         String token = loginTickets.issue(user.id, now);
         // The page carries a single-use login token in its body — never cache it.
-        return Response.ok(Templates.bridge(user.username, token))
-                .header("Cache-Control", "no-store")
-                .build();
+        return Response.ok(Templates.bridge(user.username, token)).header("Cache-Control", "no-store").build();
     }
 
     private static Response redirectToLogin(String notice) {
-        return Response.status(Response.Status.FOUND)
-                .location(URI.create(
-                        "/login?notice=" + java.net.URLEncoder.encode(notice, java.nio.charset.StandardCharsets.UTF_8)))
-                .build();
+        return Response
+            .status(Response.Status.FOUND)
+            .location(URI.create(
+                    "/login?notice=" + java.net.URLEncoder.encode(notice, java.nio.charset.StandardCharsets.UTF_8)
+            ))
+            .build();
     }
 }

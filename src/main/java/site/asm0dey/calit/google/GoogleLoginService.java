@@ -26,16 +26,14 @@ import javax.crypto.spec.SecretKeySpec;
  */
 @ApplicationScoped
 public class GoogleLoginService {
-
     private static final String AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
     private static final String TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
     private static final String HMAC_ALGO = "HmacSHA256";
-    private static final String PURPOSE = "login"; // distinguishes these states from calendar states
+    // distinguishes these states from calendar states
+    private static final String PURPOSE = "login";
     // Sign-in needs identity only — NOT the calendar scope used by the connect flow.
     private static final String LOGIN_SCOPE = "openid email";
-
     public static final Duration STATE_TTL = Duration.ofMinutes(10);
-
     protected final GoogleOAuthConfig config;
 
     @Inject
@@ -44,27 +42,43 @@ public class GoogleLoginService {
     }
 
     public String buildConsentUrl(Instant now) {
-        return AUTH_ENDPOINT + "?"
-                + "client_id=" + enc(config.oauth().clientId())
-                + "&redirect_uri=" + enc(config.oauth().loginRedirectUri())
+        return AUTH_ENDPOINT
+                + "?"
+                + "client_id="
+                + enc(config.oauth().clientId())
+                + "&redirect_uri="
+                + enc(config.oauth().loginRedirectUri())
                 + "&response_type=code"
-                + "&scope=" + enc(LOGIN_SCOPE)
+                + "&scope="
+                + enc(LOGIN_SCOPE)
                 + "&prompt=select_account"
-                + "&state=" + enc(issueLoginState(now));
+                + "&state="
+                + enc(issueLoginState(now));
     }
 
-    /** Mint a signed, time-stamped, login-purpose state. Stateless: nothing stored. */
+    /**
+     * Mint a signed, time-stamped, login-purpose state. Stateless: nothing stored.
+     */
     public String issueLoginState(Instant now) {
-        var payload = b64(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8)) + ":" + PURPOSE + ":"
+        var payload = b64(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8))
+                + ":"
+                + PURPOSE
+                + ":"
                 + now.getEpochSecond();
         return payload + "." + b64(hmac(payload));
     }
 
-    /** True when {@code state} is a valid, unexpired, login-purpose state. */
+    /**
+     * True when {@code state} is a valid, unexpired, login-purpose state.
+     */
     public boolean validateLoginState(String state, Instant now) {
-        if (state == null || state.isBlank()) return false;
+        if (state == null || state.isBlank()) {
+            return false;
+        }
         var dot = state.lastIndexOf('.');
-        if (dot <= 0) return false;
+        if (dot <= 0) {
+            return false;
+        }
         var payload = state.substring(0, dot);
         var expected = hmac(payload);
         byte[] actual;
@@ -73,13 +87,18 @@ public class GoogleLoginService {
         } catch (IllegalArgumentException _) {
             return false;
         }
-        if (!MessageDigest.isEqual(expected, actual)) return false;
-
+        if (!MessageDigest.isEqual(expected, actual)) {
+            return false;
+        }
         // payload = b64(nonce) ":" PURPOSE ":" issuedAtEpochSec
         var lastColon = payload.lastIndexOf(':');
         var prevColon = lastColon <= 0 ? -1 : payload.lastIndexOf(':', lastColon - 1);
-        if (prevColon <= 0) return false;
-        if (!PURPOSE.equals(payload.substring(prevColon + 1, lastColon))) return false;
+        if (prevColon <= 0) {
+            return false;
+        }
+        if (!PURPOSE.equals(payload.substring(prevColon + 1, lastColon))) {
+            return false;
+        }
         try {
             var issued = Instant.ofEpochSecond(Long.parseLong(payload.substring(lastColon + 1)));
             return !issued.isAfter(now) && !issued.plus(STATE_TTL).isBefore(now);
@@ -103,14 +122,15 @@ public class GoogleLoginService {
         GsonFactory json = GsonFactory.getDefaultInstance();
         try {
             var resp = new GoogleAuthorizationCodeTokenRequest(
-                            transport,
-                            json,
-                            TOKEN_ENDPOINT,
-                            config.oauth().clientId(),
-                            config.oauth().clientSecret(),
-                            code,
-                            config.oauth().loginRedirectUri())
-                    .execute();
+                    transport,
+                    json,
+                    TOKEN_ENDPOINT,
+                    config.oauth().clientId(),
+                    config.oauth().clientSecret(),
+                    code,
+                    config.oauth().loginRedirectUri()
+            )
+                .execute();
             String idToken = resp.getIdToken();
             if (idToken == null) {
                 throw new IllegalStateException("Google response missing id_token; check the openid scope.");

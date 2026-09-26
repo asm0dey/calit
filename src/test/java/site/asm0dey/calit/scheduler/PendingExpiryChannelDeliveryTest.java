@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import com.sun.net.httpserver.HttpServer;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
@@ -38,10 +37,10 @@ import site.asm0dey.calit.test.MultiHostFixtures;
  */
 @QuarkusTest
 class PendingExpiryChannelDeliveryTest {
-
-    /** Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide. */
+    /**
+     * Ephemeral: bound to 0 and read back in {@link #startStub()}, so nothing on the box can collide.
+     */
     static int port;
-
     static HttpServer server;
     static CountDownLatch hit;
 
@@ -60,12 +59,13 @@ class PendingExpiryChannelDeliveryTest {
 
     @AfterAll
     static void stopStub() {
-        if (server != null) server.stop(0);
+        if (server != null) {
+            server.stop(0);
+        }
     }
 
     @Inject
     PendingExpiryScheduler scheduler;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -85,36 +85,46 @@ class PendingExpiryChannelDeliveryTest {
         assertNotNull(awaitStamp(channelId).lastSuccessAt);
     }
 
-    /** Owner 1 with settings, a PENDING booking already past the 24h hold, and one channel. */
+    /**
+     * Owner 1 with settings, a PENDING booking already past the 24h hold, and one channel.
+     */
     private Long seed() {
-        return QuarkusTransaction.requiringNew().call(() -> {
-            MultiHostFixtures.settings(1L, "Owner");
-            MeetingType type = MultiHostFixtures.meetingType(1L, "expire-me-" + System.nanoTime(), 30);
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                MultiHostFixtures.settings(1L, "Owner");
+                MeetingType type = MultiHostFixtures.meetingType(1L, "expire-me-" + System.nanoTime(), 30);
 
-            Booking b = new Booking();
-            b.ownerId = 1L;
-            b.meetingTypeId = type.id;
-            b.inviteeName = "Sam Invitee";
-            b.inviteeEmail = "sam@example.com";
-            var start = Instant.now().plus(500, ChronoUnit.HOURS);
-            b.startUtc = start;
-            b.endUtc = start.plus(30, ChronoUnit.MINUTES);
-            b.status = BookingStatus.PENDING;
-            b.manageToken = UUID.randomUUID().toString();
-            b.createdAt = Instant.now().minus(25, ChronoUnit.HOURS); // past the 24h hold -> expires
-            b.persist();
+                Booking b = new Booking();
+                b.ownerId = 1L;
+                b.meetingTypeId = type.id;
+                b.inviteeName = "Sam Invitee";
+                b.inviteeEmail = "sam@example.com";
+                var start = Instant.now().plus(500, ChronoUnit.HOURS);
+                b.startUtc = start;
+                b.endUtc = start.plus(30, ChronoUnit.MINUTES);
+                b.status = BookingStatus.PENDING;
+                b.manageToken = UUID.randomUUID().toString();
+                // past the 24h hold -> expires
+                b.createdAt = Instant.now().minus(25, ChronoUnit.HOURS);
+                b.persist();
 
-            return MultiHostFixtures.channel(1L, "ntfy+http://localhost:" + port + "/calit", "Stub").id;
-        });
+                return MultiHostFixtures.channel(1L, "ntfy+http://localhost:" + port + "/calit", "Stub").id;
+            });
     }
 
     // S2925: polling for an async DB write with no latch to observe it; a single fixed sleep would be worse.
     @SuppressWarnings("java:S2925")
     private NotificationChannel awaitStamp(Long channelId) throws InterruptedException {
-        for (var i = 0; i < 100; i++) { // the timestamp write happens just after the POST returns
+        for (var i = 0; i < 100; i++) {
+            // the timestamp write happens just after the POST returns
             NotificationChannel c =
-                    QuarkusTransaction.requiringNew().call(() -> NotificationChannel.findById(channelId));
-            if (c.lastSuccessAt != null) return c;
+                    QuarkusTransaction
+                .requiringNew()
+                .call(() -> NotificationChannel.findById(channelId));
+            if (c.lastSuccessAt != null) {
+                return c;
+            }
             Thread.sleep(50);
         }
         fail("delivery outcome was never stamped");

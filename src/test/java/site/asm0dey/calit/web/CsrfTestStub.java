@@ -24,13 +24,16 @@ import jakarta.inject.Named;
 @IfBuildProfile("test")
 @IfBuildProperty(name = "quarkus.rest-csrf.enabled", stringValue = "false")
 public class CsrfTestStub {
-
-    /** Mirrors the real provider's token accessor; value is irrelevant because verification is off. */
+    /**
+     * Mirrors the real provider's token accessor; value is irrelevant because verification is off.
+     */
     public String getToken() {
         return "test-csrf-token";
     }
 
-    /** Mirrors the real provider's default form-field/parameter name. */
+    /**
+     * Mirrors the real provider's default form-field/parameter name.
+     */
     public String getParameterName() {
         return "csrf-token";
     }

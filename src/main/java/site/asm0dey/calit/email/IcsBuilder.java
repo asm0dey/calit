@@ -15,13 +15,15 @@ import java.time.format.DateTimeFormatter;
  * matches the recipient and renders the event card.
  */
 public final class IcsBuilder {
-
     private static final DateTimeFormatter ICS_UTC =
             DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC);
 
-    private IcsBuilder() {}
+    private IcsBuilder() {
+    }
 
-    /** A named calendar participant: display name (CN) + email (mailto). */
+    /**
+     * A named calendar participant: display name (CN) + email (mailto).
+     */
     public record Party(String name, String email) {}
 
     /**
@@ -51,30 +53,35 @@ public final class IcsBuilder {
         if (e.location() != null && !e.location().isBlank()) {
             sb.append("LOCATION:").append(escape(e.location())).append("\r\n");
         }
-        sb.append("ORGANIZER;CN=")
-                .append(cn(e.organizer().name()))
-                .append(":mailto:")
-                .append(escape(e.organizer().email()))
-                .append("\r\n");
-        sb.append("ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=")
-                .append(e.attendeeRsvp() ? "TRUE" : "FALSE")
-                .append(";CN=")
-                .append(cn(e.attendee().name()))
-                .append(":mailto:")
-                .append(escape(e.attendee().email()))
-                .append("\r\n");
+        sb
+            .append("ORGANIZER;CN=")
+            .append(cn(e.organizer().name()))
+            .append(":mailto:")
+            .append(escape(e.organizer().email()))
+            .append("\r\n");
+        sb
+            .append("ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=")
+            .append(e.attendeeRsvp() ? "TRUE" : "FALSE")
+            .append(";CN=")
+            .append(cn(e.attendee().name()))
+            .append(":mailto:")
+            .append(escape(e.attendee().email()))
+            .append("\r\n");
         sb.append("END:VEVENT\r\n");
         sb.append("END:VCALENDAR\r\n");
         return sb.toString();
     }
 
-    /** RFC 5545 text escaping for any interpolated property value; strips CR so no value injects a line. */
+    /**
+     * RFC 5545 text escaping for any interpolated property value; strips CR so no value injects a line.
+     */
     private static String escape(String v) {
-        return v.replace("\\", "\\\\")
-                .replace(";", "\\;")
-                .replace(",", "\\,")
-                .replace("\r", "")
-                .replace("\n", "\\n");
+        return v
+            .replace("\\", "\\\\")
+            .replace(";", "\\;")
+            .replace(",", "\\,")
+            .replace("\r", "")
+            .replace("\n", "\\n");
     }
 
     /**

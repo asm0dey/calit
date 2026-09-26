@@ -2,7 +2,6 @@ package site.asm0dey.calit.google;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.time.Instant;
@@ -10,10 +9,8 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class GoogleLoginServiceTest {
-
     @Inject
     GoogleLoginService loginService;
-
     @Inject
     GoogleTokenService tokenService;
 
@@ -27,7 +24,8 @@ class GoogleLoginServiceTest {
         assertTrue(url.contains("openid"), "requests the openid identity scope");
         assertFalse(
                 url.contains("auth%2Fcalendar") || url.contains("auth/calendar"),
-                "must NOT request the calendar scope on sign-in");
+                "must NOT request the calendar scope on sign-in"
+        );
     }
 
     @Test
@@ -45,14 +43,14 @@ class GoogleLoginServiceTest {
         assertFalse(loginService.validateLoginState(state + "x", now), "tampered state rejected");
         assertFalse(loginService.validateLoginState(null, now), "null rejected");
         assertFalse(
-                loginService.validateLoginState(
-                        state, now.plus(GoogleLoginService.STATE_TTL).plusSeconds(60)),
-                "expired rejected");
-
+                loginService.validateLoginState(state, now.plus(GoogleLoginService.STATE_TTL).plusSeconds(60)),
+                "expired rejected"
+        );
         // A calendar-purpose state (issued by the calendar flow) must NOT validate as a login state.
         assertFalse(
                 loginService.validateLoginState(tokenService.issueState(1L, now), now),
-                "a calendar-flow state must be rejected by the login validator");
+                "a calendar-flow state must be rejected by the login validator"
+        );
         // Blank state rejected.
         assertFalse(loginService.validateLoginState("   ", now), "blank state rejected");
     }

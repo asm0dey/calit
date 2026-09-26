@@ -4,7 +4,6 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import com.github.tomakehurst.wiremock.WireMockServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -34,7 +33,6 @@ import site.asm0dey.calit.user.AppUser;
 @QuarkusTestResource(OidcWiremockTestResource.class)
 @TestProfile(OidcBridgeFlowTest.OidcOn.class)
 class OidcBridgeFlowTest {
-
     // OidcWiremockTestResource's code-flow stub always issues an id_token for preferred_username
     // "alice" (hardcoded, see the "username=alice" submitted to the mock's login form below) with a
     // fixed sub "123456" (its TOKEN_SUBJECT constant).
@@ -48,13 +46,21 @@ class OidcBridgeFlowTest {
             // token/introspection stubs don't validate them, they only echo back whatever client-id
             // is sent via HTTP Basic auth into the id_token's audience, so any value round-trips.
             return Map.of(
-                    "calit.oidc.enabled", "true",
-                    "quarkus.oidc.tenant-enabled", "true",
-                    "calit.signup.enabled", "true",
-                    "quarkus.oidc.auth-server-url", "${keycloak.url}/realms/quarkus",
-                    "quarkus.oidc.client-id", "quarkus-web-app",
-                    "quarkus.oidc.credentials.secret", "secret",
-                    "quarkus.oidc.application-type", "web-app");
+                    "calit.oidc.enabled",
+                    "true",
+                    "quarkus.oidc.tenant-enabled",
+                    "true",
+                    "calit.signup.enabled",
+                    "true",
+                    "quarkus.oidc.auth-server-url",
+                    "${keycloak.url}/realms/quarkus",
+                    "quarkus.oidc.client-id",
+                    "quarkus-web-app",
+                    "quarkus.oidc.credentials.secret",
+                    "secret",
+                    "quarkus.oidc.application-type",
+                    "web-app"
+            );
         }
     }
 
@@ -66,52 +72,52 @@ class OidcBridgeFlowTest {
     @Test
     void ssoLogin_bridgesToJSecurityCheck() {
         CookieFilter cookies = new CookieFilter();
-
         // 1) unauthenticated hit -> quarkus-oidc redirects (302) to the mock provider's authorize
         // endpoint, ALSO setting a state-verification cookie we must carry through the rest of the
         // flow. Do NOT auto-follow here: RestAssured's redirects().follow(true) resolves the whole
         // chain internally and only ever runs the cookie filter on the final response, silently
         // dropping this cookie -- which then makes step 4 look like a fresh, unauthenticated request.
-        String authorizeUrl = given().filter(cookies)
-                .redirects()
-                .follow(false)
-                .when()
-                .get("/api/oidc/login")
-                .then()
-                .statusCode(302)
-                .extract()
-                .header("Location");
-
+        String authorizeUrl = given()
+            .filter(cookies)
+            .redirects()
+            .follow(false)
+            .when()
+            .get("/api/oidc/login")
+            .then()
+            .statusCode(302)
+            .extract()
+            .header("Location");
         // 2) the mock's authorize endpoint responds 200 with a plain HTML login form (not a redirect),
         // carrying the state/redirect_uri quarkus-oidc generated.
-        String loginPage = given().filter(cookies)
-                .when()
-                .get(authorizeUrl)
-                .then()
-                .statusCode(200)
-                .body(containsString("id=\"login\""))
-                .extract()
-                .asString();
+        String loginPage = given()
+            .filter(cookies)
+            .when()
+            .get(authorizeUrl)
+            .then()
+            .statusCode(200)
+            .body(containsString("id=\"login\""))
+            .extract()
+            .asString();
         var state = between(loginPage, "id=\"state\" name=\"state\" value=\"", "\"");
         var redirectUri = between(loginPage, "id=\"redirect_uri\" name=\"redirect_uri\" value=\"", "\"");
-
         // 3) submit that form (any credentials; the mock stub authenticates unconditionally) and the
         // mock redirects with a 302 to redirect_uri carrying state and code. The query string is built
         // by hand with URL-encoding disabled: the mock substitutes the redirect_uri query param into
         // its response by raw substring rather than decoding it, so RestAssured's normal percent-encoding
         // would come back double-encoded in the Location header.
-        String callbackUrl = given().filter(cookies)
-                .urlEncodingEnabled(false)
-                .redirects()
-                .follow(false)
-                .when()
-                .get(wireMock.baseUrl() + "/login?state=" + state + "&redirect_uri=" + redirectUri
-                        + "&username=alice&password=alice")
-                .then()
-                .statusCode(302)
-                .extract()
-                .header("Location");
-
+        String callbackUrl = given()
+            .filter(cookies)
+            .urlEncodingEnabled(false)
+            .redirects()
+            .follow(false)
+            .when()
+            .get(
+                    wireMock.baseUrl() + "/login?state=" + state + "&redirect_uri=" + redirectUri + "&username=alice&password=alice"
+            )
+            .then()
+            .statusCode(302)
+            .extract()
+            .header("Location");
         // 4) back on our host, with the step-1 state cookie in hand: quarkus-oidc validates state,
         // exchanges the code server-side (token endpoint + id_token verification), mints its own
         // session cookie, expires the state cookie, and -- rather than serving the resource directly
@@ -119,26 +125,28 @@ class OidcBridgeFlowTest {
         // address bar" behavior). Do NOT auto-follow: as in step 1, that would run the cookie filter
         // only on the end result, so the fresh session cookie set here would never reach the request
         // that finally hits OidcLoginResource.
-        String cleanUrl = given().filter(cookies)
-                .redirects()
-                .follow(false)
-                .when()
-                .get(callbackUrl)
-                .then()
-                .statusCode(302)
-                .extract()
-                .header("Location");
-
+        String cleanUrl = given()
+            .filter(cookies)
+            .redirects()
+            .follow(false)
+            .when()
+            .get(callbackUrl)
+            .then()
+            .statusCode(302)
+            .extract()
+            .header("Location");
         // 5) the clean, authenticated hit that actually reaches OidcLoginResource: no AppUser exists
         // yet for this sub, so the resource provisions a brand-new one (calit.signup.enabled=true in
         // OidcOn) and returns the bridge page.
-        given().filter(cookies)
-                .when()
-                .get(cleanUrl)
-                .then()
-                .statusCode(200)
-                .body(containsString("action=\"/j_security_check\""))
-                .body(containsString("name=\"j_password\"")); // the single-use ticket
+        given()
+            .filter(cookies)
+            .when()
+            .get(cleanUrl)
+            .then()
+            .statusCode(200)
+            .body(containsString("action=\"/j_security_check\""))
+            // the single-use ticket
+            .body(containsString("name=\"j_password\""));
 
         assertNotNull(AppUser.findByOidcSub(MOCK_SUB), "expected first-time SSO login to provision a new AppUser");
     }

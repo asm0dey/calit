@@ -4,7 +4,6 @@ import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -22,11 +21,12 @@ import site.asm0dey.calit.domain.OwnerSettings;
 
 @QuarkusTest
 class OgTagsTest {
-
     @Inject
     BookingService bookingService;
 
-    /** Admin is always id 1 / username "admin" (DatabaseResetCallback invariant). */
+    /**
+     * Admin is always id 1 / username "admin" (DatabaseResetCallback invariant).
+     */
     private static void seedType(String slug, boolean secret) {
         QuarkusTransaction.requiringNew().run(() -> {
             OwnerSettings s = OwnerSettings.forOwner(1L);
@@ -61,39 +61,46 @@ class OgTagsTest {
     @Test
     void bookingPageCarriesAbsoluteOgTags() {
         seedType("og-public", false);
-        given().when()
-                .get("/admin/og-public")
-                .then()
-                .statusCode(200)
-                .body(containsString("property=\"og:title\" content=\"Coffee chat · Ada Lovelace\""))
-                .body(containsString("property=\"og:image\" content=\"http://localhost:8080/og/admin/og-public.png\""))
-                .body(containsString("property=\"og:url\" content=\"http://localhost:8080/admin/og-public\""))
-                .body(containsString("name=\"twitter:card\" content=\"summary_large_image\""))
-                .body(containsString("content=\"en_US\""))
-                .body(not(containsString("noindex")));
+        given()
+            .when()
+            .get("/admin/og-public")
+            .then()
+            .statusCode(200)
+            .body(containsString("property=\"og:title\" content=\"Coffee chat · Ada Lovelace\""))
+            .body(
+                    containsString(
+                            "property=\\\"og:image\\\" content=\\\"http://localhost:8080/og/admin/og-public." + "png\\\""
+                    )
+            )
+            .body(containsString("property=\"og:url\" content=\"http://localhost:8080/admin/og-public\""))
+            .body(containsString("name=\"twitter:card\" content=\"summary_large_image\""))
+            .body(containsString("content=\"en_US\""))
+            .body(not(containsString("noindex")));
     }
 
     @Test
     void secretTypeGetsTheGenericCard() {
         seedType("og-secret", true);
-        given().when()
-                .get("/admin/og-secret")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("Coffee chat · Ada Lovelace")))
-                .body(containsString("property=\"og:title\" content=\"calit\""))
-                .body(containsString("property=\"og:image\" content=\"http://localhost:8080/og.png\""));
+        given()
+            .when()
+            .get("/admin/og-secret")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("Coffee chat · Ada Lovelace")))
+            .body(containsString("property=\"og:title\" content=\"calit\""))
+            .body(containsString("property=\"og:image\" content=\"http://localhost:8080/og.png\""));
     }
 
     @Test
     void landingAndProductPagesOptIn() {
         seedType("og-landing", false);
-        given().when()
-                .get("/admin")
-                .then()
-                .statusCode(200)
-                .body(containsString("property=\"og:title\" content=\"Ada Lovelace · calit\""))
-                .body(containsString("property=\"og:image\" content=\"http://localhost:8080/og/admin.png\""));
+        given()
+            .when()
+            .get("/admin")
+            .then()
+            .statusCode(200)
+            .body(containsString("property=\"og:title\" content=\"Ada Lovelace · calit\""))
+            .body(containsString("property=\"og:image\" content=\"http://localhost:8080/og/admin.png\""));
         given().when().get("/privacy").then().statusCode(200).body(containsString("property=\"og:title\""));
         given().when().get("/login").then().statusCode(200).body(containsString("property=\"og:title\""));
     }
@@ -122,7 +129,8 @@ class OgTagsTest {
         t.durationMinutes = 30;
         t.minNoticeMinutes = 0;
         t.horizonDays = 30;
-        t.locationType = LocationType.CUSTOM; // avoids any Google Calendar dependency
+        // avoids any Google Calendar dependency
+        t.locationType = LocationType.CUSTOM;
         t.locationDetail = "Office";
         t.persist();
         for (DayOfWeek dow : DayOfWeek.values()) {
@@ -136,28 +144,29 @@ class OgTagsTest {
         }
         var slot = bookingService.availableSlots(t, now(), now().plusDays(14)).getFirst();
         return bookingService.book(
-                        1L,
-                        "og-manage",
-                        slot.start().toInstant(),
-                        "Pat",
-                        "pat@example.com",
-                        Map.of(),
-                        "",
-                        "",
-                        "en",
-                        List.of())
-                .manageToken;
+                1L,
+                "og-manage",
+                slot.start().toInstant(),
+                "Pat",
+                "pat@example.com",
+                Map.of(),
+                "",
+                "",
+                "en",
+                List.of()
+        ).manageToken;
     }
 
     @Test
     void capabilityUrlsAreNoindexAndCarryNoOgTags() {
         var token = seedManageToken();
-        given().when()
-                .get("/booking/" + token + "/manage")
-                .then()
-                .statusCode(200)
-                .body(containsString("name=\"robots\" content=\"noindex,nofollow\""))
-                .body(not(containsString("og:title")))
-                .body(not(containsString("og:image")));
+        given()
+            .when()
+            .get("/booking/" + token + "/manage")
+            .then()
+            .statusCode(200)
+            .body(containsString("name=\"robots\" content=\"noindex,nofollow\""))
+            .body(not(containsString("og:title")))
+            .body(not(containsString("og:image")));
     }
 }

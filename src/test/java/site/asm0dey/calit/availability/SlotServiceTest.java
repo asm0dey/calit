@@ -2,7 +2,6 @@ package site.asm0dey.calit.availability;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -18,10 +17,8 @@ import site.asm0dey.calit.domain.OwnerSettings;
 
 @QuarkusTest
 class SlotServiceTest {
-
     @Inject
     SlotService slotService;
-
     private static final LocalDate WORKDAY = LocalDate.of(2026, 6, 8);
 
     @Test
@@ -90,15 +87,19 @@ class SlotServiceTest {
     void typeWithAnyRuleIsClosedOnTheDaysItLeavesBlank() {
         seedSettings("Europe/Amsterdam");
         MeetingType t = meetingType("intro-60", 60);
-        globalRule(WORKDAY.getDayOfWeek(), "09:00", "11:00"); // global opens WORKDAY
-        typedRule(t.id, WORKDAY.getDayOfWeek().plus(1), "13:00", "14:00"); // the type opens only the NEXT day
+        // global opens WORKDAY
+        globalRule(WORKDAY.getDayOfWeek(), "09:00", "11:00");
+        // the type opens only the NEXT day
+        typedRule(t.id, WORKDAY.getDayOfWeek().plus(1), "13:00", "14:00");
 
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
         assertTrue(slots.isEmpty());
     }
 
-    /** A type with no rules of its own still inherits the owner's global week (unchanged). */
+    /**
+     * A type with no rules of its own still inherits the owner's global week (unchanged).
+     */
     @Test
     @TestTransaction
     void typeWithoutOwnRulesStillUsesGlobalHours() {
@@ -191,11 +192,13 @@ class SlotServiceTest {
         List<TimeSlot> slots = slotService.generateRawSlots(t, fallBackDay, fallBackDay);
 
         assertEquals(
-                5, slots.size(), "5 back-to-back 60-min slots -- the elapsed real time, not the 4h wall-clock span");
+                5,
+                slots.size(),
+                "5 back-to-back 60-min slots -- the elapsed real time, not the 4h wall-clock span"
+        );
     }
 
     // --- helpers ---
-
     private void seedSettings(String zone) {
         OwnerSettings s = OwnerSettings.forOwner(1L);
         if (s == null) {

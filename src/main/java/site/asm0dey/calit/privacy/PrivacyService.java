@@ -31,14 +31,12 @@ import site.asm0dey.calit.user.DeletedUsername;
  */
 @ApplicationScoped
 public class PrivacyService {
-
     final BookingService bookingService;
-
     final CalendarPort calendarPort;
-
     final EntityManager em;
-
-    /** What a redacted secret reads as in an export — present, so its existence is disclosed; useless. */
+    /**
+     * What a redacted secret reads as in an export — present, so its existence is disclosed; useless.
+     */
     private static final String REDACTED = "[redacted]";
 
     @Inject
@@ -84,23 +82,29 @@ public class PrivacyService {
         List<Long> ids = List.copyOf(bookingIds);
 
         @SuppressWarnings("unchecked")
-        List<Number> erased = em.createNativeQuery("UPDATE booking SET invitee_name = '', invitee_email = '', "
-                        + "answers = '{}'::jsonb, meet_link = NULL, title = NULL, description = NULL, "
-                        + "erased_at = now() "
-                        + "WHERE id IN (:ids) AND erased_at IS NULL "
-                        + "RETURNING id")
-                .setParameter("ids", ids)
-                .getResultList();
+        List<Number> erased = em
+            .createNativeQuery(
+                    "UPDATE booking SET invitee_name = '', invitee_email = '', "
+                    + "answers = '{}'::jsonb, meet_link = NULL, title = NULL, description = NULL, "
+                    + "erased_at = now() "
+                    + "WHERE id IN (:ids) AND erased_at IS NULL "
+                    + "RETURNING id"
+            )
+            .setParameter("ids", ids)
+            .getResultList();
         if (erased.isEmpty()) {
             return 0;
         }
         List<Long> erasedIds = erased.stream().map(Number::longValue).toList();
 
-        em.createNativeQuery("WITH g AS (DELETE FROM booking_guest WHERE booking_id IN (:ids)), "
-                        + "r AS (DELETE FROM reminder WHERE booking_id IN (:ids) AND sent_at IS NULL) "
-                        + "DELETE FROM email_outbox WHERE booking_id IN (:ids)")
-                .setParameter("ids", erasedIds)
-                .executeUpdate();
+        em
+            .createNativeQuery(
+                    "WITH g AS (DELETE FROM booking_guest WHERE booking_id IN (:ids)), "
+                    + "r AS (DELETE FROM reminder WHERE booking_id IN (:ids) AND sent_at IS NULL) "
+                    + "DELETE FROM email_outbox WHERE booking_id IN (:ids)"
+            )
+            .setParameter("ids", erasedIds)
+            .executeUpdate();
 
         Log.infof("PRIVACY erasure count=%d bookings=%s", erasedIds.size(), erasedIds);
         return erasedIds.size();
@@ -122,9 +126,12 @@ public class PrivacyService {
         if (b == null) {
             return;
         }
-        List<Long> ids = b.groupId == null
-                ? List.of(bookingId)
-                : Booking.group(b.groupId).stream().map(row -> row.id).toList();
+        List<Long> ids =
+                b.groupId == null ? List.of(bookingId) : Booking
+            .group(b.groupId)
+            .stream()
+            .map(row -> row.id)
+            .toList();
         anonymise(ids);
     }
 
@@ -157,7 +164,9 @@ public class PrivacyService {
      */
     @Transactional(Transactional.TxType.NEVER)
     public ErasureReport eraseByManageToken(String manageToken) {
-        Booking live = QuarkusTransaction.requiringNew().call(() -> Booking.findLiveForPrivacy(manageToken));
+        Booking live = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findLiveForPrivacy(manageToken));
         if (live == null) {
             throw new NotFoundException("No booking for that token");
         }
@@ -168,8 +177,11 @@ public class PrivacyService {
         List<Long> ids = rows.stream().map(r -> r.id).toList();
         // The shared Google event lives on whichever row created it (the group's chosen organizer --
         // BookingService.createGroupGoogleEvent), not necessarily this row: look across the group.
-        Booking eventRow =
-                rows.stream().filter(r -> r.googleEventId != null).findFirst().orElse(null);
+        Booking eventRow = rows
+            .stream()
+            .filter(r -> r.googleEventId != null)
+            .findFirst()
+            .orElse(null);
 
         ErasureReport.GoogleOutcome google;
         if (isUpcomingAndHeld(live)) {
@@ -184,18 +196,25 @@ public class PrivacyService {
             anonymise(ids);
             if (eventRow != null) {
                 Booking.update(
-                        "googleEventId = null, googleCalendarId = null, googleCredentialId = null where id in ?1", ids);
+                        "googleEventId = null, googleCalendarId = null, googleCredentialId = null where id in ?1",
+                        ids
+                );
             }
         });
 
         List<Long> ownerIds = rows.stream().map(r -> r.ownerId).distinct().toList();
         var channelsWereUsed = NotificationChannel.count("ownerId in ?1", ownerIds) > 0;
-        var report = new ErasureReport(google, channelsWereUsed, /* mail already delivered */ true);
+        var report = new ErasureReport(google, channelsWereUsed, /* mail already delivered */
+        true);
         // Proof of handling: one log line, booking id plus per-destination outcome. No erasure_log
         // table until an operator actually needs an audit trail (ponytail).
         Log.infof(
                 "PRIVACY erasure booking=%d google=%s channels=%s mail=%s",
-                live.id, report.google(), report.channelsWereUsed(), report.mailWasDelivered());
+                live.id,
+                report.google(),
+                report.channelsWereUsed(),
+                report.mailWasDelivered()
+        );
         return report;
     }
 
@@ -226,7 +245,8 @@ public class PrivacyService {
                     e,
                     "PRIVACY erasure booking=%d could not delete Google event %s",
                     eventRow.id,
-                    eventRow.googleEventId);
+                    eventRow.googleEventId
+            );
             return ErasureReport.GoogleOutcome.UNREACHABLE;
         }
     }
@@ -255,8 +275,9 @@ public class PrivacyService {
      * {@code application/json}.
      */
     public String exportBooking(String manageToken) {
-        List<?> rows =
-                em.createNativeQuery("""
+        List<?> rows = em
+            .createNativeQuery(
+                    """
                         SELECT json_build_object(
                             'exportedAt', now(),
                             'booking', json_build_object(
@@ -288,7 +309,10 @@ public class PrivacyService {
                         WHERE t.manage_token = :token AND b.erased_at IS NULL
                         ORDER BY (b.id = t.id) DESC, b.id
                         LIMIT 1
-                        """).setParameter("token", manageToken).getResultList();
+                        """
+            )
+            .setParameter("token", manageToken)
+            .getResultList();
         if (rows.isEmpty()) {
             throw new NotFoundException("No booking for that token");
         }
@@ -317,7 +341,9 @@ public class PrivacyService {
      * {@code application/json} without a second serialization pass.
      */
     public String exportOwner(Long ownerId) {
-        return (String) em.createNativeQuery("""
+        return (String) em
+            .createNativeQuery(
+                    """
                         SELECT json_build_object(
                             'exportedAt', now(),
                             'account', (
@@ -393,10 +419,11 @@ public class PrivacyService {
                                 FROM google_credential g WHERE g.owner_id = :ownerId
                             ), '[]'::json)
                         )::text
-                        """)
-                .setParameter("ownerId", ownerId)
-                .setParameter("redacted", REDACTED)
-                .getSingleResult();
+                        """
+            )
+            .setParameter("ownerId", ownerId)
+            .setParameter("redacted", REDACTED)
+            .getSingleResult();
     }
 
     /**
@@ -475,17 +502,20 @@ public class PrivacyService {
         }
 
         long outboxMarker = QuarkusTransaction.requiringNew().call(this::currentOutboxMaxId);
-        List<Booking> held = QuarkusTransaction.requiringNew()
-                .call(() -> Booking.<Booking>list(
-                        "meetingTypeId in (select t.id from MeetingType t where t.ownerId = ?1) "
-                                + "and endUtc > ?2 and status in ?3 and erasedAt is null order by id",
-                        userId,
-                        Instant.now(),
-                        List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)));
+        List<Booking> held = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>list(
+                    "meetingTypeId in (select t.id from MeetingType t where t.ownerId = ?1) "
+                    + "and endUtc > ?2 and status in ?3 and erasedAt is null order by id",
+                    userId,
+                    Instant.now(),
+                    List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)
+            ));
         Set<UUID> groupsDone = new HashSet<>();
         for (Booking b : held) {
             if (b.groupId != null && !groupsDone.add(b.groupId)) {
-                continue; // the whole group was cancelled through its first row
+                // the whole group was cancelled through its first row
+                continue;
             }
             try {
                 bookingService.cancelToleratingGoogleFailure(b.manageToken, true);
@@ -495,17 +525,22 @@ public class PrivacyService {
         }
         List<Long> cancelledIds = held.stream().map(b -> b.id).toList();
 
-        QuarkusTransaction.requiringNew().run(() -> deleteAccountRow(userId, outboxMarker, cancelledIds));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> deleteAccountRow(userId, outboxMarker, cancelledIds));
     }
 
-    /** The current max id in {@code email_outbox}, as a marker for {@link #deleteAccount}. */
+    /**
+     * The current max id in {@code email_outbox}, as a marker for {@link #deleteAccount}.
+     */
     private long currentOutboxMaxId() {
-        return ((Number) em.createNativeQuery("SELECT coalesce(max(id), 0) FROM email_outbox")
-                        .getSingleResult())
-                .longValue();
+        return ((Number) em.createNativeQuery("SELECT coalesce(max(id), 0) FROM email_outbox").getSingleResult())
+            .longValue();
     }
 
-    /** The atomic half of {@link #deleteAccount}: locked admin check, outbox, tombstone, delete. */
+    /**
+     * The atomic half of {@link #deleteAccount}: locked admin check, outbox, tombstone, delete.
+     */
     private void deleteAccountRow(Long userId, long outboxMarker, List<Long> cancelledIds) {
         AppUser u = AppUser.findById(userId);
         if (u == null) {
@@ -516,25 +551,28 @@ public class PrivacyService {
             // two concurrent deletions of two DIFFERENT enabled admins could each read "more than
             // one enabled admin" and both proceed, leaving zero. Ordered so concurrent lockers take
             // the rows in the same order and cannot deadlock each other.
-            List<AppUser> enabledAdmins = AppUser.<AppUser>find("isAdmin = true and enabled = true order by id")
-                    .withLock(LockModeType.PESSIMISTIC_WRITE)
-                    .list();
+            List<AppUser> enabledAdmins = AppUser
+                .<AppUser>find("isAdmin = true and enabled = true order by id")
+                .withLock(LockModeType.PESSIMISTIC_WRITE)
+                .list();
             if (enabledAdmins.size() <= 1) {
                 throw new IllegalStateException("last-admin");
             }
         }
         if (!cancelledIds.isEmpty()) {
             OwnerSettings settings = OwnerSettings.forOwner(userId);
-            em.createNativeQuery("UPDATE email_outbox SET booking_id = NULL, "
-                            + "owner_id = CASE WHEN owner_id = :uid THEN NULL ELSE owner_id END "
-                            + "WHERE id > :marker AND booking_id IN (:ids) "
-                            + "AND NOT (owner_id IS NOT DISTINCT FROM :uid AND recipient = :ownerEmail)")
-                    .setParameter("uid", userId)
-                    .setParameter("marker", outboxMarker)
-                    .setParameter("ids", cancelledIds)
-                    .setParameter(
-                            "ownerEmail", settings == null || settings.ownerEmail == null ? "" : settings.ownerEmail)
-                    .executeUpdate();
+            em
+                .createNativeQuery(
+                        "UPDATE email_outbox SET booking_id = NULL, "
+                        + "owner_id = CASE WHEN owner_id = :uid THEN NULL ELSE owner_id END "
+                        + "WHERE id > :marker AND booking_id IN (:ids) "
+                        + "AND NOT (owner_id IS NOT DISTINCT FROM :uid AND recipient = :ownerEmail)"
+                )
+                .setParameter("uid", userId)
+                .setParameter("marker", outboxMarker)
+                .setParameter("ids", cancelledIds)
+                .setParameter("ownerEmail", settings == null || settings.ownerEmail == null ? "" : settings.ownerEmail)
+                .executeUpdate();
         }
         EmailOutbox.deleteForOwner(userId);
         DeletedUsername.tombstone(u.username);

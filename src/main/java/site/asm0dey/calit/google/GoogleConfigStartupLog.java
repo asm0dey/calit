@@ -17,10 +17,7 @@ import jakarta.inject.Inject;
  */
 @ApplicationScoped
 public class GoogleConfigStartupLog {
-
-    private static final org.jboss.logging.Logger LOG =
-            org.jboss.logging.Logger.getLogger(GoogleConfigStartupLog.class);
-
+    private static final org.jboss.logging.Logger LOG = org.jboss.logging.Logger.getLogger(GoogleConfigStartupLog.class);
     private final GoogleOAuthConfig config;
 
     @Inject
@@ -40,6 +37,7 @@ public class GoogleConfigStartupLog {
                 oauth.clientSecret() == null || oauth.clientSecret().isBlank() ? "MISSING" : "set",
                 oauth.redirectUri(),
                 oauth.loginRedirectUri(),
-                oauth.scope());
+                oauth.scope()
+        );
     }
 }

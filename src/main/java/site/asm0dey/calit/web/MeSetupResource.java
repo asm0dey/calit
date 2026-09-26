@@ -19,23 +19,26 @@ import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
 import site.asm0dey.calit.user.PasswordHasher;
 
-/** First-login wizard, distinct from the first-run /setup bootstrap. */
+/**
+ * First-login wizard, distinct from the first-run /setup bootstrap.
+ */
 @Path("/me/setup")
 @RolesAllowed("user")
 public class MeSetupResource {
-
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance meSetup(
-                boolean mustChangePassword, OwnerSettings settings, List<String> zones, String error, String title);
+                boolean mustChangePassword,
+                OwnerSettings settings,
+                List<String> zones,
+                String error,
+                String title
+        );
     }
 
     final CurrentOwner currentOwner;
-
     final PasswordHasher passwordHasher;
-
     final AdminMessageResolver adminMsgs;
-
     final ActiveLocale activeLocale;
 
     @Inject
@@ -43,7 +46,8 @@ public class MeSetupResource {
             CurrentOwner currentOwner,
             PasswordHasher passwordHasher,
             AdminMessageResolver adminMsgs,
-            ActiveLocale activeLocale) {
+            ActiveLocale activeLocale
+    ) {
         this.currentOwner = currentOwner;
         this.passwordHasher = passwordHasher;
         this.adminMsgs = adminMsgs;
@@ -53,8 +57,10 @@ public class MeSetupResource {
     @GET
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance wizard() {
-        AppUser me = currentOwner.require(); // 401 if no owner resolved (never NPE on a null id)
-        OwnerSettings existing = OwnerSettings.forOwner(me.id); // may be null on first visit
+        // 401 if no owner resolved (never NPE on a null id)
+        AppUser me = currentOwner.require();
+        // may be null on first visit
+        OwnerSettings existing = OwnerSettings.forOwner(me.id);
         String title = adminMsgs.forLocale(activeLocale.current()).mesetup_title();
         return Templates.meSetup(me.mustChangePassword, existing, OwnerSettings.zoneIds(), null, title);
     }
@@ -67,25 +73,28 @@ public class MeSetupResource {
             @RestForm String newPassword,
             @RestForm String ownerName,
             @RestForm String ownerEmail,
-            @RestForm String timezone) {
-        Long ownerId = currentOwner.require().id; // 401 if no owner resolved
-        AppUser me = AppUser.findById(ownerId); // managed entity for dirty-checking in this tx
-
+            @RestForm String timezone
+    ) {
+        // 401 if no owner resolved
+        Long ownerId = currentOwner.require().id;
+        // managed entity for dirty-checking in this tx
+        AppUser me = AppUser.findById(ownerId);
         // Step 1: only when a forced reset is pending.
         if (me.mustChangePassword) {
             if (newPassword == null || newPassword.isBlank()) {
-                return Response.ok(Templates.meSetup(
-                                true,
-                                OwnerSettings.forOwner(ownerId),
-                                OwnerSettings.zoneIds(),
-                                adminMsgs.forLocale(activeLocale.current()).mesetup_choose_new_password(),
-                                adminMsgs.forLocale(activeLocale.current()).mesetup_title()))
-                        .build();
+                return Response
+                    .ok(Templates.meSetup(
+                            true,
+                            OwnerSettings.forOwner(ownerId),
+                            OwnerSettings.zoneIds(),
+                            adminMsgs.forLocale(activeLocale.current()).mesetup_choose_new_password(),
+                            adminMsgs.forLocale(activeLocale.current()).mesetup_title()
+                    ))
+                    .build();
             }
             me.passwordHash = passwordHasher.hash(newPassword);
             me.mustChangePassword = false;
         }
-
         // Step 2: create/update this owner's settings row.
         OwnerSettings s = OwnerSettings.forOwner(ownerId);
         if (s == null) {
@@ -99,7 +108,6 @@ public class MeSetupResource {
         // owner's PUBLIC booking page and the booking transaction (calit-4whp).
         s.timezone = OwnerSettings.coerceZone(timezone);
         s.persist();
-
         // Step 3: a brand-new owner has no availability at all, so their meeting types would offer no
         // slots and the working-hours grid would render empty. Seed Mon–Fri 09:00–18:00 globals here —
         // MeOwnerFilter forces every user through this wizard before they can use /me, whichever path

@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
@@ -30,10 +29,8 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class GuestBookingFlowTest {
-
     @InjectMock
     CalendarPort calendarPort;
-
     @Inject
     MockMailbox mailbox;
 
@@ -78,12 +75,7 @@ class GuestBookingFlowTest {
     }
 
     private String firstSlot() {
-        String html = given().when()
-                .get("/gob/g-type")
-                .then()
-                .statusCode(200)
-                .extract()
-                .asString();
+        String html = given().when().get("/gob/g-type").then().statusCode(200).extract().asString();
         var s = html.substring(html.indexOf("name=\"startUtc\" value=\"") + "name=\"startUtc\" value=\"".length());
         return s.substring(0, s.indexOf('"'));
     }
@@ -103,16 +95,17 @@ class GuestBookingFlowTest {
         seed();
         mailbox.clear();
 
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", firstSlot())
-                .formParam("inviteeName", "Sam")
-                .formParam("inviteeEmail", "sam@example.com")
-                .formParam("website", "")
-                .formParam("guests", "ana@example.com, bob@example.com")
-                .when()
-                .post("/gob/g-type")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", firstSlot())
+            .formParam("inviteeName", "Sam")
+            .formParam("inviteeEmail", "sam@example.com")
+            .formParam("website", "")
+            .formParam("guests", "ana@example.com, bob@example.com")
+            .when()
+            .post("/gob/g-type")
+            .then()
+            .statusCode(200);
 
         Booking b = Booking.find("inviteeEmail", "sam@example.com").firstResult();
         assertNotNull(b);
@@ -127,38 +120,36 @@ class GuestBookingFlowTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seed();
 
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", firstSlot())
-                .formParam("inviteeName", "Sam")
-                .formParam("inviteeEmail", "sam@example.com")
-                .formParam("website", "")
-                .formParam("guests", "ana@example.com")
-                .when()
-                .post("/gob/g-type")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", firstSlot())
+            .formParam("inviteeName", "Sam")
+            .formParam("inviteeEmail", "sam@example.com")
+            .formParam("website", "")
+            .formParam("guests", "ana@example.com")
+            .when()
+            .post("/gob/g-type")
+            .then()
+            .statusCode(200);
 
         Booking b = Booking.find("inviteeEmail", "sam@example.com").firstResult();
         String token = BookingGuest.activeForBooking(b.id).getFirst().declineToken;
         mailbox.clear();
-
         // Confirmation page renders.
-        given().when()
-                .get("/guest/" + token + "/decline")
-                .then()
-                .statusCode(200)
-                .body(containsString("Decline"));
+        given().when().get("/guest/" + token + "/decline").then().statusCode(200).body(containsString("Decline"));
         // POST declines (CSRF is off in %test).
-        given().contentType("application/x-www-form-urlencoded")
-                .when()
-                .post("/guest/" + token + "/decline")
-                .then()
-                .statusCode(200);
-
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/guest/" + token + "/decline")
+            .then()
+            .statusCode(200);
         // Read in a fresh session — the test thread cached the INVITED entity; the HTTP thread updated
         // it to DECLINED in a separate EntityManager. requiringNew() bypasses the stale L1 cache.
-        GuestStatus finalStatus = QuarkusTransaction.requiringNew()
-                .call(() -> BookingGuest.<BookingGuest>findByDeclineToken(token).status);
+        GuestStatus finalStatus =
+                QuarkusTransaction
+            .requiringNew()
+            .call(() -> BookingGuest.<BookingGuest>findByDeclineToken(token).status);
         assertEquals(GuestStatus.DECLINED, finalStatus);
         assertEquals(1, mailbox.getMailsSentTo("sam@example.com").size(), "invitee notified of the decline");
     }
@@ -169,26 +160,32 @@ class GuestBookingFlowTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seed();
 
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", firstSlot())
-                .formParam("inviteeName", "Sam")
-                .formParam("inviteeEmail", "sam@example.com")
-                .formParam("website", "")
-                .formParam("guests", "ana@example.com, bob@example.com")
-                .when()
-                .post("/gob/g-type")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", firstSlot())
+            .formParam("inviteeName", "Sam")
+            .formParam("inviteeEmail", "sam@example.com")
+            .formParam("website", "")
+            .formParam("guests", "ana@example.com, bob@example.com")
+            .when()
+            .post("/gob/g-type")
+            .then()
+            .statusCode(200);
 
         Booking b = Booking.find("inviteeEmail", "sam@example.com").firstResult();
         String manageToken = b.manageToken;
 
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("guests", "ana@example.com, cyd@example.com") // drop bob, add cyd
-                .when()
-                .post("/booking/" + manageToken + "/edit-details")
-                .then()
-                .statusCode(200);
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            // drop bob, add cyd
+            .formParam(
+                    // drop bob, add cyd
+            "guests",
+                    "ana@example.com, cyd@example.com")
+            .when()
+            .post("/booking/" + manageToken + "/edit-details")
+            .then()
+            .statusCode(200);
 
         assertEquals(GuestStatus.REMOVED, BookingGuest.findInBooking(b.id, "bob@example.com").status);
         assertEquals(2, BookingGuest.activeForBooking(b.id).size());

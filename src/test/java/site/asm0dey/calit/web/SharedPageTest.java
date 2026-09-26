@@ -3,7 +3,6 @@ package site.asm0dey.calit.web;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -19,15 +18,18 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class SharedPageTest {
-
-    /** Admin (id 1) creates a two-host type with a fresh co-host — admin's role is CREATOR. */
+    /**
+     * Admin (id 1) creates a two-host type with a fresh co-host — admin's role is CREATOR.
+     */
     @Transactional
     MeetingType seedAdminCreatedSharedType() {
         AppUser cohost = MultiHostFixtures.enabledUser("shared-cohost");
         return MultiHostFixtures.acceptedTwoHostType(1L, cohost.id, "shared-created", 30, false);
     }
 
-    /** A different owner creates a two-host type with admin (id 1) as co-host — admin's role is COHOST. */
+    /**
+     * A different owner creates a two-host type with admin (id 1) as co-host — admin's role is COHOST.
+     */
     @Transactional
     MeetingType seedAdminAsCohost() {
         AppUser creator = MultiHostFixtures.enabledUser("shared-creator");
@@ -43,10 +45,8 @@ class SharedPageTest {
     MeetingType seedAdminAsPendingCohost() {
         AppUser creator = MultiHostFixtures.enabledUser("shared-pending-creator");
         MeetingType t = MultiHostFixtures.meetingType(creator.id, "shared-pending-invite", 30);
-        MeetingTypeHost.of(t.id, creator.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED)
-                .persist();
-        MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING)
-                .persist();
+        MeetingTypeHost.of(t.id, creator.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED).persist();
+        MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING).persist();
         return t;
     }
 
@@ -54,49 +54,53 @@ class SharedPageTest {
     void mainListOmitsMultiHostTypeButShowsSharedLink() {
         MeetingType t = seedAdminCreatedSharedType();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(not(containsString(t.slug)))
-                .body(containsString("href=\"/me/shared\""));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .body(not(containsString(t.slug)))
+            .body(containsString("href=\"/me/shared\""));
     }
 
     @Test
     void mainListHidesSharedLinkWhenOwnerHasNoMultiHostType() {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("href=\"/me/shared\"")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("href=\"/me/shared\"")));
     }
 
     @Test
     void sharedPageListsCreatedTypeWithCreatorBadge() {
         MeetingType t = seedAdminCreatedSharedType();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared")
-                .then()
-                .statusCode(200)
-                .body(containsString(t.name))
-                .body(containsString("Creator"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared")
+            .then()
+            .statusCode(200)
+            .body(containsString(t.name))
+            .body(containsString("Creator"));
     }
 
     @Test
     void sharedPageListsCohostedTypeWithCohostBadge() {
         MeetingType t = seedAdminAsCohost();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared")
-                .then()
-                .statusCode(200)
-                .body(containsString(t.name))
-                .body(containsString("Co-host"));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared")
+            .then()
+            .statusCode(200)
+            .body(containsString(t.name))
+            .body(containsString("Co-host"));
     }
 
     /**
@@ -109,18 +113,19 @@ class SharedPageTest {
     void sharedPageRendersCreatedTypeAsCardWithCopyLinkAndEditAction() {
         MeetingType t = seedAdminCreatedSharedType();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared")
-                .then()
-                .statusCode(200)
-                .body(containsString("class=\"card"))
-                .body(containsString(t.name))
-                .body(containsString("data-copy-link=\"http://localhost:8080/admin/" + t.slug + "\""))
-                .body(containsString("Creator"))
-                .body(containsString("href=\"/me/meeting-types/" + t.id + "\""))
-                .body(not(containsString("Set availability")))
-                .body(not(containsString("/me/shared/" + t.id + "/revoke")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared")
+            .then()
+            .statusCode(200)
+            .body(containsString("class=\"card"))
+            .body(containsString(t.name))
+            .body(containsString("data-copy-link=\"http://localhost:8080/admin/" + t.slug + "\""))
+            .body(containsString("Creator"))
+            .body(containsString("href=\"/me/meeting-types/" + t.id + "\""))
+            .body(not(containsString("Set availability")))
+            .body(not(containsString("/me/shared/" + t.id + "/revoke")));
     }
 
     /**
@@ -132,18 +137,19 @@ class SharedPageTest {
     void sharedPageRendersCohostedTypeAsCardWithCreatorUsernameCopyLinkAndCohostActions() {
         MeetingType t = seedAdminAsCohost();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared")
-                .then()
-                .statusCode(200)
-                .body(containsString("class=\"card"))
-                .body(containsString(t.name))
-                .body(containsString("data-copy-link=\"http://localhost:8080/shared-creator/" + t.slug + "\""))
-                .body(containsString("Co-host"))
-                .body(containsString("href=\"/me/shared/" + t.id + "/availability\""))
-                .body(containsString("action=\"/me/shared/" + t.id + "/revoke\""))
-                .body(not(containsString("href=\"/me/meeting-types/" + t.id + "\"")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared")
+            .then()
+            .statusCode(200)
+            .body(containsString("class=\"card"))
+            .body(containsString(t.name))
+            .body(containsString("data-copy-link=\"http://localhost:8080/shared-creator/" + t.slug + "\""))
+            .body(containsString("Co-host"))
+            .body(containsString("href=\"/me/shared/" + t.id + "/availability\""))
+            .body(containsString("action=\"/me/shared/" + t.id + "/revoke\""))
+            .body(not(containsString("href=\"/me/meeting-types/" + t.id + "\"")));
     }
 
     /**
@@ -155,48 +161,52 @@ class SharedPageTest {
     void sharedPageRendersPendingCohostCardWithRespondLinkNotDeadActions() {
         MeetingType t = seedAdminAsPendingCohost();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/shared")
-                .then()
-                .statusCode(200)
-                .body(containsString(t.name))
-                .body(containsString("href=\"/me/shared/requests\""))
-                .body(not(containsString("href=\"/me/shared/" + t.id + "/availability\"")))
-                .body(not(containsString("action=\"/me/shared/" + t.id + "/revoke\"")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared")
+            .then()
+            .statusCode(200)
+            .body(containsString(t.name))
+            .body(containsString("href=\"/me/shared/requests\""))
+            .body(not(containsString("href=\"/me/shared/" + t.id + "/availability\"")))
+            .body(not(containsString("action=\"/me/shared/" + t.id + "/revoke\"")));
     }
 
     @Test
     void sidebarShowsSharedNavItemWhenOwnerHasSharedInvolvement() {
         seedAdminCreatedSharedType();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me")
-                .then()
-                .statusCode(200)
-                .body(containsString("href=\"/me/shared\""));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me")
+            .then()
+            .statusCode(200)
+            .body(containsString("href=\"/me/shared\""));
     }
 
     @Test
     void sidebarShowsSharedNavItemForPendingCohostInvite() {
         seedAdminAsPendingCohost();
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me")
-                .then()
-                .statusCode(200)
-                .body(containsString("href=\"/me/shared\""));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me")
+            .then()
+            .statusCode(200)
+            .body(containsString("href=\"/me/shared\""));
     }
 
     @Test
     void sidebarHidesSharedNavItemWhenOwnerHasNoSharedInvolvement() {
-        given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("href=\"/me/shared\"")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("href=\"/me/shared\"")));
     }
 }

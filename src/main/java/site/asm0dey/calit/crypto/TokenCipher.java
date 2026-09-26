@@ -21,12 +21,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
  */
 @ApplicationScoped
 public class TokenCipher {
-
     private static final String MARKER = "enc:v1:";
     private static final String TRANSFORM = "AES/GCM/NoPadding";
     private static final int IV_BYTES = 12;
     private static final int TAG_BITS = 128;
-
     private final SecretKeySpec key;
     private final SecureRandom random = new SecureRandom();
 
@@ -34,7 +32,8 @@ public class TokenCipher {
         var raw = hexToBytes(hexKey);
         if (raw.length != 32) {
             throw new IllegalStateException(
-                    "TOKEN_ENCRYPTION_KEY must decode to 32 bytes (64 hex chars); got " + raw.length);
+                    "TOKEN_ENCRYPTION_KEY must decode to 32 bytes (64 hex chars); got " + raw.length
+            );
         }
         this.key = new SecretKeySpec(raw, "AES");
     }

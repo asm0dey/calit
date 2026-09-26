@@ -6,7 +6,6 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -23,38 +22,39 @@ import site.asm0dey.calit.user.PasswordHasher;
 
 @QuarkusTest
 class OwnerExportTest {
-
     @Test
     void anonymousCannotExport() {
         // Form-auth's challenge for an unauthenticated request to a role-protected /me* path is a
         // 302 redirect to the login page, not a bare 401 (confirmed against this codebase's
         // quarkus.http.auth.form.* config — see ReservedRouteTest, which accepts the same set for
         // plain "/me").
-        given().redirects()
-                .follow(false)
-                .when()
-                .get("/me/export")
-                .then()
-                .statusCode(302)
-                .header("Location", containsString("/login"));
+        given()
+            .redirects()
+            .follow(false)
+            .when()
+            .get("/me/export")
+            .then()
+            .statusCode(302)
+            .header("Location", containsString("/login"));
     }
 
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void exportIsAJsonAttachmentCoveringTheOwnersSubtree() {
-        given().when()
-                .get("/me/export")
-                .then()
-                .statusCode(200)
-                .contentType(containsString("application/json"))
-                .header("Content-Disposition", containsString("attachment"))
-                .header("Cache-Control", containsString("no-store"))
-                .body("exportedAt", notNullValue())
-                .body("account", notNullValue())
-                .body("settings", notNullValue())
-                .body("meetingTypes", notNullValue())
-                .body("availability", notNullValue())
-                .body("bookings", notNullValue());
+        given()
+            .when()
+            .get("/me/export")
+            .then()
+            .statusCode(200)
+            .contentType(containsString("application/json"))
+            .header("Content-Disposition", containsString("attachment"))
+            .header("Cache-Control", containsString("no-store"))
+            .body("exportedAt", notNullValue())
+            .body("account", notNullValue())
+            .body("settings", notNullValue())
+            .body("meetingTypes", notNullValue())
+            .body("availability", notNullValue())
+            .body("bookings", notNullValue());
     }
 
     @Test
@@ -72,39 +72,41 @@ class OwnerExportTest {
             cred.accessTokenExpiry = Instant.now().plus(1, ChronoUnit.HOURS);
             cred.persist();
         });
-        String body = given().when()
-                .get("/me/export")
-                .then()
-                .statusCode(200)
-                .extract()
-                .asString();
+        String body = given().when().get("/me/export").then().statusCode(200).extract().asString();
         org.junit.jupiter.api.Assertions.assertFalse(
                 body.contains("passwordHash") || body.contains("password_hash"),
-                "the argon2id hash must never appear in an export");
+                "the argon2id hash must never appear in an export"
+        );
         org.junit.jupiter.api.Assertions.assertFalse(
                 body.contains("accessToken") || body.contains("refreshToken"),
-                "Google OAuth tokens must never appear in an export");
+                "Google OAuth tokens must never appear in an export"
+        );
         org.junit.jupiter.api.Assertions.assertFalse(
                 body.contains("KNOWN-ACCESS-TOKEN-VALUE") || body.contains("KNOWN-REFRESH-TOKEN-VALUE"),
-                "a stored Google token value must never appear in an export");
+                "a stored Google token value must never appear in an export"
+        );
         org.junit.jupiter.api.Assertions.assertFalse(
                 body.contains("$argon2") || body.contains("Known-admin-pw-9f3"),
-                "no password hash (or password) may appear in an export");
+                "no password hash (or password) may appear in an export"
+        );
         org.junit.jupiter.api.Assertions.assertTrue(
-                body.contains("export@example.com"), "precondition: the seeded Google account is exported");
+                body.contains("export@example.com"),
+                "precondition: the seeded Google account is exported"
+        );
     }
 
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void notificationChannelUrlsAreRedacted() {
         ChannelFixtures.seedChannel(1L, "ntfy://ntfy.sh/secret-topic");
-        given().when()
-                .get("/me/export")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("secret-topic")))
-                .body("notificationChannels", everyItem(hasKey("url")))
-                .body("notificationChannels[0].url", containsString("redacted"));
+        given()
+            .when()
+            .get("/me/export")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("secret-topic")))
+            .body("notificationChannels", everyItem(hasKey("url")))
+            .body("notificationChannels[0].url", containsString("redacted"));
     }
 
     @Test
@@ -114,7 +116,9 @@ class OwnerExportTest {
         given().when().get("/me/export").then().statusCode(200).body(not(containsString("Zzyzx Quibblesworth")));
     }
 
-    /** A second owner with a booking carrying a unique, easy-to-grep invitee name. */
+    /**
+     * A second owner with a booking carrying a unique, easy-to-grep invitee name.
+     */
     private static void seedSecondOwnerBooking() {
         QuarkusTransaction.requiringNew().run(() -> {
             AppUser other = AppUser.create("otherowner-export", "x", false);

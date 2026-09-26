@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -23,14 +22,14 @@ import site.asm0dey.calit.user.PasswordResetToken;
 
 @QuarkusTest
 class AccountDeletionTest {
-
     @Inject
     PrivacyService privacy;
-
     @Inject
     EntityManager em;
 
-    /** A second, non-admin account with a settings row, so deleting it is legal. */
+    /**
+     * A second, non-admin account with a settings row, so deleting it is legal.
+     */
     private Long seedSecondUser() {
         return QuarkusTransaction.requiringNew().call(() -> {
             AppUser u = AppUser.create("deletable", "x", false);
@@ -42,10 +41,11 @@ class AccountDeletionTest {
     }
 
     private long rowsFor(String table, String column, Long value) {
-        return ((Number) em.createNativeQuery("select count(*) from " + table + " where " + column + " = :v")
-                        .setParameter("v", value)
-                        .getSingleResult())
-                .longValue();
+        return ((Number) em
+            .createNativeQuery("select count(*) from " + table + " where " + column + " = :v")
+            .setParameter("v", value)
+            .getSingleResult())
+            .longValue();
     }
 
     @Test
@@ -58,7 +58,10 @@ class AccountDeletionTest {
             for (PersonalData.Classified c : PersonalData.TABLES) {
                 if (c.columns().contains("owner_id")) {
                     assertEquals(
-                            0L, rowsFor(c.table(), "owner_id", id), c.table() + " must not survive account deletion");
+                            0L,
+                            rowsFor(c.table(), "owner_id", id),
+                            c.table() + " must not survive account deletion"
+                    );
                 }
             }
         });
@@ -68,7 +71,9 @@ class AccountDeletionTest {
     void deletionClearsParkedMailForThatOwner() {
         var id = seedSecondUser();
         privacy.deleteAccount(id);
-        QuarkusTransaction.requiringNew().run(() -> assertEquals(0L, EmailOutbox.count("ownerId", id)));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> assertEquals(0L, EmailOutbox.count("ownerId", id)));
     }
 
     @Test
@@ -76,7 +81,9 @@ class AccountDeletionTest {
         // DatabaseResetCallback seeds exactly one admin, always id 1.
         assertTrue(privacy.isLastEnabledAdmin(1L));
         assertThrows(IllegalStateException.class, () -> privacy.deleteAccount(1L));
-        QuarkusTransaction.requiringNew().run(() -> assertEquals(1L, AppUser.count("id", 1L)));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> assertEquals(1L, AppUser.count("id", 1L)));
     }
 
     /**
@@ -132,9 +139,11 @@ class AccountDeletionTest {
             return t.id;
         });
         var cohostId = seedSecondUser();
-        QuarkusTransaction.requiringNew()
-                .run(() -> MeetingTypeHost.of(typeId, cohostId, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED)
-                        .persist());
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> MeetingTypeHost
+                .of(typeId, cohostId, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED)
+                .persist());
 
         privacy.deleteAccount(cohostId);
 
@@ -145,7 +154,8 @@ class AccountDeletionTest {
             assertEquals(
                     0L,
                     MeetingTypeHost.count("meetingTypeId = ?1 and ownerId = ?2", typeId, cohostId),
-                    "the deleted co-host's own host row is gone");
+                    "the deleted co-host's own host row is gone"
+            );
         });
     }
 }

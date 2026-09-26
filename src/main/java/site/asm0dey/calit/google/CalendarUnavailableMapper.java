@@ -16,9 +16,7 @@ import site.asm0dey.calit.web.PublicResource;
  */
 @Provider
 public class CalendarUnavailableMapper implements ExceptionMapper<CalendarUnavailableException> {
-
     final AppMessageResolver messages;
-
     final ActiveLocale activeLocale;
 
     @Inject
@@ -30,10 +28,10 @@ public class CalendarUnavailableMapper implements ExceptionMapper<CalendarUnavai
     @Override
     public Response toResponse(CalendarUnavailableException ex) {
         var m = messages.forLocale(activeLocale.current());
-        return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-                .type(MediaType.TEXT_HTML)
-                .entity(PublicResource.Templates.unavailable(m.pub_unavailable_title())
-                        .render())
-                .build();
+        return Response
+            .status(Response.Status.SERVICE_UNAVAILABLE)
+            .type(MediaType.TEXT_HTML)
+            .entity(PublicResource.Templates.unavailable(m.pub_unavailable_title()).render())
+            .build();
     }
 }

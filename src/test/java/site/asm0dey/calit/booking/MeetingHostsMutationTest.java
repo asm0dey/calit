@@ -1,7 +1,6 @@
 package site.asm0dey.calit.booking;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.enterprise.event.Observes;
@@ -17,13 +16,10 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class MeetingHostsMutationTest {
-
     @Inject
     MeetingHosts meetingHosts;
-
     @Inject
     EntityManager em;
-
     static final AtomicInteger CONSENTS = new AtomicInteger();
 
     void onConsent(@Observes HostConsentRequested e) {
@@ -37,9 +33,11 @@ class MeetingHostsMutationTest {
         MeetingType t = MultiHostFixtures.meetingType(1L, "intro", 30);
         AppUser v = MultiHostFixtures.enabledUser("volodya");
         meetingHosts.addCohost(t, v);
-        meetingHosts.addCohost(t, v); // idempotent -- still one pending row, one email
+        // idempotent -- still one pending row, one email
+        meetingHosts.addCohost(t, v);
         em.flush();
-        assertEquals(2, MeetingTypeHost.forType(t.id).size()); // creator + one cohost
+        // creator + one cohost
+        assertEquals(2, MeetingTypeHost.forType(t.id).size());
         assertEquals(1, CONSENTS.get());
         assertEquals(MeetingTypeHost.CREATOR, MeetingTypeHost.find(t.id, 1L).role);
     }
@@ -53,7 +51,8 @@ class MeetingHostsMutationTest {
         em.flush();
         meetingHosts.removeHost(t, v.id);
         em.flush();
-        assertEquals(0, MeetingTypeHost.forType(t.id).size()); // creator row gone too
+        // creator row gone too
+        assertEquals(0, MeetingTypeHost.forType(t.id).size());
         assertFalse(MeetingTypeHost.isMultiHost(t.id));
     }
 
@@ -61,8 +60,11 @@ class MeetingHostsMutationTest {
     @TestTransaction
     void capRejectsEleventhHost() {
         MeetingType t = MultiHostFixtures.meetingType(1L, "intro", 30);
-        for (var i = 0; i < 9; i++) meetingHosts.addCohost(t, MultiHostFixtures.enabledUser("h" + i));
-        em.flush(); // 1 creator + 9 cohosts = 10
+        for (var i = 0; i < 9; i++) {
+            meetingHosts.addCohost(t, MultiHostFixtures.enabledUser("h" + i));
+        }
+        // 1 creator + 9 cohosts = 10
+        em.flush();
         AppUser extra = MultiHostFixtures.enabledUser("overflow");
         assertThrows(IllegalStateException.class, () -> meetingHosts.addCohost(t, extra));
     }

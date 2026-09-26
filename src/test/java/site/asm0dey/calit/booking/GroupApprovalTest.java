@@ -3,7 +3,6 @@ package site.asm0dey.calit.booking;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -24,13 +23,10 @@ import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
 class GroupApprovalTest {
-
     @Inject
     BookingService bookingService;
-
     @InjectMock
     CalendarPort calendarPort;
-
     private static final ZoneId AMS = ZoneId.of("Europe/Amsterdam");
 
     private Instant nextMonday10() {
@@ -38,7 +34,9 @@ class GroupApprovalTest {
         return mon.atTime(10, 0).atZone(AMS).toInstant();
     }
 
-    /** Admin (id 1, "pasha") as creator + a second accepted co-host ("volodya"), both with rules covering Monday. */
+    /**
+     * Admin (id 1, "pasha") as creator + a second accepted co-host ("volodya"), both with rules covering Monday.
+     */
     private MeetingType type(boolean approval) {
         MultiHostFixtures.settings(1L, "pasha");
         AppUser v = MultiHostFixtures.enabledUser("volodya");
@@ -54,23 +52,45 @@ class GroupApprovalTest {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
+            .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
         type(true);
 
-        Booking lead = bookingService.book(
-                1L, "intro", nextMonday10(), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday10(),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
         List<Booking> rows = Booking.group(lead.groupId);
         assertEquals(2, rows.size());
-
-        bookingService.approve(rows.get(0).id); // first host approves
+        // first host approves
+        bookingService.approve(rows.get(0).id);
         assertEquals(BookingStatus.CONFIRMED, Booking.<Booking>findById(rows.get(0).id).status);
-        verify(calendarPort, never())
-                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
-
-        bookingService.approve(rows.get(1).id); // last host approves -> event + confirm
-        Booking.<Booking>group(lead.groupId).forEach(r -> assertEquals(BookingStatus.CONFIRMED, r.status));
+        verify(calendarPort, never()).createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyList(),
+                anyBoolean(),
+                any()
+        );
+        // last host approves -> event + confirm
+        bookingService.approve(rows.get(1).id);
+        Booking
+            .<Booking>group(lead.groupId)
+            .forEach(r -> assertEquals(BookingStatus.CONFIRMED, r.status));
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 
     @Test
@@ -79,24 +99,35 @@ class GroupApprovalTest {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
         when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-                .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
+            .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
         type(true);
 
-        Booking lead = bookingService.book(
-                1L, "intro", nextMonday10(), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday10(),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
         List<Booking> rows = Booking.group(lead.groupId);
         assertEquals(2, rows.size());
-
-        bookingService.approve(rows.get(0).id); // first host approves
-        bookingService.approve(rows.get(1).id); // last host approves -> event created + group confirmed
+        // first host approves
+        bookingService.approve(rows.get(0).id);
+        // last host approves -> event created + group confirmed
+        bookingService.approve(rows.get(1).id);
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
-
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
         // Double-submit: re-approve an already-CONFIRMED row (double-click / back-button replay).
         // Must NOT re-run createGroupGoogleEvent -> still exactly ONE event, not two.
         bookingService.approve(rows.get(1).id);
         verify(calendarPort, times(1))
-                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 
     @Test
@@ -105,19 +136,42 @@ class GroupApprovalTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         type(true);
 
-        Booking lead = bookingService.book(
-                1L, "intro", nextMonday10(), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday10(),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
         List<Booking> rows = Booking.group(lead.groupId);
         assertEquals(2, rows.size());
 
         bookingService.decline(rows.get(0).id);
-        Booking.<Booking>group(lead.groupId).forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
-
+        Booking
+            .<Booking>group(lead.groupId)
+            .forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
         // Double-submit: decline an already-DECLINED row again -> no-op.
         bookingService.decline(rows.get(1).id);
-        Booking.<Booking>group(lead.groupId).forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
-        verify(calendarPort, never())
-                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+        Booking
+            .<Booking>group(lead.groupId)
+            .forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
+        verify(calendarPort, never()).createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyList(),
+                anyBoolean(),
+                any()
+        );
     }
 
     @Test
@@ -126,15 +180,37 @@ class GroupApprovalTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         type(true);
 
-        Booking lead = bookingService.book(
-                1L, "intro", nextMonday10(), "Sam", "sam@x.com", Map.of(), "tok", "", "en", List.of());
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday10(),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
         List<Booking> rows = Booking.group(lead.groupId);
         assertEquals(2, rows.size());
 
         bookingService.decline(rows.get(0).id);
 
-        Booking.<Booking>group(lead.groupId).forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
-        verify(calendarPort, never())
-                .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+        Booking
+            .<Booking>group(lead.groupId)
+            .forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
+        verify(calendarPort, never()).createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyList(),
+                anyBoolean(),
+                any()
+        );
     }
 }

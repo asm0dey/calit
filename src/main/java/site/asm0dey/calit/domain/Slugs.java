@@ -3,12 +3,16 @@ package site.asm0dey.calit.domain;
 import java.text.Normalizer;
 import java.util.Locale;
 
-/** Slug helpers: turn a display name into a URL slug and guarantee meeting_type uniqueness. */
+/**
+ * Slug helpers: turn a display name into a URL slug and guarantee meeting_type uniqueness.
+ */
 public final class Slugs {
+    private Slugs() {
+    }
 
-    private Slugs() {}
-
-    /** Lowercase, strip accents, collapse non-alphanumerics to single hyphens, trim hyphens. Null/blank -> "". */
+    /**
+     * Lowercase, strip accents, collapse non-alphanumerics to single hyphens, trim hyphens. Null/blank -> "".
+     */
     public static String slugify(String input) {
         if (input == null) {
             return "";

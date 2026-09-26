@@ -2,7 +2,6 @@ package site.asm0dey.calit.scheduler;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import java.time.Instant;
@@ -15,7 +14,6 @@ import site.asm0dey.calit.domain.MeetingType;
 
 @QuarkusTest
 class ReminderTest {
-
     @Test
     @TestTransaction
     void persistsAndReadsBackAllFields() {
@@ -45,9 +43,12 @@ class ReminderTest {
         var a = seedBookingAt(uniqueFutureStart());
         var b = seedBookingAt(uniqueFutureStart());
         var base = Instant.parse("2026-06-07T07:00:00Z");
-        persist(a, base, null); // unsent for a -> deleted
-        persist(a, base, base.minusSeconds(1)); // already sent for a -> kept
-        persist(b, base, null); // unsent for a different booking -> kept
+        // unsent for a -> deleted
+        persist(a, base, null);
+        // already sent for a -> kept
+        persist(a, base, base.minusSeconds(1));
+        // unsent for a different booking -> kept
+        persist(b, base, null);
 
         Reminder.deleteUnsentFor(a);
 

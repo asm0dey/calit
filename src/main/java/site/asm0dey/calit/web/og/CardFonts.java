@@ -21,19 +21,12 @@ import java.util.List;
  */
 @ApplicationScoped
 public class CardFonts {
-
     final Font rubikRegular = load("Rubik-Regular.ttf");
-
     final Font rubikSemiBold = load("Rubik-SemiBold.ttf");
-
     final Font notoRegular = load("NotoSans-Regular.ttf");
-
     final Font notoSemiBold = load("NotoSans-SemiBold.ttf");
-
     final Font notoHebrew = load("NotoSansHebrew-Regular.ttf");
-
     final Font hankenBold = load("HankenGrotesk-Bold.ttf");
-
     final Font frauncesChip = load("Fraunces-Chip.ttf");
 
     public Font regular() {
@@ -44,17 +37,23 @@ public class CardFonts {
         return rubikSemiBold;
     }
 
-    /** Hanken Grotesk Bold — the site sets the "calit" wordmark in the body sans at weight 700. */
+    /**
+     * Hanken Grotesk Bold — the site sets the "calit" wordmark in the body sans at weight 700.
+     */
     public Font wordmark() {
         return hankenBold;
     }
 
-    /** Fraunces — the site sets the chip's "c" in it. */
+    /**
+     * Fraunces — the site sets the chip's "c" in it.
+     */
     public Font chip() {
         return frauncesChip;
     }
 
-    /** Ordered fallback chain: AWT does no automatic fallback for createFont-loaded fonts. */
+    /**
+     * Ordered fallback chain: AWT does no automatic fallback for createFont-loaded fonts.
+     */
     public List<Font> chain(boolean semibold) {
         return semibold
                 ? List.of(rubikSemiBold, notoSemiBold, notoHebrew)

@@ -14,7 +14,6 @@ import org.altcha.altcha.v1.Altcha;
  */
 @Path("/altcha")
 public class AltchaResource {
-
     final CaptchaProviderConfig providerConfig;
 
     @Inject
@@ -35,10 +34,10 @@ public class AltchaResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Altcha.Challenge challenge() throws Exception {
         var opts = new Altcha.ChallengeOptions()
-                .algorithm(Altcha.Algorithm.SHA256)
-                .maxNumber(providerConfig.altchaMaxNumber())
-                .hmacKey(providerConfig.altchaHmacKey().orElse(""))
-                .expiresInSeconds(300);
+            .algorithm(Altcha.Algorithm.SHA256)
+            .maxNumber(providerConfig.altchaMaxNumber())
+            .hmacKey(providerConfig.altchaHmacKey().orElse(""))
+            .expiresInSeconds(300);
         return Altcha.createChallenge(opts);
     }
 }

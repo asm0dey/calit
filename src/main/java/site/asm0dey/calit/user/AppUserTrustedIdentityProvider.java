@@ -19,7 +19,6 @@ import jakarta.enterprise.context.control.ActivateRequestContext;
  */
 @ApplicationScoped
 public class AppUserTrustedIdentityProvider implements IdentityProvider<TrustedAuthenticationRequest> {
-
     @Override
     public Class<TrustedAuthenticationRequest> getRequestType() {
         return TrustedAuthenticationRequest.class;
@@ -27,7 +26,9 @@ public class AppUserTrustedIdentityProvider implements IdentityProvider<TrustedA
 
     @Override
     public Uni<SecurityIdentity> authenticate(
-            TrustedAuthenticationRequest request, AuthenticationRequestContext context) {
+            TrustedAuthenticationRequest request,
+            AuthenticationRequestContext context
+    ) {
         return context.runBlocking(() -> build(request));
     }
 
@@ -44,10 +45,11 @@ public class AppUserTrustedIdentityProvider implements IdentityProvider<TrustedA
             // EnabledUserAugmentor, which already downgrades the user==null/disabled case to anonymous.
             // A principal is still set (anonymous + principal, like the augmentor) so downstream
             // code that reads identity.getPrincipal().getName() does not NPE.
-            return QuarkusSecurityIdentity.builder()
-                    .setPrincipal(new QuarkusPrincipal(request.getPrincipal()))
-                    .setAnonymous(true)
-                    .build();
+            return QuarkusSecurityIdentity
+                .builder()
+                .setPrincipal(new QuarkusPrincipal(request.getPrincipal()))
+                .setAnonymous(true)
+                .build();
         }
         return AppUserSecurityIdentities.of(user);
     }

@@ -15,8 +15,8 @@ import site.asm0dey.calit.domain.AvailabilityRule;
  * {@code /me} at all, whichever of the five creation paths made their row.</p>
  */
 public final class DefaultAvailabilitySeeder {
-
-    private DefaultAvailabilitySeeder() {}
+    private DefaultAvailabilitySeeder() {
+    }
 
     /**
      * Persists this owner's Mon–Fri 09:00–18:00 global defaults and returns how many rules were
@@ -39,11 +39,13 @@ public final class DefaultAvailabilitySeeder {
         return rules.size();
     }
 
-    /** Mon–Fri 09:00–18:00, global (meetingTypeId == null). Unstamped — the caller sets ownerId. */
+    /**
+     * Mon–Fri 09:00–18:00, global (meetingTypeId == null). Unstamped — the caller sets ownerId.
+     */
     static List<AvailabilityRule> weekdayDefaults() {
         List<AvailabilityRule> rules = new ArrayList<>();
-        for (DayOfWeek d : List.of(
-                DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)) {
+        for (DayOfWeek d :
+                List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)) {
             AvailabilityRule r = new AvailabilityRule();
             r.dayOfWeek = d;
             r.startTime = LocalTime.of(9, 0);

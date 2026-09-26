@@ -19,14 +19,14 @@ import java.util.Set;
  * Max-Age set, so that Vert.x encodes it with the Max-Age attribute.</p>
  */
 public class RememberMeFilter {
-
     private static final String CREDENTIAL_COOKIE = "quarkus-credential";
-    private static final long REMEMBER_SECONDS = 60L * 60 * 24 * 30; // 30 days
+    // 30 days
+    private static final long REMEMBER_SECONDS = 60L * 60 * 24 * 30;
 
     @RouteFilter(400)
     void rememberMe(RoutingContext rc) {
-        var remember = "/j_security_check".equals(rc.request().path())
-                && "true".equals(rc.request().getParam("remember"));
+        var remember =
+                "/j_security_check".equals(rc.request().path()) && "true".equals(rc.request().getParam("remember"));
         if (remember) {
             rc.addHeadersEndHandler(v -> {
                 // The credential cookie lives in the response CookieJar (added by form-auth via
@@ -35,7 +35,8 @@ public class RememberMeFilter {
                 Set<Cookie> removed = rc.response().removeCookies(CREDENTIAL_COOKIE, false);
                 if (removed != null && !removed.isEmpty()) {
                     for (Cookie c : removed) {
-                        if (c.getMaxAge() < 0) { // only upgrade session cookies
+                        if (c.getMaxAge() < 0) {
+                            // only upgrade session cookies
                             c.setMaxAge(REMEMBER_SECONDS);
                         }
                         rc.response().addCookie(c);

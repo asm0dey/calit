@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
@@ -15,21 +14,19 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class OutboxSchedulerTest {
-
     @Inject
     OutboxScheduler scheduler;
-
     // Spy the seam: Mailer is @Singleton so @InjectMock Mailer is unusable.
     @InjectSpy
     MailSender mailSender;
-
     @Inject
     EntityManager em;
 
     @BeforeEach
     void init() {
-        QuarkusTransaction.requiringNew()
-                .run(() -> em.createNativeQuery("DELETE FROM email_outbox").executeUpdate());
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> em.createNativeQuery("DELETE FROM email_outbox").executeUpdate());
     }
 
     /**
@@ -42,8 +39,7 @@ class OutboxSchedulerTest {
     private static Long enqueueDue(java.time.Instant deadline, String lastError) {
         return QuarkusTransaction.requiringNew().call(() -> {
             Long id = EmailOutbox.enqueue("a@b.com", "S", "h", null, deadline, lastError);
-            EmailOutbox.<EmailOutbox>findById(id).nextAttemptAt =
-                    java.time.Instant.now().minusSeconds(5);
+            EmailOutbox.<EmailOutbox>findById(id).nextAttemptAt = java.time.Instant.now().minusSeconds(5);
             return id;
         });
     }
@@ -55,15 +51,16 @@ class OutboxSchedulerTest {
 
         scheduler.dispatchDueMail();
 
-        QuarkusTransaction.requiringNew()
-                .run(() -> assertNotNull(((EmailOutbox) EmailOutbox.findById(id)).sentAt, "marked sent"));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> assertNotNull(((EmailOutbox) EmailOutbox.findById(id)).sentAt, "marked sent"));
     }
 
     @Test
     void failedRetryAppliesBackoffAndStaysUnsent() {
         doThrow(new RuntimeException("still down"))
-                .when(mailSender)
-                .sendNow(any(), anyString(), anyString(), anyString(), any());
+            .when(mailSender)
+            .sendNow(any(), anyString(), anyString(), anyString(), any());
         var id = enqueueDue(null, null);
 
         scheduler.dispatchDueMail();
@@ -80,17 +77,21 @@ class OutboxSchedulerTest {
     @Test
     void deadRowIsNotClaimed() {
         doNothing().when(mailSender).sendNow(any(), anyString(), anyString(), anyString(), any());
-        Long id = QuarkusTransaction.requiringNew().call(() -> {
-            Long x = EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null);
-            EmailOutbox r = EmailOutbox.findById(x);
-            r.nextAttemptAt = null; // dead
-            return x;
-        });
+        Long id = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                Long x = EmailOutbox.enqueue("a@b.com", "S", "h", null, null, null);
+                EmailOutbox r = EmailOutbox.findById(x);
+                // dead
+                r.nextAttemptAt = null;
+                return x;
+            });
 
         scheduler.dispatchDueMail();
 
-        QuarkusTransaction.requiringNew()
-                .run(() -> assertNull(((EmailOutbox) EmailOutbox.findById(id)).sentAt, "dead row never re-sent"));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> assertNull(((EmailOutbox) EmailOutbox.findById(id)).sentAt, "dead row never re-sent"));
     }
 
     @Test

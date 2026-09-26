@@ -6,7 +6,6 @@ import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
@@ -28,11 +27,12 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 class AliasRoutingTest {
-
     @InjectMock
     CalendarPort calendarPort;
 
-    /** Pasha (creator) + Volodya (co-host), both onboarded, both free 09-17 every weekday. */
+    /**
+     * Pasha (creator) + Volodya (co-host), both onboarded, both free 09-17 every weekday.
+     */
     @Transactional
     MeetingType seedHosts() {
         AppUser pasha = MultiHostFixtures.enabledUser("pasha");
@@ -46,28 +46,28 @@ class AliasRoutingTest {
         return MultiHostFixtures.meetingType(pasha.id, "intro", 30);
     }
 
-    /** Volodya is still PENDING — the type is not yet fully bookable. */
+    /**
+     * Volodya is still PENDING — the type is not yet fully bookable.
+     */
     @Transactional
     void seedPending() {
         MeetingType t = seedHosts();
         AppUser pasha = AppUser.findByUsername("pasha");
         AppUser volodya = AppUser.findByUsername("volodya");
-        MeetingTypeHost.of(t.id, pasha.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED)
-                .persist();
-        MeetingTypeHost.of(t.id, volodya.id, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING)
-                .persist();
+        MeetingTypeHost.of(t.id, pasha.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED).persist();
+        MeetingTypeHost.of(t.id, volodya.id, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING).persist();
     }
 
-    /** Volodya has accepted — the type is fully bookable under both aliases. */
+    /**
+     * Volodya has accepted — the type is fully bookable under both aliases.
+     */
     @Transactional
     void seedAccepted() {
         MeetingType t = seedHosts();
         AppUser pasha = AppUser.findByUsername("pasha");
         AppUser volodya = AppUser.findByUsername("volodya");
-        MeetingTypeHost.of(t.id, pasha.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED)
-                .persist();
-        MeetingTypeHost.of(t.id, volodya.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED)
-                .persist();
+        MeetingTypeHost.of(t.id, pasha.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED).persist();
+        MeetingTypeHost.of(t.id, volodya.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED).persist();
     }
 
     @Test
@@ -75,12 +75,14 @@ class AliasRoutingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         seedAccepted();
 
-        given().when()
-                .get("/volodya/intro")
-                .then()
-                .statusCode(200)
-                .body(containsString("name=\"startUtc\"")) // booking form rendered, not disabled
-                .body(not(containsString("CALIT_HOST_PENDING")));
+        given()
+            .when()
+            .get("/volodya/intro")
+            .then()
+            .statusCode(200)
+            // booking form rendered, not disabled
+            .body(containsString("name=\"startUtc\""))
+            .body(not(containsString("CALIT_HOST_PENDING")));
     }
 
     @Test
@@ -88,12 +90,13 @@ class AliasRoutingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         seedPending();
 
-        given().when()
-                .get("/pasha/intro")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_HOST_PENDING"))
-                .body(not(containsString("name=\"startUtc\"")));
+        given()
+            .when()
+            .get("/pasha/intro")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_HOST_PENDING"))
+            .body(not(containsString("name=\"startUtc\"")));
     }
 
     @Test
@@ -120,12 +123,13 @@ class AliasRoutingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         seedPending();
 
-        given().when()
-                .get("/volodya")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("href=\"/pasha/intro\"")))
-                .body(not(containsString("href=\"/volodya/intro\"")));
+        given()
+            .when()
+            .get("/volodya")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("href=\"/pasha/intro\"")))
+            .body(not(containsString("href=\"/volodya/intro\"")));
     }
 
     /**
@@ -147,12 +151,9 @@ class AliasRoutingTest {
             MultiHostFixtures.rule(sergey.id, dow, 9, 17);
         }
         MeetingType t = MultiHostFixtures.meetingType(pasha.id, "trio", 30);
-        MeetingTypeHost.of(t.id, pasha.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED)
-                .persist();
-        MeetingTypeHost.of(t.id, volodya.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED)
-                .persist();
-        MeetingTypeHost.of(t.id, sergey.id, MeetingTypeHost.COHOST, sergeyStatus)
-                .persist();
+        MeetingTypeHost.of(t.id, pasha.id, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED).persist();
+        MeetingTypeHost.of(t.id, volodya.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED).persist();
+        MeetingTypeHost.of(t.id, sergey.id, MeetingTypeHost.COHOST, sergeyStatus).persist();
         return t;
     }
 
@@ -172,12 +173,13 @@ class AliasRoutingTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         MeetingType t = seedThreeHosts(MeetingTypeHost.PENDING);
 
-        given().when()
-                .get("/volodya")
-                .then()
-                .statusCode(200)
-                .body(not(containsString("href=\"/pasha/trio\"")))
-                .body(not(containsString("href=\"/volodya/trio\"")));
+        given()
+            .when()
+            .get("/volodya")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("href=\"/pasha/trio\"")))
+            .body(not(containsString("href=\"/volodya/trio\"")));
 
         acceptSergey(t);
 
@@ -204,16 +206,17 @@ class AliasRoutingTest {
         seedPending();
         long before = Booking.count();
 
-        given().contentType("application/x-www-form-urlencoded")
-                .formParam("startUtc", Instant.now().plus(1, ChronoUnit.DAYS).toString())
-                .formParam("inviteeName", "Guest Invitee")
-                .formParam("inviteeEmail", "guest@example.com")
-                .formParam("website", "")
-                .when()
-                .post("/pasha/intro")
-                .then()
-                .statusCode(200)
-                .body(containsString("CALIT_HOST_PENDING"));
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", Instant.now().plus(1, ChronoUnit.DAYS).toString())
+            .formParam("inviteeName", "Guest Invitee")
+            .formParam("inviteeEmail", "guest@example.com")
+            .formParam("website", "")
+            .when()
+            .post("/pasha/intro")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_HOST_PENDING"));
 
         assertEquals(before, Booking.count());
     }

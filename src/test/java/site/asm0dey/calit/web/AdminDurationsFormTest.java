@@ -5,7 +5,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import java.util.List;
@@ -15,7 +14,6 @@ import site.asm0dey.calit.domain.MeetingTypeDuration;
 
 @QuarkusTest
 class AdminDurationsFormTest {
-
     @Transactional
     Long seedType(String slug, int defaultMinutes) {
         MeetingType t = new MeetingType();
@@ -31,15 +29,16 @@ class AdminDurationsFormTest {
     void savingRowsAddsThemToTheAllowedSetAlongsideTheDefault() {
         var id = seedType("durations-add-" + System.nanoTime(), 60);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "30", "120")
-                .formParam("d.before", "10", "45")
-                .formParam("d.after", "10", "45")
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "30", "120")
+            .formParam("d.before", "10", "45")
+            .formParam("d.after", "10", "45")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
         assertEquals(List.of(30, 60, 120), MeetingTypeDuration.allowedDurations(t));
@@ -50,26 +49,27 @@ class AdminDurationsFormTest {
         var id = seedType("durations-remove-" + System.nanoTime(), 60);
         String cred = FormAuth.login();
 
-        given().cookie("quarkus-credential", cred)
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "30", "120")
-                .formParam("d.before", "10", "45")
-                .formParam("d.after", "10", "45")
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
-
+        given()
+            .cookie("quarkus-credential", cred)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "30", "120")
+            .formParam("d.before", "10", "45")
+            .formParam("d.after", "10", "45")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
         // Re-post the same rows, but the 120 row's duration is now blank -> that row is dropped.
-        given().cookie("quarkus-credential", cred)
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "30", "")
-                .formParam("d.before", "10", "45")
-                .formParam("d.after", "10", "45")
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", cred)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "30", "")
+            .formParam("d.before", "10", "45")
+            .formParam("d.after", "10", "45")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
         assertEquals(List.of(30, 60), MeetingTypeDuration.allowedDurations(t));
@@ -79,35 +79,35 @@ class AdminDurationsFormTest {
     void clearingTheDefaultsRowDropsItsBuffersButNeverTheDuration() {
         var id = seedType("durations-default-" + System.nanoTime(), 60);
         String cred = FormAuth.login();
-
         // Save a row for the default (60) carrying buffer overrides.
-        given().cookie("quarkus-credential", cred)
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "60")
-                .formParam("d.before", "5")
-                .formParam("d.after", "5")
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", cred)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "60")
+            .formParam("d.before", "5")
+            .formParam("d.after", "5")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
         assertEquals(List.of(60), MeetingTypeDuration.allowedDurations(t));
         MeetingTypeDuration savedRow = MeetingTypeDuration.findRow(id, 60);
         assertEquals(5, savedRow.bufferBeforeMinutes);
         assertEquals(5, savedRow.bufferAfterMinutes);
-
         // Re-post the 60 row blank -> its buffer row is gone, but 60 stays in the allowed set
         // because the set membership comes from the type's own durationMinutes, not the row.
-        given().cookie("quarkus-credential", cred)
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "")
-                .formParam("d.before", "")
-                .formParam("d.after", "")
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", cred)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "")
+            .formParam("d.before", "")
+            .formParam("d.after", "")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
         t = MeetingType.findById(id);
         assertEquals(List.of(60), MeetingTypeDuration.allowedDurations(t), "the default is never removable");
@@ -121,15 +121,16 @@ class AdminDurationsFormTest {
         // 500 on the Hibernate insert, since both rows share the same @IdClass key).
         var id = seedType("durations-dup-" + System.nanoTime(), 60);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "30", "30")
-                .formParam("d.before", "5", "45")
-                .formParam("d.after", "5", "45")
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "30", "30")
+            .formParam("d.before", "5", "45")
+            .formParam("d.after", "5", "45")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
         assertEquals(List.of(30, 60), MeetingTypeDuration.allowedDurations(t));
@@ -147,49 +148,52 @@ class AdminDurationsFormTest {
         var id = seedType("durations-zero-buffer-" + System.nanoTime(), 60);
         String cred = FormAuth.login();
 
-        given().cookie("quarkus-credential", cred)
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "30")
-                .formParam("d.before", "0")
-                .formParam("d.after", "0")
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", cred)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "30")
+            .formParam("d.before", "0")
+            .formParam("d.after", "0")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
         MeetingTypeDuration savedRow = MeetingTypeDuration.findRow(id, 30);
         assertEquals(0, savedRow.bufferBeforeMinutes);
         assertEquals(0, savedRow.bufferAfterMinutes);
-
         // Render the detail page: the 0 must show up as an explicit "0" in the input's value
         // attribute, not an empty box.
-        String body = given().cookie("quarkus-credential", cred)
-                .when()
-                .get("/me/meeting-types/" + id)
-                .then()
-                .statusCode(200)
-                .extract()
-                .body()
-                .asString();
+        String body = given()
+            .cookie("quarkus-credential", cred)
+            .when()
+            .get("/me/meeting-types/" + id)
+            .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
         assertEquals(
                 1,
                 body.split("name=\"d\\.before\" value=\"0\"", -1).length - 1,
-                "the stored 0 buffer must render as an explicit 0, not a blank box");
+                "the stored 0 buffer must render as an explicit 0, not a blank box"
+        );
         assertEquals(
                 1,
                 body.split("name=\"d\\.after\" value=\"0\"", -1).length - 1,
-                "the stored 0 buffer must render as an explicit 0, not a blank box");
-
+                "the stored 0 buffer must render as an explicit 0, not a blank box"
+        );
         // Re-submitting the rendered (non-blank) value must persist 0 again, not revert to null.
-        given().cookie("quarkus-credential", cred)
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "30")
-                .formParam("d.before", "0")
-                .formParam("d.after", "0")
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", cred)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "30")
+            .formParam("d.before", "0")
+            .formParam("d.after", "0")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
         MeetingTypeDuration resaved = MeetingTypeDuration.findRow(id, 30);
         assertEquals(0, resaved.bufferBeforeMinutes, "the 0 buffer must survive the round trip");
@@ -201,26 +205,27 @@ class AdminDurationsFormTest {
         var id = seedType("durations-render-" + System.nanoTime(), 60);
         String cred = FormAuth.login();
 
-        given().cookie("quarkus-credential", cred)
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "30")
-                .formParam("d.before", "10")
-                .formParam("d.after", "10")
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", cred)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "30")
+            .formParam("d.before", "10")
+            .formParam("d.after", "10")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
-        String body = given().cookie("quarkus-credential", cred)
-                .when()
-                .get("/me/meeting-types/" + id)
-                .then()
-                .statusCode(200)
-                .body(containsString("Allowed durations"))
-                .extract()
-                .body()
-                .asString();
-
+        String body = given()
+            .cookie("quarkus-credential", cred)
+            .when()
+            .get("/me/meeting-types/" + id)
+            .then()
+            .statusCode(200)
+            .body(containsString("Allowed durations"))
+            .extract()
+            .body()
+            .asString();
         // One filled row per allowed length (30, 60) plus one blank spare row -> 3 duration inputs.
         // Counted over the rows container only: the <template> durations.js clones also holds a
         // d.duration input, but it is inert -- never rendered, never submitted -- so counting it
@@ -231,11 +236,13 @@ class AdminDurationsFormTest {
         assertEquals(
                 1,
                 body.split("name=\"d\\.duration\" value=\"30\"", -1).length - 1,
-                "a filled row for the added length 30");
+                "a filled row for the added length 30"
+        );
         assertEquals(
                 1,
                 body.split("name=\"d\\.duration\" value=\"60\"", -1).length - 1,
-                "a filled row for the implicit default 60");
+                "a filled row for the implicit default 60"
+        );
     }
 
     /**
@@ -248,14 +255,15 @@ class AdminDurationsFormTest {
     void theEditorCarriesTheMarkersDurationsJsBindsTo() {
         var id = seedType("durations-markers-" + System.nanoTime(), 60);
 
-        String html = given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types/" + id)
-                .then()
-                .statusCode(200)
-                .extract()
-                .body()
-                .asString();
+        String html = given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types/" + id)
+            .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
 
         assertTrue(html.contains("data-durations"), "form must be the script's scope root");
         assertTrue(html.contains("data-duration-list"), "rows container must be findable");
@@ -273,15 +281,15 @@ class AdminDurationsFormTest {
     void aBlankRowIsRenderedSoTheNoJsPathCanStillAddALength() {
         var id = seedType("durations-nojs-" + System.nanoTime(), 60);
 
-        String html = given().cookie("quarkus-credential", FormAuth.login())
-                .when()
-                .get("/me/meeting-types/" + id)
-                .then()
-                .statusCode(200)
-                .extract()
-                .body()
-                .asString();
-
+        String html = given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types/" + id)
+            .then()
+            .statusCode(200)
+            .extract()
+            .body()
+            .asString();
         // One row per allowed length (just the default here) plus the blank spare, and the
         // template's own row must not be counted as one of them.
         var rows = html.substring(html.indexOf("data-duration-list"), html.indexOf("data-duration-template"));
@@ -305,18 +313,18 @@ class AdminDurationsFormTest {
     @Test
     void selectingARowAsDefaultMovesTheTypesOwnDuration() {
         var id = seedType("durations-default-" + System.nanoTime(), 60);
-
         // Rows submit as [30, 60, 120]; index 2 is the 120 row.
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "30", "60", "120")
-                .formParam("d.before", "", "", "")
-                .formParam("d.after", "", "", "")
-                .formParam("defaultRow", "2")
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "30", "60", "120")
+            .formParam("d.before", "", "", "")
+            .formParam("d.after", "", "", "")
+            .formParam("defaultRow", "2")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
         assertEquals(120, t.durationMinutes, "the chosen row becomes the type's default");
@@ -332,50 +340,63 @@ class AdminDurationsFormTest {
     void aLengthAddedInThisSaveCanBeMadeDefaultInTheSameSave() {
         var id = seedType("durations-newdefault-" + System.nanoTime(), 60);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "60", "90")
-                .formParam("d.before", "", "")
-                .formParam("d.after", "", "")
-                .formParam("defaultRow", "1")
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "60", "90")
+            .formParam("d.before", "", "")
+            .formParam("d.after", "", "")
+            .formParam("defaultRow", "1")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
         assertEquals(90, t.durationMinutes, "a length added in this save can be the default");
         assertEquals(List.of(60, 90), MeetingTypeDuration.allowedDurations(t));
     }
 
-    /** A default pointing at a blank or out-of-range row leaves the default where it was. */
+    /**
+     * A default pointing at a blank or out-of-range row leaves the default where it was.
+     */
     @Test
     void anEmptyOrOutOfRangeDefaultRowLeavesTheDefaultAlone() {
         var id = seedType("durations-baddefault-" + System.nanoTime(), 60);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "30", "")
-                .formParam("d.before", "", "")
-                .formParam("d.after", "", "")
-                .formParam("defaultRow", "1") // the blank spare
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "30", "")
+            .formParam("d.before", "", "")
+            .formParam("d.after", "", "")
+            // the blank spare
+            .formParam(
+                    // the blank spare
+            "defaultRow",
+                    "1")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
         assertEquals(60, ((MeetingType) MeetingType.findById(id)).durationMinutes);
 
-        given().cookie("quarkus-credential", FormAuth.login())
-                .contentType("application/x-www-form-urlencoded")
-                .formParam("d.duration", "30")
-                .formParam("d.before", "")
-                .formParam("d.after", "")
-                .formParam("defaultRow", "99") // past the end
-                .when()
-                .post("/me/meeting-types/" + id + "/durations")
-                .then()
-                .statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("d.duration", "30")
+            .formParam("d.before", "")
+            .formParam("d.after", "")
+            // past the end
+            .formParam(
+                    // past the end
+            "defaultRow",
+                    "99")
+            .when()
+            .post("/me/meeting-types/" + id + "/durations")
+            .then()
+            .statusCode(200);
 
         assertEquals(60, ((MeetingType) MeetingType.findById(id)).durationMinutes);
     }

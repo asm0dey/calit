@@ -3,7 +3,6 @@ package site.asm0dey.calit.email;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
-
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -33,12 +32,9 @@ import site.asm0dey.calit.google.CalendarPort;
  */
 @QuarkusTest
 class EmailMissingOwnerSettingsTest {
-
     private static final String INVITEE_EMAIL = "invitee-nosettings@example.com";
-
     @Inject
     EmailService emailService;
-
     @InjectMock
     CalendarPort calendarPort;
 
@@ -46,16 +42,19 @@ class EmailMissingOwnerSettingsTest {
     void enqueueReminderSkipsCleanlyWhenTheOwnerHasNoSettingsRow() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var bookingId = seedBookingThenDropSettings();
-
         // The whole point: no NPE escapes. Before the guard this threw, and the scheduler's
         // catch-all turned it into a silently dropped reminder.
-        assertDoesNotThrow(() -> QuarkusTransaction.requiringNew().run(() -> emailService.enqueueReminder(bookingId)));
+        assertDoesNotThrow(() -> QuarkusTransaction
+            .requiringNew()
+            .run(() -> emailService.enqueueReminder(bookingId)));
 
-        QuarkusTransaction.requiringNew()
-                .run(() -> assertEquals(
-                        0,
-                        EmailOutbox.count("recipient", INVITEE_EMAIL),
-                        "nothing is enqueued — there is no owner to address the copy to"));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> assertEquals(
+                    0,
+                    EmailOutbox.count("recipient", INVITEE_EMAIL),
+                    "nothing is enqueued — there is no owner to address the copy to"
+            ));
 
         cleanup(bookingId);
     }
@@ -68,20 +67,26 @@ class EmailMissingOwnerSettingsTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var bookingId = seedBooking("Not/AZone");
 
-        assertDoesNotThrow(() -> QuarkusTransaction.requiringNew().run(() -> emailService.enqueueReminder(bookingId)));
+        assertDoesNotThrow(() -> QuarkusTransaction
+            .requiringNew()
+            .run(() -> emailService.enqueueReminder(bookingId)));
 
-        QuarkusTransaction.requiringNew()
-                .run(() -> assertEquals(
-                        1,
-                        EmailOutbox.count("recipient", INVITEE_EMAIL),
-                        "the reminder still goes out, coerced to UTC"));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> assertEquals(
+                    1,
+                    EmailOutbox.count("recipient", INVITEE_EMAIL),
+                    "the reminder still goes out, coerced to UTC"
+            ));
 
         cleanup(bookingId);
     }
 
     private Long seedBookingThenDropSettings() {
         var id = seedBooking("Europe/Amsterdam");
-        QuarkusTransaction.requiringNew().run(() -> OwnerSettings.delete("ownerId", 1L));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> OwnerSettings.delete("ownerId", 1L));
         return id;
     }
 

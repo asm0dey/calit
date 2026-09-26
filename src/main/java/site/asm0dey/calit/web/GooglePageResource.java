@@ -26,25 +26,24 @@ import site.asm0dey.calit.user.CurrentOwner;
 @Path("/me/google")
 @RolesAllowed("user")
 public class GooglePageResource {
-
     private static final org.jboss.logging.Logger LOG = org.jboss.logging.Logger.getLogger(GooglePageResource.class);
 
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance google(
-                List<AccountView> accounts, boolean loadError, Long pendingCount, boolean isAdmin, String title);
+                List<AccountView> accounts,
+                boolean loadError,
+                Long pendingCount,
+                boolean isAdmin,
+                String title
+        );
     }
 
     final CalendarListPort calendarListPort;
-
     final CalendarSelectionService selectionService;
-
     final CurrentOwner currentOwner;
-
     final SecurityIdentity identity;
-
     final AdminMessageResolver adminMsgs;
-
     final ActiveLocale activeLocale;
 
     @Inject
@@ -54,7 +53,8 @@ public class GooglePageResource {
             CurrentOwner currentOwner,
             SecurityIdentity identity,
             AdminMessageResolver adminMsgs,
-            ActiveLocale activeLocale) {
+            ActiveLocale activeLocale
+    ) {
         this.calendarListPort = calendarListPort;
         this.selectionService = selectionService;
         this.currentOwner = currentOwner;
@@ -79,9 +79,10 @@ public class GooglePageResource {
         List<AccountView> accounts = new ArrayList<>();
         var loadError = false;
         for (GoogleCredential cred : creds) {
-            Map<String, GoogleCalendar> saved =
-                    GoogleCalendar.<GoogleCalendar>list("googleCredentialId", cred.id).stream()
-                            .collect(Collectors.toMap(c -> c.googleCalendarId, c -> c, (a, b) -> a));
+            Map<String, GoogleCalendar> saved = GoogleCalendar
+                .<GoogleCalendar>list("googleCredentialId", cred.id)
+                .stream()
+                .collect(Collectors.toMap(c -> c.googleCalendarId, c -> c, (a, b) -> a));
             List<CalendarRow> rows = new ArrayList<>();
             var holdsWriteTarget = false;
             var loadFailed = false;
@@ -90,16 +91,21 @@ public class GooglePageResource {
                 // Dead token: don't call Google. Show saved config so the owner sees what's configured.
                 loadFailed = true;
                 for (GoogleCalendar s : saved.values()) {
-                    if (s.writeTarget) holdsWriteTarget = true;
+                    if (s.writeTarget) {
+                        holdsWriteTarget = true;
+                    }
                     rows.add(new CalendarRow(cred.id, s.googleCalendarId, s.summary, s.readForBusy, s.writeTarget));
                 }
             } else {
                 try {
                     for (CalendarListPort.RemoteCalendar rc : calendarListPort.listCalendars(cred)) {
                         GoogleCalendar s = saved.get(rc.googleCalendarId());
-                        boolean read = s == null ? saved.isEmpty() : s.readForBusy; // first-load: all read
+                        // first-load: all read
+                        boolean read = s == null ? saved.isEmpty() : s.readForBusy;
                         var write = s != null && s.writeTarget;
-                        if (write) holdsWriteTarget = true;
+                        if (write) {
+                            holdsWriteTarget = true;
+                        }
                         rows.add(new CalendarRow(cred.id, rc.googleCalendarId(), rc.summary(), read, write));
                     }
                 } catch (RuntimeException ex) {
@@ -112,20 +118,24 @@ public class GooglePageResource {
                     rows.clear();
                     holdsWriteTarget = false;
                     for (GoogleCalendar s : saved.values()) {
-                        if (s.writeTarget) holdsWriteTarget = true;
+                        if (s.writeTarget) {
+                            holdsWriteTarget = true;
+                        }
                         rows.add(new CalendarRow(cred.id, s.googleCalendarId, s.summary, s.readForBusy, s.writeTarget));
                     }
                 }
             }
-            accounts.add(new AccountView(
-                    cred.id, cred.accountEmail, cred.needsReconnect, loadFailed, rows, holdsWriteTarget));
+            accounts.add(
+                    new AccountView(cred.id, cred.accountEmail, cred.needsReconnect, loadFailed, rows, holdsWriteTarget)
+            );
         }
         return Templates.google(
                 accounts,
                 loadError,
                 pendingCount(),
                 isAdmin(),
-                adminMsgs.forLocale(activeLocale.current()).adm_google_title());
+                adminMsgs.forLocale(activeLocale.current()).adm_google_title()
+        );
     }
 
     // NOT @Transactional: this loops N calendarListPort.listCalendars() network calls to re-fetch
@@ -144,7 +154,8 @@ public class GooglePageResource {
         Set<Long> reachable = new HashSet<>();
         for (GoogleCredential cred : GoogleCredential.listForOwner(ownerId)) {
             if (cred.needsReconnect) {
-                continue; // unreachable: preserved from DB below
+                // unreachable: preserved from DB below
+                continue;
             }
             List<CalendarListPort.RemoteCalendar> live;
             try {
@@ -152,11 +163,12 @@ public class GooglePageResource {
             } catch (RuntimeException ex) {
                 LOG.warnf(
                         ex,
-                        "Google calendar list failed while saving selection for owner %d, credential %d;"
-                                + " keeping saved rows",
+                        "Google calendar list failed while saving selection for owner %d, credential %d;" + " keeping saved rows",
                         ownerId,
-                        cred.id);
-                continue; // unreachable mid-save: preserved from DB below
+                        cred.id
+                );
+                // unreachable mid-save: preserved from DB below
+                continue;
             }
             reachable.add(cred.id);
             for (CalendarListPort.RemoteCalendar rc : live) {
@@ -164,35 +176,49 @@ public class GooglePageResource {
                 var read = readVals.contains(key);
                 var write = key.equals(writeVal);
                 if (read || write) {
-                    selections.add(new CalendarSelectionService.Selection(
-                            cred.id, rc.googleCalendarId(), rc.summary(), read, write, rc.meetSupported()));
+                    selections.add(
+                            new CalendarSelectionService.Selection(
+                                    cred.id,
+                                    rc.googleCalendarId(),
+                                    rc.summary(),
+                                    read,
+                                    write,
+                                    rc.meetSupported()
+                            )
+                    );
                 }
             }
         }
 
-        boolean submittedHasWriteTarget = selections.stream().anyMatch(CalendarSelectionService.Selection::writeTarget);
-
+        boolean submittedHasWriteTarget = selections
+            .stream()
+            .anyMatch(CalendarSelectionService.Selection::writeTarget);
         // Preserve existing rows for accounts we could NOT reach (flagged/errored). Keep their read
         // selections; demote a preserved write target only if the form chose a new one, so the
         // single-write-target-per-owner invariant holds.
         for (GoogleCalendar s : GoogleCalendar.<GoogleCalendar>list("ownerId", ownerId)) {
             if (reachable.contains(s.googleCredentialId)) {
-                continue; // reachable accounts are fully respecified by the form above
+                // reachable accounts are fully respecified by the form above
+                continue;
             }
             var keepWrite = s.writeTarget && !submittedHasWriteTarget;
-            selections.add(new CalendarSelectionService.Selection(
-                    s.googleCredentialId,
-                    s.googleCalendarId,
-                    s.summary,
-                    s.readForBusy || keepWrite,
-                    keepWrite,
-                    s.supportsMeet));
+            selections.add(
+                    new CalendarSelectionService.Selection(
+                            s.googleCredentialId,
+                            s.googleCalendarId,
+                            s.summary,
+                            s.readForBusy || keepWrite,
+                            keepWrite,
+                            s.supportsMeet
+                    )
+            );
         }
 
         if (selections.stream().noneMatch(CalendarSelectionService.Selection::writeTarget)) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Pick exactly one write-target calendar")
-                    .build();
+            return Response
+                .status(Response.Status.BAD_REQUEST)
+                .entity("Pick exactly one write-target calendar")
+                .build();
         }
         selectionService.save(ownerId, selections);
         return Response.seeOther(URI.create("/me/google")).build();
@@ -212,11 +238,13 @@ public class GooglePageResource {
         var holdsWriteTarget = GoogleCalendar.count("googleCredentialId = ?1 and writeTarget = true", credentialId) > 0;
         var otherAccountsRemain = GoogleCredential.countForOwner(ownerId) > 1;
         if (holdsWriteTarget && otherAccountsRemain) {
-            return Response.status(Response.Status.CONFLICT)
-                    .entity("Pick a new write target on another account before disconnecting this one")
-                    .build();
+            return Response
+                .status(Response.Status.CONFLICT)
+                .entity("Pick a new write target on another account before disconnecting this one")
+                .build();
         }
-        cred.delete(); // ON DELETE CASCADE removes this account's google_calendar rows
+        // ON DELETE CASCADE removes this account's google_calendar rows
+        cred.delete();
         return Response.seeOther(URI.create("/me/google")).build();
     }
 }

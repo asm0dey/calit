@@ -57,15 +57,19 @@ import site.asm0dey.calit.user.CurrentOwner;
 @Path("/me")
 @RolesAllowed("user")
 public class SharedMeetingsResource {
-
     @CheckedTemplate
     // S107: Qute @CheckedTemplate signatures pass one arg per template variable; param count is inherent.
     @SuppressWarnings("java:S107")
     public static class Templates {
-        private Templates() {}
+        private Templates() {
+        }
 
         public static native TemplateInstance consentRequests(
-                List<PendingRequestRow> requests, Long pendingCount, boolean isAdmin, String title);
+                List<PendingRequestRow> requests,
+                Long pendingCount,
+                boolean isAdmin,
+                String title
+        );
 
         public static native TemplateInstance sharedAvailability(
                 MeetingType type,
@@ -83,28 +87,27 @@ public class SharedMeetingsResource {
                 String notice,
                 String title,
                 List<ChannelRow> channels,
-                Set<Long> selectedChannelIds);
+                Set<Long> selectedChannelIds
+        );
 
         public static native TemplateInstance revokeConfirm(
-                MeetingType type, long futureBookingCount, Long pendingCount, boolean isAdmin, String title);
+                MeetingType type,
+                long futureBookingCount,
+                Long pendingCount,
+                boolean isAdmin,
+                String title
+        );
     }
 
     public record PendingRequestRow(MeetingType type, String creatorName) {}
 
     final CurrentOwner currentOwner;
-
     final MeetingHosts meetingHosts;
-
     final WriteTargetResolver writeTargets;
-
     final BookingService bookingService;
-
     final SecurityIdentity identity;
-
     final AdminMessageResolver adminMsgs;
-
     final ActiveLocale activeLocale;
-
     final ChannelAdmin channelAdmin;
 
     @Inject
@@ -116,7 +119,8 @@ public class SharedMeetingsResource {
             SecurityIdentity identity,
             AdminMessageResolver adminMsgs,
             ActiveLocale activeLocale,
-            ChannelAdmin channelAdmin) {
+            ChannelAdmin channelAdmin
+    ) {
         this.currentOwner = currentOwner;
         this.meetingHosts = meetingHosts;
         this.writeTargets = writeTargets;
@@ -135,7 +139,9 @@ public class SharedMeetingsResource {
         return adminMsgs.forLocale(activeLocale.current());
     }
 
-    /** Pending-approval count for the shared admin nav badge (same query as AdminResource). */
+    /**
+     * Pending-approval count for the shared admin nav badge (same query as AdminResource).
+     */
     private long pendingCount() {
         return Booking.count("ownerId = ?1 and status = ?2", currentOwner.id(), BookingStatus.PENDING);
     }
@@ -151,7 +157,9 @@ public class SharedMeetingsResource {
         return ZoneId.of(OwnerSettings.coerceZone(s == null ? null : s.timezone));
     }
 
-    /** This owner's own channels, rendered for the routing block on the shared-type page. */
+    /**
+     * This owner's own channels, rendered for the routing block on the shared-type page.
+     */
     private List<ChannelRow> channelRows() {
         return channelAdmin.rows(currentOwner.id(), ownerZoneId());
     }
@@ -170,7 +178,6 @@ public class SharedMeetingsResource {
     }
 
     // ---- Pending consent requests ----
-
     @GET
     @Path("/shared/requests")
     @Produces(MediaType.TEXT_HTML)
@@ -182,18 +189,20 @@ public class SharedMeetingsResource {
         // One HQL ad-hoc entity join (over the raw-Long FKs — there are no mapped associations)
         // replaces the old 1 + 2N per-row findById + forOwner lookups (PR #82 review). LEFT JOIN so
         // a type whose creator has no OwnerSettings row still shows, with a "?" creator name.
-        List<Object[]> tuples = Panache.getEntityManager()
-                .createQuery(
-                        "select mt, os.ownerName from MeetingTypeHost mth "
-                                + "join MeetingType mt on mt.id = mth.meetingTypeId "
-                                + "left join OwnerSettings os on os.ownerId = mt.ownerId "
-                                + "where mth.ownerId = ?1 and mth.role = ?2 and mth.status = ?3 "
-                                + "order by mt.name",
-                        Object[].class)
-                .setParameter(1, currentOwner.id())
-                .setParameter(2, MeetingTypeHost.COHOST)
-                .setParameter(3, MeetingTypeHost.PENDING)
-                .getResultList();
+        List<Object[]> tuples = Panache
+            .getEntityManager()
+            .createQuery(
+                    "select mt, os.ownerName from MeetingTypeHost mth "
+                    + "join MeetingType mt on mt.id = mth.meetingTypeId "
+                    + "left join OwnerSettings os on os.ownerId = mt.ownerId "
+                    + "where mth.ownerId = ?1 and mth.role = ?2 and mth.status = ?3 "
+                    + "order by mt.name",
+                    Object[].class
+            )
+            .setParameter(1, currentOwner.id())
+            .setParameter(2, MeetingTypeHost.COHOST)
+            .setParameter(3, MeetingTypeHost.PENDING)
+            .getResultList();
         List<PendingRequestRow> rows = new ArrayList<>();
         for (Object[] tuple : tuples) {
             var creatorName = tuple[1] != null ? (String) tuple[1] : "?";
@@ -202,7 +211,9 @@ public class SharedMeetingsResource {
         return Templates.consentRequests(rows, pendingCount(), isAdmin(), m().adm_shared_requests_title());
     }
 
-    /** Loads this owner's own PENDING co-host row for {@code typeId}, or 404. */
+    /**
+     * Loads this owner's own PENDING co-host row for {@code typeId}, or 404.
+     */
     private MeetingTypeHost requirePendingOwnRow(Long typeId) {
         MeetingTypeHost h = MeetingTypeHost.find(typeId, currentOwner.id());
         if (h == null || !MeetingTypeHost.PENDING.equals(h.status)) {
@@ -218,7 +229,9 @@ public class SharedMeetingsResource {
     public TemplateInstance acceptRequest(@PathParam("typeId") Long typeId) {
         // Commit before the render (#75). The row is loaded INSIDE the tx: acceptConsent mutates
         // the passed entity, so it must be managed in the same persistence context to flush.
-        QuarkusTransaction.requiringNew().run(() -> meetingHosts.acceptConsent(requirePendingOwnRow(typeId)));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> meetingHosts.acceptConsent(requirePendingOwnRow(typeId)));
         return requestsInstance();
     }
 
@@ -235,7 +248,6 @@ public class SharedMeetingsResource {
     }
 
     // ---- Shared-type availability editor ----
-
     @GET
     @Path("/shared/{typeId}/availability")
     @Produces(MediaType.TEXT_HTML)
@@ -253,8 +265,12 @@ public class SharedMeetingsResource {
         if (type == null) {
             throw new NotFoundException("No meeting type " + typeId);
         }
-        List<AvailabilityRule> rules = AvailabilityRule.list(
-                "ownerId = ?1 and meetingTypeId = ?2 order by dayOfWeek", currentOwner.id(), typeId);
+        List<AvailabilityRule> rules =
+                AvailabilityRule.list(
+                        "ownerId = ?1 and meetingTypeId = ?2 order by dayOfWeek",
+                        currentOwner.id(),
+                        typeId
+        );
         // Issue #127: with no hours of their own on this type, this host inherits their global week —
         // prefill the grid with it so the first save materializes those hours rather than closing
         // every untouched day (once any row exists the grid IS this host's whole week for the type).
@@ -276,9 +292,11 @@ public class SharedMeetingsResource {
         // are invisible here, exactly as ChannelRouter treats them on the read side.
         List<ChannelRow> channels = channelRows();
         Set<Long> ownChannelIds = channels.stream().map(ChannelRow::id).collect(Collectors.toSet());
-        Set<Long> selectedChannelIds = NotificationChannelMeetingType.linkedChannelIds(typeId).stream()
-                .filter(ownChannelIds::contains)
-                .collect(Collectors.toSet());
+        Set<Long> selectedChannelIds = NotificationChannelMeetingType
+            .linkedChannelIds(typeId)
+            .stream()
+            .filter(ownChannelIds::contains)
+            .collect(Collectors.toSet());
         return Templates.sharedAvailability(
                 type,
                 h,
@@ -295,13 +313,19 @@ public class SharedMeetingsResource {
                 notice,
                 m().adm_shared_availability_title(type.name),
                 channels,
-                selectedChannelIds);
+                selectedChannelIds
+        );
     }
 
-    /** This owner's own per-type date overrides, each with its (transient) windows loaded. */
+    /**
+     * This owner's own per-type date overrides, each with its (transient) windows loaded.
+     */
     private List<DateOverride> ownTypeOverrides(Long typeId) {
         return AdminResource.withWindows(DateOverride.list(
-                "ownerId = ?1 and meetingTypeId = ?2 order by overrideDate", currentOwner.id(), typeId));
+                "ownerId = ?1 and meetingTypeId = ?2 order by overrideDate",
+                currentOwner.id(),
+                typeId
+        ));
     }
 
     @POST
@@ -309,12 +333,15 @@ public class SharedMeetingsResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance saveAvailability(@PathParam("typeId") Long typeId, MultivaluedMap<String, String> form) {
-        QuarkusTransaction.requiringNew().run(() -> {
-            requireAcceptedHost(typeId); // 404 a non-host
-            // Replace-all for THIS host's own schedule on this type only.
-            AvailabilityRule.delete("ownerId = ?1 and meetingTypeId = ?2", currentOwner.id(), typeId);
-            AdminResource.persistFrames(currentOwner.id(), typeId, form);
-        });
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                // 404 a non-host
+                requireAcceptedHost(typeId);
+                // Replace-all for THIS host's own schedule on this type only.
+                AvailabilityRule.delete("ownerId = ?1 and meetingTypeId = ?2", currentOwner.id(), typeId);
+                AdminResource.persistFrames(currentOwner.id(), typeId, form);
+            });
         return availabilityInstance(typeId, null);
     }
 
@@ -330,27 +357,34 @@ public class SharedMeetingsResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance saveNotificationRouting(
-            @PathParam("typeId") Long typeId, @RestForm String mode, @RestForm List<Long> channelIds) {
-        requireAcceptedHost(typeId); // 404 unless the current owner really co-hosts this type
-        List<Long> ownIds = NotificationChannel.forOwner(currentOwner.id()).stream()
-                .map(c -> c.id)
-                .toList();
+            @PathParam("typeId") Long typeId,
+            @RestForm String mode,
+            @RestForm List<Long> channelIds
+    ) {
+        // 404 unless the current owner really co-hosts this type
+        requireAcceptedHost(typeId);
+        List<Long> ownIds = NotificationChannel
+            .forOwner(currentOwner.id())
+            .stream()
+            .map(c -> c.id)
+            .toList();
         // A checkbox group with nothing ticked submits the field not at all, and RESTEasy binds that
         // absent field to an EMPTY list rather than null (pinned by ChannelOverrideTest's
         // customWithNoChannelIsRejected), so the empty-selection case reaches the guard below.
         // .distinct() because V32 carries UNIQUE (channel_id, meeting_type_id): a crafted
         // channelIds=7&channelIds=7 would otherwise persist the row twice, and the second INSERT
         // violating uq_ncmt rolls the transaction back into a 500 instead of a save.
-        List<Long> keep = "custom".equals(mode)
-                ? channelIds.stream().filter(ownIds::contains).distinct().toList()
-                : List.of();
+        List<Long> keep =
+                "custom".equals(mode) ? channelIds.stream().filter(ownIds::contains).distinct().toList() : List.of();
         if ("custom".equals(mode) && keep.isEmpty()) {
             // "No link rows" already means INHERIT, so an empty custom selection is not expressible
             // as a per-type mute -- reject it rather than silently turning it into "all".
             return availabilityInstance(typeId, m().adm_detail_notifications_need_one());
         }
         // Commit before the render (#75).
-        QuarkusTransaction.requiringNew().run(() -> NotificationChannelMeetingType.replaceLinks(typeId, ownIds, keep));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> NotificationChannelMeetingType.replaceLinks(typeId, ownIds, keep));
         return availabilityInstance(typeId, null, m().adm_detail_notifications_saved());
     }
 
@@ -359,7 +393,10 @@ public class SharedMeetingsResource {
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance addOverride(
-            @PathParam("typeId") Long typeId, @RestForm String date, MultivaluedMap<String, String> form) {
+            @PathParam("typeId") Long typeId,
+            @RestForm String date,
+            MultivaluedMap<String, String> form
+    ) {
         requireAcceptedHost(typeId);
         var overrideDate = parseDateOrNull(date);
         if (overrideDate == null) {
@@ -367,30 +404,34 @@ public class SharedMeetingsResource {
             return availabilityInstance(typeId, null);
         }
         // Persist the override + its windows in one tx that commits before the render (#75).
-        QuarkusTransaction.requiringNew().run(() -> {
-            DateOverride o = new DateOverride();
-            o.ownerId = currentOwner.id();
-            o.meetingTypeId = typeId;
-            o.overrideDate = overrideDate;
-            o.persist(); // need the generated id before persisting child windows
-            List<String> starts = form.getOrDefault("windowStart", List.of());
-            List<String> ends = form.getOrDefault("windowEnd", List.of());
-            for (var i = 0; i < starts.size() && i < ends.size(); i++) {
-                if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
-                    continue;
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                DateOverride o = new DateOverride();
+                o.ownerId = currentOwner.id();
+                o.meetingTypeId = typeId;
+                o.overrideDate = overrideDate;
+                // need the generated id before persisting child windows
+                o.persist();
+                List<String> starts = form.getOrDefault("windowStart", List.of());
+                List<String> ends = form.getOrDefault("windowEnd", List.of());
+                for (var i = 0; i < starts.size() && i < ends.size(); i++) {
+                    if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
+                        continue;
+                    }
+                    var start = parseTimeOrNull(starts.get(i));
+                    var end = parseTimeOrNull(ends.get(i));
+                    if (start == null || end == null) {
+                        // unparseable window — skip it, keep the rest of the save
+                        continue;
+                    }
+                    DateOverrideWindow w = new DateOverrideWindow();
+                    w.dateOverrideId = o.id;
+                    w.startTime = start;
+                    w.endTime = end;
+                    w.persist();
                 }
-                var start = parseTimeOrNull(starts.get(i));
-                var end = parseTimeOrNull(ends.get(i));
-                if (start == null || end == null) {
-                    continue; // unparseable window — skip it, keep the rest of the save
-                }
-                DateOverrideWindow w = new DateOverrideWindow();
-                w.dateOverrideId = o.id;
-                w.startTime = start;
-                w.endTime = end;
-                w.persist();
-            }
-        });
+            });
         return availabilityInstance(typeId, null);
     }
 
@@ -440,7 +481,8 @@ public class SharedMeetingsResource {
             @PathParam("typeId") Long typeId,
             @RestForm String bufferBeforeMinutes,
             @RestForm String bufferAfterMinutes,
-            @RestForm String writeCalendar) {
+            @RestForm String writeCalendar
+    ) {
         // The host row is loaded + dirty-mutated INSIDE the tx so its changes flush on commit, which
         // happens before the render (#75). A write calendar that is not this owner's is refused and
         // nothing is saved; "keep" -- and the field's OUTRIGHT ABSENCE (a Host whose account is
@@ -495,14 +537,17 @@ public class SharedMeetingsResource {
             h.googleCalendarId = after.googleCalendarId();
         }
         if (before.equals(after)) {
-            return 0L; // no-op save -- nothing moved, so nothing "stays behind" (calit-jk8y)
+            // no-op save -- nothing moved, so nothing "stays behind" (calit-jk8y)
+            return 0L;
         }
         // Clearing falls back to this Host's write target -- compare against that, not null.
         // The count is for the whole shared type, not just this Co-host's own rows: a group
         // booking has one Google event, on the organizer's calendar, so "bookings that stay
         // behind" is a property of the type, not of the Host reading this page.
         return AdminResource.bookingsStayingBehind(
-                type, ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id()));
+                type,
+                ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id())
+        );
     }
 
     /**
@@ -523,7 +568,6 @@ public class SharedMeetingsResource {
     }
 
     // ---- Co-host self-revoke (Task 18's keep-vs-cancel interstitial, from the co-host's side) ----
-
     @POST
     @Path("/shared/{typeId}/revoke")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -545,7 +589,12 @@ public class SharedMeetingsResource {
             long futureCount = meetingHosts.countFutureBookings(type, currentOwner.id());
             if (futureCount > 0) {
                 return Templates.revokeConfirm(
-                        type, futureCount, pendingCount(), isAdmin(), m().adm_shared_revokeConfirm_title());
+                        type,
+                        futureCount,
+                        pendingCount(),
+                        isAdmin(),
+                        m().adm_shared_revokeConfirm_title()
+                );
             }
         }
         // Removal (and optional cancellation) commit in one tx before the render (#75).

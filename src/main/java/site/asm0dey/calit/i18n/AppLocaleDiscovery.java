@@ -29,9 +29,9 @@ import org.eclipse.microprofile.config.ConfigProvider;
  * always the same, and Arc is up by the time any request fires.
  */
 @ApplicationScoped
-@Unremovable // accessed via Arc.container().instance() from static AppLocales.supported()
+// accessed via Arc.container().instance() from static AppLocales.supported()
+@Unremovable
 public class AppLocaleDiscovery {
-
     // Volatile: safe lazy init — worst case two threads compute the same list once.
     private volatile List<Locale> cache;
 
@@ -40,9 +40,13 @@ public class AppLocaleDiscovery {
      * by language tag. Computed once and cached.
      */
     public List<Locale> supported() {
-        if (cache != null) return cache;
+        if (cache != null) {
+            return cache;
+        }
         synchronized (this) {
-            if (cache != null) return cache;
+            if (cache != null) {
+                return cache;
+            }
             cache = discover();
         }
         return cache;
@@ -50,7 +54,6 @@ public class AppLocaleDiscovery {
 
     private List<Locale> discover() {
         var defaultLocale = defaultLocale();
-
         // Use a TreeSet keyed on language tag for stable, deduplicated ordering.
         TreeSet<String> extras = new TreeSet<>();
 
@@ -80,9 +83,10 @@ public class AppLocaleDiscovery {
     }
 
     private static Locale defaultLocale() {
-        return ConfigProvider.getConfig()
-                .getOptionalValue("quarkus.default-locale", String.class)
-                .map(Locale::forLanguageTag)
-                .orElse(Locale.ENGLISH);
+        return ConfigProvider
+            .getConfig()
+            .getOptionalValue("quarkus.default-locale", String.class)
+            .map(Locale::forLanguageTag)
+            .orElse(Locale.ENGLISH);
     }
 }

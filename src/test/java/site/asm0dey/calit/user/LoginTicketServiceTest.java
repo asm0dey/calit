@@ -1,7 +1,6 @@
 package site.asm0dey.calit.user;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class LoginTicketServiceTest {
-
     @Inject
     LoginTicketService tickets;
 
@@ -70,7 +68,6 @@ class LoginTicketServiceTest {
         var now = Instant.parse("2026-06-12T12:00:00Z");
         var uid = newUserId();
         String raw = tickets.issue(uid, now);
-
         // User deleted between ticket issuance and consumption -> consume yields null.
         AppUser.deleteById(uid);
 

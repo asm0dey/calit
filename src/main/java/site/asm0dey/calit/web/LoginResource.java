@@ -18,19 +18,21 @@ import site.asm0dey.calit.i18n.AppMessages;
 
 @Path("/login")
 public class LoginResource {
-
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance login(
-                String title, boolean error, boolean googleEnabled, boolean oidcEnabled, String notice, OgCard og);
+                String title,
+                boolean error,
+                boolean googleEnabled,
+                boolean oidcEnabled,
+                String notice,
+                OgCard og
+        );
     }
 
     final SecurityIdentity identity;
-
     final AppMessageResolver messages;
-
     final ActiveLocale activeLocale;
-
     final OgCards ogCards;
 
     @Inject
@@ -40,7 +42,8 @@ public class LoginResource {
             ActiveLocale activeLocale,
             @ConfigProperty(name = "google.oauth.client-id", defaultValue = "") String googleClientId,
             @ConfigProperty(name = "calit.oidc.enabled", defaultValue = "false") boolean oidcEnabled,
-            OgCards ogCards) {
+            OgCards ogCards
+    ) {
         this.identity = identity;
         this.messages = messages;
         this.activeLocale = activeLocale;
@@ -50,7 +53,6 @@ public class LoginResource {
     }
 
     final String googleClientId;
-
     final boolean oidcEnabled;
 
     @GET
@@ -63,17 +65,21 @@ public class LoginResource {
         }
         var googleEnabled = googleClientId != null && !googleClientId.isBlank();
         AppMessages m = messages.forLocale(activeLocale.current());
-        return Response.ok(Templates.login(
-                        m.auth_login_title(),
-                        error,
-                        googleEnabled,
-                        oidcEnabled,
-                        noticeMessage(m, notice),
-                        ogCards.product("/login")))
-                .build();
+        return Response
+            .ok(Templates.login(
+                    m.auth_login_title(),
+                    error,
+                    googleEnabled,
+                    oidcEnabled,
+                    noticeMessage(m, notice),
+                    ogCards.product("/login")
+            ))
+            .build();
     }
 
-    /** Map a notice code from the Google sign-in flow to a localized human message, or null for none. */
+    /**
+     * Map a notice code from the Google sign-in flow to a localized human message, or null for none.
+     */
     private static String noticeMessage(AppMessages m, String notice) {
         if (notice == null) {
             return null;
