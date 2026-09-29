@@ -832,10 +832,9 @@ public class BookingService {
         if (booking == null) {
             throw new NotFoundException("No booking " + bookingId);
         }
-        // Group idempotency guard: a double-submit (double-click / back-button replay) of approve
-        // on an already-processed group row must not re-run createGroupGoogleEvent / re-fire
-        // BookingConfirmed. Single-host is unaffected (groupId == null -> guard is false).
-        if (booking.groupId != null && booking.status != BookingStatus.PENDING) {
+        // Only a PENDING request can be approved (UC-014 BR-006). Covers double-submits (no second
+        // Google event / BookingConfirmed) and stale tabs acting on a cancelled or declined booking.
+        if (booking.status != BookingStatus.PENDING) {
             return;
         }
         booking.status = BookingStatus.CONFIRMED;
@@ -871,9 +870,9 @@ public class BookingService {
         if (booking == null) {
             throw new NotFoundException("No booking " + bookingId);
         }
-        // Group idempotency guard: a double-submit of decline on an already-DECLINED group row is
-        // a no-op (the group was already killed by the first decline). Single-host is unaffected.
-        if (booking.groupId != null && booking.status == BookingStatus.DECLINED) {
+        // Only a PENDING request can be declined (UC-014 BR-006): a confirmed booking is cancelled,
+        // never declined, and a cancelled/declined one is already settled. Also absorbs double-submits.
+        if (booking.status != BookingStatus.PENDING) {
             return;
         }
         if (booking.groupId == null) {

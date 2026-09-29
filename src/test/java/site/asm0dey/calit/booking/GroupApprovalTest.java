@@ -207,4 +207,67 @@ class GroupApprovalTest {
                 any()
         );
     }
+
+    @Test
+    @TestTransaction
+    void declineOnCancelledGroupIsNoOp() {
+        // calit-wsab: a cancelled group must not flip to DECLINED (second, contradictory email).
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        type(true);
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday10(),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
+        List<Booking> rows = Booking.group(lead.groupId);
+        bookingService.cancel(lead.manageToken, true);
+
+        bookingService.decline(rows.get(1).id);
+
+        Booking
+            .<Booking>group(lead.groupId)
+            .forEach(r -> assertEquals(BookingStatus.CANCELLED, r.status));
+    }
+
+    @Test
+    @TestTransaction
+    void declineOwnApprovedRowInPendingGroupIsNoOp() {
+        // A host who already approved can't decline their own row; the other host still can.
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        type(true);
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday10(),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
+        List<Booking> rows = Booking.group(lead.groupId);
+        bookingService.approve(rows.get(0).id);
+
+        bookingService.decline(rows.get(0).id);
+
+        assertEquals(BookingStatus.CONFIRMED, Booking.<Booking>findById(rows.get(0).id).status);
+        assertEquals(BookingStatus.PENDING, Booking.<Booking>findById(rows.get(1).id).status);
+
+        bookingService.decline(rows.get(1).id);
+
+        Booking
+            .<Booking>group(lead.groupId)
+            .forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
+    }
 }

@@ -128,6 +128,108 @@ class ApproveDeclineTest {
             .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
     }
 
+    @Test
+    @TestTransaction
+    void approveOnCancelledBookingIsNoOp() {
+        // calit-wsab: a stale /me/pending tab must not resurrect a cancelled request.
+        seedSettings();
+        approvalType("ap-cancelled");
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        Booking b = pendingBooking("ap-cancelled");
+        bookingService.cancel(b.manageToken);
+
+        bookingService.approve(b.id);
+
+        assertEquals(BookingStatus.CANCELLED, Booking.<Booking>findById(b.id).status);
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+    }
+
+    @Test
+    @TestTransaction
+    void approveOnDeclinedBookingIsNoOp() {
+        seedSettings();
+        approvalType("ap-declined");
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        Booking b = pendingBooking("ap-declined");
+        bookingService.decline(b.id);
+
+        bookingService.approve(b.id);
+
+        assertEquals(BookingStatus.DECLINED, Booking.<Booking>findById(b.id).status);
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+    }
+
+    @Test
+    @TestTransaction
+    void approveOnConfirmedBookingIsNoOp() {
+        // Double-click on Approve: the second click must not create a second Google event.
+        seedSettings();
+        approvalType("ap-twice");
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-once", "https://meet.google.com/x", "h", null));
+        Booking b = pendingBooking("ap-twice");
+        bookingService.approve(b.id);
+
+        bookingService.approve(b.id);
+
+        verify(calendarPort, times(1))
+            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+    }
+
+    @Test
+    @TestTransaction
+    void declineOnConfirmedBookingIsNoOp() {
+        // A confirmed meeting is cancelled (Google event deleted, cancel email), never "declined".
+        seedSettings();
+        approvalType("de-confirmed");
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        Booking b = pendingBooking("de-confirmed");
+        bookingService.approve(b.id);
+
+        bookingService.decline(b.id);
+
+        assertEquals(BookingStatus.CONFIRMED, Booking.<Booking>findById(b.id).status);
+    }
+
+    @Test
+    @TestTransaction
+    void declineOnCancelledBookingIsNoOp() {
+        seedSettings();
+        approvalType("de-cancelled");
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        Booking b = pendingBooking("de-cancelled");
+        bookingService.cancel(b.manageToken);
+
+        bookingService.decline(b.id);
+
+        assertEquals(BookingStatus.CANCELLED, Booking.<Booking>findById(b.id).status);
+    }
+
+    private Booking pendingBooking(String slug) {
+        Booking b =
+                bookingService.book(1L, slug, SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        assertEquals(BookingStatus.PENDING, b.status);
+        return b;
+    }
+
     // --- helpers ---
     private void seedSettings() {
         // Idempotent upsert: a non-@TestTransaction REST test (MeetingTypeResourceTest PUT /api/settings)
