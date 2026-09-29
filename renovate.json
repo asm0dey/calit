@@ -36,6 +36,29 @@
       ],
       "depNameTemplate": "io.quarkus.platform:quarkus-bom",
       "datasourceTemplate": "maven"
+    },
+    {
+      "description": "Bump the Liberica JDK in .sdkmanrc (read by sdkman and mise) from sdkman's own identifier list, so proposed values are real sdkman ids.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.sdkmanrc$/"
+      ],
+      "matchStrings": [
+        "java=(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "java",
+      "datasourceTemplate": "custom.sdkman-java",
+      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\+(?<build>\\d+)(?:\\.(?<revision>\\d+))?(?<compatibility>-librca)$"
     }
-  ]
+  ],
+  "customDatasources": {
+    "sdkman-java": {
+      "description": "sdkman's Java candidate list: one comma-separated line of identifiers.",
+      "defaultRegistryUrlTemplate": "https://api.sdkman.io/2/candidates/java/linuxx64/versions/all",
+      "format": "plain",
+      "transformTemplates": [
+        "{\"releases\": [$map($split($join(releases.version, \",\"), \",\"), function($v) { {\"version\": $v} })]}"
+      ]
+    }
+  }
 }
