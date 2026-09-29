@@ -14,6 +14,11 @@ Merged but not yet in a tagged release.
 - Images are also published to `docker.io/asm0dey/calit`, with the same tags and digests as
   `ghcr.io/asm0dey/calit`; releases sync the README to the Docker Hub page
   ([#235](https://github.com/asm0dey/calit/pull/235)).
+- Inactive meeting types now return 404 on their booking page, form POST and `POST /api/bookings`;
+  existing bookings stay manageable. ([#237](https://github.com/asm0dey/calit/pull/237))
+- Approve and decline act only on pending requests; a cancelled, declined or confirmed booking is
+  left unchanged, and a double-click no longer creates a second calendar event.
+  ([#237](https://github.com/asm0dey/calit/pull/237))
 
 Upgrade: nothing to do; GHCR image references keep working.
 
