@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
 
   app:
-    image: ghcr.io/asm0dey/calit:latest
+    image: ghcr.io/asm0dey/calit:latest@sha256:eb492b2d4f31dbaba80196376f21f8a9eaacc70a451864e6f2933cec849d6470
     depends_on:
       db:
         condition: service_healthy
