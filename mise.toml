@@ -1,0 +1,33 @@
+# Tool versions for local dev and CI (jdx/mise-action). Renovate bumps these.
+# Maven is not here: ./mvnw pins it.
+[tools]
+java = "liberica-26.0.2.1+1"
+bun = "1.4.2"
+"github:hmans/beans" = "0.4.2"
+actionlint = "1.7.12"
+
+# Thin wrappers: the commands themselves live in package.json / mvnw (Dockerfiles call them without mise).
+[tasks.setup]
+description = "Install frontend deps + git hooks, restore agent skills"
+run = ["bun install", "bunx skills experimental_install"]
+
+[tasks.css]
+description = "Build /calit.css once"
+run = "bun run css:build"
+
+[tasks.dev]
+description = "Dev server at :8080 (Docker required); rebuilds CSS on change"
+depends = ["css"]
+run = "bun run css:watch & ./mvnw quarkus:dev"
+
+[tasks.test]
+description = "Full test suite (Docker required); extra args go to Maven, e.g. -Dtest=BookingServiceTest"
+run = "./mvnw test"
+
+[tasks.format]
+description = "Format Java + JS/CSS"
+run = "bun run format"
+
+[tasks.lint-ci]
+description = "Lint GitHub Actions workflows"
+run = "actionlint"

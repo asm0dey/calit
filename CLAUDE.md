@@ -32,6 +32,8 @@ what was actually settled.
 
 ## Build & run
 
+Tool versions (Liberica JDK 26, Bun, `beans`, `actionlint`) are pinned in `mise.toml` — `mise install` once; CI uses the same file via `jdx/mise-action`. `mise tasks` lists wrappers (`setup`, `dev`, `test`, `format`, `lint-ci`, `css`) around the commands below.
+
 ```bash
 bun install              # once — installs Tailwind/daisyUI CLI
 bun run css:build        # compile src/main/css/input.css -> /calit.css (gitignored; build at least once or pages render unstyled)
