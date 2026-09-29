@@ -1,7 +1,10 @@
 # Tool versions for local dev and CI (jdx/mise-action). Renovate bumps these.
-# Maven is not here: ./mvnw pins it.
+# Java lives in .sdkmanrc so sdkman users (sdkman_auto_env) and mise read one pin; bump it by hand,
+# Renovate has no sdkman manager. Maven is not here: ./mvnw pins it.
+[settings]
+idiomatic_version_file_enable_tools = ["java"]
+
 [tools]
-java = "liberica-26.0.2.1+1"
 bun = "1.4.2"
 "github:hmans/beans" = "0.4.2"
 actionlint = "1.7.12"

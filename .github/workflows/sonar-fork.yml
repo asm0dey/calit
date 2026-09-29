@@ -143,7 +143,7 @@ jobs:
 
       # Not jdx/mise-action like the other workflows: mise would read the FORK's mise.toml in a job
       # holding SONAR_TOKEN, and that file can run code ([env] _.source, arbitrary github: binaries).
-      # Keep this version in step with mise.toml by hand.
+      # Keep this version in step with .sdkmanrc by hand.
       - name: Set up Liberica JDK 26
         if: steps.pr.outputs.found == 'true'
         uses: actions/setup-java@v6

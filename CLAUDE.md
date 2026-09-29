@@ -32,7 +32,7 @@ what was actually settled.
 
 ## Build & run
 
-Tool versions (Liberica JDK 26, Bun, `beans`, `actionlint`) are pinned in `mise.toml` — `mise install` once; CI uses the same file via `jdx/mise-action`. `mise tasks` lists wrappers (`setup`, `dev`, `build`, `test`, `format`, `lint-ci`, `css`) around the commands below.
+Java (Liberica 26) is pinned in `.sdkmanrc` (sdkman auto-env; mise reads it too); Bun, `beans`, `actionlint` in `mise.toml` — `mise install` once; CI installs both via `jdx/mise-action`. `mise tasks` lists wrappers (`setup`, `dev`, `build`, `test`, `format`, `lint-ci`, `css`) around the commands below.
 
 ```bash
 bun install              # once — installs Tailwind/daisyUI CLI

@@ -6,12 +6,13 @@ For the full architecture, see [`CLAUDE.md`](CLAUDE.md); for user-facing docs, s
 
 ## Prerequisites
 
-- **[mise](https://mise.jdx.dev)** — `mise install` in the repo root fetches the pinned JDK (Liberica 26),
-  Bun, `beans` and `actionlint` from [`mise.toml`](mise.toml); CI reads the same file. The app *targets*
-  Java 25, but the build toolchain needs 26 — a plain JDK 21 fails with `release 25 not supported`.
-  Hook mise into your shell once ([`mise activate`](https://mise.jdx.dev/getting-started.html#activate-mise)),
-  then run `mise trust && mise install` in a fresh clone; from then on `cd`-ing in puts the right `java`
-  and `bun` on `PATH`. Without mise, install those versions yourself and point `JAVA_HOME` at JDK 26.
+- **JDK 26** (Liberica), pinned in [`.sdkmanrc`](.sdkmanrc). With sdkman, `sdk env install` (or
+  `sdkman_auto_env=true`) picks it up; mise reads the same file. The app *targets* Java 25, but the
+  build toolchain needs 26 — a plain JDK 21 fails with `release 25 not supported`.
+- **[mise](https://mise.jdx.dev)** for everything else — Bun, `beans`, `actionlint` from
+  [`mise.toml`](mise.toml); CI reads both files. Hook mise into your shell once
+  ([`mise activate`](https://mise.jdx.dev/getting-started.html#activate-mise)), then run
+  `mise trust && mise install` in a fresh clone. Without mise, install those versions yourself.
 - **Maven** — the bundled wrapper `./mvnw` pins it; the commands below write `mvn`, either is fine.
 - **Docker** — **mandatory** for `quarkus:dev` and the test suite. Quarkus Dev Services starts a
   throwaway Postgres (and a mock mailer) in Docker; there is no embedded/H2 fallback.
