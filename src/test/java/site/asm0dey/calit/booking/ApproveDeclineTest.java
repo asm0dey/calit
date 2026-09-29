@@ -245,8 +245,8 @@ class ApproveDeclineTest {
                 any()
         ))
             .thenAnswer(inv -> {
-                // a slow Google call keeps the first transaction open while the second one reads
-                Thread.sleep(500);
+                // hold the first transaction open until the second one is queued on the row lock
+                awaitBlockedOnLock();
                 return new CreatedEvent("evt-race", "https://meet.google.com/r", "h", null);
             });
         Booking b = pendingBooking("ap-race");
@@ -268,6 +268,29 @@ class ApproveDeclineTest {
         }
         verify(calendarPort, times(1))
             .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+    }
+
+    /**
+     * Polls Postgres (in a separate transaction) until some backend waits on a lock, or 5 s pass. Without
+     * the row lock nobody ever waits, so the deadline expires and both clicks create an event.
+     */
+    private static void awaitBlockedOnLock() {
+        var deadline = Instant.now().plusSeconds(5);
+        while (Instant.now().isBefore(deadline) && !anyBackendWaitsOnLock()) {
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(20));
+        }
+    }
+
+    private static boolean anyBackendWaitsOnLock() {
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> ((Number) Booking
+                .getEntityManager()
+                .createNativeQuery(
+                        "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'"
+                )
+                .getSingleResult())
+                .longValue() > 0);
     }
 
     private Booking pendingBooking(String slug) {

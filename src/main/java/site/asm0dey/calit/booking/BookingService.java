@@ -1061,10 +1061,11 @@ public class BookingService {
         // shift / adjacent-slot reschedule whenever a buffer made the new slot's buffered interval
         // overlap the group's own old occupied interval).
         // Re-check at the group's own booked length, not the type's default.
-        Set<Long> groupRowIds = new HashSet<>();
-        for (Booking r : Booking.<Booking>group(row.groupId)) {
-            groupRowIds.add(r.id);
-        }
+        Set<Long> groupRowIds = Booking
+            .<Booking>group(row.groupId)
+            .stream()
+            .map(r -> r.id)
+            .collect(Collectors.toSet());
         assertSlotAvailable(type, newStartUtc, groupRowIds, bookedLength);
 
         boolean reApproval = type.requiresApproval;
@@ -1268,14 +1269,12 @@ public class BookingService {
      * True iff the booking's current active guest set equals {@code wanted} (case-insensitive).
      */
     private static boolean sameGuestSet(Booking booking, List<String> wanted) {
-        Set<String> current = new HashSet<>();
-        for (BookingGuest g : BookingGuest.<BookingGuest>activeForBooking(booking.id)) {
-            current.add(g.email.toLowerCase());
-        }
-        Set<String> want = new HashSet<>();
-        for (String e : wanted) {
-            want.add(e.toLowerCase());
-        }
+        Set<String> current = BookingGuest
+            .<BookingGuest>activeForBooking(booking.id)
+            .stream()
+            .map(g -> g.email.toLowerCase())
+            .collect(Collectors.toSet());
+        Set<String> want = wanted.stream().map(String::toLowerCase).collect(Collectors.toSet());
         return current.equals(want);
     }
 
@@ -1288,15 +1287,12 @@ public class BookingService {
             return List.of();
         }
         List<String> wanted = normalizeGuestEmails(guestEmails, booking.inviteeEmail);
-        Set<String> wantedLower = new HashSet<>();
-        for (String e : wanted) {
-            wantedLower.add(e.toLowerCase());
-        }
-        // Existing rows for this booking, keyed by lowercase email.
-        Map<String, BookingGuest> existing = new HashMap<>();
-        for (BookingGuest g : BookingGuest.<BookingGuest>allForBooking(booking.id)) {
-            existing.put(g.email.toLowerCase(), g);
-        }
+        Set<String> wantedLower = wanted.stream().map(String::toLowerCase).collect(Collectors.toSet());
+        // Existing rows for this booking, keyed by lowercase email (last row wins, as before).
+        Map<String, BookingGuest> existing = BookingGuest
+            .<BookingGuest>allForBooking(booking.id)
+            .stream()
+            .collect(Collectors.toMap(g -> g.email.toLowerCase(), g -> g, (a, b) -> b));
         // Add or re-activate wanted guests.
         for (String email : wanted) {
             BookingGuest g = existing.get(email.toLowerCase());
