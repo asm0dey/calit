@@ -20,6 +20,11 @@ description = "Dev server at :8080 (Docker required); rebuilds CSS on change"
 depends = ["css"]
 run = "bun run css:watch & ./mvnw quarkus:dev"
 
+[tasks.build]
+description = "CSS + ./mvnw package (runs tests, Docker required); extra args go to Maven, e.g. -DskipTests"
+depends = ["css"]
+run = "./mvnw package"
+
 [tasks.test]
 description = "Full test suite (Docker required); extra args go to Maven, e.g. -Dtest=BookingServiceTest"
 run = "./mvnw test"
