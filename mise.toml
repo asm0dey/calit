@@ -1,0 +1,41 @@
+# Tool versions for local dev and CI (jdx/mise-action). Renovate bumps these.
+# Java lives in .sdkmanrc so sdkman users (sdkman_auto_env) and mise read one pin; bump it by hand,
+# Renovate has no sdkman manager. Maven is not here: ./mvnw pins it.
+[settings]
+idiomatic_version_file_enable_tools = ["java"]
+
+[tools]
+bun = "1.4.2"
+"github:hmans/beans" = "0.4.2"
+actionlint = "1.7.12"
+
+# Thin wrappers: the commands themselves live in package.json / mvnw (Dockerfiles call them without mise).
+[tasks.setup]
+description = "Install frontend deps + git hooks, restore agent skills"
+run = ["bun install", "bunx skills experimental_install"]
+
+[tasks.css]
+description = "Build /calit.css once"
+run = "bun run css:build"
+
+[tasks.dev]
+description = "Dev server at :8080 (Docker required); rebuilds CSS on change"
+depends = ["css"]
+run = "bun run css:watch & ./mvnw quarkus:dev"
+
+[tasks.build]
+description = "CSS + ./mvnw package (runs tests, Docker required); extra args go to Maven, e.g. -DskipTests"
+depends = ["css"]
+run = "./mvnw package"
+
+[tasks.test]
+description = "Full test suite (Docker required); extra args go to Maven, e.g. -Dtest=BookingServiceTest"
+run = "./mvnw test"
+
+[tasks.format]
+description = "Format Java + JS/CSS"
+run = "bun run format"
+
+[tasks.lint-ci]
+description = "Lint GitHub Actions workflows"
+run = "actionlint"

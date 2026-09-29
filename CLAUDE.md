@@ -32,6 +32,8 @@ what was actually settled.
 
 ## Build & run
 
+Java (Liberica 27) is pinned in `.sdkmanrc` (sdkman auto-env; mise reads it too); Bun, `beans`, `actionlint` in `mise.toml` — `mise install` once; CI installs both via `jdx/mise-action`. `mise tasks` lists wrappers (`setup`, `dev`, `build`, `test`, `format`, `lint-ci`, `css`) around the commands below.
+
 ```bash
 bun install              # once — installs Tailwind/daisyUI CLI
 bun run css:build        # compile src/main/css/input.css -> /calit.css (gitignored; build at least once or pages render unstyled)
@@ -92,7 +94,7 @@ mvn spotless:check   # verify Java (bound to `verify` phase → CI gate)
 ```
 
 - **Pre-commit auto-format** (`lefthook.yml`, re-staged via `stage_fixed`): staged `*.java` → `./mvnw spotless:apply -DspotlessFiles=…` (Maven directly); staged `*.{js,ts,css}` → `bunx prettier --write`. Hooks are wired automatically by `bun install` (package.json `prepare` → `lefthook install`); run `bun install` once after cloning.
-- Prince of Space parses at `javaLanguageLevel` 25 — `26` is unsupported (bundled JavaParser lacks it); keep it at 25 even though the build JDK is Liberica 26. It does not organise imports; `removeUnusedImports` does. Needs Spotless ≥ 3.9.0 (the in-process step; before that it was a JVM-per-file `nativeCmd`, ~4 min per full format).
+- Prince of Space parses at `javaLanguageLevel` 25 — `26` is unsupported (bundled JavaParser lacks it); keep it at 25 even though the build JDK is Liberica 27. It does not organise imports; `removeUnusedImports` does. Needs Spotless ≥ 3.9.0 (the in-process step; before that it was a JVM-per-file `nativeCmd`, ~4 min per full format).
 - **JDK imports are module imports** (JEP 511): `import module java.base;` (plus `java.net.http` / `java.desktop` where used) instead of single-type `java.*`/`javax.*` imports. Nothing enforces this — IDE auto-import adds single-type imports back, so fold them in by hand. When two imported modules export the same simple name (`java.awt.List` vs `java.util.List`, `java.text.Annotation` vs `java.lang.annotation.Annotation`), keep one single-type import for it; single-type imports shadow module imports.
 - `verify` (hence CI) fails on unformatted code. `mvn test` is unaffected (test phase < verify).
 
@@ -137,7 +139,7 @@ Flyway migrations in `src/main/resources/db/migration/`, applied at boot (`quark
 
 ## Docker / CI
 
-`Dockerfile` multi-stage: Bun compiles CSS → BellSoft **Liberica JDK 26** builds → BellSoft **hardened distroless Liberica JRE (musl)** runs. Tests skipped in image — run `mvn test` on host (with Docker) before building. CI is `.github/workflows/ci.yml` (test/build/merge/release; multi-arch JVM images plus `-native`-suffixed GraalVM images from `Dockerfile.native`, pushed to `ghcr.io/asm0dey/calit` and mirrored to `docker.io/asm0dey/calit`). Dependency updates via **Renovate** (`renovate.json`), not Dependabot. A `customManagers` regex also bumps the Quarkus version quoted in `README.md` (badge) and at the top of this file — keep both in the full `X.Y.Z` form or the regex stops matching. The `changes` job gates the image matrix: a push to `main` that touched only `.beans/**`, root-level markdown (`README.md`, `CLAUDE.md`, …), `docs/**`, `.agents/**`, `.claude/**` or `LICENSE` builds no image and publishes no `edge`/`sha-*` tag — that is intentional, not a broken run. `v*` tag pushes always build.
+`Dockerfile` multi-stage: Bun compiles CSS → BellSoft **Liberica JDK 27** builds → BellSoft **hardened distroless Liberica JRE (musl)** runs. Tests skipped in image — run `mvn test` on host (with Docker) before building. CI is `.github/workflows/ci.yml` (test/build/merge/release; multi-arch JVM images plus `-native`-suffixed GraalVM images from `Dockerfile.native`, pushed to `ghcr.io/asm0dey/calit` and mirrored to `docker.io/asm0dey/calit`). Dependency updates via **Renovate** (`renovate.json`), not Dependabot. A `customManagers` regex also bumps the Quarkus version quoted in `README.md` (badge) and at the top of this file — keep both in the full `X.Y.Z` form or the regex stops matching. The `changes` job gates the image matrix: a push to `main` that touched only `.beans/**`, root-level markdown (`README.md`, `CLAUDE.md`, …), `docs/**`, `.agents/**`, `.claude/**` or `LICENSE` builds no image and publishes no `edge`/`sha-*` tag — that is intentional, not a broken run. `v*` tag pushes always build.
 
 ## Documentation
 

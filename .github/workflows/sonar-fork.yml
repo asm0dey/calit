@@ -141,12 +141,15 @@ jobs:
           git checkout FETCH_HEAD -- pom.xml mvnw .mvn
           git status --short pom.xml mvnw .mvn
 
-      - name: Set up Liberica JDK 26
+      # Not jdx/mise-action like the other workflows: mise would read the FORK's mise.toml in a job
+      # holding SONAR_TOKEN, and that file can run code ([env] _.source, arbitrary github: binaries).
+      # Keep this version in step with .sdkmanrc by hand.
+      - name: Set up Liberica JDK 27
         if: steps.pr.outputs.found == 'true'
         uses: actions/setup-java@v6
         with:
           distribution: liberica
-          java-version: "26"
+          java-version: "27"
           cache: maven
 
       - name: Download the fork build's output

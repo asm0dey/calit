@@ -12,8 +12,8 @@ COPY src/main/resources/templates/ src/main/resources/templates/
 RUN bun run css:build
 # Output: /app/src/main/resources/META-INF/resources/calit.css
 
-# --- Build stage: BellSoft Liberica JDK 26 + the Maven wrapper (no Maven in the image) ---
-FROM bellsoft/liberica-runtime-container:jdk-26-musl@sha256:cde8ad47c67e007d952707ed952240a48f2b6508eb0004c2393ceb0f78845c6a AS build
+# --- Build stage: BellSoft Liberica JDK 27 + the Maven wrapper (no Maven in the image) ---
+FROM bellsoft/liberica-runtime-container:jdk-27-musl@sha256:5e8818d48a3fa4cf0bcd813d4c25bd85feb91cceefc8d2433790202c01774ff1 AS build
 WORKDIR /build
 
 # Warm the dependency cache on the POM first so source-only edits don't re-download everything.
@@ -33,9 +33,9 @@ RUN --mount=type=cache,target=/root/.m2 \
 
 # --- Font-stack donor stage: the hardened runtime base below has no shell and no apk, so the
 # freetype/fontconfig stack AWT card rendering needs must be COPYed in from an image that has
-# them. Reuses the jdk-26-musl image the build stage already pulls, so no new image enters the
+# them. Reuses the jdk-27-musl image the build stage already pulls, so no new image enters the
 # build (already pinned above, already layer-cached).
-FROM bellsoft/liberica-runtime-container:jdk-26-musl@sha256:cde8ad47c67e007d952707ed952240a48f2b6508eb0004c2393ceb0f78845c6a AS fontstack
+FROM bellsoft/liberica-runtime-container:jdk-27-musl@sha256:5e8818d48a3fa4cf0bcd813d4c25bd85feb91cceefc8d2433790202c01774ff1 AS fontstack
 # Package versions deliberately UNPINNED here. Pinning the base image above by digest does NOT
 # pin these apk packages -- apk add resolves against the live Alpaquita repo at build time
 # regardless. Left floating on purpose: freetype/fontconfig are CVE-rich C font parsers, so

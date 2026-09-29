@@ -6,15 +6,21 @@ For the full architecture, see [`CLAUDE.md`](CLAUDE.md); for user-facing docs, s
 
 ## Prerequisites
 
-- **JDK 26** to build (BellSoft Liberica is what CI and the Docker image use). The app *targets* Java
-  25, but the build toolchain needs 26 — a plain JDK 21 fails with `release 25 not supported`.
-- **Maven** — the bundled wrapper `./mvnw` works everywhere; the commands below write `mvn`, and either
-  is fine as long as `JAVA_HOME` points at JDK 26.
-- **Bun** — compiles the stylesheet and wires the git hooks.
+- **JDK 27** (Liberica), pinned in [`.sdkmanrc`](.sdkmanrc). With sdkman, `sdk env install` (or
+  `sdkman_auto_env=true`) picks it up; mise reads the same file. The app *targets* Java 25, but the
+  build toolchain needs 26 — a plain JDK 21 fails with `release 25 not supported`.
+- **[mise](https://mise.jdx.dev)** for everything else — Bun, `beans`, `actionlint` from
+  [`mise.toml`](mise.toml); CI reads both files. Hook mise into your shell once
+  ([`mise activate`](https://mise.jdx.dev/getting-started.html#activate-mise)), then run
+  `mise trust && mise install` in a fresh clone. Without mise, install those versions yourself.
+- **Maven** — the bundled wrapper `./mvnw` pins it; the commands below write `mvn`, either is fine.
 - **Docker** — **mandatory** for `quarkus:dev` and the test suite. Quarkus Dev Services starts a
   throwaway Postgres (and a mock mailer) in Docker; there is no embedded/H2 fallback.
 
 ## Build & run
+
+`mise tasks` lists shortcuts: `mise run setup` (deps, git hooks, agent skills), `mise run dev`, `mise run build`,
+`mise run test`, `mise run format`, `mise run lint-ci`. They wrap the commands below.
 
 ```bash
 bun install            # once — installs the Tailwind/daisyUI CLI + installs the lefthook pre-commit hook
