@@ -21,7 +21,14 @@ run = "bun run css:build"
 [tasks.dev]
 description = "Dev server at :8080 (Docker required); rebuilds CSS on change"
 depends = ["css"]
-run = "bun run css:watch & ./mvnw quarkus:dev"
+# css:watch runs as a background job in its own process group (set -m), so Ctrl-C only reaches
+# Quarkus; the trap kills the whole watcher group (bun + its tailwind child) when dev exits.
+run = """
+set -m
+bun run css:watch & watcher=$!
+trap 'kill -- -$watcher 2>/dev/null' EXIT INT TERM
+./mvnw quarkus:dev
+"""
 
 [tasks.build]
 description = "CSS + ./mvnw package (runs tests, Docker required); extra args go to Maven, e.g. -DskipTests"
