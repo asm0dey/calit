@@ -6,7 +6,7 @@ For the full architecture, see [`CLAUDE.md`](CLAUDE.md); for user-facing docs, s
 
 ## Prerequisites
 
-- **JDK 26** (Liberica), pinned in [`.sdkmanrc`](.sdkmanrc). With sdkman, `sdk env install` (or
+- **JDK 27** (Liberica), pinned in [`.sdkmanrc`](.sdkmanrc). With sdkman, `sdk env install` (or
   `sdkman_auto_env=true`) picks it up; mise reads the same file. The app *targets* Java 25, but the
   build toolchain needs 26 — a plain JDK 21 fails with `release 25 not supported`.
 - **[mise](https://mise.jdx.dev)** for everything else — Bun, `beans`, `actionlint` from

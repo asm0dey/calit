@@ -78,7 +78,7 @@ upgrade notes) → **[Installation docs](https://asm0dey.github.io/calit/)**.
 
 ## Develop
 
-Prereqs: **JDK 26** (build; the app targets Java 25), **Bun** (CSS), and **Docker** (Dev Services
+Prereqs: **JDK 27** (build; the app targets Java 25), **Bun** (CSS), and **Docker** (Dev Services
 provisions a throwaway Postgres + mock mailer for dev and tests).
 
 ```bash
