@@ -6,6 +6,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
@@ -351,7 +352,8 @@ public class BookingService {
         validateInviteeEmail(inviteeEmail);
         validateInputBounds(inviteeName, answers);
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
-        if (type == null) {
+        // Every booking write lands here (form + JSON API), so an inactive type is refused once for all.
+        if (type == null || !type.active) {
             throw new NotFoundException("No meeting type with slug " + meetingTypeSlug + " for owner " + ownerId);
         }
         // Both form and JSON API land here, so the type's field policy (GH #130) is enforced once.
@@ -827,14 +829,14 @@ public class BookingService {
 
     @Transactional
     public void approve(Long bookingId) {
-        Booking booking = Booking.findById(bookingId);
+        // Row lock: an overlapping second click waits for this commit, then sees the settled status below.
+        Booking booking = Booking.findById(bookingId, LockModeType.PESSIMISTIC_WRITE);
         if (booking == null) {
             throw new NotFoundException("No booking " + bookingId);
         }
-        // Group idempotency guard: a double-submit (double-click / back-button replay) of approve
-        // on an already-processed group row must not re-run createGroupGoogleEvent / re-fire
-        // BookingConfirmed. Single-host is unaffected (groupId == null -> guard is false).
-        if (booking.groupId != null && booking.status != BookingStatus.PENDING) {
+        // Only a PENDING request can be approved (UC-014 BR-006). Covers double-submits (no second
+        // Google event / BookingConfirmed) and stale tabs acting on a cancelled or declined booking.
+        if (booking.status != BookingStatus.PENDING) {
             return;
         }
         booking.status = BookingStatus.CONFIRMED;
@@ -866,13 +868,14 @@ public class BookingService {
 
     @Transactional
     public void decline(Long bookingId) {
-        Booking booking = Booking.findById(bookingId);
+        // Row lock: an overlapping second click waits for this commit, then sees the settled status below.
+        Booking booking = Booking.findById(bookingId, LockModeType.PESSIMISTIC_WRITE);
         if (booking == null) {
             throw new NotFoundException("No booking " + bookingId);
         }
-        // Group idempotency guard: a double-submit of decline on an already-DECLINED group row is
-        // a no-op (the group was already killed by the first decline). Single-host is unaffected.
-        if (booking.groupId != null && booking.status == BookingStatus.DECLINED) {
+        // Only a PENDING request can be declined (UC-014 BR-006): a confirmed booking is cancelled,
+        // never declined, and a cancelled/declined one is already settled. Also absorbs double-submits.
+        if (booking.status != BookingStatus.PENDING) {
             return;
         }
         if (booking.groupId == null) {
@@ -1058,10 +1061,11 @@ public class BookingService {
         // shift / adjacent-slot reschedule whenever a buffer made the new slot's buffered interval
         // overlap the group's own old occupied interval).
         // Re-check at the group's own booked length, not the type's default.
-        Set<Long> groupRowIds = new HashSet<>();
-        for (Booking r : Booking.<Booking>group(row.groupId)) {
-            groupRowIds.add(r.id);
-        }
+        Set<Long> groupRowIds = Booking
+            .<Booking>group(row.groupId)
+            .stream()
+            .map(r -> r.id)
+            .collect(Collectors.toSet());
         assertSlotAvailable(type, newStartUtc, groupRowIds, bookedLength);
 
         boolean reApproval = type.requiresApproval;
@@ -1265,14 +1269,12 @@ public class BookingService {
      * True iff the booking's current active guest set equals {@code wanted} (case-insensitive).
      */
     private static boolean sameGuestSet(Booking booking, List<String> wanted) {
-        Set<String> current = new HashSet<>();
-        for (BookingGuest g : BookingGuest.<BookingGuest>activeForBooking(booking.id)) {
-            current.add(g.email.toLowerCase());
-        }
-        Set<String> want = new HashSet<>();
-        for (String e : wanted) {
-            want.add(e.toLowerCase());
-        }
+        Set<String> current = BookingGuest
+            .<BookingGuest>activeForBooking(booking.id)
+            .stream()
+            .map(g -> g.email.toLowerCase())
+            .collect(Collectors.toSet());
+        Set<String> want = wanted.stream().map(String::toLowerCase).collect(Collectors.toSet());
         return current.equals(want);
     }
 
@@ -1285,15 +1287,12 @@ public class BookingService {
             return List.of();
         }
         List<String> wanted = normalizeGuestEmails(guestEmails, booking.inviteeEmail);
-        Set<String> wantedLower = new HashSet<>();
-        for (String e : wanted) {
-            wantedLower.add(e.toLowerCase());
-        }
-        // Existing rows for this booking, keyed by lowercase email.
-        Map<String, BookingGuest> existing = new HashMap<>();
-        for (BookingGuest g : BookingGuest.<BookingGuest>allForBooking(booking.id)) {
-            existing.put(g.email.toLowerCase(), g);
-        }
+        Set<String> wantedLower = wanted.stream().map(String::toLowerCase).collect(Collectors.toSet());
+        // Existing rows for this booking, keyed by lowercase email (last row wins, as before).
+        Map<String, BookingGuest> existing = BookingGuest
+            .<BookingGuest>allForBooking(booking.id)
+            .stream()
+            .collect(Collectors.toMap(g -> g.email.toLowerCase(), g -> g, (a, b) -> b));
         // Add or re-activate wanted guests.
         for (String email : wanted) {
             BookingGuest g = existing.get(email.toLowerCase());

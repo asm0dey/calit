@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -126,6 +127,177 @@ class ApproveDeclineTest {
         assertTrue(avail
             .stream()
             .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
+    }
+
+    @Test
+    @TestTransaction
+    void approveOnCancelledBookingIsNoOp() {
+        // calit-wsab: a stale /me/pending tab must not resurrect a cancelled request.
+        seedSettings();
+        approvalType("ap-cancelled");
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        Booking b = pendingBooking("ap-cancelled");
+        bookingService.cancel(b.manageToken);
+
+        bookingService.approve(b.id);
+
+        assertEquals(BookingStatus.CANCELLED, Booking.<Booking>findById(b.id).status);
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+    }
+
+    @Test
+    @TestTransaction
+    void approveOnDeclinedBookingIsNoOp() {
+        seedSettings();
+        approvalType("ap-declined");
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        Booking b = pendingBooking("ap-declined");
+        bookingService.decline(b.id);
+
+        bookingService.approve(b.id);
+
+        assertEquals(BookingStatus.DECLINED, Booking.<Booking>findById(b.id).status);
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+    }
+
+    @Test
+    @TestTransaction
+    void approveOnConfirmedBookingIsNoOp() {
+        // Double-click on Approve: the second click must not create a second Google event.
+        seedSettings();
+        approvalType("ap-twice");
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-once", "https://meet.google.com/x", "h", null));
+        Booking b = pendingBooking("ap-twice");
+        bookingService.approve(b.id);
+
+        bookingService.approve(b.id);
+
+        verify(calendarPort, times(1))
+            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+    }
+
+    @Test
+    @TestTransaction
+    void declineOnConfirmedBookingIsNoOp() {
+        // A confirmed meeting is cancelled (Google event deleted, cancel email), never "declined".
+        seedSettings();
+        approvalType("de-confirmed");
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        Booking b = pendingBooking("de-confirmed");
+        bookingService.approve(b.id);
+
+        bookingService.decline(b.id);
+
+        assertEquals(BookingStatus.CONFIRMED, Booking.<Booking>findById(b.id).status);
+    }
+
+    @Test
+    @TestTransaction
+    void declineOnCancelledBookingIsNoOp() {
+        seedSettings();
+        approvalType("de-cancelled");
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        Booking b = pendingBooking("de-cancelled");
+        bookingService.cancel(b.manageToken);
+
+        bookingService.decline(b.id);
+
+        assertEquals(BookingStatus.CANCELLED, Booking.<Booking>findById(b.id).status);
+    }
+
+    @Test
+    void concurrentApproveCreatesOneEvent() throws Exception {
+        // Two Approve clicks that overlap: the second must wait for the first to commit, then see CONFIRMED.
+        QuarkusTransaction.requiringNew().run(() -> {
+            seedSettings();
+            approvalType("ap-race");
+        });
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenAnswer(inv -> {
+                // hold the first transaction open until the second one is queued on the row lock
+                awaitBlockedOnLock();
+                return new CreatedEvent("evt-race", "https://meet.google.com/r", "h", null);
+            });
+        Booking b = pendingBooking("ap-race");
+        var start = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first = pool.submit(() -> {
+                start.await();
+                bookingService.approve(b.id);
+                return null;
+            });
+            var second = pool.submit(() -> {
+                start.await();
+                bookingService.approve(b.id);
+                return null;
+            });
+            start.countDown();
+            first.get(10, TimeUnit.SECONDS);
+            second.get(10, TimeUnit.SECONDS);
+        }
+        verify(calendarPort, times(1))
+            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+    }
+
+    /**
+     * Polls Postgres (in a separate transaction) until some backend waits on a lock, or 5 s pass. Without
+     * the row lock nobody ever waits, so the deadline expires and both clicks create an event.
+     */
+    private static void awaitBlockedOnLock() {
+        var deadline = Instant.now().plusSeconds(5);
+        while (Instant.now().isBefore(deadline) && !anyBackendWaitsOnLock()) {
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(20));
+        }
+    }
+
+    private static boolean anyBackendWaitsOnLock() {
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> ((Number) Booking
+                .getEntityManager()
+                .createNativeQuery(
+                        "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'"
+                )
+                .getSingleResult())
+                .longValue() > 0);
+    }
+
+    private Booking pendingBooking(String slug) {
+        Booking b =
+                bookingService.book(1L, slug, SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        assertEquals(BookingStatus.PENDING, b.status);
+        return b;
     }
 
     // --- helpers ---
