@@ -6,6 +6,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
@@ -828,7 +829,8 @@ public class BookingService {
 
     @Transactional
     public void approve(Long bookingId) {
-        Booking booking = Booking.findById(bookingId);
+        // Row lock: an overlapping second click waits for this commit, then sees the settled status below.
+        Booking booking = Booking.findById(bookingId, LockModeType.PESSIMISTIC_WRITE);
         if (booking == null) {
             throw new NotFoundException("No booking " + bookingId);
         }
@@ -866,7 +868,8 @@ public class BookingService {
 
     @Transactional
     public void decline(Long bookingId) {
-        Booking booking = Booking.findById(bookingId);
+        // Row lock: an overlapping second click waits for this commit, then sees the settled status below.
+        Booking booking = Booking.findById(bookingId, LockModeType.PESSIMISTIC_WRITE);
         if (booking == null) {
             throw new NotFoundException("No booking " + bookingId);
         }

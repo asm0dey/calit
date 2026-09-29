@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -221,6 +222,52 @@ class ApproveDeclineTest {
         bookingService.decline(b.id);
 
         assertEquals(BookingStatus.CANCELLED, Booking.<Booking>findById(b.id).status);
+    }
+
+    @Test
+    void concurrentApproveCreatesOneEvent() throws Exception {
+        // Two Approve clicks that overlap: the second must wait for the first to commit, then see CONFIRMED.
+        QuarkusTransaction.requiringNew().run(() -> {
+            seedSettings();
+            approvalType("ap-race");
+        });
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenAnswer(inv -> {
+                // a slow Google call keeps the first transaction open while the second one reads
+                Thread.sleep(500);
+                return new CreatedEvent("evt-race", "https://meet.google.com/r", "h", null);
+            });
+        Booking b = pendingBooking("ap-race");
+        var start = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first = pool.submit(() -> {
+                start.await();
+                bookingService.approve(b.id);
+                return null;
+            });
+            var second = pool.submit(() -> {
+                start.await();
+                bookingService.approve(b.id);
+                return null;
+            });
+            start.countDown();
+            first.get(10, TimeUnit.SECONDS);
+            second.get(10, TimeUnit.SECONDS);
+        }
+        verify(calendarPort, times(1))
+            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
 
     private Booking pendingBooking(String slug) {
