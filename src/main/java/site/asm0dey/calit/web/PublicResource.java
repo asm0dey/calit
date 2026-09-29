@@ -445,7 +445,8 @@ public class PublicResource {
         // resolveForAlias: urlUser's own type wins, else a multi-host type urlUser is an ACCEPTED
         // co-host of (secret types still reachable by direct link, as before).
         MeetingType type = MeetingType.resolveForAlias(urlUser.id, slug);
-        if (type == null) {
+        // Inactive = unlisted AND unbookable (UC-010 BR-007); secret types stay reachable by link.
+        if (type == null || !type.active) {
             throw new NotFoundException("No meeting type with slug " + slug);
         }
         currentOwner.set(AppUser.findById(type.ownerId));

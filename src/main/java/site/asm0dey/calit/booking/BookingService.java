@@ -351,7 +351,8 @@ public class BookingService {
         validateInviteeEmail(inviteeEmail);
         validateInputBounds(inviteeName, answers);
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
-        if (type == null) {
+        // Every booking write lands here (form + JSON API), so an inactive type is refused once for all.
+        if (type == null || !type.active) {
             throw new NotFoundException("No meeting type with slug " + meetingTypeSlug + " for owner " + ownerId);
         }
         // Both form and JSON API land here, so the type's field policy (GH #130) is enforced once.
