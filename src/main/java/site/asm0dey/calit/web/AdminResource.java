@@ -168,7 +168,8 @@ public class AdminResource {
                 String descriptionValue,
                 String titlePlaceholder,
                 String descPlaceholder,
-                boolean guestsHidden
+                boolean guestsHidden,
+                String detailsError
         );
 
         public static native TemplateInstance approvalResult(
@@ -2181,6 +2182,13 @@ public class AdminResource {
      * Render the owner's Manage hub for a booking (shared by GET manage and POST edit-details).
      */
     private TemplateInstance renderManage(Booking b) {
+        return renderManage(b, null, null, null);
+    }
+
+    /**
+     * Non-null {@code detailsError} = a refused edit: shown above the form, with what the owner typed kept.
+     */
+    private TemplateInstance renderManage(Booking b, String detailsError, String titleValue, String descriptionValue) {
         MeetingType type = MeetingType.findById(b.meetingTypeId);
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         String current = b.startUtc
@@ -2209,12 +2217,13 @@ public class AdminResource {
                     Layout.CALENDAR_SCRIPT,
                     m().adm_dashboard_h2(),
                     // raw override (empty when none) — never the effective value
-                    b.title == null ? "" : b.title,
-                    b.description == null ? "" : b.description,
+                    titleValue != null ? titleValue : b.title == null ? "" : b.title,
+                    descriptionValue != null ? descriptionValue : b.description == null ? "" : b.description,
                     // placeholder = default name
                     type.name,
                     type.description == null ? "" : type.description,
-                    type.hidesGuests()
+                    type.hidesGuests(),
+                    detailsError
             );
     }
 
@@ -2261,13 +2270,23 @@ public class AdminResource {
         // reload happens in the same persistence context as updateDetails (so it never serves the
         // pre-update L1-cached entity), and the tx commits — releasing the DB connection — before
         // renderManage runs its slot computation. The returned Booking is detached but fully loaded.
-        Booking reloaded = QuarkusTransaction
-            .requiringNew()
-            .call(() -> {
-                // host-initiated
-                bookingService.updateDetails(b.manageToken, title, description, parseGuests(form), true);
-                return requireOwnedBooking(id);
-            });
+        Booking reloaded;
+        try {
+            reloaded = QuarkusTransaction
+                .requiringNew()
+                .call(() -> {
+                    // host-initiated
+                    bookingService.updateDetails(b.manageToken, title, description, parseGuests(form), true);
+                    return requireOwnedBooking(id);
+                });
+        } catch (BookingValidationException e) {
+            return renderManage(
+                    b,
+                    PublicResource.localized(e, appMsgs.forLocale(activeLocale.current())),
+                    title,
+                    description
+            );
+        }
         // back to the hub
         return renderManage(reloaded);
     }

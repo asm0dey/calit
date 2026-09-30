@@ -512,6 +512,12 @@ public interface AppMessages {
     @Message("Edit name & description")
     String pub_edit_details_h2();
 
+    @Message("Meeting name is too long.")
+    String pub_edit_error_title_too_long();
+
+    @Message("Description is too long.")
+    String pub_edit_error_description_too_long();
+
     @Message("Meeting name")
     String pub_edit_details_name_label();
 

@@ -5,6 +5,7 @@ import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -85,6 +86,28 @@ class OwnerEditDetailsTest {
             .body(containsString("/me/bookings/" + id + "/edit-details"))
             .body(containsString("name=\"title\""))
             .body(containsString("name=\"description\""));
+    }
+
+    @Test
+    void tooLongEditReRendersTheHubWithAnError() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var id = seed();
+
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("title", "x".repeat(201))
+            .when()
+            .post("/me/bookings/" + id + "/edit-details")
+            .then()
+            .statusCode(200)
+            .body(containsString("Meeting name is too long."))
+            .body(containsString("/me/bookings/" + id + "/edit-details"));
+
+        Booking after = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findById(id));
+        assertNull(after.title);
     }
 
     @Test

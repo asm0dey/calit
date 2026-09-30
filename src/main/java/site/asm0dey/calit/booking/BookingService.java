@@ -1258,10 +1258,10 @@ public class BookingService {
      */
     private static void validateDetailBounds(String title, String description) {
         if (title != null && title.length() > 200) {
-            throw new BookingValidationException("Meeting name is too long.");
+            throw new BookingValidationException("Meeting name is too long.", "pub_edit_error_title_too_long");
         }
         if (description != null && description.length() > 2000) {
-            throw new BookingValidationException("Description is too long.");
+            throw new BookingValidationException("Description is too long.", "pub_edit_error_description_too_long");
         }
     }
 

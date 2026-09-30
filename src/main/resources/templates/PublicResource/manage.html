@@ -15,6 +15,7 @@
 {@java.lang.Boolean guestsHidden}
 {@java.lang.Boolean erasureEnabled}
 {@java.lang.String contactEmail}
+{@java.lang.String detailsError}
 {#include base title=title}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-2xl mx-auto">
     <div class="card-body">
@@ -58,6 +59,9 @@
 
       <div class="divider"></div>
       <h2 class="text-lg font-semibold mb-3">{msg:pub_edit_details_h2}</h2>
+      {#if detailsError}
+      <div class="alert alert-error mb-3" role="alert"><span>{detailsError}</span></div>
+      {/if}
       <form method="post" action="/booking/{booking.manageToken}/edit-details" class="space-y-4">
         <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
         <div>
