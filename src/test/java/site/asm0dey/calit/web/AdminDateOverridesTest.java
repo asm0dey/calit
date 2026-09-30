@@ -3,12 +3,14 @@ package site.asm0dey.calit.web;
 import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.DateOverride;
+import site.asm0dey.calit.domain.DateOverrideWindow;
 
 @QuarkusTest
 class AdminDateOverridesTest {
@@ -74,6 +76,34 @@ class AdminDateOverridesTest {
             .body(containsString("10:00"));
 
         org.junit.jupiter.api.Assertions.assertEquals(before + 1, DateOverride.count());
+    }
+
+    @Transactional
+    List<DateOverrideWindow> windowsOn(LocalDate date) {
+        DateOverride o = DateOverride.find("ownerId = ?1 and overrideDate = ?2", 1L, date).firstResult();
+        return DateOverrideWindow.list("dateOverrideId = ?1 order by startTime", o.id);
+    }
+
+    @Test
+    void createOverrideDropsInvertedWindowsAndKeepsAtMostThree() {
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("date", "2026-07-02")
+            .formParam("meetingTypeId", "")
+            .formParam("windowStart", "12:00", "08:00", "09:00", "10:00", "11:00")
+            .formParam("windowEnd", "11:00", "08:30", "09:30", "10:30", "11:30")
+            .when()
+            .post("/me/date-overrides")
+            .then()
+            .statusCode(200);
+
+        var windows = windowsOn(LocalDate.of(2026, 7, 2));
+        assertEquals(3, windows.size(), "the inverted window is dropped and only three are kept");
+        assertTrue(windows
+            .stream()
+            .allMatch(w -> w.endTime.isAfter(w.startTime)));
+        assertEquals(LocalTime.of(8, 0), windows.getFirst().startTime);
     }
 
     @Test

@@ -756,15 +756,22 @@ public class AdminResource {
     }
 
     /**
-     * Zip parallel {@code windowStart[]}/{@code windowEnd[]} form arrays into
-     * {@link DateOverrideWindow} rows under a persisted {@link DateOverride}; a row with a blank
-     * or unparseable start/end is skipped (none → zero windows = day off) — a single bad window
-     * must never 500 the whole save, matching {@link #persistFrames}.
+     * The override forms render exactly this many window rows; a crafted POST gets no more.
      */
-    private void persistWindows(Long dateOverrideId, MultivaluedMap<String, String> form) {
+    static final int MAX_OVERRIDE_WINDOWS = 3;
+
+    /**
+     * Zip parallel {@code windowStart[]}/{@code windowEnd[]} form arrays into
+     * {@link DateOverrideWindow} rows under a persisted {@link DateOverride}; a row with a blank,
+     * unparseable or inverted/zero-length start/end is skipped (none → zero windows = day off) and at
+     * most {@link #MAX_OVERRIDE_WINDOWS} are kept — a single bad window must never 500 the whole save,
+     * matching {@link #persistFrames}. Shared with {@code SharedMeetingsResource}.
+     */
+    static void persistWindows(Long dateOverrideId, MultivaluedMap<String, String> form) {
         List<String> starts = form.getOrDefault("windowStart", List.of());
         List<String> ends = form.getOrDefault("windowEnd", List.of());
-        for (var i = 0; i < starts.size() && i < ends.size(); i++) {
+        var kept = 0;
+        for (var i = 0; i < starts.size() && i < ends.size() && kept < MAX_OVERRIDE_WINDOWS; i++) {
             if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
                 continue;
             }
@@ -777,11 +784,16 @@ public class AdminResource {
                 // unparseable window — skip it rather than 500 the whole save
                 continue;
             }
+            if (!end.isAfter(start)) {
+                // drop zero-length / inverted windows
+                continue;
+            }
             DateOverrideWindow w = new DateOverrideWindow();
             w.dateOverrideId = dateOverrideId;
             w.startTime = start;
             w.endTime = end;
             w.persist();
+            kept++;
         }
     }
 
@@ -1420,13 +1432,7 @@ public class AdminResource {
     ) {
         QuarkusTransaction.requiringNew().run(() -> {
             requireType(id);
-            AvailabilityRule r = new AvailabilityRule();
-            r.ownerId = currentOwner.id();
-            r.meetingTypeId = id;
-            r.dayOfWeek = DayOfWeek.valueOf(dayOfWeek);
-            r.startTime = LocalTime.parse(startTime);
-            r.endTime = LocalTime.parse(endTime);
-            r.persist();
+            persistFrame(currentOwner.id(), id, dayOfWeek, startTime, endTime);
         });
         return detailInstance(id);
     }
@@ -1558,14 +1564,8 @@ public class AdminResource {
                     // 404 a cross-owner type
                     requireType(typeId);
                 }
-                AvailabilityRule r = new AvailabilityRule();
-                r.ownerId = currentOwner.id();
-                // null = global default
-                r.meetingTypeId = typeId;
-                r.dayOfWeek = DayOfWeek.valueOf(dayOfWeek);
-                r.startTime = LocalTime.parse(startTime);
-                r.endTime = LocalTime.parse(endTime);
-                r.persist();
+                // null typeId = global default
+                persistFrame(currentOwner.id(), typeId, dayOfWeek, startTime, endTime);
             });
         return Templates.availability(
                 ownerRules(),
@@ -1612,32 +1612,38 @@ public class AdminResource {
         List<String> starts = form.getOrDefault("frameStart", List.of());
         List<String> ends = form.getOrDefault("frameEnd", List.of());
         for (var i = 0; i < days.size() && i < starts.size() && i < ends.size(); i++) {
-            if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
-                continue;
-            }
-            DayOfWeek day;
-            LocalTime start;
-            LocalTime end;
-            try {
-                day = DayOfWeek.valueOf(days.get(i));
-                start = LocalTime.parse(starts.get(i));
-                end = LocalTime.parse(ends.get(i));
-            } catch (DateTimeParseException | IllegalArgumentException _) {
-                // unparseable frame — skip it rather than 500 the whole save
-                continue;
-            }
-            if (!end.isAfter(start)) {
-                continue;
-            }
-            // drop zero-length / inverted frames
-            AvailabilityRule r = new AvailabilityRule();
-            r.ownerId = ownerId;
-            r.meetingTypeId = meetingTypeId;
-            r.dayOfWeek = day;
-            r.startTime = start;
-            r.endTime = end;
-            r.persist();
+            persistFrame(ownerId, meetingTypeId, days.get(i), starts.get(i), ends.get(i));
         }
+    }
+
+    /**
+     * One frame of {@link #persistFrames}; also backs the single-rule endpoints. Blank, unparseable
+     * (day, start or end) and zero-length/inverted frames are skipped, never stored and never a 500.
+     */
+    static void persistFrame(Long ownerId, Long meetingTypeId, String dayRaw, String startRaw, String endRaw) {
+        if (dayRaw == null || startRaw == null || endRaw == null || startRaw.isBlank() || endRaw.isBlank()) {
+            return;
+        }
+        DayOfWeek day;
+        LocalTime start;
+        LocalTime end;
+        try {
+            day = DayOfWeek.valueOf(dayRaw);
+            start = LocalTime.parse(startRaw);
+            end = LocalTime.parse(endRaw);
+        } catch (DateTimeParseException | IllegalArgumentException _) {
+            return;
+        }
+        if (!end.isAfter(start)) {
+            return;
+        }
+        AvailabilityRule r = new AvailabilityRule();
+        r.ownerId = ownerId;
+        r.meetingTypeId = meetingTypeId;
+        r.dayOfWeek = day;
+        r.startTime = start;
+        r.endTime = end;
+        r.persist();
     }
 
     @POST
