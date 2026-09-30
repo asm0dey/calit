@@ -806,7 +806,10 @@ public class AdminResource {
         List<String> starts = form.getOrDefault("windowStart", List.of());
         List<String> ends = form.getOrDefault("windowEnd", List.of());
         var kept = 0;
-        for (var i = 0; i < starts.size() && i < ends.size() && kept < MAX_OVERRIDE_WINDOWS; i++) {
+        for (var i = 0; i < starts.size() && i < ends.size(); i++) {
+            if (kept == MAX_OVERRIDE_WINDOWS) {
+                break;
+            }
             if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
                 continue;
             }
@@ -2216,9 +2219,10 @@ public class AdminResource {
                     Layout.TZ_SCRIPT,
                     Layout.CALENDAR_SCRIPT,
                     m().adm_dashboard_h2(),
-                    // raw override (empty when none) — never the effective value
-                    titleValue != null ? titleValue : b.title == null ? "" : b.title,
-                    descriptionValue != null ? descriptionValue : b.description == null ? "" : b.description,
+                    Objects
+                        // raw override (empty when none) — never the effective value
+                        .requireNonNullElse(titleValue, Objects.requireNonNullElse(b.title, "")),
+                    Objects.requireNonNullElse(descriptionValue, Objects.requireNonNullElse(b.description, "")),
                     // placeholder = default name
                     type.name,
                     type.description == null ? "" : type.description,

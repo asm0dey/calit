@@ -757,9 +757,10 @@ public class PublicResource {
                 Layout.TZ_SCRIPT,
                 Layout.CALENDAR_SCRIPT,
                 guestsCsv,
-                // raw override
-                titleValue != null ? titleValue : booking.title == null ? "" : booking.title,
-                descriptionValue != null ? descriptionValue : booking.description == null ? "" : booking.description,
+                Objects
+                    // raw override
+                    .requireNonNullElse(titleValue, Objects.requireNonNullElse(booking.title, "")),
+                Objects.requireNonNullElse(descriptionValue, Objects.requireNonNullElse(booking.description, "")),
                 type.name,
                 type.description == null ? "" : type.description,
                 hostInactive(booking),
