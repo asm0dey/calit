@@ -97,7 +97,8 @@ public class PublicResource {
                 boolean hostInactive,
                 boolean guestsHidden,
                 boolean erasureEnabled,
-                String contactEmail
+                String contactEmail,
+                String detailsError
         );
 
         public static native TemplateInstance guestDeclineConfirm(
@@ -705,6 +706,19 @@ public class PublicResource {
      * Render the invitee's Manage hub (shared by GET manage and POST edit-details).
      */
     private TemplateInstance renderManage(Booking booking) {
+        return renderManage(booking, null, null, null);
+    }
+
+    /**
+     * {@code detailsError} non-null = a refused edit: show it above the form and keep what the invitee
+     * typed ({@code titleValue}/{@code descriptionValue}) instead of the stored values.
+     */
+    private TemplateInstance renderManage(
+            Booking booking,
+            String detailsError,
+            String titleValue,
+            String descriptionValue
+    ) {
         var m = messages.forLocale(activeLocale.current());
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         OwnerSettings settings = OwnerSettings.forOwner(type.ownerId);
@@ -743,15 +757,17 @@ public class PublicResource {
                 Layout.TZ_SCRIPT,
                 Layout.CALENDAR_SCRIPT,
                 guestsCsv,
-                // raw override
-                booking.title == null ? "" : booking.title,
-                booking.description == null ? "" : booking.description,
+                Objects
+                    // raw override
+                    .requireNonNullElse(titleValue, Objects.requireNonNullElse(booking.title, "")),
+                Objects.requireNonNullElse(descriptionValue, Objects.requireNonNullElse(booking.description, "")),
                 type.name,
                 type.description == null ? "" : type.description,
                 hostInactive(booking),
                 type.hidesGuests(),
                 privacyConfig.inviteeErasureEnabled(),
-                siteInfo.getContactEmail()
+                siteInfo.getContactEmail(),
+                detailsError
         );
     }
 
@@ -796,7 +812,11 @@ public class PublicResource {
             // notice and the cancel button still live (calit-jyck).
             return renderManage(existing);
         }
-        bookingService.updateDetails(manageToken, title, description, parseGuests(form), false);
+        try {
+            bookingService.updateDetails(manageToken, title, description, parseGuests(form), false);
+        } catch (BookingValidationException e) {
+            return renderManage(existing, localized(e, messages.forLocale(activeLocale.current())), title, description);
+        }
         Booking booking = Booking.findByManageToken(manageToken);
         return renderManage(booking);
     }
@@ -1008,5 +1028,16 @@ public class PublicResource {
             day.slots().add(new SlotView(slot.start().format(TIME_FMT), slot.start().toInstant().toString()));
         }
         return new ArrayList<>(byIso.values());
+    }
+
+    /**
+     * The invitee's language when the service attached a message key, else its English text.
+     */
+    static String localized(BookingValidationException e, AppMessages m) {
+        return switch (e.messageKey) {
+            case "pub_edit_error_title_too_long" -> m.pub_edit_error_title_too_long();
+            case "pub_edit_error_description_too_long" -> m.pub_edit_error_description_too_long();
+            case null, default -> e.getMessage();
+        };
     }
 }

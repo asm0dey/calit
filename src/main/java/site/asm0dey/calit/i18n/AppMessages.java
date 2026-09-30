@@ -512,6 +512,12 @@ public interface AppMessages {
     @Message("Edit name & description")
     String pub_edit_details_h2();
 
+    @Message("Meeting name is too long.")
+    String pub_edit_error_title_too_long();
+
+    @Message("Description is too long.")
+    String pub_edit_error_description_too_long();
+
     @Message("Meeting name")
     String pub_edit_details_name_label();
 
@@ -1059,6 +1065,9 @@ public interface AppMessages {
     @Message("That username can't be used — it may be invalid, reserved, or already taken. Use 2–64 "
             + "lowercase letters or digits, with single hyphens between.")
     String auth_signup_error();
+
+    @Message("Enter a password.")
+    String auth_signup_password_blank();
 
     @Message("Username")
     String auth_setup_username_label();

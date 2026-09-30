@@ -181,7 +181,7 @@ public class UsersResource {
      * no backtracking regex. A malformed address that slips through simply bounces when the invite is
      * sent.
      */
-    private static boolean looksLikeEmail(String s) {
+    static boolean looksLikeEmail(String s) {
         var at = s.indexOf('@');
         if (at <= 0 || at != s.lastIndexOf('@') || at == s.length() - 1) {
             return false;

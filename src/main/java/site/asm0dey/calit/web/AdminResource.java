@@ -123,7 +123,8 @@ public class AdminResource {
                 List<ChannelRow> channels,
                 String channelError,
                 String channelNotice,
-                Integer retentionInstanceDefault
+                Integer retentionInstanceDefault,
+                String settingsError
         );
 
         public static native TemplateInstance bookingFields(
@@ -167,7 +168,8 @@ public class AdminResource {
                 String descriptionValue,
                 String titlePlaceholder,
                 String descPlaceholder,
-                boolean guestsHidden
+                boolean guestsHidden,
+                String detailsError
         );
 
         public static native TemplateInstance approvalResult(
@@ -309,6 +311,8 @@ public class AdminResource {
                     .adm_hosts_error_slug_cohosts((String) hre.args[0], (String) hre.args[1]);
                 case "adm_hosts_error_slug_across" -> m().adm_hosts_error_slug_across((String) hre.args[0]);
                 case "adm_detail_error_duration_positive" -> m().adm_detail_error_duration_positive();
+                case "adm_detail_error_range" -> m()
+                    .adm_detail_error_range((String) hre.args[0], (int) hre.args[1], (int) hre.args[2]);
                 default -> e.getMessage();
             };
         }
@@ -609,6 +613,26 @@ public class AdminResource {
         return renderMeetingTypes();
     }
 
+    // ponytail: fixed ceilings, not config — move to MeetingType if an owner ever needs more.
+    static final int MAX_BUFFER_MINUTES = 24 * 60;
+    static final int MAX_MIN_NOTICE_MINUTES = 365 * 24 * 60;
+    static final int MAX_HORIZON_DAYS = 730;
+
+    private static int inRange(int value, int min, int max, String label) {
+        if (value < min || value > max) {
+            throw new HostRuleException("adm_detail_error_range", label, min, max);
+        }
+        return value;
+    }
+
+    private static int parseIntOr(String raw, int fallback) {
+        try {
+            return Integer.parseInt(raw.strip());
+        } catch (NumberFormatException _) {
+            return fallback;
+        }
+    }
+
     /**
      * Copy the editable scheduling fields shared by create + edit from the submitted form params.
      * Name/slug are handled separately by each caller (they differ in uniqueness/guard handling).
@@ -637,12 +661,19 @@ public class AdminResource {
             throw new HostRuleException("adm_detail_error_duration_positive");
         }
         t.durationMinutes = durationMinutes;
-        t.bufferBeforeMinutes = bufferBeforeMinutes;
-        t.bufferAfterMinutes = bufferAfterMinutes;
+        // Same story for the rest: min= is a browser hint. Negatives corrupt slot math, a zero cadence
+        // never advances, and an unbounded horizon makes the public page enumerate years of slots.
+        t.bufferBeforeMinutes = inRange(
+                bufferBeforeMinutes,
+                0,
+                MAX_BUFFER_MINUTES,
+                m().adm_detail_label_buffer_before()
+        );
+        t.bufferAfterMinutes = inRange(bufferAfterMinutes, 0, MAX_BUFFER_MINUTES, m().adm_detail_label_buffer_after());
         // unchecked checkbox sends no value
         t.secret = "on".equals(secret);
-        t.minNoticeMinutes = minNoticeMinutes;
-        t.horizonDays = horizonDays;
+        t.minNoticeMinutes = inRange(minNoticeMinutes, 0, MAX_MIN_NOTICE_MINUTES, m().adm_detail_label_min_notice());
+        t.horizonDays = inRange(horizonDays, 0, MAX_HORIZON_DAYS, m().adm_detail_label_horizon());
         t.locationType = parseLocationType(locationType, t);
         t.locationDetail = (locationDetail == null || locationDetail.isBlank()) ? null : locationDetail;
         // The owner-authored note shown to bookers (GH #128). Blank clears it back to "no note",
@@ -651,7 +682,12 @@ public class AdminResource {
         // Slot cadence: blank = back-to-back (null → falls back to durationMinutes).
         t.slotIntervalMinutes = (slotIntervalMinutes == null || slotIntervalMinutes.isBlank())
                 ? null
-                : Integer.valueOf(slotIntervalMinutes);
+                : inRange(
+                        parseIntOr(slotIntervalMinutes, 0),
+                        1,
+                        MAX_BUFFER_MINUTES,
+                        m().adm_detail_label_slot_interval()
+        );
         t.requiresApproval = "on".equals(requiresApproval);
         // Built-in invitee fields (GH #130). A blank or unknown value falls back to the default; guests
         // can't be REQUIRED, so anything but HIDDEN collapses to OPTIONAL.
@@ -755,15 +791,25 @@ public class AdminResource {
     }
 
     /**
-     * Zip parallel {@code windowStart[]}/{@code windowEnd[]} form arrays into
-     * {@link DateOverrideWindow} rows under a persisted {@link DateOverride}; a row with a blank
-     * or unparseable start/end is skipped (none → zero windows = day off) — a single bad window
-     * must never 500 the whole save, matching {@link #persistFrames}.
+     * The override forms render exactly this many window rows; a crafted POST gets no more.
      */
-    private void persistWindows(Long dateOverrideId, MultivaluedMap<String, String> form) {
+    static final int MAX_OVERRIDE_WINDOWS = 3;
+
+    /**
+     * Zip parallel {@code windowStart[]}/{@code windowEnd[]} form arrays into
+     * {@link DateOverrideWindow} rows under a persisted {@link DateOverride}; a row with a blank,
+     * unparseable or inverted/zero-length start/end is skipped (none → zero windows = day off) and at
+     * most {@link #MAX_OVERRIDE_WINDOWS} are kept — a single bad window must never 500 the whole save,
+     * matching {@link #persistFrames}. Shared with {@code SharedMeetingsResource}.
+     */
+    static void persistWindows(Long dateOverrideId, MultivaluedMap<String, String> form) {
         List<String> starts = form.getOrDefault("windowStart", List.of());
         List<String> ends = form.getOrDefault("windowEnd", List.of());
+        var kept = 0;
         for (var i = 0; i < starts.size() && i < ends.size(); i++) {
+            if (kept == MAX_OVERRIDE_WINDOWS) {
+                break;
+            }
             if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
                 continue;
             }
@@ -776,11 +822,16 @@ public class AdminResource {
                 // unparseable window — skip it rather than 500 the whole save
                 continue;
             }
+            if (!end.isAfter(start)) {
+                // drop zero-length / inverted windows
+                continue;
+            }
             DateOverrideWindow w = new DateOverrideWindow();
             w.dateOverrideId = dateOverrideId;
             w.startTime = start;
             w.endTime = end;
             w.persist();
+            kept++;
         }
     }
 
@@ -1419,13 +1470,7 @@ public class AdminResource {
     ) {
         QuarkusTransaction.requiringNew().run(() -> {
             requireType(id);
-            AvailabilityRule r = new AvailabilityRule();
-            r.ownerId = currentOwner.id();
-            r.meetingTypeId = id;
-            r.dayOfWeek = DayOfWeek.valueOf(dayOfWeek);
-            r.startTime = LocalTime.parse(startTime);
-            r.endTime = LocalTime.parse(endTime);
-            r.persist();
+            persistFrame(currentOwner.id(), id, dayOfWeek, startTime, endTime);
         });
         return detailInstance(id);
     }
@@ -1557,14 +1602,8 @@ public class AdminResource {
                     // 404 a cross-owner type
                     requireType(typeId);
                 }
-                AvailabilityRule r = new AvailabilityRule();
-                r.ownerId = currentOwner.id();
-                // null = global default
-                r.meetingTypeId = typeId;
-                r.dayOfWeek = DayOfWeek.valueOf(dayOfWeek);
-                r.startTime = LocalTime.parse(startTime);
-                r.endTime = LocalTime.parse(endTime);
-                r.persist();
+                // null typeId = global default
+                persistFrame(currentOwner.id(), typeId, dayOfWeek, startTime, endTime);
             });
         return Templates.availability(
                 ownerRules(),
@@ -1611,32 +1650,38 @@ public class AdminResource {
         List<String> starts = form.getOrDefault("frameStart", List.of());
         List<String> ends = form.getOrDefault("frameEnd", List.of());
         for (var i = 0; i < days.size() && i < starts.size() && i < ends.size(); i++) {
-            if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
-                continue;
-            }
-            DayOfWeek day;
-            LocalTime start;
-            LocalTime end;
-            try {
-                day = DayOfWeek.valueOf(days.get(i));
-                start = LocalTime.parse(starts.get(i));
-                end = LocalTime.parse(ends.get(i));
-            } catch (DateTimeParseException | IllegalArgumentException _) {
-                // unparseable frame — skip it rather than 500 the whole save
-                continue;
-            }
-            if (!end.isAfter(start)) {
-                continue;
-            }
-            // drop zero-length / inverted frames
-            AvailabilityRule r = new AvailabilityRule();
-            r.ownerId = ownerId;
-            r.meetingTypeId = meetingTypeId;
-            r.dayOfWeek = day;
-            r.startTime = start;
-            r.endTime = end;
-            r.persist();
+            persistFrame(ownerId, meetingTypeId, days.get(i), starts.get(i), ends.get(i));
         }
+    }
+
+    /**
+     * One frame of {@link #persistFrames}; also backs the single-rule endpoints. Blank, unparseable
+     * (day, start or end) and zero-length/inverted frames are skipped, never stored and never a 500.
+     */
+    static void persistFrame(Long ownerId, Long meetingTypeId, String dayRaw, String startRaw, String endRaw) {
+        if (dayRaw == null || startRaw == null || endRaw == null || startRaw.isBlank() || endRaw.isBlank()) {
+            return;
+        }
+        DayOfWeek day;
+        LocalTime start;
+        LocalTime end;
+        try {
+            day = DayOfWeek.valueOf(dayRaw);
+            start = LocalTime.parse(startRaw);
+            end = LocalTime.parse(endRaw);
+        } catch (DateTimeParseException | IllegalArgumentException _) {
+            return;
+        }
+        if (!end.isAfter(start)) {
+            return;
+        }
+        AvailabilityRule r = new AvailabilityRule();
+        r.ownerId = ownerId;
+        r.meetingTypeId = meetingTypeId;
+        r.dayOfWeek = day;
+        r.startTime = start;
+        r.endTime = end;
+        r.persist();
     }
 
     @POST
@@ -1682,6 +1727,10 @@ public class AdminResource {
             @RestForm String timeFormat,
             @RestForm String bookingRetentionDays
     ) {
+        String detailsError = MeSetupResource.ownerDetailsError(ownerName, ownerEmail, m());
+        if (detailsError != null) {
+            return settingsInstance(null, null, detailsError);
+        }
         // Persist in its own tx that commits before the settings render (#75); return the (now
         // detached) row so the render below reads its committed field values with no connection held.
         OwnerSettings s = QuarkusTransaction
@@ -1724,7 +1773,8 @@ public class AdminResource {
                 channelRows(),
                 null,
                 null,
-                privacyConfig.bookingRetentionDays().orElse(null)
+                privacyConfig.bookingRetentionDays().orElse(null),
+                null
         );
     }
 
@@ -1759,6 +1809,10 @@ public class AdminResource {
      * Re-render /me/settings with an optional channel error/notice.
      */
     private TemplateInstance settingsInstance(String channelError, String channelNotice) {
+        return settingsInstance(channelError, channelNotice, null);
+    }
+
+    private TemplateInstance settingsInstance(String channelError, String channelNotice, String settingsError) {
         return Templates.settings(
                 OwnerSettings.forOwner(currentOwner.id()),
                 reminderLeadMinutes,
@@ -1769,7 +1823,8 @@ public class AdminResource {
                 channelRows(),
                 channelError,
                 channelNotice,
-                privacyConfig.bookingRetentionDays().orElse(null)
+                privacyConfig.bookingRetentionDays().orElse(null),
+                settingsError
         );
     }
 
@@ -2130,6 +2185,13 @@ public class AdminResource {
      * Render the owner's Manage hub for a booking (shared by GET manage and POST edit-details).
      */
     private TemplateInstance renderManage(Booking b) {
+        return renderManage(b, null, null, null);
+    }
+
+    /**
+     * Non-null {@code detailsError} = a refused edit: shown above the form, with what the owner typed kept.
+     */
+    private TemplateInstance renderManage(Booking b, String detailsError, String titleValue, String descriptionValue) {
         MeetingType type = MeetingType.findById(b.meetingTypeId);
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         String current = b.startUtc
@@ -2157,13 +2219,15 @@ public class AdminResource {
                     Layout.TZ_SCRIPT,
                     Layout.CALENDAR_SCRIPT,
                     m().adm_dashboard_h2(),
-                    // raw override (empty when none) — never the effective value
-                    b.title == null ? "" : b.title,
-                    b.description == null ? "" : b.description,
+                    Objects
+                        // raw override (empty when none) — never the effective value
+                        .requireNonNullElse(titleValue, Objects.requireNonNullElse(b.title, "")),
+                    Objects.requireNonNullElse(descriptionValue, Objects.requireNonNullElse(b.description, "")),
                     // placeholder = default name
                     type.name,
                     type.description == null ? "" : type.description,
-                    type.hidesGuests()
+                    type.hidesGuests(),
+                    detailsError
             );
     }
 
@@ -2210,13 +2274,23 @@ public class AdminResource {
         // reload happens in the same persistence context as updateDetails (so it never serves the
         // pre-update L1-cached entity), and the tx commits — releasing the DB connection — before
         // renderManage runs its slot computation. The returned Booking is detached but fully loaded.
-        Booking reloaded = QuarkusTransaction
-            .requiringNew()
-            .call(() -> {
-                // host-initiated
-                bookingService.updateDetails(b.manageToken, title, description, parseGuests(form), true);
-                return requireOwnedBooking(id);
-            });
+        Booking reloaded;
+        try {
+            reloaded = QuarkusTransaction
+                .requiringNew()
+                .call(() -> {
+                    // host-initiated
+                    bookingService.updateDetails(b.manageToken, title, description, parseGuests(form), true);
+                    return requireOwnedBooking(id);
+                });
+        } catch (BookingValidationException e) {
+            return renderManage(
+                    b,
+                    PublicResource.localized(e, appMsgs.forLocale(activeLocale.current())),
+                    title,
+                    description
+            );
+        }
         // back to the hub
         return renderManage(reloaded);
     }

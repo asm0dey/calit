@@ -6,6 +6,7 @@ import static io.restassured.config.EncoderConfig.encoderConfig;
 import static java.time.LocalDate.now;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -93,6 +94,28 @@ class InviteeEditDetailsTest {
     }
 
     @Test
+    void tooLongEditReRendersTheHubWithAnErrorAndKeepsTheInput() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var token = seed();
+        var longTitle = "x".repeat(201);
+
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("title", longTitle)
+            .when()
+            .post("/booking/" + token + "/edit-details")
+            .then()
+            .statusCode(200)
+            .body(containsString("Meeting name is too long."))
+            .body(containsString("value=\"" + longTitle + "\""));
+
+        Booking after = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findByManageToken(token));
+        assertNull(after.title);
+    }
+
+    @Test
     void inviteeEditsNameDescriptionAndGuestThenSeesHub() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var token = seed();
@@ -161,11 +184,11 @@ class InviteeEditDetailsTest {
     }
 
     @Test
-    void overlongMultibyteDescriptionGives422Not413() {
+    void overlongMultibyteDescriptionIsAFormErrorNot413() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var token = seed();
-        // 2001 Hebrew chars = 4002 bytes: over BOTH the old byte limit and the char cap. Must surface the
-        // app's clean 422 ("Description is too long."), not the transport-layer 413.
+        // 2001 Hebrew chars = 4002 bytes: over BOTH the old byte limit and the char cap. Must reach the
+        // app and re-render the hub with its error (calit-qobm), not the transport-layer 413.
         var desc = "א".repeat(2001);
 
         given()
@@ -174,6 +197,7 @@ class InviteeEditDetailsTest {
             .when()
             .post("/booking/" + token + "/edit-details")
             .then()
-            .statusCode(422);
+            .statusCode(200)
+            .body(containsString("Description is too long."));
     }
 }

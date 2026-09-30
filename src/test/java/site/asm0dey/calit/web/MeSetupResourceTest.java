@@ -90,6 +90,28 @@ class MeSetupResourceTest {
     }
 
     @Test
+    @TestSecurity(user = "wizbad", roles = {"user"})
+    void postRejectsBlankNameAndInvalidEmail() {
+        var id = seed("wizbad", false);
+        String[][] bad = {
+                {"", "wizbad@example.com", "Enter your name."},
+                {"Wiz Bad", "nope", "Enter a valid email address."},
+                {null, null, "Enter your name."}
+        };
+        for (String[] c : bad) {
+            var request = given().contentType("application/x-www-form-urlencoded").formParam("timezone", "UTC");
+            if (c[0] != null) {
+                request.formParam("ownerName", c[0]);
+            }
+            if (c[1] != null) {
+                request.formParam("ownerEmail", c[1]);
+            }
+            request.when().post("/me/setup").then().statusCode(200).body(containsString(c[2]));
+            assertFalse(reload(id).settingsComplete, "an invalid submit must not finish the wizard");
+        }
+    }
+
+    @Test
     @TestSecurity(user = "wiz2", roles = {"user"})
     void postCompletesPasswordAndSettings() {
         var id = seed("wiz2", true);

@@ -17,8 +17,10 @@ import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.PasswordHasher;
 import site.asm0dey.calit.user.Usernames;
 
-@Path("/signup")
+@Path(SignupResource.PATH)
 public class SignupResource {
+    static final String PATH = "/signup";
+
     @CheckedTemplate
     public static class Templates {
         public static native TemplateInstance signup(String title, String error, OgCard og);
@@ -59,7 +61,7 @@ public class SignupResource {
     public TemplateInstance form() {
         requireEnabled();
         String title = messages.forLocale(activeLocale.current()).auth_signup_title();
-        return Templates.signup(title, null, ogCards.product("/signup"));
+        return Templates.signup(title, null, ogCards.product(PATH));
     }
 
     @POST
@@ -76,7 +78,11 @@ public class SignupResource {
                 .validateNew(username, AppUser::usernameUnavailable);
         } catch (IllegalArgumentException _) {
             String error = messages.forLocale(activeLocale.current()).auth_signup_error();
-            return Response.ok(Templates.signup(title, error, ogCards.product("/signup"))).build();
+            return Response.ok(Templates.signup(title, error, ogCards.product(PATH))).build();
+        }
+        if (password == null || password.isBlank()) {
+            String error = messages.forLocale(activeLocale.current()).auth_signup_password_blank();
+            return Response.ok(Templates.signup(title, error, ogCards.product(PATH))).build();
         }
         AppUser u = AppUser.create(normalized, passwordHasher.hash(password), false);
         // self-chosen password → no forced reset

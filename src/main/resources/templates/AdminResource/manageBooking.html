@@ -14,6 +14,7 @@
 {@java.lang.String titlePlaceholder}
 {@java.lang.String descPlaceholder}
 {@java.lang.Boolean guestsHidden}
+{@java.lang.String detailsError}
 {#include adminBase title=title pendingCount=pendingCount active="dashboard" isAdmin=isAdmin}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-2xl">
     <div class="card-body">
@@ -55,6 +56,9 @@
 
       <div class="divider"></div>
       <h2 class="text-lg font-semibold mb-3">{msg:pub_edit_details_h2}</h2>
+      {#if detailsError}
+      <div class="alert alert-error mb-3" role="alert"><span>{detailsError}</span></div>
+      {/if}
       <form method="post" action="/me/bookings/{booking.id}/edit-details" class="space-y-4">
         <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
         <div>

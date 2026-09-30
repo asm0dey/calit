@@ -403,24 +403,7 @@ public class SharedMeetingsResource {
                 o.overrideDate = overrideDate;
                 // need the generated id before persisting child windows
                 o.persist();
-                List<String> starts = form.getOrDefault("windowStart", List.of());
-                List<String> ends = form.getOrDefault("windowEnd", List.of());
-                for (var i = 0; i < starts.size() && i < ends.size(); i++) {
-                    if (starts.get(i).isBlank() || ends.get(i).isBlank()) {
-                        continue;
-                    }
-                    var start = parseTimeOrNull(starts.get(i));
-                    var end = parseTimeOrNull(ends.get(i));
-                    if (start == null || end == null) {
-                        // unparseable window — skip it, keep the rest of the save
-                        continue;
-                    }
-                    DateOverrideWindow w = new DateOverrideWindow();
-                    w.dateOverrideId = o.id;
-                    w.startTime = start;
-                    w.endTime = end;
-                    w.persist();
-                }
+                AdminResource.persistWindows(o.id, form);
             });
         return availabilityInstance(typeId, null);
     }
@@ -431,17 +414,6 @@ public class SharedMeetingsResource {
         }
         try {
             return LocalDate.parse(raw);
-        } catch (DateTimeParseException _) {
-            return null;
-        }
-    }
-
-    private static LocalTime parseTimeOrNull(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-        try {
-            return LocalTime.parse(raw);
         } catch (DateTimeParseException _) {
             return null;
         }
