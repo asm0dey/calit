@@ -59,11 +59,9 @@ class FailedLoginAuditTest {
                 request
         ));
 
-        assertThat(recorder.events
-            .stream()
-            .anyMatch(e -> "login-failed".equals(e[1]) && "audit-pw".equals(e[0])))
+        assertThat(recorder.events)
             .as("expected a login-failed audit event for the attempted username")
-            .isTrue();
+            .anyMatch(e -> "login-failed".equals(e[1]) && "audit-pw".equals(e[0]));
     }
 
     @Test
@@ -78,9 +76,7 @@ class FailedLoginAuditTest {
             .stream()
             .filter(e -> "login-failed".equals(e[1]))
             .count()).isOne();
-        assertThat(recorder.events
-            .stream()
-            .anyMatch(e -> "no-such-user".equals(e[0]) && "login-failed".equals(e[1]))).isTrue();
+        assertThat(recorder.events).anyMatch(e -> "no-such-user".equals(e[0]) && "login-failed".equals(e[1]));
     }
 
     @Test
@@ -91,8 +87,6 @@ class FailedLoginAuditTest {
 
         provider.authenticateBlocking(req("audit-ok", "s3cret"));
 
-        assertThat(recorder.events
-            .stream()
-            .anyMatch(e -> "login-success".equals(e[1]) && "audit-ok".equals(e[0]))).isTrue();
+        assertThat(recorder.events).anyMatch(e -> "login-success".equals(e[1]) && "audit-ok".equals(e[0]));
     }
 }

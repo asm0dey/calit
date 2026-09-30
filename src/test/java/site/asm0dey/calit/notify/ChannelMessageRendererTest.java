@@ -76,8 +76,8 @@ class ChannelMessageRendererTest {
             for (HostNotification n : all) {
                 var msg = renderer.render(n);
                 assertThat(msg.title()).as(n.kind() + " title in " + locale).isNotNull();
-                assertThat(msg.title().isBlank()).as(n.kind() + " title in " + locale).isFalse();
-                assertThat(msg.body().isBlank()).as(n.kind() + " body in " + locale).isFalse();
+                assertThat(msg.title()).as(n.kind() + " title in " + locale).isNotBlank();
+                assertThat(msg.body()).as(n.kind() + " body in " + locale).isNotBlank();
             }
         }
     }

@@ -112,23 +112,24 @@ class BookingServiceGuestTest {
 
         List<BookingGuest> guests = BookingGuest.activeForBooking(b.id);
         assertThat(guests).as("capped at the max").hasSize(BookingService.MAX_GUESTS_PER_BOOKING);
-        assertThat(guests
-            .stream()
-            .noneMatch(g -> g.email.equalsIgnoreCase("sam@example.com"))).as("invitee dropped").isTrue();
-        assertThat(guests
-            .stream()
-            .noneMatch(g -> g.email.equals("not-an-email"))).as("invalid dropped").isTrue();
+        assertThat(guests)
+            .as("invitee dropped")
+            .noneMatch(g -> g.email.equalsIgnoreCase("sam@example.com"));
+        assertThat(guests)
+            .as("invalid dropped")
+            .extracting(g -> g.email)
+            .doesNotContain("not-an-email");
         assertThat(guests
             .stream()
             .map(g -> g.email.toLowerCase())
             .distinct()
             .count()).as("deduped").isEqualTo(guests.size());
-        assertThat(guests.stream().allMatch(g -> g.ownerId.equals(1L))).as("owner-scoped").isTrue();
-        assertThat(guests
-            .stream()
-            .allMatch(g -> g.declineToken != null && !g.declineToken.isBlank()))
+        assertThat(guests)
+            .as("owner-scoped")
+            .allMatch(g -> g.ownerId.equals(1L));
+        assertThat(guests)
             .as("decline tokens")
-            .isTrue();
+            .allMatch(g -> g.declineToken != null && !g.declineToken.isBlank());
     }
 
     @Test
@@ -154,12 +155,14 @@ class BookingServiceGuestTest {
 
         List<BookingGuest> active = BookingGuest.activeForBooking(b.id);
         assertThat(active).hasSize(2);
-        assertThat(active
-            .stream()
-            .anyMatch(g -> g.email.equals("ana@example.com"))).as("ana kept").isTrue();
-        assertThat(active
-            .stream()
-            .anyMatch(g -> g.email.equals("cyd@example.com"))).as("cyd added").isTrue();
+        assertThat(active)
+            .as("ana kept")
+            .extracting(g -> g.email)
+            .contains("ana@example.com");
+        assertThat(active)
+            .as("cyd added")
+            .extracting(g -> g.email)
+            .contains("cyd@example.com");
         BookingGuest bob = BookingGuest.findInBooking(b.id, "bob@example.com");
         assertThat(bob.status).as("bob removed").isEqualTo(GuestStatus.REMOVED);
         assertThat(Booking.<Booking>findById(b.id).icsSequence).as("sequence bumped once").isOne();

@@ -51,12 +51,12 @@ class MeetingTypeTest {
         hidden.persist();
 
         List<MeetingType> publicList = MeetingType.listPublic(1L);
-        assertThat(publicList
-            .stream()
-            .anyMatch(m -> "pub-listpublic".equals(m.slug))).isTrue();
-        assertThat(publicList
-            .stream()
-            .anyMatch(m -> "secret-listpublic".equals(m.slug))).isFalse();
+        assertThat(publicList)
+            .extracting(m -> m.slug)
+            .contains("pub-listpublic");
+        assertThat(publicList)
+            .extracting(m -> m.slug)
+            .doesNotContain("secret-listpublic");
         // Direct slug access bypasses the public filter.
         assertThat(MeetingType.findBySlug(1L, "secret-listpublic").id).isEqualTo(hidden.id);
     }

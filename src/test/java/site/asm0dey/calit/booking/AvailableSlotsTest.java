@@ -209,16 +209,13 @@ class AvailableSlotsTest {
         // Excluding b: both slots available again.
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY, b.id);
         assertThat(slots).hasSize(2);
-        assertThat(slots
-            .stream()
-            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))).isTrue();
+        assertThat(slots)
+            .extracting(s -> s.start().toLocalTime())
+            .contains(LocalTime.of(9, 0));
         // Without exclusion the 09:00 slot is blocked.
-        assertThat(bookingService
-            .availableSlots(t, DAY, DAY)
-            .stream()
-            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))
-        )
-            .isFalse();
+        assertThat(bookingService.availableSlots(t, DAY, DAY))
+            .extracting(s -> s.start().toLocalTime())
+            .doesNotContain(LocalTime.of(9, 0));
     }
 
     // --- helpers ---

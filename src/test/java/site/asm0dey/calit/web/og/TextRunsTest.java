@@ -33,7 +33,7 @@ class TextRunsTest {
     @Test
     void mixedScriptsSplitIntoSeparateRuns() {
         List<TextRuns.Run> runs = TextRuns.split("Coffee Ω", FONTS.chain(false), 40f);
-        assertThat(runs.size() >= 2).as("expected a Latin run and a Greek run, got " + runs.size()).isTrue();
+        assertThat(runs).as("expected a Latin run and a Greek run, got " + runs.size()).hasSizeGreaterThanOrEqualTo(2);
     }
 
     @Test

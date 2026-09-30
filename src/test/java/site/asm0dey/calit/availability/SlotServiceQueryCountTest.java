@@ -53,7 +53,9 @@ class SlotServiceQueryCountTest {
         slotService.generateRawSlots(t, FROM, FROM.plusDays(60));
         long count60 = statistics.getPrepareStatementCount();
 
-        assertThat(count30 <= 6).as("slot generation must be a small constant number of queries, was " + count30).isTrue();
+        assertThat(count30)
+            .as("slot generation must be a small constant number of queries, was " + count30)
+            .isLessThanOrEqualTo(6);
         assertThat(count60)
             .as("query count must be constant in the horizon (30d=" + count30 + ", 60d=" + count60 + ")")
             .isEqualTo(count30);

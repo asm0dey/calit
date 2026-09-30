@@ -35,11 +35,8 @@ class IcsBuilderEscapeTest {
         assertThat(noInjectedLine[0]).as("UID must not inject a new property line").isTrue();
         assertThat(noInjectedLine[1]).as("ORGANIZER must not inject a new property line").isTrue();
         // And no raw CR/LF survives anywhere inside a value to fold/inject a line.
-        assertThat(Arrays
-            .asList(ics.split("\r\n"))
-            .stream()
-            .anyMatch(l -> l.contains("\n") || l.contains("\r")))
+        assertThat(ics.split("\r\n"))
             .as("no raw CR/LF may survive inside any property value")
-            .isFalse();
+            .noneMatch(l -> l.contains("\n") || l.contains("\r"));
     }
 }

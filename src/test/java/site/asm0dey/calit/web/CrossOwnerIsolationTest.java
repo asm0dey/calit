@@ -264,14 +264,10 @@ class CrossOwnerIsolationTest {
         // availableSlots subtracts the OWNER-SCOPED busy-set (Google free/busy is skipped — not
         // connected — leaving only owner A's HELD bookings, of which there are none). If the busy-set
         // were still instance-wide, B's 10:00 hold would remove A's 10:00 slot. Assert it survives.
-        boolean tenAmBookableForA =
-                bookingService
-            .availableSlots(ta, day, day)
-            .stream()
-            .anyMatch(s -> s.start().toInstant().equals(bStart));
-        assertThat(tenAmBookableForA)
+        assertThat(bookingService.availableSlots(ta, day, day))
             .as("A's 10:00 slot must stay free — owner B's held booking is not in A's busy-set")
-            .isTrue();
+            .extracting(s -> s.start().toInstant())
+            .contains(bStart);
     }
 
     /**

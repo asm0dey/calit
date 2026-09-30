@@ -152,9 +152,9 @@ class OidcBridgeFlowTest {
 
     private static String between(String s, String start, String end) {
         var i = s.indexOf(start);
-        assertThat(i >= 0)
+        assertThat(i)
             .as(() -> "missing '" + start + "' in: " + s)
-            .isTrue();
+            .isGreaterThanOrEqualTo(0);
         var from = i + start.length();
         return s.substring(from, s.indexOf(end, from));
     }

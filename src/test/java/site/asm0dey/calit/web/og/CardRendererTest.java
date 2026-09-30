@@ -33,7 +33,7 @@ class CardRendererTest {
                 }
             }
         }
-        assertThat(dark > 2000).as("expected text inside the safe square, found " + dark + " dark pixels").isTrue();
+        assertThat(dark).as("expected text inside the safe square, found " + dark + " dark pixels").isGreaterThan(2000);
     }
 
     @Test
@@ -41,7 +41,7 @@ class CardRendererTest {
         BufferedImage img = decode(RENDERER.render(new CardRenderer.Card("Ada", "Coffee chat", "30 min")));
         // The indigo flanks live only outside the safe square.
         assertThat(img.getRGB(1180, 315)).as("flanks should be symmetric").isEqualTo(img.getRGB(20, 315));
-        assertThat((img.getRGB(300, 20) & 0xFFFFFF) > 0xE0E0E0).as("safe square top should be background").isTrue();
+        assertThat(img.getRGB(300, 20) & 0xFFFFFF).as("safe square top should be background").isGreaterThan(0xE0E0E0);
     }
 
     @Test
@@ -91,12 +91,12 @@ class CardRendererTest {
         assertThat(lines).as("an unbreakable single word should stay one line, not overflow").hasSize(1);
         String rendered = lines.getFirst().stream().map(TextRuns.Run::text).reduce("", String::concat);
         assertThat(rendered).as("expected an ellipsis, got: " + rendered).endsWith("…");
-        assertThat(rendered.length() < unbrokenWord.length()).as("expected the word to be truncated").isTrue();
+        assertThat(rendered.length()).as("expected the word to be truncated").isLessThan(unbrokenWord.length());
 
         int maxWidth = CardRenderer.SAFE_X1 - CardRenderer.SAFE_X0 - 40;
-        assertThat(TextRuns.width(g, lines.getFirst()) <= maxWidth)
+        assertThat(TextRuns.width(g, lines.getFirst()))
             .as("ellipsized line must fit the safe square, width was " + TextRuns.width(g, lines.getFirst()))
-            .isTrue();
+            .isLessThanOrEqualTo(maxWidth);
         g.dispose();
     }
 }

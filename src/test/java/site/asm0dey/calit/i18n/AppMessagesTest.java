@@ -26,14 +26,14 @@ class AppMessagesTest {
     @Test
     void signupErrorEnglishNonBlank() {
         String msg = en.auth_signup_error();
-        assertThat(msg == null || msg.isBlank()).as("auth_signup_error English must be non-blank").isFalse();
+        assertThat(msg).as("auth_signup_error English must be non-blank").isNotBlank();
     }
 
     @Test
     void signupErrorGermanNonBlankAndDiffersFromEnglish() {
         String enMsg = en.auth_signup_error();
         String deMsg = de.auth_signup_error();
-        assertThat(deMsg == null || deMsg.isBlank()).as("auth_signup_error German must be non-blank").isFalse();
+        assertThat(deMsg).as("auth_signup_error German must be non-blank").isNotBlank();
         assertThat(deMsg).as("German auth_signup_error must differ from English").isNotEqualTo(enMsg);
     }
 
@@ -41,7 +41,7 @@ class AppMessagesTest {
     void germanPasswordResetSubjectNonBlankAndDiffersFromEnglish() {
         String enMsg = en.email_password_reset_subject();
         String deMsg = de.email_password_reset_subject();
-        assertThat(deMsg == null || deMsg.isBlank()).as("German password-reset subject must not be blank").isFalse();
+        assertThat(deMsg).as("German password-reset subject must not be blank").isNotBlank();
         assertThat(deMsg).as("German password-reset subject must differ from English").isNotEqualTo(enMsg);
     }
 
@@ -49,7 +49,7 @@ class AppMessagesTest {
     void germanGoogleDisconnectedSubjectNonBlankAndDiffersFromEnglish() {
         String enMsg = en.email_google_disconnected_subject();
         String deMsg = de.email_google_disconnected_subject();
-        assertThat(deMsg == null || deMsg.isBlank()).as("German google-disconnected subject must not be blank").isFalse();
+        assertThat(deMsg).as("German google-disconnected subject must not be blank").isNotBlank();
         assertThat(deMsg).as("German google-disconnected subject must differ from English").isNotEqualTo(enMsg);
     }
 }

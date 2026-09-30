@@ -58,9 +58,7 @@ class MultiHostMessageParityTest {
             }
         }
 
-        assertThat(failures.isEmpty())
-            .as("Missing translations for " + bundle.getSimpleName() + " @Message keys:" + failures)
-            .isTrue();
+        assertThat(failures).as("Missing translations for " + bundle.getSimpleName() + " @Message keys:" + failures).isEmpty();
     }
 
     private static void assertNoOrphans(Class<?> bundle, String... localeResources) {
@@ -85,7 +83,7 @@ class MultiHostMessageParityTest {
             }
         }
 
-        assertThat(failures.isEmpty())
+        assertThat(failures)
             .as(
                     "Orphan property keys for "
                     + bundle.getSimpleName()
@@ -93,7 +91,7 @@ class MultiHostMessageParityTest {
                     + " method):"
                     + failures
             )
-            .isTrue();
+            .isEmpty();
     }
 
     private static Set<String> messageMethodNames(Class<?> bundle) {

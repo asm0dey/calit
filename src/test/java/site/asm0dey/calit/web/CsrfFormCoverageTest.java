@@ -23,7 +23,7 @@ class CsrfFormCoverageTest {
                 if (EXCLUDED.contains(p.getFileName().toString())) {
                     assertThat(tokens).as(p + " is a j_security_check form and must NOT carry a REST-CSRF token").isZero();
                 } else {
-                    assertThat(tokens >= postForms)
+                    assertThat(tokens)
                         .as(
                                 p
                                 + " has "
@@ -32,7 +32,7 @@ class CsrfFormCoverageTest {
                                 + tokens
                                 + " csrf token(s) — every form-urlencoded POST must carry {inject:csrf.token}"
                         )
-                        .isTrue();
+                        .isGreaterThanOrEqualTo(postForms);
                 }
             }
         }

@@ -5,7 +5,7 @@ status: in-progress
 type: task
 priority: low
 created_at: 2026-09-30T10:12:16Z
-updated_at: 2026-09-30T10:51:27Z
+updated_at: 2026-09-30T11:16:07Z
 ---
 
 Replace JUnit assertEquals/assertTrue/assertNull (and plain Hamcrest assertThat) in src/test with AssertJ assertThat, so failures describe the actual value instead of "expected true".
@@ -20,8 +20,8 @@ Replace JUnit assertEquals/assertTrue/assertNull (and plain Hamcrest assertThat)
 ## Todo
 - [x] Add assertj-core (test scope, pinned via assertj.version property; not in the Quarkus BOM) to pom.xml
 - [x] Run the OpenRewrite Assertj recipe
-- [ ] Hand pass on collection assertions (pattern map below), then steroid SimplifiableAssertion over src/test
-- [ ] Fold any single-type imports the recipe adds into the project's import style; `mvn spotless:apply`
+- [x] Hand pass on collection assertions (pattern map below), then steroid SimplifiableAssertion over src/test
+- [x] Fold any single-type imports the recipe adds into the project's import style; `mvn spotless:apply`
 - [ ] Full `mvn test` green
 - [ ] Record the choice in precedent (AssertJ over JUnit asserts/Hamcrest)
 

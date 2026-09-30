@@ -37,7 +37,7 @@ class EmailOutboxTest {
             r.deadOrBackoff("smtp down");
             assertThat(r.attempts).isOne();
             assertThat(r.lastError).isEqualTo("smtp down");
-            assertThat(r.nextAttemptAt.isAfter(before)).as("next attempt pushed into the future").isTrue();
+            assertThat(r.nextAttemptAt).as("next attempt pushed into the future").isAfter(before);
         });
     }
 

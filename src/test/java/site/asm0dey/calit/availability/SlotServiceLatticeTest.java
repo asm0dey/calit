@@ -166,10 +166,10 @@ class SlotServiceLatticeTest {
         var berlinOpen = MONDAY.atTime(9, 0).atZone(ZoneId.of("Europe/Berlin")).toInstant();
         var kathmanduClose = MONDAY.atTime(19, 0).atZone(ZoneId.of("Asia/Kathmandu")).toInstant();
         for (Instant s : shared) {
-            assertThat(s.isBefore(berlinOpen)).as("a shared slot cannot start before Berlin opens").isFalse();
-            assertThat(s.plusSeconds(29 * 60L).isAfter(kathmanduClose))
+            assertThat(s).as("a shared slot cannot start before Berlin opens").isAfterOrEqualTo(berlinOpen);
+            assertThat(s.plusSeconds(29 * 60L))
                 .as("a shared slot cannot run past Kathmandu's close")
-                .isFalse();
+                .isBeforeOrEqualTo(kathmanduClose);
         }
         // The comb over that overlap is exact: on the 29-minute-from-UTC-midnight comb, the first
         // point >= Berlin's 08:00Z open is 08:13Z (k=17) and the last point <= Kathmandu's

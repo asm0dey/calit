@@ -14,13 +14,13 @@ class BuildInfoTest {
     @Test
     void versionMatchesProjectVersion() {
         // git.properties is generated at build time; in this repo the version is the Maven project version.
-        assertThat(buildInfo.getVersion().isBlank()).as("version must not be blank").isFalse();
+        assertThat(buildInfo.getVersion()).as("version must not be blank").isNotBlank();
     }
 
     @Test
     void commitIsNeverBlank() {
         // Either the abbreviated SHA, or the "dev" fallback when .git is unavailable.
-        assertThat(buildInfo.getCommit().isBlank()).as("commit must not be blank").isFalse();
+        assertThat(buildInfo.getCommit()).as("commit must not be blank").isNotBlank();
     }
 
     @Test

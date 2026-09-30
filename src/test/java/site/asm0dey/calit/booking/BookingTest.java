@@ -81,11 +81,7 @@ class BookingTest {
         List<Booking> hits = Booking.heldOverlapping(1L, base.minusSeconds(3600), base.plusSeconds(3600));
 
         assertThat(hits).hasSize(2);
-        assertThat(hits
-            .stream()
-            .allMatch(x -> x.status == BookingStatus.PENDING || x.status == BookingStatus.CONFIRMED)
-        )
-            .isTrue();
+        assertThat(hits).allMatch(x -> x.status == BookingStatus.PENDING || x.status == BookingStatus.CONFIRMED);
     }
 
     @Test

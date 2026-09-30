@@ -93,17 +93,11 @@ class UpdatedEmailTest {
         );
         assertThat(to.getAllValues()).as("invitee notified").contains("pat@example.com");
         assertThat(to.getAllValues()).as("owner notified").contains("owner@example.com");
-        assertThat(subject
-            .getAllValues()
-            .stream()
-            .anyMatch(su -> su.contains("Roadmap sync")))
+        assertThat(subject.getAllValues())
             .as("subject has new name")
-            .isTrue();
-        assertThat(body
-            .getAllValues()
-            .stream()
-            .anyMatch(bo -> bo.contains("Q3 planning agenda")))
+            .anyMatch(su -> su.contains("Roadmap sync"));
+        assertThat(body.getAllValues())
             .as("body has description")
-            .isTrue();
+            .anyMatch(bo -> bo.contains("Q3 planning agenda"));
     }
 }

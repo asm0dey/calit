@@ -73,12 +73,12 @@ class RescheduleCancelTest {
             .updateEvent(anyLong(), any(), eq("evt-r"), eq(SLOT_10), eq(SLOT_10.plusSeconds(3600)), any());
         // Old 09:00 time is free again; new 10:00 time is now taken.
         List<TimeSlot> avail = bookingService.availableSlots(t, DAY, DAY);
-        assertThat(avail
-            .stream()
-            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))).isTrue();
-        assertThat(avail
-            .stream()
-            .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(10, 0)))).isTrue();
+        assertThat(avail)
+            .extracting(s -> s.start().toLocalTime())
+            .contains(LocalTime.of(9, 0));
+        assertThat(avail)
+            .extracting(s -> s.start().toLocalTime())
+            .doesNotContain(LocalTime.of(10, 0));
     }
 
     @Test
@@ -204,12 +204,9 @@ class RescheduleCancelTest {
                         "en",
                         List.of()
         );
-        assertThat(bookingService
-            .availableSlots(t, DAY, DAY)
-            .stream()
-            .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))
-        )
-            .isTrue();
+        assertThat(bookingService.availableSlots(t, DAY, DAY))
+            .extracting(s -> s.start().toLocalTime())
+            .doesNotContain(LocalTime.of(9, 0));
         // Cancel is keyed by the manage-token.
         bookingService.cancel(b.manageToken);
 
@@ -217,12 +214,9 @@ class RescheduleCancelTest {
         assertThat(loaded.status).isEqualTo(BookingStatus.CANCELLED);
         verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), eq("evt-c"));
         // 09:00 slot is bookable again.
-        assertThat(bookingService
-            .availableSlots(t, DAY, DAY)
-            .stream()
-            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))
-        )
-            .isTrue();
+        assertThat(bookingService.availableSlots(t, DAY, DAY))
+            .extracting(s -> s.start().toLocalTime())
+            .contains(LocalTime.of(9, 0));
     }
 
     @Test

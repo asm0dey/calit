@@ -25,7 +25,9 @@ class RememberMeTest {
     void rememberMeMakesCredentialCookiePersistent() {
         Cookie c = loginCookie(true);
         assertThat(c).isNotNull();
-        assertThat(c.getMaxAge() > 0).as("Expected positive Max-Age for persistent cookie, got: " + c.getMaxAge()).isTrue();
+        assertThat(c.getMaxAge())
+            .as("Expected positive Max-Age for persistent cookie, got: " + c.getMaxAge())
+            .isGreaterThan(0);
     }
 
     @Test

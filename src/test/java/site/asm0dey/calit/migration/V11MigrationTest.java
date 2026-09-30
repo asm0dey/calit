@@ -36,6 +36,8 @@ class V11MigrationTest {
     void loginTicketTableExists() {
         var table = scalar("select count(*) from information_schema.tables where table_name='login_ticket'");
         assertThat(table).as("login_ticket table must exist").isOne();
-        assertThat(scalar("select count(*) from login_ticket") >= 0).as("login_ticket must be queryable").isTrue();
+        assertThat(scalar("select count(*) from login_ticket")).as("login_ticket must be queryable").isGreaterThanOrEqualTo(
+                0
+        );
     }
 }

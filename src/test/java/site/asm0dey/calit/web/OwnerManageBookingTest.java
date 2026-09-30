@@ -141,7 +141,7 @@ class OwnerManageBookingTest {
             .requiringNew()
             .call(() -> Booking.findById(id));
         assertThat(after.startUtc).isEqualTo(target);
-        assertThat(after.icsSequence > beforeSeq).as("sequence bumped").isTrue();
+        assertThat(after.icsSequence).as("sequence bumped").isGreaterThan(beforeSeq);
     }
 
     @Test

@@ -33,8 +33,8 @@ class CardRendererCoverageTest {
 
         assertThat(lines).as("still fits on one line once shrunk").hasSize(1);
         float size = lines.getFirst().getFirst().font().getSize2D();
-        assertThat(size < 74f).as("expected the ladder to shrink below the default 74, got " + size).isTrue();
-        assertThat(size >= 52f).as("the ladder must not shrink past its floor of 52, got " + size).isTrue();
+        assertThat(size).as("expected the ladder to shrink below the default 74, got " + size).isLessThan(74f);
+        assertThat(size).as("the ladder must not shrink past its floor of 52, got " + size).isGreaterThanOrEqualTo(52f);
         int maxWidth = CardRenderer.SAFE_X1 - CardRenderer.SAFE_X0 - 40;
         assertThat(width(g, lines.getFirst())).isLessThanOrEqualTo(maxWidth);
         g.dispose();
@@ -54,7 +54,7 @@ class CardRendererCoverageTest {
         for (var line : lines) {
             String text = line.stream().map(TextRuns.Run::text).reduce("", String::concat);
             assertThat(text).as("wrapping alone should be enough here, got: " + text).doesNotEndWith("…");
-            assertThat(width(g, line) <= maxWidth).as("line must fit the safe square: " + text).isTrue();
+            assertThat(width(g, line)).as("line must fit the safe square: " + text).isLessThanOrEqualTo(maxWidth);
         }
         g.dispose();
     }
@@ -99,7 +99,9 @@ class CardRendererCoverageTest {
                 }
             }
         }
-        assertThat(dark > 2000).as("expected a two-line headline plus pill inside the safe square, found " + dark).isTrue();
+        assertThat(dark)
+            .as("expected a two-line headline plus pill inside the safe square, found " + dark)
+            .isGreaterThan(2000);
     }
 
     @Test
@@ -118,12 +120,12 @@ class CardRendererCoverageTest {
         assertThat(lines).as("an unbreakable single word should stay one line, not overflow").hasSize(1);
         String rendered = lines.getFirst().stream().map(TextRuns.Run::text).reduce("", String::concat);
         assertThat(rendered).as("expected an ellipsis, got: " + rendered).endsWith("…");
-        assertThat(rendered.length() < unbrokenWord.length()).as("expected the word to be truncated").isTrue();
+        assertThat(rendered.length()).as("expected the word to be truncated").isLessThan(unbrokenWord.length());
 
         int maxWidth = CardRenderer.SAFE_X1 - CardRenderer.SAFE_X0 - 40;
-        assertThat(width(g, lines.getFirst()) <= maxWidth)
+        assertThat(width(g, lines.getFirst()))
             .as("ellipsized line must fit the safe square, width was " + width(g, lines.getFirst()))
-            .isTrue();
+            .isLessThanOrEqualTo(maxWidth);
         g.dispose();
     }
 

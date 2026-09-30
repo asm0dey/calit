@@ -52,7 +52,7 @@ class EmailLocaleTest {
     void germanSubjectResolves() {
         String deSubj = messages.forTag("de").email_confirmed_subject("X");
         String enSubj = messages.forTag("en").email_confirmed_subject("X");
-        assertThat(deSubj.isBlank()).as("German confirmation subject must not be blank").isFalse();
+        assertThat(deSubj).as("German confirmation subject must not be blank").isNotBlank();
         assertThat(deSubj).as("German subject must differ from English").isNotEqualTo(enSubj);
     }
 
@@ -60,7 +60,7 @@ class EmailLocaleTest {
     void germanPasswordResetSubjectNonBlankAndDiffersFromEnglish() {
         String enSubj = messages.forTag("en").email_password_reset_subject();
         String deSubj = messages.forTag("de").email_password_reset_subject();
-        assertThat(deSubj.isBlank()).as("German password-reset subject must not be blank").isFalse();
+        assertThat(deSubj).as("German password-reset subject must not be blank").isNotBlank();
         assertThat(deSubj).as("German password-reset subject must differ from English").isNotEqualTo(enSubj);
     }
 
@@ -68,7 +68,7 @@ class EmailLocaleTest {
     void germanGoogleDisconnectedSubjectNonBlankAndDiffersFromEnglish() {
         String enSubj = messages.forTag("en").email_google_disconnected_subject();
         String deSubj = messages.forTag("de").email_google_disconnected_subject();
-        assertThat(deSubj.isBlank()).as("German Google-disconnected subject must not be blank").isFalse();
+        assertThat(deSubj).as("German Google-disconnected subject must not be blank").isNotBlank();
         assertThat(deSubj).as("German Google-disconnected subject must differ from English").isNotEqualTo(enSubj);
     }
 
@@ -82,7 +82,7 @@ class EmailLocaleTest {
         for (String tag : List.of("en", "de", "he")) {
             Locale locale = AppLocales.pick(tag);
             String pattern = messages.forTag(tag).email_datetime_pattern_h12();
-            assertThat(pattern.isBlank()).as("h12 pattern for '" + tag + "' must not be blank").isFalse();
+            assertThat(pattern).as("h12 pattern for '" + tag + "' must not be blank").isNotBlank();
 
             DateTimeFormatter formatter;
             try {
@@ -100,10 +100,7 @@ class EmailLocaleTest {
             } catch (RuntimeException e) {
                 throw new AssertionError("h12 pattern for '" + tag + "' failed to format an instant: " + pattern, e);
             }
-            assertThat(rendered.isBlank()).as("h12 rendering for '"
-                    + tag
-                    + "' must not be blank; pattern: "
-                    + pattern).isFalse();
+            assertThat(rendered).as("h12 rendering for '" + tag + "' must not be blank; pattern: " + pattern).isNotBlank();
         }
     }
 

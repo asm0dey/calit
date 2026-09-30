@@ -444,14 +444,10 @@ class EmailServiceTest {
     // --- attachment assertion: every app-sent mail carries an .ics ---
     private static void assertHasIcsAttachment(Mail m) {
         assertThat(m.getAttachments()).as("mail must carry an attachment").isNotEmpty();
-        assertThat(m
-            .getAttachments()
-            .stream()
-            .anyMatch(a -> "invite.ics".equals(a.getName())
-                    || (a.getContentType() != null && a.getContentType().contains("text/calendar")))
-        )
+        assertThat(m.getAttachments())
             .as("an .ics (text/calendar) attachment must be present")
-            .isTrue();
+            .anyMatch(a -> "invite.ics".equals(a.getName())
+                    || (a.getContentType() != null && a.getContentType().contains("text/calendar")));
     }
 
     @Test

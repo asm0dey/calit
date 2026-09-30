@@ -200,7 +200,7 @@ class AdminDateOverridesTest {
 
         var body = pageBody();
         var marker = body.indexOf(PAST_MARKER);
-        assertThat(marker >= 0).as("expected the past-overrides collapse to be rendered").isTrue();
+        assertThat(marker).as("expected the past-overrides collapse to be rendered").isGreaterThanOrEqualTo(0);
 
         var beforeCollapse = body.substring(0, marker);
         var insideCollapse = body.substring(marker);

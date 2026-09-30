@@ -52,9 +52,6 @@ class MeetingTypeOwnerScopeTest {
         assertThat(MeetingType.listPublic(2001L)).hasSize(1);
         // a,b,c — includes secret+inactive
         assertThat(MeetingType.listForOwner(2001L)).hasSize(3);
-        assertThat(MeetingType
-            .listForOwner(2002L)
-            .stream()
-            .allMatch(t -> t.ownerId.equals(2002L))).isTrue();
+        assertThat(MeetingType.listForOwner(2002L)).allMatch(t -> t.ownerId.equals(2002L));
     }
 }

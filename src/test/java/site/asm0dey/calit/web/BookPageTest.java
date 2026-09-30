@@ -301,9 +301,9 @@ class BookPageTest {
         assertThat(furthest).as("expected at least one bookable day").isNotNull();
         // With the old 14-day cap the furthest day would be ~today+14. horizonDays=60 must extend it.
         var today = java.time.LocalDate.now(java.time.ZoneId.of("Europe/Amsterdam"));
-        assertThat(furthest.isAfter(today.plusDays(20)))
+        assertThat(furthest)
             .as("booking window should follow type.horizonDays (60), not a 14-day cap; furthest day was " + furthest)
-            .isTrue();
+            .isAfter(today.plusDays(20));
     }
 
     @Test

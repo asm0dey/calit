@@ -56,7 +56,7 @@ class EmailServiceFallbackTest {
             .requiringNew()
             .call(() -> EmailOutbox.count());
         // declined notifies invitee + owner -> 2 parked mails.
-        assertThat(queued >= 2).as("both recipients' mail parked in outbox, got " + queued).isTrue();
+        assertThat(queued).as("both recipients' mail parked in outbox, got " + queued).isGreaterThanOrEqualTo(2);
     }
 
     private long seedDeclined() {

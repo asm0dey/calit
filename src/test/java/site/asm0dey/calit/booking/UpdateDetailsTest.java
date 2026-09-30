@@ -93,7 +93,7 @@ class UpdateDetailsTest {
             .call(() -> Booking.findById(b.id));
         assertThat(after.title).isEqualTo("Roadmap sync");
         assertThat(after.description).isEqualTo("Q3 planning");
-        assertThat(after.icsSequence > beforeSeq).as("sequence bumped").isTrue();
+        assertThat(after.icsSequence).as("sequence bumped").isGreaterThan(beforeSeq);
         verify(calendarPort, times(1))
             .updateEventDetails(anyLong(), any(), eq("evt-ud"), eq("Roadmap sync with Pat"), eq("Q3 planning"), any());
     }

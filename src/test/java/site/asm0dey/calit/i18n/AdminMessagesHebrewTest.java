@@ -15,7 +15,7 @@ class AdminMessagesHebrewTest {
     void hebrewAdminStringsResolveAndDifferFromEnglish() {
         String he = admin.forLocale(Locale.forLanguageTag("he")).adm_nav_dashboard();
         String en = admin.forLocale(Locale.ENGLISH).adm_nav_dashboard();
-        assertThat(he.isBlank()).as("Hebrew admin nav label must not be blank").isFalse();
+        assertThat(he).as("Hebrew admin nav label must not be blank").isNotBlank();
         assertThat(he).as("Hebrew admin label must differ from English").isNotEqualTo(en);
         assertThat(he).isEqualTo("לוח בקרה");
     }

@@ -17,9 +17,9 @@ class BookingFieldTest {
         desc.persist();
         // No per-type fields for this id -> falls back to the owner's global default form.
         List<BookingField> form = BookingField.formFor(1L, 999_999L);
-        assertThat(form
-            .stream()
-            .anyMatch(f -> "description".equals(f.fieldKey))).isTrue();
+        assertThat(form)
+            .extracting(f -> f.fieldKey)
+            .contains("description");
     }
 
     @Test

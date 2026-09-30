@@ -70,7 +70,7 @@ class OutboxSchedulerTest {
             assertThat(r.sentAt).isNull();
             assertThat(r.attempts).isOne();
             assertThat(r.lastError).isEqualTo("still down");
-            assertThat(r.nextAttemptAt.isAfter(java.time.Instant.now())).as("backed off into the future").isTrue();
+            assertThat(r.nextAttemptAt).as("backed off into the future").isAfter(java.time.Instant.now());
         });
     }
 

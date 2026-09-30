@@ -25,11 +25,11 @@ class AdminWorkplanLayoutTest {
             .asString();
 
         var cardStart = body.indexOf("data-day=\"MONDAY\"");
-        assertThat(cardStart > 0).as("Monday day card is rendered").isTrue();
+        assertThat(cardStart).as("Monday day card is rendered").isGreaterThan(0);
         var frames = body.indexOf("data-frames", cardStart);
         var actions = body.indexOf("data-copy-all=\"MONDAY\"", cardStart);
         assertThat(frames > 0 && actions > 0).as("Monday card has both a frames box and its actions").isTrue();
-        assertThat(actions > frames)
+        assertThat(actions)
             .as(
                     "day actions come after the frames box, so they share the frames' axis (frames at "
                     + frames
@@ -37,7 +37,7 @@ class AdminWorkplanLayoutTest {
                     + actions
                     + ")"
             )
-            .isTrue();
+            .isGreaterThan(frames);
     }
 
     @Test
