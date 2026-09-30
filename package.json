@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "css:build": "tailwindcss -i src/main/css/input.css -o src/main/resources/META-INF/resources/calit.css --minify",
-    "css:watch": "tailwindcss -i src/main/css/input.css -o src/main/resources/META-INF/resources/calit.css --watch",
+    "css:watch": "tailwindcss -i src/main/css/input.css -o src/main/resources/META-INF/resources/calit.css --watch=always",
     "format": "bun run format:java && bun run format:fe",
     "format:java": "./mvnw -q spotless:apply",
     "format:fe": "prettier --write \"src/**/*.{js,ts,css}\"",
