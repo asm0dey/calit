@@ -2,7 +2,6 @@ package site.asm0dey.calit.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.InstanceOfAssertFactories.throwable;
 import org.junit.jupiter.api.Test;
 
 class UsernamesTest {
@@ -70,11 +69,10 @@ class UsernamesTest {
 
     @Test
     void validateNewThrowsOnInvalidReservedOrTaken() {
-        assertThatThrownBy(() -> Usernames.validateNew("a", u -> false))
-            .asInstanceOf(throwable(IllegalArgumentException.class));
-        assertThatThrownBy(() -> Usernames.validateNew("Login", u -> false))
-            .asInstanceOf(throwable(IllegalArgumentException.class));
-        assertThatThrownBy(() -> Usernames.validateNew("alice", u -> true))
-            .asInstanceOf(throwable(IllegalArgumentException.class));
+        assertThatThrownBy(() -> Usernames.validateNew("a", u -> false)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Usernames.validateNew("Login", u -> false)).isInstanceOf(
+                IllegalArgumentException.class
+        );
+        assertThatThrownBy(() -> Usernames.validateNew("alice", u -> true)).isInstanceOf(IllegalArgumentException.class);
     }
 }

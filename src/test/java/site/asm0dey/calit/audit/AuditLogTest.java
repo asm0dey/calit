@@ -1,7 +1,7 @@
 package site.asm0dey.calit.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -34,6 +34,6 @@ class AuditLogTest {
     @Test
     void eventNeverThrowsOnHostileOrNullFields() {
         AuditLog log = new AuditLog();
-        assertDoesNotThrow(() -> log.event("a\nb", "act\rion", null, "1.2.3.4\n"));
+        assertThatCode(() -> log.event("a\nb", "act\rion", null, "1.2.3.4\n")).doesNotThrowAnyException();
     }
 }

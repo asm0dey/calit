@@ -2,7 +2,6 @@ package site.asm0dey.calit.crypto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.InstanceOfAssertFactories.throwable;
 import org.junit.jupiter.api.Test;
 
 class TokenCipherTest {
@@ -40,7 +39,7 @@ class TokenCipherTest {
     void decryptWithWrongKeyThrows() {
         TokenCipher other = new TokenCipher("f".repeat(64));
         String ct = cipher.encrypt("secret");
-        assertThatThrownBy(() -> other.decrypt(ct)).asInstanceOf(throwable(IllegalStateException.class));
+        assertThatThrownBy(() -> other.decrypt(ct)).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -51,6 +50,6 @@ class TokenCipherTest {
         var body = ct.substring(marker.length());
         var flip = body.charAt(body.length() - 2) == 'A' ? 'B' : 'A';
         var tampered = marker + body.substring(0, body.length() - 2) + flip + body.charAt(body.length() - 1);
-        assertThatThrownBy(() -> cipher.decrypt(tampered)).asInstanceOf(throwable(IllegalStateException.class));
+        assertThatThrownBy(() -> cipher.decrypt(tampered)).isInstanceOf(IllegalStateException.class);
     }
 }

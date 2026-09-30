@@ -2,7 +2,7 @@ package site.asm0dey.calit.email;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -43,9 +43,10 @@ class EmailMissingOwnerSettingsTest {
         var bookingId = seedBookingThenDropSettings();
         // The whole point: no NPE escapes. Before the guard this threw, and the scheduler's
         // catch-all turned it into a silently dropped reminder.
-        assertDoesNotThrow(() -> QuarkusTransaction
+        assertThatCode(() -> QuarkusTransaction
             .requiringNew()
-            .run(() -> emailService.enqueueReminder(bookingId)));
+            .run(() -> emailService.enqueueReminder(bookingId)))
+            .doesNotThrowAnyException();
 
         QuarkusTransaction
             .requiringNew()
@@ -64,9 +65,10 @@ class EmailMissingOwnerSettingsTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var bookingId = seedBooking("Not/AZone");
 
-        assertDoesNotThrow(() -> QuarkusTransaction
+        assertThatCode(() -> QuarkusTransaction
             .requiringNew()
-            .run(() -> emailService.enqueueReminder(bookingId)));
+            .run(() -> emailService.enqueueReminder(bookingId)))
+            .doesNotThrowAnyException();
 
         QuarkusTransaction
             .requiringNew()

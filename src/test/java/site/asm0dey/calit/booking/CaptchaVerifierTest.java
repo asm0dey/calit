@@ -3,7 +3,7 @@ package site.asm0dey.calit.booking;
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.when;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
@@ -83,7 +83,7 @@ class CaptchaVerifierTest {
     @Test
     void validSolutionPasses() throws Exception {
         var payload = validPayload();
-        assertDoesNotThrow(() -> verifier.verify(null, payload));
+        assertThatCode(() -> verifier.verify(null, payload)).doesNotThrowAnyException();
     }
 
     @Test
@@ -137,7 +137,7 @@ class CaptchaVerifierTest {
         // This test exists so the day someone adds that store, it fails and tells them the behaviour
         // changed, instead of the change landing unnoticed.
         var payload = validPayload();
-        assertDoesNotThrow(() -> verifier.verify(null, payload));
-        assertDoesNotThrow(() -> verifier.verify(null, payload));
+        assertThatCode(() -> verifier.verify(null, payload)).doesNotThrowAnyException();
+        assertThatCode(() -> verifier.verify(null, payload)).doesNotThrowAnyException();
     }
 }

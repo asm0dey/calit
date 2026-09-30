@@ -3,7 +3,7 @@ package site.asm0dey.calit.google;
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -76,7 +76,7 @@ class DeleteEventAlreadyGoneTest {
         seedWriteTarget("sub-gone");
         var port = portThatFailsWith(status(410, "Gone"));
 
-        assertDoesNotThrow(() -> port.deleteEvent(1L, null, "evt-gone"));
+        assertThatCode(() -> port.deleteEvent(1L, null, "evt-gone")).doesNotThrowAnyException();
     }
 
     @Test
@@ -85,7 +85,7 @@ class DeleteEventAlreadyGoneTest {
         seedWriteTarget("sub-missing");
         var port = portThatFailsWith(status(404, "Not Found"));
 
-        assertDoesNotThrow(() -> port.deleteEvent(1L, null, "evt-missing"));
+        assertThatCode(() -> port.deleteEvent(1L, null, "evt-missing")).doesNotThrowAnyException();
     }
 
     @Test

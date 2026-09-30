@@ -2,7 +2,7 @@ package site.asm0dey.calit.booking;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.*;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
@@ -146,7 +146,7 @@ class GroupCancelRescheduleTest {
             .filter(r -> !r.ownerId.equals(1L))
             .findFirst()
             .orElseThrow();
-        assertDoesNotThrow(() -> bookingService.cancel(cohostRow.manageToken, true));
+        assertThatCode(() -> bookingService.cancel(cohostRow.manageToken, true)).doesNotThrowAnyException();
 
         Booking
             .<Booking>group(lead.groupId)
@@ -346,7 +346,7 @@ class GroupCancelRescheduleTest {
         // Before the fix: assertSlotAvailable excluded only freshLead.id, so the co-host's OWN row
         // (still at 10:00-11:00) was counted busy against the new slot's buffered interval ->
         // BookingConflictException (409), even though the group is only shifting by one hour.
-        assertDoesNotThrow(() -> bookingService.reschedule(freshLead.manageToken, nextMonday(11)));
+        assertThatCode(() -> bookingService.reschedule(freshLead.manageToken, nextMonday(11))).doesNotThrowAnyException();
 
         Booking
             .<Booking>group(lead.groupId)

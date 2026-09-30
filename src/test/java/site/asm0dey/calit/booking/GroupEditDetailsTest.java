@@ -2,7 +2,7 @@ package site.asm0dey.calit.booking;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.*;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -198,13 +198,14 @@ class GroupEditDetailsTest {
             .filter(r -> !r.ownerId.equals(1L))
             .findFirst()
             .orElseThrow();
-        assertDoesNotThrow(() -> bookingService.updateDetails(
+        assertThatCode(() -> bookingService.updateDetails(
                 cohostRow.manageToken,
                 "Roadmap sync",
                 "Q3 planning",
                 List.of("ana@x.com"),
                 true
-        ));
+        ))
+            .doesNotThrowAnyException();
 
         Booking.<Booking>group(lead.groupId).forEach(r -> {
             assertThat(r.title).isEqualTo("Roadmap sync");
@@ -281,13 +282,14 @@ class GroupEditDetailsTest {
             .<Booking>group(lead.groupId)
             .forEach(r -> assertThat(r.googleEventId).isNull());
 
-        assertDoesNotThrow(() -> bookingService.updateDetails(
+        assertThatCode(() -> bookingService.updateDetails(
                 lead.manageToken,
                 "Roadmap sync",
                 "Q3 planning",
                 List.of("ana@x.com"),
                 true
-        ));
+        ))
+            .doesNotThrowAnyException();
 
         Booking.<Booking>group(lead.groupId).forEach(r -> {
             assertThat(r.title).isEqualTo("Roadmap sync");

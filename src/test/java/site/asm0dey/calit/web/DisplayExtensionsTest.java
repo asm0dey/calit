@@ -2,7 +2,7 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
@@ -45,14 +45,14 @@ class DisplayExtensionsTest {
     void whenUnusableZoneIdFallsBackToUtcInsteadOfThrowing() {
         var i = Instant.parse("2026-08-20T13:00:00Z");
         // ZoneId.of throws a different exception per input: ZoneRulesException for an unknown id,
-        // DateTimeException for blank, NullPointerException for null. assertAll reports every
+        // DateTimeException for blank, NullPointerException for null. assertSoftly reports every
         // failing input in one run rather than stopping at the first.
-        assertAll(() -> assertThat(DisplayExtensions.when(i, "Not/AZone"))
-            .as("unknown zone id must fall back to UTC; got: " + DisplayExtensions.when(i, "Not/AZone"))
-            .contains("(UTC)"), () -> assertThat(DisplayExtensions.when(i, ""))
-            .as("blank zone id must fall back to UTC; got: " + DisplayExtensions.when(i, ""))
-            .contains("(UTC)"), () -> assertThat(DisplayExtensions.when(i, null))
-            .as("null zone id must fall back to UTC; got: " + DisplayExtensions.when(i, null))
-            .contains("(UTC)"));
+        assertSoftly(s -> {
+            s.assertThat(DisplayExtensions.when(i, "Not/AZone")).as("unknown zone id must fall back to UTC").contains(
+                    "(UTC)"
+            );
+            s.assertThat(DisplayExtensions.when(i, "")).as("blank zone id must fall back to UTC").contains("(UTC)");
+            s.assertThat(DisplayExtensions.when(i, null)).as("null zone id must fall back to UTC").contains("(UTC)");
+        });
     }
 }

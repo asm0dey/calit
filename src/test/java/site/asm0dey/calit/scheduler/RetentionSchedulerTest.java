@@ -2,7 +2,7 @@ package site.asm0dey.calit.scheduler;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -124,7 +124,9 @@ class RetentionSchedulerTest {
             s.bookingRetentionDays = 99_999_999;
         });
 
-        assertDoesNotThrow(() -> scheduler.sweep(), "a huge retention window must not blow up interval arithmetic");
+        assertThatCode(() -> scheduler.sweep())
+            .as("a huge retention window must not blow up interval arithmetic")
+            .doesNotThrowAnyException();
 
         assertThat(erased(id)).as("clamped to ~100 years, a 30-day-old booking is still well inside the window").isFalse();
     }

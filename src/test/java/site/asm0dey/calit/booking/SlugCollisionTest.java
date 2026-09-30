@@ -2,8 +2,7 @@ package site.asm0dey.calit.booking;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.InstanceOfAssertFactories.throwable;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -26,7 +25,7 @@ class SlugCollisionTest {
         MultiHostFixtures.meetingType(v.id, "intro", 30);
         // Pasha's shared intro
         MeetingType shared = MultiHostFixtures.meetingType(1L, "intro", 30);
-        assertThatThrownBy(() -> meetingHosts.addCohost(shared, v)).asInstanceOf(throwable(IllegalStateException.class));
+        assertThatThrownBy(() -> meetingHosts.addCohost(shared, v)).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -48,8 +47,9 @@ class SlugCollisionTest {
         MeetingTypeHost.of(typeA.id, v.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED).persist();
         // Pasha's new shared intro
         MeetingType typeB = MultiHostFixtures.meetingType(1L, "intro", 30);
-        assertThatThrownBy(() -> meetingHosts.assertSlugFreeForCohost(typeB, v))
-            .asInstanceOf(throwable(IllegalStateException.class));
+        assertThatThrownBy(() -> meetingHosts.assertSlugFreeForCohost(typeB, v)).isInstanceOf(
+                IllegalStateException.class
+        );
     }
 
     @Test
@@ -62,6 +62,6 @@ class SlugCollisionTest {
         MeetingTypeHost.of(typeA.id, v.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED).persist();
 
         MeetingType typeB = MultiHostFixtures.meetingType(1L, "intro", 30);
-        assertDoesNotThrow(() -> meetingHosts.assertSlugFreeForCohost(typeB, v));
+        assertThatCode(() -> meetingHosts.assertSlugFreeForCohost(typeB, v)).doesNotThrowAnyException();
     }
 }

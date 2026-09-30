@@ -2,7 +2,6 @@ package site.asm0dey.calit.booking;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.InstanceOfAssertFactories.throwable;
 import org.junit.jupiter.api.Test;
 
 class CaptchaProviderConfigTest {
@@ -28,6 +27,6 @@ class CaptchaProviderConfigTest {
     @Test
     void invalidProviderThrows() {
         assertThatThrownBy(() -> CaptchaProviderConfig.resolve("recaptcha", false))
-            .asInstanceOf(throwable(IllegalArgumentException.class));
+            .isInstanceOf(IllegalArgumentException.class);
     }
 }

@@ -2,7 +2,7 @@ package site.asm0dey.calit.booking;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
 import io.quarkus.test.junit.QuarkusTest;
@@ -67,7 +67,7 @@ class CaptchaVerifierTurnstileTest {
 
     @Test
     void validTurnstileTokenPasses() {
-        assertDoesNotThrow(() -> verifier.verify("good", null));
+        assertThatCode(() -> verifier.verify("good", null)).doesNotThrowAnyException();
     }
 
     @Test
