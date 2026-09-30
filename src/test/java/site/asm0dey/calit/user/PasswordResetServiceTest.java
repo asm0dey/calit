@@ -1,7 +1,7 @@
 package site.asm0dey.calit.user;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -25,13 +25,13 @@ class PasswordResetServiceTest {
         var uid = newUserId();
 
         String raw = reset.issue(uid, now);
-        assertNotNull(raw);
+        assertThat(raw).isNotNull();
 
         AppUser first = reset.consume(raw, now.plusSeconds(5));
-        assertNotNull(first, "first consume returns the user");
-        assertEquals(uid, first.id);
+        assertThat(first).as("first consume returns the user").isNotNull();
+        assertThat(first.id).isEqualTo(uid);
 
-        assertNull(reset.consume(raw, now.plusSeconds(6)), "token is single-use");
+        assertThat(reset.consume(raw, now.plusSeconds(6))).as("token is single-use").isNull();
     }
 
     @Test
@@ -42,15 +42,15 @@ class PasswordResetServiceTest {
         String raw = reset.issue(uid, now);
 
         Instant tooLate = now.plus(PasswordResetService.TTL).plus(Duration.ofSeconds(1));
-        assertNull(reset.consume(raw, tooLate), "expired token is rejected");
+        assertThat(reset.consume(raw, tooLate)).as("expired token is rejected").isNull();
     }
 
     @Test
     @TestTransaction
     void unknownOrNullTokenRejected() {
         var now = Instant.parse("2026-06-12T12:00:00Z");
-        assertNull(reset.consume("not-a-real-token", now));
-        assertNull(reset.consume(null, now));
+        assertThat(reset.consume("not-a-real-token", now)).isNull();
+        assertThat(reset.consume(null, now)).isNull();
     }
 
     @Test
@@ -60,9 +60,9 @@ class PasswordResetServiceTest {
         var now = Instant.now();
         String token = reset.issue(1L, now, Duration.ofHours(48));
         // Still valid 40 minutes later (would be dead under the 30-min default).
-        assertNotNull(reset.consume(token, now.plusSeconds(40 * 60)));
+        assertThat(reset.consume(token, now.plusSeconds(40 * 60))).isNotNull();
         // A fresh token is expired just after its 48h window.
         String token2 = reset.issue(1L, now, Duration.ofHours(48));
-        assertNull(reset.consume(token2, now.plus(Duration.ofHours(48)).plusSeconds(1)));
+        assertThat(reset.consume(token2, now.plus(Duration.ofHours(48)).plusSeconds(1))).isNull();
     }
 }

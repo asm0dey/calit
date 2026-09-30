@@ -2,6 +2,7 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.restassured.response.Response;
 import jakarta.transaction.Transactional;
 import site.asm0dey.calit.domain.AvailabilityRule;
@@ -49,7 +50,7 @@ final class GuestBookingFixture {
      */
     static String manageTokenOf(Response r) {
         var m = java.util.regex.Pattern.compile("/booking/([^/\"]+)/manage").matcher(r.body().asString());
-        org.junit.jupiter.api.Assertions.assertTrue(m.find(), "confirmation page links the manage URL");
+        assertThat(m.find()).as("confirmation page links the manage URL").isTrue();
         return m.group(1);
     }
 

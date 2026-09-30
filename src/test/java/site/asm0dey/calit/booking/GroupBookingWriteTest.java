@@ -1,8 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
@@ -75,10 +74,10 @@ class GroupBookingWriteTest {
                         List.of()
         );
 
-        assertNotNull(lead.groupId);
+        assertThat(lead.groupId).isNotNull();
         List<Booking> rows = Booking.group(lead.groupId);
-        assertEquals(2, rows.size());
-        rows.forEach(r -> assertEquals(BookingStatus.CONFIRMED, r.status));
+        assertThat(rows).hasSize(2);
+        rows.forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.CONFIRMED));
         // exactly one Google event, on the creator (organizer), with both hosts + invitee as attendees
         verify(calendarPort, times(1))
             .createEvent(
@@ -93,7 +92,7 @@ class GroupBookingWriteTest {
                     any()
             );
         Booking organizerRow = Booking.leadOfGroup(lead.groupId, 1L);
-        assertEquals("evt-1", organizerRow.googleEventId);
+        assertThat(organizerRow.googleEventId).isEqualTo("evt-1");
     }
 
     @Test
@@ -144,10 +143,10 @@ class GroupBookingWriteTest {
             .filter(r -> r.ownerId == cohostId)
             .findFirst()
             .orElseThrow();
-        assertEquals("evt-1", cohostRow.googleEventId);
+        assertThat(cohostRow.googleEventId).isEqualTo("evt-1");
         Booking leadRow = Booking.leadOfGroup(lead.groupId, 1L);
-        assertEquals("https://meet/x", leadRow.meetLink);
-        assertNull(leadRow.googleEventId);
+        assertThat(leadRow.meetLink).isEqualTo("https://meet/x");
+        assertThat(leadRow.googleEventId).isNull();
     }
 
     @Test
@@ -169,10 +168,10 @@ class GroupBookingWriteTest {
                         List.of()
         );
         List<Booking> rows = Booking.group(lead.groupId);
-        assertEquals(2, rows.size());
+        assertThat(rows).hasSize(2);
         rows.forEach(r -> {
-            assertEquals(BookingStatus.PENDING, r.status);
-            assertNotNull(r.approvalToken);
+            assertThat(r.status).isEqualTo(BookingStatus.PENDING);
+            assertThat(r.approvalToken).isNotNull();
         });
         verify(calendarPort, never()).createEvent(
                 anyLong(),

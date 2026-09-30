@@ -1,7 +1,7 @@
 package site.asm0dey.calit.i18n;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -28,7 +28,7 @@ class LocaleColumnsTest {
         s.persist();
         // admin always id 1
         OwnerSettings loaded = OwnerSettings.forOwner(1L);
-        assertEquals("en", loaded.locale);
+        assertThat(loaded.locale).isEqualTo("en");
     }
 
     /**
@@ -54,7 +54,7 @@ class LocaleColumnsTest {
         var locale =
                 (String) em.createNativeQuery("SELECT locale FROM owner_settings WHERE id = 9001").getSingleResult();
 
-        assertEquals("en", locale, "DB DEFAULT 'en' must be applied when locale is omitted from INSERT");
+        assertThat(locale).as("DB DEFAULT 'en' must be applied when locale is omitted from INSERT").isEqualTo("en");
     }
 
     /**
@@ -104,6 +104,8 @@ class LocaleColumnsTest {
             .setParameter("token", manageToken)
             .getSingleResult();
 
-        assertEquals("en", locale, "DB DEFAULT 'en' must be applied when locale is omitted from booking INSERT");
+        assertThat(locale).as("DB DEFAULT 'en' must be applied when locale is omitted from booking INSERT").isEqualTo(
+                "en"
+        );
     }
 }

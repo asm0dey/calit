@@ -1,7 +1,6 @@
 package site.asm0dey.calit.google;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -30,9 +29,9 @@ class GoogleEntitiesOwnerScopeTest {
         b.googleSub = "sub-scope-3002";
         b.persist();
 
-        assertEquals("ra", GoogleCredential.forOwner(3001L).refreshToken);
-        assertEquals("rb", GoogleCredential.forOwner(3002L).refreshToken);
-        assertNull(GoogleCredential.forOwner(9999L));
+        assertThat(GoogleCredential.forOwner(3001L).refreshToken).isEqualTo("ra");
+        assertThat(GoogleCredential.forOwner(3002L).refreshToken).isEqualTo("rb");
+        assertThat(GoogleCredential.forOwner(9999L)).isNull();
     }
 
     @Test
@@ -67,10 +66,10 @@ class GoogleEntitiesOwnerScopeTest {
         b.googleCredentialId = credB.id;
         b.persist();
 
-        assertEquals(1, GoogleCalendar.readForBusy(3001L).size());
-        assertEquals("cal-a", GoogleCalendar.writeTarget(3001L).googleCalendarId);
-        assertEquals("cal-b", GoogleCalendar.writeTarget(3002L).googleCalendarId);
-        assertEquals("cal-a", GoogleCalendar.findByGoogleId(3001L, "cal-a").googleCalendarId);
-        assertNull(GoogleCalendar.findByGoogleId(3001L, "cal-b"), "other owner's calendar id -> null");
+        assertThat(GoogleCalendar.readForBusy(3001L)).hasSize(1);
+        assertThat(GoogleCalendar.writeTarget(3001L).googleCalendarId).isEqualTo("cal-a");
+        assertThat(GoogleCalendar.writeTarget(3002L).googleCalendarId).isEqualTo("cal-b");
+        assertThat(GoogleCalendar.findByGoogleId(3001L, "cal-a").googleCalendarId).isEqualTo("cal-a");
+        assertThat(GoogleCalendar.findByGoogleId(3001L, "cal-b")).as("other owner's calendar id -> null").isNull();
     }
 }

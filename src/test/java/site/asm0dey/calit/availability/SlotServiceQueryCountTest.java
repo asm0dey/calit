@@ -1,8 +1,7 @@
 package site.asm0dey.calit.availability;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -54,12 +53,10 @@ class SlotServiceQueryCountTest {
         slotService.generateRawSlots(t, FROM, FROM.plusDays(60));
         long count60 = statistics.getPrepareStatementCount();
 
-        assertTrue(count30 <= 6, "slot generation must be a small constant number of queries, was " + count30);
-        assertEquals(
-                count30,
-                count60,
-                "query count must be constant in the horizon (30d=" + count30 + ", 60d=" + count60 + ")"
-        );
+        assertThat(count30 <= 6).as("slot generation must be a small constant number of queries, was " + count30).isTrue();
+        assertThat(count60)
+            .as("query count must be constant in the horizon (30d=" + count30 + ", 60d=" + count60 + ")")
+            .isEqualTo(count30);
     }
 
     // --- helpers ---

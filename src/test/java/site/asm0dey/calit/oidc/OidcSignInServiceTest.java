@@ -1,7 +1,8 @@
 package site.asm0dey.calit.oidc;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
@@ -25,21 +26,21 @@ class OidcSignInServiceTest {
     @Transactional
     void provisionsNewUser_andGrantsAdminFromGroup() {
         AppUser u = service.resolveOrProvision(id("sub-new", "new@example.com", true, "calit-admins"));
-        assertNotNull(u.id);
-        assertEquals("sub-new", u.oidcSub);
-        assertNull(u.passwordHash);
-        assertFalse(u.isAdmin);
-        assertTrue(u.oidcAdmin);
-        assertEquals("user,admin", u.roles);
-        assertEquals("new@example.com", OwnerSettings.forOwner(u.id).ownerEmail);
+        assertThat(u.id).isNotNull();
+        assertThat(u.oidcSub).isEqualTo("sub-new");
+        assertThat(u.passwordHash).isNull();
+        assertThat(u.isAdmin).isFalse();
+        assertThat(u.oidcAdmin).isTrue();
+        assertThat(u.roles).isEqualTo("user,admin");
+        assertThat(OwnerSettings.forOwner(u.id).ownerEmail).isEqualTo("new@example.com");
     }
 
     @Test
     @Transactional
     void provisionsNewUser_withoutAdminGroup_isPlainUser() {
         AppUser u = service.resolveOrProvision(id("sub-plain", "plain@example.com", true, "some-other-group"));
-        assertFalse(u.oidcAdmin);
-        assertEquals("user", u.roles);
+        assertThat(u.oidcAdmin).isFalse();
+        assertThat(u.roles).isEqualTo("user");
     }
 
     @Test
@@ -48,8 +49,8 @@ class OidcSignInServiceTest {
         service.resolveOrProvision(id("sub-rev", "rev@example.com", true, "calit-admins"));
         // no groups now
         AppUser after = service.resolveOrProvision(id("sub-rev", "rev@example.com", true));
-        assertFalse(after.oidcAdmin);
-        assertEquals("user", after.roles);
+        assertThat(after.oidcAdmin).isFalse();
+        assertThat(after.roles).isEqualTo("user");
     }
 
     @Test
@@ -68,10 +69,10 @@ class OidcSignInServiceTest {
         s.persist();
         // OIDC login with matching verified email, but NOT in the admin group:
         AppUser linked = service.resolveOrProvision(id("sub-root", "root@example.com", true));
-        assertEquals(admin.id, linked.id, "linked to the existing account by email");
-        assertEquals("sub-root", linked.oidcSub);
-        assertTrue(linked.isAdmin, "local admin is not demoted by OIDC");
-        assertEquals("user,admin", linked.roles);
+        assertThat(linked.id).as("linked to the existing account by email").isEqualTo(admin.id);
+        assertThat(linked.oidcSub).isEqualTo("sub-root");
+        assertThat(linked.isAdmin).as("local admin is not demoted by OIDC").isTrue();
+        assertThat(linked.roles).isEqualTo("user,admin");
     }
 
     @Test
@@ -87,7 +88,7 @@ class OidcSignInServiceTest {
         s.ownerEmail = "same@example.com";
         s.persist();
         AppUser u = service.resolveOrProvision(id("sub-unv", "same@example.com", false));
-        assertNotEquals(1L, u.id, "unverified email must not auto-link");
+        assertThat(u.id).as("unverified email must not auto-link").isNotEqualTo(1L);
     }
 
     @Test
@@ -106,7 +107,9 @@ class OidcSignInServiceTest {
             s.persist();
         }
         var dup = id("sub-dup", "dup@example.com", true);
-        var ex = assertThrows(OidcSignInException.class, () -> service.resolveOrProvision(dup));
-        assertEquals(OidcSignInException.Reason.AMBIGUOUS_EMAIL, ex.reason);
+        var ex = assertThatExceptionOfType(OidcSignInException.class)
+            .isThrownBy(() -> service.resolveOrProvision(dup))
+            .actual();
+        assertThat(ex.reason).isEqualTo(OidcSignInException.Reason.AMBIGUOUS_EMAIL);
     }
 }

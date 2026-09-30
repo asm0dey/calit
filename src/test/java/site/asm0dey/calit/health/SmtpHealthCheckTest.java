@@ -1,8 +1,7 @@
 package site.asm0dey.calit.health;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.junit.jupiter.api.Test;
 
@@ -14,13 +13,13 @@ class SmtpHealthCheckTest {
         // closed port -> connection refused fast, no slow timeout
         SmtpHealthCheck c = new SmtpHealthCheck(false, Optional.of("localhost"), 2);
         HealthCheckResponse r = c.call();
-        assertEquals(HealthCheckResponse.Status.UP, r.getStatus(), "informational: always UP");
-        assertTrue(r.getData().orElseThrow().containsKey("state"));
+        assertThat(r.getStatus()).as("informational: always UP").isEqualTo(HealthCheckResponse.Status.UP);
+        assertThat(r.getData().orElseThrow()).containsKey("state");
     }
 
     @Test
     void mockedReportsUp() {
         SmtpHealthCheck c = new SmtpHealthCheck(true, Optional.empty(), 587);
-        assertEquals(HealthCheckResponse.Status.UP, c.call().getStatus());
+        assertThat(c.call().getStatus()).isEqualTo(HealthCheckResponse.Status.UP);
     }
 }

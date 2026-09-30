@@ -1,7 +1,7 @@
 package site.asm0dey.calit.notify;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -57,7 +57,7 @@ class ChannelRouterTest {
 
         List<NotificationChannel> picked = router.channelsFor(HOST_A, type.id);
 
-        assertEquals(2, picked.size());
+        assertThat(picked).hasSize(2);
     }
 
     @Test
@@ -71,8 +71,8 @@ class ChannelRouterTest {
 
         List<NotificationChannel> picked = router.channelsFor(HOST_A, type.id);
 
-        assertEquals(1, picked.size());
-        assertEquals("phone", picked.getFirst().label);
+        assertThat(picked).hasSize(1);
+        assertThat(picked.getFirst().label).isEqualTo("phone");
     }
 
     @Test
@@ -88,8 +88,8 @@ class ChannelRouterTest {
             .requiringNew()
             .run(() -> NotificationChannelMeetingType.replaceLinks(type.id, List.of(aPhone), List.of(aPhone)));
 
-        assertEquals(1, router.channelsFor(HOST_A, type.id).size(), "host A narrowed to their override");
-        assertEquals(2, router.channelsFor(HOST_B, type.id).size(), "host B still inherits all of theirs");
+        assertThat(router.channelsFor(HOST_A, type.id)).as("host A narrowed to their override").hasSize(1);
+        assertThat(router.channelsFor(HOST_B, type.id)).as("host B still inherits all of theirs").hasSize(2);
     }
 
     @Test
@@ -98,14 +98,14 @@ class ChannelRouterTest {
         MeetingType type = sharedType();
         channel(HOST_B, "b-phone");
 
-        assertTrue(router.channelsFor(HOST_A, type.id).isEmpty());
+        assertThat(router.channelsFor(HOST_A, type.id)).isEmpty();
     }
 
     @Test
     void nullMeetingTypeInheritsEverything() {
         channel(HOST_A, "phone");
 
-        assertEquals(1, router.channelsFor(HOST_A, null).size());
+        assertThat(router.channelsFor(HOST_A, null)).hasSize(1);
     }
 
     @Test
@@ -116,8 +116,8 @@ class ChannelRouterTest {
 
         List<NotificationChannel> picked = router.channelsFor(HOST_A, type.id);
 
-        assertEquals(1, picked.size());
-        assertEquals("phone", picked.getFirst().label);
+        assertThat(picked).hasSize(1);
+        assertThat(picked.getFirst().label).isEqualTo("phone");
     }
 
     @Test
@@ -131,8 +131,8 @@ class ChannelRouterTest {
 
         List<NotificationChannel> picked = router.channelsFor(HOST_A, type.id);
 
-        assertEquals(1, picked.size());
-        assertEquals("pager", picked.getFirst().label, "an explicit pick beats defaultEnabled");
+        assertThat(picked).hasSize(1);
+        assertThat(picked.getFirst().label).as("an explicit pick beats defaultEnabled").isEqualTo("pager");
     }
 
     @Test
@@ -140,6 +140,6 @@ class ChannelRouterTest {
         channel(HOST_A, "phone");
         channel(HOST_A, "pager", false);
 
-        assertEquals(1, router.channelsFor(HOST_A, null).size());
+        assertThat(router.channelsFor(HOST_A, null)).hasSize(1);
     }
 }

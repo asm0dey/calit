@@ -1,11 +1,11 @@
 package site.asm0dey.calit.user;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 
@@ -147,10 +147,10 @@ class SetupFlowTest {
 
         QuarkusTransaction.requiringNew().run(() -> {
             AppUser u = AppUser.findByUsername("boss");
-            Assertions.assertNotNull(u);
+            assertThat(u).isNotNull();
             OwnerSettings s = OwnerSettings.forOwner(u.id);
-            Assertions.assertNotNull(s, "first /setup user must get an OwnerSettings row");
-            Assertions.assertEquals("UTC", s.timezone);
+            assertThat(s).as("first /setup user must get an OwnerSettings row").isNotNull();
+            assertThat(s.timezone).isEqualTo("UTC");
         });
     }
 

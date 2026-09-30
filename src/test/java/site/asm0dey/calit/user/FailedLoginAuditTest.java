@@ -1,7 +1,8 @@
 package site.asm0dey.calit.user;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.credential.PasswordCredential;
 import io.quarkus.security.identity.request.UsernamePasswordAuthenticationRequest;
@@ -54,29 +55,32 @@ class FailedLoginAuditTest {
         u.persistAndFlush();
 
         var request = req("audit-pw", "wrong-password");
-        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(request));
+        assertThatExceptionOfType(AuthenticationFailedException.class).isThrownBy(() -> provider.authenticateBlocking(
+                request
+        ));
 
-        assertTrue(
-                recorder.events
-                    .stream()
-                    .anyMatch(e -> "login-failed".equals(e[1]) && "audit-pw".equals(e[0])),
-                "expected a login-failed audit event for the attempted username"
-        );
+        assertThat(recorder.events
+            .stream()
+            .anyMatch(e -> "login-failed".equals(e[1]) && "audit-pw".equals(e[0])))
+            .as("expected a login-failed audit event for the attempted username")
+            .isTrue();
     }
 
     @Test
     @TestTransaction
     void unknownUserEmitsLoginFailedAudit() {
         var request = req("no-such-user", "whatever");
-        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(request));
+        assertThatExceptionOfType(AuthenticationFailedException.class).isThrownBy(() -> provider.authenticateBlocking(
+                request
+        ));
 
-        assertEquals(1, recorder.events
+        assertThat(recorder.events
             .stream()
             .filter(e -> "login-failed".equals(e[1]))
-            .count());
-        assertTrue(recorder.events
+            .count()).isOne();
+        assertThat(recorder.events
             .stream()
-            .anyMatch(e -> "no-such-user".equals(e[0]) && "login-failed".equals(e[1])));
+            .anyMatch(e -> "no-such-user".equals(e[0]) && "login-failed".equals(e[1]))).isTrue();
     }
 
     @Test
@@ -87,8 +91,8 @@ class FailedLoginAuditTest {
 
         provider.authenticateBlocking(req("audit-ok", "s3cret"));
 
-        assertTrue(recorder.events
+        assertThat(recorder.events
             .stream()
-            .anyMatch(e -> "login-success".equals(e[1]) && "audit-ok".equals(e[0])));
+            .anyMatch(e -> "login-success".equals(e[1]) && "audit-ok".equals(e[0]))).isTrue();
     }
 }

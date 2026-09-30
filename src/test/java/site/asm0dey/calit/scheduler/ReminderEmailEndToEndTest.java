@@ -1,8 +1,7 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -44,18 +43,14 @@ class ReminderEmailEndToEndTest {
         scheduler.dispatchDueReminders();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            assertEquals(
-                    1,
-                    EmailOutbox.count("recipient", INVITEE_EMAIL),
-                    "invitee reminder enqueued (Google disconnected -> fallback)"
-            );
-            assertEquals(
-                    1,
-                    EmailOutbox.count("recipient", OWNER_EMAIL),
-                    "owner reminder enqueued (ownerNotificationsEnabled=true)"
-            );
+            assertThat(EmailOutbox.count("recipient", INVITEE_EMAIL))
+                .as("invitee reminder enqueued (Google disconnected -> fallback)")
+                .isOne();
+            assertThat(EmailOutbox.count("recipient", OWNER_EMAIL))
+                .as("owner reminder enqueued (ownerNotificationsEnabled=true)")
+                .isOne();
             EmailOutbox r = EmailOutbox.find("recipient", INVITEE_EMAIL).firstResult();
-            assertTrue(r.subject.toLowerCase().contains("reminder"), "subject identifies the reminder email");
+            assertThat(r.subject.toLowerCase()).as("subject identifies the reminder email").contains("reminder");
         });
 
         QuarkusTransaction.requiringNew().run(() -> {

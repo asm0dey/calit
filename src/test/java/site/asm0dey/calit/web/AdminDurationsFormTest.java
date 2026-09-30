@@ -2,10 +2,9 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static site.asm0dey.calit.domain.MeetingTypeDuration.allowedDurations;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -41,7 +40,7 @@ class AdminDurationsFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
-        assertEquals(List.of(30, 60, 120), MeetingTypeDuration.allowedDurations(t));
+        assertThat(allowedDurations(t)).containsExactly(30, 60, 120);
     }
 
     @Test
@@ -72,7 +71,7 @@ class AdminDurationsFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
-        assertEquals(List.of(30, 60), MeetingTypeDuration.allowedDurations(t));
+        assertThat(allowedDurations(t)).containsExactly(30, 60);
     }
 
     @Test
@@ -92,10 +91,10 @@ class AdminDurationsFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
-        assertEquals(List.of(60), MeetingTypeDuration.allowedDurations(t));
+        assertThat(allowedDurations(t)).containsExactly(60);
         MeetingTypeDuration savedRow = MeetingTypeDuration.findRow(id, 60);
-        assertEquals(5, savedRow.bufferBeforeMinutes);
-        assertEquals(5, savedRow.bufferAfterMinutes);
+        assertThat(savedRow.bufferBeforeMinutes).isEqualTo(5);
+        assertThat(savedRow.bufferAfterMinutes).isEqualTo(5);
         // Re-post the 60 row blank -> its buffer row is gone, but 60 stays in the allowed set
         // because the set membership comes from the type's own durationMinutes, not the row.
         given()
@@ -110,8 +109,8 @@ class AdminDurationsFormTest {
             .statusCode(200);
 
         t = MeetingType.findById(id);
-        assertEquals(List.of(60), MeetingTypeDuration.allowedDurations(t), "the default is never removable");
-        assertNull(MeetingTypeDuration.findRow(id, 60), "the buffer-override row is gone");
+        assertThat(allowedDurations(t)).as("the default is never removable").isEqualTo(List.of(60));
+        assertThat(MeetingTypeDuration.findRow(id, 60)).as("the buffer-override row is gone").isNull();
     }
 
     @Test
@@ -133,11 +132,11 @@ class AdminDurationsFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
-        assertEquals(List.of(30, 60), MeetingTypeDuration.allowedDurations(t));
+        assertThat(allowedDurations(t)).containsExactly(30, 60);
         // First occurrence wins; the second (duplicate) row is dropped rather than persisted.
         MeetingTypeDuration saved = MeetingTypeDuration.findRow(id, 30);
-        assertEquals(5, saved.bufferBeforeMinutes);
-        assertEquals(5, saved.bufferAfterMinutes);
+        assertThat(saved.bufferBeforeMinutes).isEqualTo(5);
+        assertThat(saved.bufferAfterMinutes).isEqualTo(5);
     }
 
     @Test
@@ -160,8 +159,8 @@ class AdminDurationsFormTest {
             .statusCode(200);
 
         MeetingTypeDuration savedRow = MeetingTypeDuration.findRow(id, 30);
-        assertEquals(0, savedRow.bufferBeforeMinutes);
-        assertEquals(0, savedRow.bufferAfterMinutes);
+        assertThat(savedRow.bufferBeforeMinutes).isZero();
+        assertThat(savedRow.bufferAfterMinutes).isZero();
         // Render the detail page: the 0 must show up as an explicit "0" in the input's value
         // attribute, not an empty box.
         String body = given()
@@ -173,16 +172,12 @@ class AdminDurationsFormTest {
             .extract()
             .body()
             .asString();
-        assertEquals(
-                1,
-                body.split("name=\"d\\.before\" value=\"0\"", -1).length - 1,
-                "the stored 0 buffer must render as an explicit 0, not a blank box"
-        );
-        assertEquals(
-                1,
-                body.split("name=\"d\\.after\" value=\"0\"", -1).length - 1,
-                "the stored 0 buffer must render as an explicit 0, not a blank box"
-        );
+        assertThat(body.split("name=\"d\\.before\" value=\"0\"", -1).length - 1)
+            .as("the stored 0 buffer must render as an explicit 0, not a blank box")
+            .isOne();
+        assertThat(body.split("name=\"d\\.after\" value=\"0\"", -1).length - 1)
+            .as("the stored 0 buffer must render as an explicit 0, not a blank box")
+            .isOne();
         // Re-submitting the rendered (non-blank) value must persist 0 again, not revert to null.
         given()
             .cookie("quarkus-credential", cred)
@@ -196,8 +191,8 @@ class AdminDurationsFormTest {
             .statusCode(200);
 
         MeetingTypeDuration resaved = MeetingTypeDuration.findRow(id, 30);
-        assertEquals(0, resaved.bufferBeforeMinutes, "the 0 buffer must survive the round trip");
-        assertEquals(0, resaved.bufferAfterMinutes, "the 0 buffer must survive the round trip");
+        assertThat(resaved.bufferBeforeMinutes).as("the 0 buffer must survive the round trip").isZero();
+        assertThat(resaved.bufferAfterMinutes).as("the 0 buffer must survive the round trip").isZero();
     }
 
     @Test
@@ -232,17 +227,13 @@ class AdminDurationsFormTest {
         // would assert about markup the owner can neither see nor post.
         var renderedRows = body.substring(body.indexOf("data-duration-list"), body.indexOf("data-duration-template"));
         var occurrences = renderedRows.split("name=\"d\\.duration\"", -1).length - 1;
-        assertEquals(3, occurrences, "one row per union member (30, 60) plus one empty spare");
-        assertEquals(
-                1,
-                body.split("name=\"d\\.duration\" value=\"30\"", -1).length - 1,
-                "a filled row for the added length 30"
-        );
-        assertEquals(
-                1,
-                body.split("name=\"d\\.duration\" value=\"60\"", -1).length - 1,
-                "a filled row for the implicit default 60"
-        );
+        assertThat(occurrences).as("one row per union member (30, 60) plus one empty spare").isEqualTo(3);
+        assertThat(body.split("name=\"d\\.duration\" value=\"30\"", -1).length - 1)
+            .as("a filled row for the added length 30")
+            .isOne();
+        assertThat(body.split("name=\"d\\.duration\" value=\"60\"", -1).length - 1)
+            .as("a filled row for the implicit default 60")
+            .isOne();
     }
 
     /**
@@ -265,11 +256,11 @@ class AdminDurationsFormTest {
             .body()
             .asString();
 
-        assertTrue(html.contains("data-durations"), "form must be the script's scope root");
-        assertTrue(html.contains("data-duration-list"), "rows container must be findable");
-        assertTrue(html.contains("data-duration-template"), "template to clone must be present");
-        assertTrue(html.contains("data-add-duration"), "add button must be present");
-        assertTrue(html.contains("/durations.js"), "the script must actually be loaded");
+        assertThat(html).as("form must be the script's scope root").contains("data-durations");
+        assertThat(html).as("rows container must be findable").contains("data-duration-list");
+        assertThat(html).as("template to clone must be present").contains("data-duration-template");
+        assertThat(html).as("add button must be present").contains("data-add-duration");
+        assertThat(html).as("the script must actually be loaded").contains("/durations.js");
     }
 
     /**
@@ -293,8 +284,8 @@ class AdminDurationsFormTest {
         // One row per allowed length (just the default here) plus the blank spare, and the
         // template's own row must not be counted as one of them.
         var rows = html.substring(html.indexOf("data-duration-list"), html.indexOf("data-duration-template"));
-        assertEquals(2, countOccurrences(rows, "data-duration-row"), "default row + one blank spare");
-        assertTrue(rows.contains("name=\"d.duration\" value=\"\""), "the spare row's duration must be empty");
+        assertThat(countOccurrences(rows, "data-duration-row")).as("default row + one blank spare").isEqualTo(2);
+        assertThat(rows).as("the spare row's duration must be empty").contains("name=\"d.duration\" value=\"\"");
     }
 
     private static int countOccurrences(String haystack, String needle) {
@@ -327,8 +318,8 @@ class AdminDurationsFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
-        assertEquals(120, t.durationMinutes, "the chosen row becomes the type's default");
-        assertEquals(List.of(30, 60, 120), MeetingTypeDuration.allowedDurations(t), "the old default is still offered");
+        assertThat(t.durationMinutes).as("the chosen row becomes the type's default").isEqualTo(120);
+        assertThat(allowedDurations(t)).as("the old default is still offered").isEqualTo(List.of(30, 60, 120));
     }
 
     /**
@@ -353,8 +344,8 @@ class AdminDurationsFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
-        assertEquals(90, t.durationMinutes, "a length added in this save can be the default");
-        assertEquals(List.of(60, 90), MeetingTypeDuration.allowedDurations(t));
+        assertThat(t.durationMinutes).as("a length added in this save can be the default").isEqualTo(90);
+        assertThat(allowedDurations(t)).containsExactly(60, 90);
     }
 
     /**
@@ -380,7 +371,7 @@ class AdminDurationsFormTest {
             .then()
             .statusCode(200);
 
-        assertEquals(60, ((MeetingType) MeetingType.findById(id)).durationMinutes);
+        assertThat(((MeetingType) MeetingType.findById(id)).durationMinutes).isEqualTo(60);
 
         given()
             .cookie("quarkus-credential", FormAuth.login())
@@ -398,6 +389,6 @@ class AdminDurationsFormTest {
             .then()
             .statusCode(200);
 
-        assertEquals(60, ((MeetingType) MeetingType.findById(id)).durationMinutes);
+        assertThat(((MeetingType) MeetingType.findById(id)).durationMinutes).isEqualTo(60);
     }
 }

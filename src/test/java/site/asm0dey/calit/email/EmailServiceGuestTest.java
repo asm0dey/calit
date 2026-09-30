@@ -1,7 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.mailer.Mail;
@@ -156,10 +156,10 @@ class EmailServiceGuestTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         List<Mail> toGuest = mailbox.getMailsSentTo(GUEST_EMAIL);
-        assertEquals(1, toGuest.size(), "guest always gets a calit link email");
+        assertThat(toGuest).as("guest always gets a calit link email").hasSize(1);
         String html = toGuest.getFirst().getHtml();
-        assertTrue(html.contains("13:00"), "guest copy must always be 24-hour ('auto'); got: " + html);
-        assertFalse(html.contains("1:00 PM"), "host's h12 preference must never leak to a guest; got: " + html);
+        assertThat(html).as("guest copy must always be 24-hour ('auto'); got: " + html).contains("13:00");
+        assertThat(html).as("host's h12 preference must never leak to a guest; got: " + html).doesNotContain("1:00 PM");
     }
 
     @Test
@@ -169,12 +169,12 @@ class EmailServiceGuestTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         List<Mail> toGuest = mailbox.getMailsSentTo(GUEST_EMAIL);
-        assertEquals(1, toGuest.size(), "guest always gets a calit link email");
+        assertThat(toGuest).as("guest always gets a calit link email").hasSize(1);
         Mail m = toGuest.getFirst();
-        assertTrue(m.getHtml().contains("/guest/"), "guest decline link present");
-        assertTrue(m.getHtml().contains("/decline"), "guest decline link suffix");
-        assertFalse(m.getHtml().contains("/manage"), "guest must NOT get a manage/reschedule link");
-        assertTrue(m.getAttachments().isEmpty(), "no .ics when Google connected (Google sends the invite)");
+        assertThat(m.getHtml()).as("guest decline link present").contains("/guest/");
+        assertThat(m.getHtml()).as("guest decline link suffix").contains("/decline");
+        assertThat(m.getHtml()).as("guest must NOT get a manage/reschedule link").doesNotContain("/manage");
+        assertThat(m.getAttachments()).as("no .ics when Google connected (Google sends the invite)").isEmpty();
     }
 
     @Test
@@ -185,8 +185,8 @@ class EmailServiceGuestTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         Mail m = mailbox.getMailsSentTo(GUEST_EMAIL).getFirst();
-        assertTrue(m.getHtml().contains("/decline"), "guest decline link present");
-        assertFalse(m.getAttachments().isEmpty(), "guest .ics attached when Google is the only calendar source");
+        assertThat(m.getHtml()).as("guest decline link present").contains("/decline");
+        assertThat(m.getAttachments()).as("guest .ics attached when Google is the only calendar source").isNotEmpty();
     }
 
     @Test
@@ -196,14 +196,14 @@ class EmailServiceGuestTest {
         emailService.handleApproved(new BookingApproved(bookingId));
 
         List<Mail> toGuest = mailbox.getMailsSentTo(GUEST_EMAIL);
-        assertEquals(1, toGuest.size(), "guest gets an invite on approval");
+        assertThat(toGuest).as("guest gets an invite on approval").hasSize(1);
         Mail m = toGuest.getFirst();
-        assertTrue(m.getHtml().contains("/guest/"), "guest decline link present");
-        assertTrue(m.getHtml().contains("/decline"), "guest decline link suffix");
-        assertFalse(m.getHtml().contains("/manage"), "guest must NOT get a manage/reschedule link");
-        assertTrue(m.getAttachments().isEmpty(), "no .ics when Google connected (Google sends the invite)");
+        assertThat(m.getHtml()).as("guest decline link present").contains("/guest/");
+        assertThat(m.getHtml()).as("guest decline link suffix").contains("/decline");
+        assertThat(m.getHtml()).as("guest must NOT get a manage/reschedule link").doesNotContain("/manage");
+        assertThat(m.getAttachments()).as("no .ics when Google connected (Google sends the invite)").isEmpty();
         // Approved guests reuse the confirmed subject by spec.
-        assertTrue(m.getSubject().toLowerCase().contains("confirmed"), "approved guest reuses confirmed subject");
+        assertThat(m.getSubject().toLowerCase()).as("approved guest reuses confirmed subject").contains("confirmed");
     }
 
     @Test
@@ -213,12 +213,12 @@ class EmailServiceGuestTest {
         emailService.handleRescheduled(new BookingRescheduled(bookingId, Instant.parse("2026-06-07T09:00:00Z"), false));
 
         List<Mail> toGuest = mailbox.getMailsSentTo(GUEST_EMAIL);
-        assertEquals(1, toGuest.size(), "guest gets an updated invite on reschedule");
+        assertThat(toGuest).as("guest gets an updated invite on reschedule").hasSize(1);
         Mail m = toGuest.getFirst();
-        assertTrue(m.getAttachments().isEmpty(), "no .ics when Google connected (Google sends the update)");
-        assertTrue(m.getSubject().toLowerCase().contains("reschedul"), "reschedule subject");
-        assertTrue(m.getHtml().contains("/decline"), "guest decline link present");
-        assertFalse(m.getHtml().contains("/manage"), "guest must NOT get a manage/reschedule link");
+        assertThat(m.getAttachments()).as("no .ics when Google connected (Google sends the update)").isEmpty();
+        assertThat(m.getSubject().toLowerCase()).as("reschedule subject").contains("reschedul");
+        assertThat(m.getHtml()).as("guest decline link present").contains("/decline");
+        assertThat(m.getHtml()).as("guest must NOT get a manage/reschedule link").doesNotContain("/manage");
     }
 
     @Test
@@ -227,10 +227,10 @@ class EmailServiceGuestTest {
 
         emailService.handleCancelled(new BookingCancelled(bookingId, false));
 
-        assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "active guest gets a cancellation");
+        assertThat(mailbox.getMailsSentTo(GUEST_EMAIL)).as("active guest gets a cancellation").hasSize(1);
         Mail guestMail = mailbox.getMailsSentTo(GUEST_EMAIL).getFirst();
-        assertTrue(guestMail.getSubject().toLowerCase().contains("cancel"));
-        assertTrue(guestMail.getAttachments().isEmpty(), "no .ics when Google connected (Google cancels natively)");
+        assertThat(guestMail.getSubject().toLowerCase()).contains("cancel");
+        assertThat(guestMail.getAttachments()).as("no .ics when Google connected (Google cancels natively)").isEmpty();
     }
 
     @Test
@@ -239,7 +239,7 @@ class EmailServiceGuestTest {
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
-        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL).isEmpty(), "declined guest is not an active recipient");
+        assertThat(mailbox.getMailsSentTo(GUEST_EMAIL)).as("declined guest is not an active recipient").isEmpty();
     }
 
     @Test
@@ -251,14 +251,13 @@ class EmailServiceGuestTest {
         emailService.handleGuestDeclined(new GuestDeclined(bookingId, guestId));
         // Guest gets a cancel notice; invitee gets a "guest declined, you may want to reschedule" notice.
         // Google connected -> Google natively cancels the removed guest, so calit attaches no .ics.
-        assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "departing guest gets a cancel notice");
-        assertTrue(
-                mailbox.getMailsSentTo(GUEST_EMAIL).getFirst().getAttachments().isEmpty(),
-                "no .ics when Google connected (Google cancels the removed attendee)"
-        );
+        assertThat(mailbox.getMailsSentTo(GUEST_EMAIL)).as("departing guest gets a cancel notice").hasSize(1);
+        assertThat(mailbox.getMailsSentTo(GUEST_EMAIL).getFirst().getAttachments())
+            .as("no .ics when Google connected (Google cancels the removed attendee)")
+            .isEmpty();
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
-        assertEquals(1, toInvitee.size(), "invitee notified of the decline");
-        assertTrue(toInvitee.getFirst().getHtml().contains("/manage"), "invitee notice links to reschedule");
+        assertThat(toInvitee).as("invitee notified of the decline").hasSize(1);
+        assertThat(toInvitee.getFirst().getHtml()).as("invitee notice links to reschedule").contains("/manage");
     }
 
     @Test
@@ -268,8 +267,8 @@ class EmailServiceGuestTest {
 
         emailService.handleGuestRemoved(new GuestRemoved(bookingId, guestId));
 
-        assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "removed guest gets a cancel");
-        assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL).isEmpty(), "invitee initiated removal — not notified");
+        assertThat(mailbox.getMailsSentTo(GUEST_EMAIL)).as("removed guest gets a cancel").hasSize(1);
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("invitee initiated removal — not notified").isEmpty();
     }
 
     @Test
@@ -279,8 +278,8 @@ class EmailServiceGuestTest {
 
         emailService.handleDeclined(new BookingDeclined(bookingId));
 
-        assertEquals(1, mailbox.getMailsSentTo(GUEST_EMAIL).size(), "previously-invited guest gets a cancel");
-        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL).getFirst().getSubject().toLowerCase().contains("cancel"));
+        assertThat(mailbox.getMailsSentTo(GUEST_EMAIL)).as("previously-invited guest gets a cancel").hasSize(1);
+        assertThat(mailbox.getMailsSentTo(GUEST_EMAIL).getFirst().getSubject().toLowerCase()).contains("cancel");
     }
 
     @Test
@@ -290,6 +289,6 @@ class EmailServiceGuestTest {
 
         emailService.handleDeclined(new BookingDeclined(bookingId));
 
-        assertTrue(mailbox.getMailsSentTo(GUEST_EMAIL).isEmpty(), "never-invited guest gets no cancel");
+        assertThat(mailbox.getMailsSentTo(GUEST_EMAIL)).as("never-invited guest gets no cancel").isEmpty();
     }
 }

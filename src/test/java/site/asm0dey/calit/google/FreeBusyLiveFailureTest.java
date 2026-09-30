@@ -1,7 +1,7 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -31,7 +31,7 @@ class FreeBusyLiveFailureTest {
 
         var from = Instant.now();
         var to = Instant.now().plusSeconds(86400);
-        assertThrows(CalendarUnavailableException.class, () -> port.freeBusy(1L, from, to));
+        assertThatExceptionOfType(CalendarUnavailableException.class).isThrownBy(() -> port.freeBusy(1L, from, to));
     }
 
     @Test
@@ -41,7 +41,7 @@ class FreeBusyLiveFailureTest {
 
         var from = Instant.now();
         var to = Instant.now().plusSeconds(86400);
-        assertThrows(CalendarUnavailableException.class, () -> port.freeBusy(1L, from, to));
+        assertThatExceptionOfType(CalendarUnavailableException.class).isThrownBy(() -> port.freeBusy(1L, from, to));
         // No tokenService interaction: a known-broken account short-circuits before any Google call.
         Mockito.verifyNoInteractions(tokenService);
     }

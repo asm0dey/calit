@@ -2,9 +2,8 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -57,8 +56,8 @@ class ConsentFlowTest {
             .statusCode(200);
 
         MeetingTypeHost reloaded = MeetingTypeHost.find(h.meetingTypeId, h.ownerId);
-        assertEquals(MeetingTypeHost.ACCEPTED, reloaded.status);
-        assertNull(reloaded.consentToken, "token must be cleared after accept");
+        assertThat(reloaded.status).isEqualTo(MeetingTypeHost.ACCEPTED);
+        assertThat(reloaded.consentToken).as("token must be cleared after accept").isNull();
     }
 
     @Test
@@ -76,7 +75,7 @@ class ConsentFlowTest {
             .then()
             .statusCode(200);
 
-        assertNull(MeetingTypeHost.find(typeId, ownerId), "declined row must be deleted");
+        assertThat(MeetingTypeHost.find(typeId, ownerId)).as("declined row must be deleted").isNull();
     }
 
     @Test

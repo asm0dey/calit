@@ -1,7 +1,8 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -88,7 +89,7 @@ class BookingDurationTest {
                 120
         );
 
-        assertEquals(120, Duration.between(b.startUtc, b.endUtc).toMinutes());
+        assertThat(Duration.between(b.startUtc, b.endUtc)).hasMinutes(120);
     }
 
     @Test
@@ -101,21 +102,22 @@ class BookingDurationTest {
         long before = Booking.count();
         // Resolved outside the lambda so the only call inside it that can throw is book(...) itself.
         Instant start = slot.start().toInstant();
-        assertThrows(BookingConflictException.class, () -> bookingService.book(
-                OWNER,
-                t.slug,
-                start,
-                "Ada",
-                "ada@example.test",
-                Map.of(),
-                null,
-                null,
-                null,
-                "en",
-                List.of(),
-                45
-        ));
-        assertEquals(before, Booking.count(), "a rejected duration must write no row");
+        assertThatExceptionOfType(BookingConflictException.class)
+            .isThrownBy(() -> bookingService.book(
+                    OWNER,
+                    t.slug,
+                    start,
+                    "Ada",
+                    "ada@example.test",
+                    Map.of(),
+                    null,
+                    null,
+                    null,
+                    "en",
+                    List.of(),
+                    45
+            ));
+        assertThat(Booking.count()).as("a rejected duration must write no row").isEqualTo(before);
     }
 
     @Test
@@ -139,6 +141,6 @@ class BookingDurationTest {
                 List.of()
         );
 
-        assertEquals(30, Duration.between(b.startUtc, b.endUtc).toMinutes());
+        assertThat(Duration.between(b.startUtc, b.endUtc)).hasMinutes(30);
     }
 }

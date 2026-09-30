@@ -1,7 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -50,8 +50,8 @@ class BookingGroupQueryTest {
         row(g, 1L, 0);
         // cohost
         row(g, 2L, 1);
-        assertEquals(2, Booking.group(g).size());
-        assertEquals(1L, Booking.leadOfGroup(g, 1L).ownerId);
+        assertThat(Booking.group(g)).hasSize(2);
+        assertThat(Booking.leadOfGroup(g, 1L).ownerId).isOne();
     }
 
     @Test
@@ -73,6 +73,6 @@ class BookingGroupQueryTest {
                 Instant.parse("2100-01-01T00:00:00Z")
         );
         // 2 conceptual bookings, not 3 rows
-        assertEquals(2, n);
+        assertThat(n).isEqualTo(2);
     }
 }

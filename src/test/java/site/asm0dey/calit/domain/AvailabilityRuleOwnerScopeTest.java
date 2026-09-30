@@ -1,8 +1,7 @@
 package site.asm0dey.calit.domain;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -49,9 +48,9 @@ class AvailabilityRuleOwnerScopeTest {
         typed.endTime = LocalTime.of(9, 0);
         typed.persist();
 
-        assertEquals(1, AvailabilityRule.globalForOwner(4001L, DayOfWeek.MONDAY).size());
-        assertEquals(1, AvailabilityRule.globalForOwner(4002L, DayOfWeek.MONDAY).size());
-        assertEquals(0, AvailabilityRule.globalForOwner(4001L, DayOfWeek.TUESDAY).size());
+        assertThat(AvailabilityRule.globalForOwner(4001L, DayOfWeek.MONDAY)).hasSize(1);
+        assertThat(AvailabilityRule.globalForOwner(4002L, DayOfWeek.MONDAY)).hasSize(1);
+        assertThat(AvailabilityRule.globalForOwner(4001L, DayOfWeek.TUESDAY)).hasSize(0);
     }
 
     @Test
@@ -71,8 +70,8 @@ class AvailabilityRuleOwnerScopeTest {
         b.overrideDate = day;
         b.persist();
         // No per-type override -> falls back to the OWNER's global override, never the other owner's.
-        assertEquals(a.id, DateOverride.resolve(4001L, 9999L, day).id);
-        assertEquals(b.id, DateOverride.resolve(4002L, 9999L, day).id);
-        assertNull(DateOverride.resolve(4003L, 9999L, day), "owner with no override -> null");
+        assertThat(DateOverride.resolve(4001L, 9999L, day).id).isEqualTo(a.id);
+        assertThat(DateOverride.resolve(4002L, 9999L, day).id).isEqualTo(b.id);
+        assertThat(DateOverride.resolve(4003L, 9999L, day)).as("owner with no override -> null").isNull();
     }
 }

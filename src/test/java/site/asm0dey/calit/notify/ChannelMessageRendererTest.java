@@ -1,7 +1,7 @@
 package site.asm0dey.calit.notify;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -75,9 +75,9 @@ class ChannelMessageRendererTest {
             );
             for (HostNotification n : all) {
                 var msg = renderer.render(n);
-                assertNotNull(msg.title(), n.kind() + " title in " + locale);
-                assertFalse(msg.title().isBlank(), n.kind() + " title in " + locale);
-                assertFalse(msg.body().isBlank(), n.kind() + " body in " + locale);
+                assertThat(msg.title()).as(n.kind() + " title in " + locale).isNotNull();
+                assertThat(msg.title().isBlank()).as(n.kind() + " title in " + locale).isFalse();
+                assertThat(msg.body().isBlank()).as(n.kind() + " body in " + locale).isFalse();
             }
         }
     }
@@ -85,12 +85,10 @@ class ChannelMessageRendererTest {
     @Test
     void kindIsTheWireStatusString() {
         BookingSnapshot s = snapshot();
-        assertEquals("BOOKING_REQUESTED", new HostNotification.Requested(s, host(Locale.ENGLISH)).kind());
-        assertEquals("BOOKING_CANCELLED", new HostNotification.Cancelled(s, host(Locale.ENGLISH), true).kind());
-        assertEquals(
-                "HOST_CONSENT_REQUESTED",
-                new HostNotification.ConsentRequested(s.meetingType(), host(Locale.ENGLISH), "t").kind()
-        );
+        assertThat(new HostNotification.Requested(s, host(Locale.ENGLISH)).kind()).isEqualTo("BOOKING_REQUESTED");
+        assertThat(new HostNotification.Cancelled(s, host(Locale.ENGLISH), true).kind()).isEqualTo("BOOKING_CANCELLED");
+        assertThat(new HostNotification.ConsentRequested(s.meetingType(), host(Locale.ENGLISH), "t").kind())
+            .isEqualTo("HOST_CONSENT_REQUESTED");
     }
 
     @Test
@@ -99,7 +97,7 @@ class ChannelMessageRendererTest {
         var msg = renderer.render(
                 new HostNotification.Rescheduled(s, host(Locale.ENGLISH), Instant.parse("2026-06-07T09:00:00Z"), false)
         );
-        assertTrue(msg.body().contains("→"), "rescheduled body shows old → new: " + msg.body());
+        assertThat(msg.body()).as("rescheduled body shows old → new: " + msg.body()).contains("→");
     }
 
     @Test
@@ -107,6 +105,6 @@ class ChannelMessageRendererTest {
         BookingSnapshot s = snapshot();
         var msg =
                 renderer.render(new HostNotification.ConsentRequested(s.meetingType(), host(Locale.ENGLISH), "abc-123"));
-        assertTrue(msg.body().contains("/consent/abc-123"), msg.body());
+        assertThat(msg.body()).as(msg.body()).contains("/consent/abc-123");
     }
 }

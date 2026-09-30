@@ -1,8 +1,7 @@
 package site.asm0dey.calit.domain;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -24,8 +23,8 @@ class WriteTargetOverrideColumnsTest {
         t.persistAndFlush();
 
         MeetingType loaded = MeetingType.findById(t.id);
-        assertEquals(cred.id, loaded.googleCredentialId);
-        assertEquals("work@example.com", loaded.googleCalendarId);
+        assertThat(loaded.googleCredentialId).isEqualTo(cred.id);
+        assertThat(loaded.googleCalendarId).isEqualTo("work@example.com");
     }
 
     @Test
@@ -35,8 +34,8 @@ class WriteTargetOverrideColumnsTest {
         t.persistAndFlush();
 
         MeetingType loaded = MeetingType.findById(t.id);
-        assertNull(loaded.googleCredentialId);
-        assertNull(loaded.googleCalendarId);
+        assertThat(loaded.googleCredentialId).isNull();
+        assertThat(loaded.googleCalendarId).isNull();
     }
 
     @Test
@@ -51,8 +50,8 @@ class WriteTargetOverrideColumnsTest {
         h.persistAndFlush();
 
         MeetingTypeHost loaded = MeetingTypeHost.findById(h.id);
-        assertEquals(cred.id, loaded.googleCredentialId);
-        assertEquals("cohost@example.com", loaded.googleCalendarId);
+        assertThat(loaded.googleCredentialId).isEqualTo(cred.id);
+        assertThat(loaded.googleCalendarId).isEqualTo("cohost@example.com");
     }
 
     @Test
@@ -66,10 +65,10 @@ class WriteTargetOverrideColumnsTest {
         c.summary = "Work";
         c.persistAndFlush();
 
-        assertEquals(c.id, GoogleCalendar.findOwned(1L, cred.id, "work@example.com").id);
-        assertNull(GoogleCalendar.findOwned(1L, cred.id, "other@example.com"));
-        assertNull(GoogleCalendar.findOwned(2L, cred.id, "work@example.com"));
-        assertNull(GoogleCalendar.findOwned(1L, 999_999L, "work@example.com"));
+        assertThat(GoogleCalendar.findOwned(1L, cred.id, "work@example.com").id).isEqualTo(c.id);
+        assertThat(GoogleCalendar.findOwned(1L, cred.id, "other@example.com")).isNull();
+        assertThat(GoogleCalendar.findOwned(2L, cred.id, "work@example.com")).isNull();
+        assertThat(GoogleCalendar.findOwned(1L, 999_999L, "work@example.com")).isNull();
     }
 
     private static GoogleCredential seedCredential(String sub) {

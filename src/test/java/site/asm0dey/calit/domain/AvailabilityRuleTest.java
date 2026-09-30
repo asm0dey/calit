@@ -1,8 +1,7 @@
 package site.asm0dey.calit.domain;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -29,11 +28,11 @@ class AvailabilityRuleTest {
         List<AvailabilityRule> globals = AvailabilityRule.globalForOwner(1L, DayOfWeek.MONDAY);
         List<AvailabilityRule> typedRules = AvailabilityRule.forMeetingType(1L, type.id, DayOfWeek.MONDAY);
 
-        assertEquals(1, globals.size());
-        assertEquals(LocalTime.of(9, 0), globals.getFirst().startTime);
-        assertEquals(1, typedRules.size());
-        assertEquals(LocalTime.of(13, 0), typedRules.getFirst().startTime);
-        assertTrue(AvailabilityRule.forMeetingType(1L, type.id, DayOfWeek.TUESDAY).isEmpty());
+        assertThat(globals).hasSize(1);
+        assertThat(globals.getFirst().startTime).isEqualTo(LocalTime.of(9, 0));
+        assertThat(typedRules).hasSize(1);
+        assertThat(typedRules.getFirst().startTime).isEqualTo(LocalTime.of(13, 0));
+        assertThat(AvailabilityRule.forMeetingType(1L, type.id, DayOfWeek.TUESDAY)).isEmpty();
     }
 
     private AvailabilityRule rule(DayOfWeek dow, String start, String end, Long meetingTypeId) {

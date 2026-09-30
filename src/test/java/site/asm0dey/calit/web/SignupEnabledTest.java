@@ -1,8 +1,8 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
@@ -30,14 +30,14 @@ class SignupEnabledTest {
             // -> /login
             .statusCode(303);
         AppUser grace = AppUser.findByUsername("grace");
-        assertNotNull(grace);
+        assertThat(grace).isNotNull();
         // self-chosen password → no forced reset
-        assertFalse(grace.mustChangePassword);
+        assertThat(grace.mustChangePassword).isFalse();
         // still must do the settings wizard
-        assertFalse(grace.settingsComplete);
-        assertTrue(grace.enabled);
-        assertFalse(grace.isAdmin);
-        assertEquals("user", grace.roles);
+        assertThat(grace.settingsComplete).isFalse();
+        assertThat(grace.enabled).isTrue();
+        assertThat(grace.isAdmin).isFalse();
+        assertThat(grace.roles).isEqualTo("user");
     }
 
     @Test
@@ -58,10 +58,10 @@ class SignupEnabledTest {
 
         AppUser heidi = AppUser.findByUsername("heidi");
         var settings = site.asm0dey.calit.domain.OwnerSettings.forOwner(heidi.id);
-        assertNotNull(settings, "a /signup user must have an owner_settings row immediately");
-        assertEquals("UTC", settings.timezone);
-        assertEquals("", settings.ownerName);
-        assertEquals("", settings.ownerEmail);
+        assertThat(settings).as("a /signup user must have an owner_settings row immediately").isNotNull();
+        assertThat(settings.timezone).isEqualTo("UTC");
+        assertThat(settings.ownerName).isEmpty();
+        assertThat(settings.ownerEmail).isEmpty();
     }
 
     @Test
@@ -72,7 +72,7 @@ class SignupEnabledTest {
                 request.formParam("password", password);
             }
             request.when().post("/signup").then().statusCode(200).body(containsString("Enter a password."));
-            assertNull(AppUser.findByUsername("ivan"));
+            assertThat(AppUser.findByUsername("ivan")).isNull();
         }
     }
 
@@ -88,7 +88,7 @@ class SignupEnabledTest {
             .then()
             .statusCode(200)
             .body(containsString("invalid, reserved, or already taken"));
-        assertNull(AppUser.findByUsername("api"));
+        assertThat(AppUser.findByUsername("api")).isNull();
     }
 
     @Test
@@ -104,6 +104,6 @@ class SignupEnabledTest {
             .then()
             .statusCode(200)
             .body(containsString("Dieser Benutzername kann nicht verwendet werden"));
-        assertNull(AppUser.findByUsername("api"));
+        assertThat(AppUser.findByUsername("api")).isNull();
     }
 }

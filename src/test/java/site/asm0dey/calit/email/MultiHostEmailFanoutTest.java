@@ -1,7 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.mailer.Mail;
@@ -95,10 +95,10 @@ class MultiHostEmailFanoutTest {
 
         emailService.handleConfirmed(new BookingConfirmed(leadId));
 
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(), "invitee gets exactly one copy");
-        assertEquals(1, mailbox.getMailsSentTo("Creator@x.com").size(), "creator host gets one copy");
-        assertEquals(1, mailbox.getMailsSentTo("Cohost@x.com").size(), "co-host gets one copy");
-        assertEquals(3, mailbox.getTotalMessagesSent(), "no duplicate invitee mail, no missed host");
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("invitee gets exactly one copy").hasSize(1);
+        assertThat(mailbox.getMailsSentTo("Creator@x.com")).as("creator host gets one copy").hasSize(1);
+        assertThat(mailbox.getMailsSentTo("Cohost@x.com")).as("co-host gets one copy").hasSize(1);
+        assertThat(mailbox.getTotalMessagesSent()).as("no duplicate invitee mail, no missed host").isEqualTo(3);
     }
 
     @Test
@@ -115,14 +115,12 @@ class MultiHostEmailFanoutTest {
 
         emailService.handleRequested(new BookingRequested(leadId));
 
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(), "invitee gets exactly one copy");
-        assertEquals(1, mailbox.getMailsSentTo("Creator@x.com").size(), "creator host gets the approval mail");
-        assertEquals(
-                1,
-                mailbox.getMailsSentTo("Cohost@x.com").size(),
-                "opted-out co-host still gets the approval-needed mail (actionable, not suppressible)"
-        );
-        assertEquals(3, mailbox.getTotalMessagesSent());
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("invitee gets exactly one copy").hasSize(1);
+        assertThat(mailbox.getMailsSentTo("Creator@x.com")).as("creator host gets the approval mail").hasSize(1);
+        assertThat(mailbox.getMailsSentTo("Cohost@x.com"))
+            .as("opted-out co-host still gets the approval-needed mail (actionable, not suppressible)")
+            .hasSize(1);
+        assertThat(mailbox.getTotalMessagesSent()).isEqualTo(3);
         // Each host's mail must link to THEIR OWN group row (id + approvalToken), never the lead's --
         // a regression that hands every host the lead's token would still contain "/me/bookings/"
         // (weak substring check) but must fail this exact-link assertion.
@@ -149,15 +147,14 @@ class MultiHostEmailFanoutTest {
 
         Mail cohostMail = mailbox.getMailsSentTo("Cohost@x.com").getFirst();
         var cohostExpectedLink = "/me/bookings/" + cohostRow.id() + "/approve?t=" + cohostRow.approvalToken();
-        assertTrue(cohostMail.getHtml().contains(cohostExpectedLink), "carries this host's OWN approve link");
-        assertFalse(
-                cohostMail.getHtml().contains("/me/bookings/" + leadRow.id() + "/approve?t="),
-                "must NOT carry the lead's approve link"
-        );
+        assertThat(cohostMail.getHtml()).as("carries this host's OWN approve link").contains(cohostExpectedLink);
+        assertThat(cohostMail.getHtml())
+            .as("must NOT carry the lead's approve link")
+            .doesNotContain("/me/bookings/" + leadRow.id() + "/approve?t=");
 
         Mail creatorMail = mailbox.getMailsSentTo("Creator@x.com").getFirst();
         var leadExpectedLink = "/me/bookings/" + leadRow.id() + "/approve?t=" + leadRow.approvalToken();
-        assertTrue(creatorMail.getHtml().contains(leadExpectedLink), "lead host gets their own approve link too");
+        assertThat(creatorMail.getHtml()).as("lead host gets their own approve link too").contains(leadExpectedLink);
     }
 
     @Test
@@ -181,14 +178,13 @@ class MultiHostEmailFanoutTest {
         // seedGroup starts the booking at 2026-06-08T09:00:00Z; with both hosts on UTC that's
         // 09:00 local -> 24h renders "09:00", 12h renders "9:00 AM".
         String leadHtml = mailbox.getMailsSentTo("Creator@x.com").getFirst().getHtml();
-        assertTrue(leadHtml.contains("9:00 AM"), "lead host chose h12; got: " + leadHtml);
+        assertThat(leadHtml).as("lead host chose h12; got: " + leadHtml).contains("9:00 AM");
 
         String cohostHtml = mailbox.getMailsSentTo("Cohost@x.com").getFirst().getHtml();
-        assertTrue(cohostHtml.contains("09:00"), "co-host chose auto (24h); got: " + cohostHtml);
-        assertFalse(
-                cohostHtml.contains("9:00 AM"),
-                "lead host's h12 preference must not leak into the co-host's copy; got: " + cohostHtml
-        );
+        assertThat(cohostHtml).as("co-host chose auto (24h); got: " + cohostHtml).contains("09:00");
+        assertThat(cohostHtml)
+            .as("lead host's h12 preference must not leak into the co-host's copy; got: " + cohostHtml)
+            .doesNotContain("9:00 AM");
     }
 
     @Test
@@ -198,7 +194,7 @@ class MultiHostEmailFanoutTest {
         emailService.handleHostConsent(new HostConsentRequested(type.id, COHOST_ID, "tok-123"));
 
         List<Mail> toCohost = mailbox.getMailsSentTo("Cohost@x.com");
-        assertEquals(1, toCohost.size(), "exactly one consent mail to the co-host");
-        assertTrue(toCohost.getFirst().getHtml().contains("/consent/tok-123"), "carries the one-click consent link");
+        assertThat(toCohost).as("exactly one consent mail to the co-host").hasSize(1);
+        assertThat(toCohost.getFirst().getHtml()).as("carries the one-click consent link").contains("/consent/tok-123");
     }
 }

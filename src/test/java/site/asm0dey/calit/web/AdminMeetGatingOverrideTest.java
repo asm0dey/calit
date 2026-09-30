@@ -2,6 +2,7 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -50,7 +51,7 @@ class AdminMeetGatingOverrideTest {
             .body(containsString("create Google Meet links"));
 
         MeetingType t = MeetingType.findById(typeId);
-        org.junit.jupiter.api.Assertions.assertEquals(MeetingType.LocationType.PHONE, t.locationType);
+        assertThat(t.locationType).isEqualTo(MeetingType.LocationType.PHONE);
     }
 
     /**
@@ -87,12 +88,10 @@ class AdminMeetGatingOverrideTest {
             .body(containsString("create Google Meet links"));
 
         MeetingType t = reload(typeId);
-        org.junit.jupiter.api.Assertions.assertEquals(
-                "override@example.com",
-                t.googleCalendarId,
-                "the write-calendar move must roll back with the save that was refused"
-        );
-        org.junit.jupiter.api.Assertions.assertEquals(MeetingType.LocationType.PHONE, t.locationType);
+        assertThat(t.googleCalendarId)
+            .as("the write-calendar move must roll back with the save that was refused")
+            .isEqualTo("override@example.com");
+        assertThat(t.locationType).isEqualTo(MeetingType.LocationType.PHONE);
     }
 
     /**

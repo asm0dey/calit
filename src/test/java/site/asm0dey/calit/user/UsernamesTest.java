@@ -1,41 +1,43 @@
 package site.asm0dey.calit.user;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.InstanceOfAssertFactories.throwable;
 import org.junit.jupiter.api.Test;
 
 class UsernamesTest {
     @Test
     void normalizeTrimsAndLowercases() {
-        assertEquals("alice", Usernames.normalize("  Alice "));
-        assertEquals("bob-smith", Usernames.normalize("Bob-Smith"));
+        assertThat(Usernames.normalize("  Alice ")).isEqualTo("alice");
+        assertThat(Usernames.normalize("Bob-Smith")).isEqualTo("bob-smith");
     }
 
     @Test
     void isValidAcceptsGoodHandles() {
-        assertTrue(Usernames.isValid("ab"));
-        assertTrue(Usernames.isValid("a1"));
-        assertTrue(Usernames.isValid("bob-smith"));
-        assertTrue(Usernames.isValid("a-b-c-1-2"));
+        assertThat(Usernames.isValid("ab")).isTrue();
+        assertThat(Usernames.isValid("a1")).isTrue();
+        assertThat(Usernames.isValid("bob-smith")).isTrue();
+        assertThat(Usernames.isValid("a-b-c-1-2")).isTrue();
     }
 
     @Test
     void isValidRejectsBadHandles() {
         // too short
-        assertFalse(Usernames.isValid("a"));
+        assertThat(Usernames.isValid("a")).isFalse();
         // leading hyphen
-        assertFalse(Usernames.isValid("-bob"));
+        assertThat(Usernames.isValid("-bob")).isFalse();
         // trailing hyphen
-        assertFalse(Usernames.isValid("bob-"));
+        assertThat(Usernames.isValid("bob-")).isFalse();
         // double hyphen
-        assertFalse(Usernames.isValid("bob--smith"));
+        assertThat(Usernames.isValid("bob--smith")).isFalse();
         // uppercase
-        assertFalse(Usernames.isValid("Bob"));
+        assertThat(Usernames.isValid("Bob")).isFalse();
         // underscore
-        assertFalse(Usernames.isValid("bob_smith"));
+        assertThat(Usernames.isValid("bob_smith")).isFalse();
         // too long
-        assertFalse(Usernames.isValid("a".repeat(65)));
-        assertFalse(Usernames.isValid(""));
-        assertFalse(Usernames.isValid(null));
+        assertThat(Usernames.isValid("a".repeat(65))).isFalse();
+        assertThat(Usernames.isValid("")).isFalse();
+        assertThat(Usernames.isValid(null)).isFalse();
     }
 
     @Test
@@ -56,20 +58,23 @@ class UsernamesTest {
                 "privacy",
                 "terms"
         }) {
-            assertTrue(Usernames.isReserved(w), w + " should be reserved");
+            assertThat(Usernames.isReserved(w)).as(w + " should be reserved").isTrue();
         }
-        assertFalse(Usernames.isReserved("alice"));
+        assertThat(Usernames.isReserved("alice")).isFalse();
     }
 
     @Test
     void validateNewReturnsNormalizedWhenFree() {
-        assertEquals("alice", Usernames.validateNew("  Alice ", u -> false));
+        assertThat(Usernames.validateNew("  Alice ", u -> false)).isEqualTo("alice");
     }
 
     @Test
     void validateNewThrowsOnInvalidReservedOrTaken() {
-        assertThrows(IllegalArgumentException.class, () -> Usernames.validateNew("a", u -> false));
-        assertThrows(IllegalArgumentException.class, () -> Usernames.validateNew("Login", u -> false));
-        assertThrows(IllegalArgumentException.class, () -> Usernames.validateNew("alice", u -> true));
+        assertThatThrownBy(() -> Usernames.validateNew("a", u -> false))
+            .asInstanceOf(throwable(IllegalArgumentException.class));
+        assertThatThrownBy(() -> Usernames.validateNew("Login", u -> false))
+            .asInstanceOf(throwable(IllegalArgumentException.class));
+        assertThatThrownBy(() -> Usernames.validateNew("alice", u -> true))
+            .asInstanceOf(throwable(IllegalArgumentException.class));
     }
 }

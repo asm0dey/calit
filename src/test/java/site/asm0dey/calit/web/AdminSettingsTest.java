@@ -1,8 +1,8 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -58,10 +58,7 @@ class AdminSettingsTest {
             .body(containsString("New Owner"))
             .body(containsString("Europe/Berlin"));
 
-        org.junit.jupiter.api.Assertions.assertFalse(
-                readNotificationsEnabled(),
-                "omitting the notify checkbox must turn owner notifications OFF"
-        );
+        assertThat(readNotificationsEnabled()).as("omitting the notify checkbox must turn owner notifications OFF").isFalse();
         // Now save with it ON and assert it flips back to true.
         given()
             .cookie("quarkus-credential", FormAuth.login())
@@ -75,7 +72,7 @@ class AdminSettingsTest {
             .then()
             .statusCode(200);
 
-        org.junit.jupiter.api.Assertions.assertTrue(readNotificationsEnabled());
+        assertThat(readNotificationsEnabled()).isTrue();
     }
 
     /**
@@ -124,8 +121,8 @@ class AdminSettingsTest {
             }
             request.when().post("/me/settings").then().statusCode(200).body(containsString(c[2]));
             var after = readSettings();
-            assertEquals("Good Owner", after.ownerName);
-            assertEquals("good@example.com", after.ownerEmail);
+            assertThat(after.ownerName).isEqualTo("Good Owner");
+            assertThat(after.ownerEmail).isEqualTo("good@example.com");
         }
     }
 
@@ -146,11 +143,7 @@ class AdminSettingsTest {
             .then()
             .statusCode(200);
 
-        org.junit.jupiter.api.Assertions.assertEquals(
-                "UTC",
-                readTimezone(),
-                "an unknown zone id must be coerced, not stored"
-        );
+        assertThat(readTimezone()).as("an unknown zone id must be coerced, not stored").isEqualTo("UTC");
         // And the owner's own /me pages still render (they call ZoneId.of on this value).
         given().cookie("quarkus-credential", FormAuth.login()).when().get("/me").then().statusCode(200);
     }
@@ -207,10 +200,6 @@ class AdminSettingsTest {
             .then()
             .statusCode(200);
 
-        org.junit.jupiter.api.Assertions.assertEquals(
-                expected,
-                readRetentionDays(),
-                "posting bookingRetentionDays=\"" + posted + "\""
-        );
+        assertThat(readRetentionDays()).as("posting bookingRetentionDays=\"" + posted + "\"").isEqualTo(expected);
     }
 }

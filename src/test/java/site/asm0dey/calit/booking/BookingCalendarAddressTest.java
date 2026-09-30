@@ -1,8 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -51,8 +50,8 @@ class BookingCalendarAddressTest {
         b.persistAndFlush();
 
         Booking loaded = Booking.findById(b.id);
-        assertEquals("work@example.com", loaded.calendarRef().googleCalendarId());
-        assertEquals(cred.id, loaded.calendarRef().credentialId());
+        assertThat(loaded.calendarRef().googleCalendarId()).isEqualTo("work@example.com");
+        assertThat(loaded.calendarRef().credentialId()).isEqualTo(cred.id);
     }
 
     @Test
@@ -61,7 +60,7 @@ class BookingCalendarAddressTest {
         Booking b = seed();
         b.persistAndFlush();
 
-        assertNull(Booking.<Booking>findById(b.id).calendarRef());
+        assertThat(Booking.<Booking>findById(b.id).calendarRef()).isNull();
     }
 
     @Test
@@ -74,8 +73,8 @@ class BookingCalendarAddressTest {
         Booking booked = bookAnySlot("addr-created");
 
         Booking loaded = Booking.findById(booked.id);
-        assertEquals("work@example.com", loaded.googleCalendarId);
-        assertEquals(cred.id, loaded.googleCredentialId);
+        assertThat(loaded.googleCalendarId).isEqualTo("work@example.com");
+        assertThat(loaded.googleCredentialId).isEqualTo(cred.id);
     }
 
     @Test
@@ -122,10 +121,10 @@ class BookingCalendarAddressTest {
         verify(calendarPort).deleteEvent(booked.ownerId, ref, "evt-resched");
 
         Booking loaded = Booking.findById(booked.id);
-        assertEquals(BookingStatus.PENDING, loaded.status);
-        assertNull(loaded.googleEventId);
-        assertNull(loaded.googleCalendarId);
-        assertNull(loaded.googleCredentialId);
+        assertThat(loaded.status).isEqualTo(BookingStatus.PENDING);
+        assertThat(loaded.googleEventId).isNull();
+        assertThat(loaded.googleCalendarId).isNull();
+        assertThat(loaded.googleCredentialId).isNull();
     }
 
     @Test

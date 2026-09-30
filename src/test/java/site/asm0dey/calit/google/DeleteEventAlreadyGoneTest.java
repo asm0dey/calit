@@ -1,9 +1,9 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -72,7 +72,7 @@ class DeleteEventAlreadyGoneTest {
 
     @Test
     @Transactional
-    void goneEventIsTreatedAsDeleted() throws IOException {
+    void goneEventIsTreatedAsDeleted() throws Exception {
         seedWriteTarget("sub-gone");
         var port = portThatFailsWith(status(410, "Gone"));
 
@@ -81,7 +81,7 @@ class DeleteEventAlreadyGoneTest {
 
     @Test
     @Transactional
-    void missingEventIsTreatedAsDeleted() throws IOException {
+    void missingEventIsTreatedAsDeleted() throws Exception {
         seedWriteTarget("sub-missing");
         var port = portThatFailsWith(status(404, "Not Found"));
 
@@ -90,21 +90,25 @@ class DeleteEventAlreadyGoneTest {
 
     @Test
     @Transactional
-    void otherGoogleFailuresStillThrow() throws IOException {
+    void otherGoogleFailuresStillThrow() throws Exception {
         seedWriteTarget("sub-boom");
         var port = portThatFailsWith(status(500, "Internal Server Error"));
 
-        var thrown = assertThrows(UncheckedIOException.class, () -> port.deleteEvent(1L, null, "evt-boom"));
-        assertEquals("deleteEvent failed", thrown.getMessage());
+        var thrown = assertThatExceptionOfType(UncheckedIOException.class)
+            .isThrownBy(() -> port.deleteEvent(1L, null, "evt-boom"))
+            .actual();
+        assertThat(thrown.getMessage()).isEqualTo("deleteEvent failed");
     }
 
     @Test
     @Transactional
-    void plainIoErrorStillThrows() throws IOException {
+    void plainIoErrorStillThrows() throws Exception {
         seedWriteTarget("sub-timeout");
         var port = portThatFailsWith(new IOException("connect timed out"));
 
-        var thrown = assertThrows(UncheckedIOException.class, () -> port.deleteEvent(1L, null, "evt-timeout"));
-        assertEquals("connect timed out", thrown.getCause().getMessage());
+        var thrown = assertThatExceptionOfType(UncheckedIOException.class)
+            .isThrownBy(() -> port.deleteEvent(1L, null, "evt-timeout"))
+            .actual();
+        assertThat(thrown.getCause().getMessage()).isEqualTo("connect timed out");
     }
 }

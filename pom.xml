@@ -27,6 +27,7 @@
     <quarkus.platform.version>3.39.5</quarkus.platform.version>
     <surefire-plugin.version>3.6.0</surefire-plugin.version>
     <sonar-maven-plugin.version>5.8.0.7211</sonar-maven-plugin.version>
+    <assertj.version>3.27.7</assertj.version>
 
     <!-- SonarQube Cloud analysis (CI-based, via sonar-maven-plugin). The Maven scanner does
          NOT read sonar-project.properties; all analysis parameters live here. -->
@@ -112,6 +113,12 @@
     </dependency>
 
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-junit5</artifactId><scope>test</scope></dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>${assertj.version}</version>
+      <scope>test</scope>
+    </dependency>
     <!-- Code coverage: Quarkus-native JaCoCo (test-time instrumentation; writes target/jacoco-report/jacoco.xml
          consumed by SonarQube). Uses Quarkus's own agent wiring, so the reuseForks argLine is untouched.
          Only instruments code reached through a booted @QuarkusTest; plain-JUnit tests that construct

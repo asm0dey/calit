@@ -1,6 +1,6 @@
 package site.asm0dey.calit.domain;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -18,11 +18,11 @@ class MeetingTypeExtensionsTest {
         t.persist();
 
         MeetingType loaded = MeetingType.findBySlug(1L, "mt-ext-defaults");
-        assertEquals(0, loaded.minNoticeMinutes);
-        assertEquals(60, loaded.horizonDays);
-        assertEquals(MeetingType.LocationType.GOOGLE_MEET, loaded.locationType);
-        assertNull(loaded.locationDetail);
-        assertFalse(loaded.requiresApproval);
+        assertThat(loaded.minNoticeMinutes).isZero();
+        assertThat(loaded.horizonDays).isEqualTo(60);
+        assertThat(loaded.locationType).isEqualTo(MeetingType.LocationType.GOOGLE_MEET);
+        assertThat(loaded.locationDetail).isNull();
+        assertThat(loaded.requiresApproval).isFalse();
     }
 
     @Test
@@ -41,10 +41,10 @@ class MeetingTypeExtensionsTest {
         t.persist();
 
         MeetingType loaded = MeetingType.findBySlug(1L, "mt-ext-phone");
-        assertEquals(120, loaded.minNoticeMinutes);
-        assertEquals(14, loaded.horizonDays);
-        assertEquals(MeetingType.LocationType.PHONE, loaded.locationType);
-        assertEquals("+31 6 1234 5678", loaded.locationDetail);
-        assertTrue(loaded.requiresApproval);
+        assertThat(loaded.minNoticeMinutes).isEqualTo(120);
+        assertThat(loaded.horizonDays).isEqualTo(14);
+        assertThat(loaded.locationType).isEqualTo(MeetingType.LocationType.PHONE);
+        assertThat(loaded.locationDetail).isEqualTo("+31 6 1234 5678");
+        assertThat(loaded.requiresApproval).isTrue();
     }
 }

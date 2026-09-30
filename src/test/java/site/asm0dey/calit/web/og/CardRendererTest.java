@@ -2,10 +2,7 @@ package site.asm0dey.calit.web.og;
 
 import module java.base;
 import module java.desktop;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 class CardRendererTest {
@@ -18,10 +15,10 @@ class CardRendererTest {
     @Test
     void rendersA1200x630Png() throws Exception {
         byte[] png = RENDERER.render(new CardRenderer.Card("Ada Lovelace", "Coffee chat", "30 min"));
-        assertArrayEquals(new byte[] {(byte) 0x89, 'P', 'N', 'G'}, java.util.Arrays.copyOf(png, 4));
+        assertThat(java.util.Arrays.copyOf(png, 4)).containsExactly(new byte[] {(byte) 0x89, 'P', 'N', 'G'});
         var img = decode(png);
-        assertEquals(1200, img.getWidth());
-        assertEquals(630, img.getHeight());
+        assertThat(img.getWidth()).isEqualTo(1200);
+        assertThat(img.getHeight()).isEqualTo(630);
     }
 
     @Test
@@ -36,15 +33,15 @@ class CardRendererTest {
                 }
             }
         }
-        assertTrue(dark > 2000, "expected text inside the safe square, found " + dark + " dark pixels");
+        assertThat(dark > 2000).as("expected text inside the safe square, found " + dark + " dark pixels").isTrue();
     }
 
     @Test
     void keepsDecorationOutOfTheSafeSquare() throws Exception {
         BufferedImage img = decode(RENDERER.render(new CardRenderer.Card("Ada", "Coffee chat", "30 min")));
         // The indigo flanks live only outside the safe square.
-        assertEquals(img.getRGB(20, 315), img.getRGB(1180, 315), "flanks should be symmetric");
-        assertTrue((img.getRGB(300, 20) & 0xFFFFFF) > 0xE0E0E0, "safe square top should be background");
+        assertThat(img.getRGB(1180, 315)).as("flanks should be symmetric").isEqualTo(img.getRGB(20, 315));
+        assertThat((img.getRGB(300, 20) & 0xFFFFFF) > 0xE0E0E0).as("safe square top should be background").isTrue();
     }
 
     @Test
@@ -56,14 +53,14 @@ class CardRendererTest {
                         "15, 30 or 60 min"
                 )
         );
-        assertEquals(1200, decode(png).getWidth());
+        assertThat(decode(png).getWidth()).isEqualTo(1200);
     }
 
     @Test
     void reportsUnrenderableText() {
-        assertTrue(RENDERER.renderable(new CardRenderer.Card("Ada", "Coffee chat", "30 min")));
-        assertTrue(RENDERER.renderable(new CardRenderer.Card("דנה כהן", "פגישת היכרות", "30 דק׳")));
-        assertFalse(RENDERER.renderable(new CardRenderer.Card("Ada", "コーヒーチャット", "30 min")));
+        assertThat(RENDERER.renderable(new CardRenderer.Card("Ada", "Coffee chat", "30 min"))).isTrue();
+        assertThat(RENDERER.renderable(new CardRenderer.Card("דנה כהן", "פגישת היכרות", "30 דק׳"))).isTrue();
+        assertThat(RENDERER.renderable(new CardRenderer.Card("Ada", "コーヒーチャット", "30 min"))).isFalse();
     }
 
     @Test
@@ -71,14 +68,14 @@ class CardRendererTest {
         // TextRuns.split("", ...) returns an empty run list, so fitHeadline/render has nothing to
         // index into (line.getFirst() throws NoSuchElementException) -- renderable() must reject a
         // blank type name so the resource falls back to the product card instead of crashing.
-        assertFalse(RENDERER.renderable(new CardRenderer.Card("Ada", "", "30 min")));
-        assertFalse(RENDERER.renderable(new CardRenderer.Card("Ada", null, "30 min")));
-        assertFalse(RENDERER.renderable(new CardRenderer.Card("Ada", "   ", "30 min")));
+        assertThat(RENDERER.renderable(new CardRenderer.Card("Ada", "", "30 min"))).isFalse();
+        assertThat(RENDERER.renderable(new CardRenderer.Card("Ada", null, "30 min"))).isFalse();
+        assertThat(RENDERER.renderable(new CardRenderer.Card("Ada", "   ", "30 min"))).isFalse();
     }
 
     @Test
     void productCardNeedsNoInput() throws Exception {
-        assertEquals(1200, decode(RENDERER.product()).getWidth());
+        assertThat(decode(RENDERER.product()).getWidth()).isEqualTo(1200);
     }
 
     @Test
@@ -91,16 +88,15 @@ class CardRendererTest {
 
         var lines = RENDERER.fitHeadline(g, unbrokenWord);
 
-        assertEquals(1, lines.size(), "an unbreakable single word should stay one line, not overflow");
+        assertThat(lines).as("an unbreakable single word should stay one line, not overflow").hasSize(1);
         String rendered = lines.getFirst().stream().map(TextRuns.Run::text).reduce("", String::concat);
-        assertTrue(rendered.endsWith("…"), "expected an ellipsis, got: " + rendered);
-        assertTrue(rendered.length() < unbrokenWord.length(), "expected the word to be truncated");
+        assertThat(rendered).as("expected an ellipsis, got: " + rendered).endsWith("…");
+        assertThat(rendered.length() < unbrokenWord.length()).as("expected the word to be truncated").isTrue();
 
         int maxWidth = CardRenderer.SAFE_X1 - CardRenderer.SAFE_X0 - 40;
-        assertTrue(
-                TextRuns.width(g, lines.getFirst()) <= maxWidth,
-                "ellipsized line must fit the safe square, width was " + TextRuns.width(g, lines.getFirst())
-        );
+        assertThat(TextRuns.width(g, lines.getFirst()) <= maxWidth)
+            .as("ellipsized line must fit the safe square, width was " + TextRuns.width(g, lines.getFirst()))
+            .isTrue();
         g.dispose();
     }
 }

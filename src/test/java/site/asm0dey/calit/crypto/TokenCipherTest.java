@@ -1,6 +1,8 @@
 package site.asm0dey.calit.crypto;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.InstanceOfAssertFactories.throwable;
 import org.junit.jupiter.api.Test;
 
 class TokenCipherTest {
@@ -11,34 +13,34 @@ class TokenCipherTest {
     void roundTripsAValue() {
         var plaintext = "1//refresh-token-value";
         String encrypted = cipher.encrypt(plaintext);
-        assertNotEquals(plaintext, encrypted);
-        assertTrue(cipher.looksEncrypted(encrypted));
-        assertEquals(plaintext, cipher.decrypt(encrypted));
+        assertThat(encrypted).isNotEqualTo(plaintext);
+        assertThat(cipher.looksEncrypted(encrypted)).isTrue();
+        assertThat(cipher.decrypt(encrypted)).isEqualTo(plaintext);
     }
 
     @Test
     void usesAFreshIvPerCall() {
-        assertNotEquals(cipher.encrypt("same"), cipher.encrypt("same"));
+        assertThat(cipher.encrypt("same")).isNotEqualTo(cipher.encrypt("same"));
     }
 
     @Test
     void decryptPassesThroughLegacyPlaintext() {
-        assertFalse(cipher.looksEncrypted("1//legacy-plaintext"));
-        assertEquals("1//legacy-plaintext", cipher.decrypt("1//legacy-plaintext"));
+        assertThat(cipher.looksEncrypted("1//legacy-plaintext")).isFalse();
+        assertThat(cipher.decrypt("1//legacy-plaintext")).isEqualTo("1//legacy-plaintext");
     }
 
     @Test
     void handlesNulls() {
-        assertNull(cipher.encrypt(null));
-        assertNull(cipher.decrypt(null));
-        assertFalse(cipher.looksEncrypted(null));
+        assertThat(cipher.encrypt(null)).isNull();
+        assertThat(cipher.decrypt(null)).isNull();
+        assertThat(cipher.looksEncrypted(null)).isFalse();
     }
 
     @Test
     void decryptWithWrongKeyThrows() {
         TokenCipher other = new TokenCipher("f".repeat(64));
         String ct = cipher.encrypt("secret");
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> other.decrypt(ct));
+        assertThatThrownBy(() -> other.decrypt(ct)).asInstanceOf(throwable(IllegalStateException.class));
     }
 
     @Test
@@ -49,6 +51,6 @@ class TokenCipherTest {
         var body = ct.substring(marker.length());
         var flip = body.charAt(body.length() - 2) == 'A' ? 'B' : 'A';
         var tampered = marker + body.substring(0, body.length() - 2) + flip + body.charAt(body.length() - 1);
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> cipher.decrypt(tampered));
+        assertThatThrownBy(() -> cipher.decrypt(tampered)).asInstanceOf(throwable(IllegalStateException.class));
     }
 }

@@ -2,9 +2,8 @@ package site.asm0dey.calit.user;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -56,12 +55,12 @@ class PasswordResetFlowTest {
             .body(containsString("If that account exists"));
 
         List<Mail> sent = mailbox.getMailsSentTo(ADMIN_EMAIL);
-        assertEquals(1, sent.size(), "exactly one reset mail to the account address");
+        assertThat(sent).as("exactly one reset mail to the account address").hasSize(1);
         Mail m = sent.getFirst();
-        assertTrue(m.getSubject().toLowerCase().contains("reset"), "subject mentions reset");
+        assertThat(m.getSubject().toLowerCase()).as("subject mentions reset").contains("reset");
 
         Matcher tok = Pattern.compile("/reset-password\\?token=([A-Za-z0-9_-]+)").matcher(m.getHtml());
-        assertTrue(tok.find(), "body carries a reset-password link with a token");
+        assertThat(tok.find()).as("body carries a reset-password link with a token").isTrue();
         var token = tok.group(1);
         // The link renders the set-password form...
         given()
@@ -109,6 +108,6 @@ class PasswordResetFlowTest {
             // same response as a hit
             .body(containsString("If that account exists"));
 
-        assertEquals(0, mailbox.getTotalMessagesSent(), "no account -> no mail (anti-enumeration)");
+        assertThat(mailbox.getTotalMessagesSent()).as("no account -> no mail (anti-enumeration)").isZero();
     }
 }

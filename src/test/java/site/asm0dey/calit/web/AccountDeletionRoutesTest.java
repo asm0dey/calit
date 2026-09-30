@@ -1,10 +1,8 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -92,7 +90,7 @@ class AccountDeletionRoutesTest {
             .then()
             .statusCode(200)
             .body(containsString("Your account was not deleted"));
-        assertEquals(1, AppUser.count("username", "bob"), "the account must survive a wrong confirmation");
+        assertThat(AppUser.count("username", "bob")).as("the account must survive a wrong confirmation").isOne();
     }
 
     @Test
@@ -109,7 +107,7 @@ class AccountDeletionRoutesTest {
             .then()
             .statusCode(303)
             .header("Location", containsString("/logout"));
-        assertNull(AppUser.findByUsername("bob"), "the account must be gone");
+        assertThat(AppUser.findByUsername("bob")).as("the account must be gone").isNull();
     }
 
     @Test
@@ -126,7 +124,7 @@ class AccountDeletionRoutesTest {
             .then()
             .statusCode(303)
             .header("Location", containsString("/logout"));
-        assertNull(AppUser.findByUsername("bob"));
+        assertThat(AppUser.findByUsername("bob")).isNull();
     }
 
     @Test
@@ -141,7 +139,7 @@ class AccountDeletionRoutesTest {
             .then()
             .statusCode(200)
             .body(containsString("last enabled admin"));
-        assertEquals(1, AppUser.count("username", "admin"), "the last admin must survive");
+        assertThat(AppUser.count("username", "admin")).as("the last admin must survive").isOne();
     }
 
     @Test
@@ -156,7 +154,7 @@ class AccountDeletionRoutesTest {
             .then()
             .statusCode(200)
             .body(containsString("Users"));
-        assertNull(AppUser.findByUsername("carol"));
+        assertThat(AppUser.findByUsername("carol")).isNull();
     }
 
     /**
@@ -184,7 +182,7 @@ class AccountDeletionRoutesTest {
             .statusCode(200)
             .body(containsString("own account"))
             .body(containsString("Settings"));
-        assertEquals(1, AppUser.count("id", 1L), "self-delete via the admin route must be refused");
+        assertThat(AppUser.count("id", 1L)).as("self-delete via the admin route must be refused").isOne();
     }
 
     /**
@@ -221,7 +219,7 @@ class AccountDeletionRoutesTest {
             .body(containsString("CALIT_DELETE_USER"))
             .body(containsString("frank"))
             .body(containsString("name=\"confirmation\""));
-        assertEquals(1, AppUser.count("id", id), "showing the confirm page deletes nothing");
+        assertThat(AppUser.count("id", id)).as("showing the confirm page deletes nothing").isOne();
     }
 
     @Test
@@ -237,7 +235,7 @@ class AccountDeletionRoutesTest {
             .statusCode(200)
             .body(containsString("CALIT_DELETE_USER"))
             .body(containsString("The account was not deleted"));
-        assertEquals(1, AppUser.count("id", id), "a mismatched username must not delete the account");
+        assertThat(AppUser.count("id", id)).as("a mismatched username must not delete the account").isOne();
     }
 
     @Test
@@ -252,7 +250,7 @@ class AccountDeletionRoutesTest {
             .post("/me/users/" + id + "/delete")
             .then()
             .statusCode(403);
-        assertEquals(1, AppUser.count("id", id), "a non-admin must not delete anyone");
+        assertThat(AppUser.count("id", id)).as("a non-admin must not delete anyone").isOne();
     }
 
     /**
@@ -298,7 +296,7 @@ class AccountDeletionRoutesTest {
             .then()
             .statusCode(200)
             .body(containsString("already taken"));
-        assertNull(AppUser.findByUsername("erin"), "the tombstoned username must not be recreated");
+        assertThat(AppUser.findByUsername("erin")).as("the tombstoned username must not be recreated").isNull();
         // (b) the old, still-cryptographically-valid cookie no longer reaches a protected page.
         var stale =
                 given()
@@ -309,15 +307,13 @@ class AccountDeletionRoutesTest {
             .get("/me")
             .then()
             .extract();
-        assertTrue(
-                stale.statusCode() == 302 || stale.statusCode() == 401,
-                "a deleted account's cookie must not reach /me, got " + stale.statusCode()
-        );
+        assertThat(stale.statusCode() == 302 || stale.statusCode() == 401)
+            .as("a deleted account's cookie must not reach /me, got " + stale.statusCode())
+            .isTrue();
         if (stale.statusCode() == 302) {
-            assertTrue(
-                    stale.header("Location").contains("/login"),
-                    "expected a redirect to /login, got " + stale.header("Location")
-            );
+            assertThat(stale.header("Location"))
+                .as("expected a redirect to /login, got " + stale.header("Location"))
+                .contains("/login");
         }
     }
 }

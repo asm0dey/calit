@@ -1,7 +1,7 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -34,17 +34,18 @@ class GoogleTokenServiceTest {
         GoogleTokenService svc = new GoogleTokenService(config);
         String url = svc.buildConsentUrl(1L, java.time.Instant.parse("2026-06-08T12:00:00Z"));
 
-        assertTrue(url.startsWith("https://accounts.google.com/o/oauth2/v2/auth?"));
-        assertTrue(url.contains("access_type=offline"));
-        assertTrue(url.contains("prompt=consent"));
-        assertTrue(url.contains("response_type=code"));
-        // Scope is URL-encoded (':' -> %3A, '/' -> %2F).
-        assertTrue(url.contains("scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar"));
-        // The id_token-enabling scopes are present (raw substrings survive URL-encoding).
-        assertTrue(url.contains("openid"));
-        assertTrue(url.contains("email"));
-        // A signed, non-empty CSRF state is present (stateless — no HttpSession).
-        assertTrue(url.contains("&state="));
+        assertThat(url)
+            .startsWith("https://accounts.google.com/o/oauth2/v2/auth?")
+            .contains("access_type=offline")
+            .contains("prompt=consent")
+            .contains("response_type=code")
+            // Scope is URL-encoded (':' -> %3A, '/' -> %2F).
+            .contains("scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar")
+            // The id_token-enabling scopes are present (raw substrings survive URL-encoding).
+            .contains("openid")
+            .contains("email")
+            // A signed, non-empty CSRF state is present (stateless — no HttpSession).
+            .contains("&state=");
     }
 
     @Test
@@ -53,14 +54,14 @@ class GoogleTokenServiceTest {
         var now = Instant.parse("2026-06-08T12:00:00Z");
         String state = svc.issueState(1L, now);
         // A fresh, untampered state validates on any replica and recovers the owner id.
-        assertEquals(1L, svc.validateState(state, now.plusSeconds(60)));
+        assertThat(svc.validateState(state, now.plusSeconds(60))).isOne();
         // Expired beyond the TTL window: rejected.
-        assertNull(svc.validateState(state, now.plus(GoogleTokenService.STATE_TTL).plusSeconds(1)));
+        assertThat(svc.validateState(state, now.plus(GoogleTokenService.STATE_TTL).plusSeconds(1))).isNull();
         // Tampered signature: rejected.
-        assertNull(svc.validateState(state + "x", now.plusSeconds(60)));
+        assertThat(svc.validateState(state + "x", now.plusSeconds(60))).isNull();
         // Garbage / missing: rejected.
-        assertNull(svc.validateState("not-a-state", now));
-        assertNull(svc.validateState(null, now));
+        assertThat(svc.validateState("not-a-state", now)).isNull();
+        assertThat(svc.validateState(null, now)).isNull();
     }
 
     @Test
@@ -81,10 +82,10 @@ class GoogleTokenServiceTest {
         svc.exchangeCode(1L, "auth-code-123", now);
 
         GoogleCredential c = GoogleCredential.forOwner(1L);
-        assertNotNull(c);
-        assertEquals("refresh-1", c.refreshToken);
-        assertEquals("access-1", c.accessToken);
-        assertEquals(now.plusSeconds(3600), c.accessTokenExpiry);
+        assertThat(c).isNotNull();
+        assertThat(c.refreshToken).isEqualTo("refresh-1");
+        assertThat(c.accessToken).isEqualTo("access-1");
+        assertThat(c.accessTokenExpiry).isEqualTo(now.plusSeconds(3600));
     }
 
     @Test
@@ -101,7 +102,7 @@ class GoogleTokenServiceTest {
         var svc = new StubTokenService(config, null);
         String token = svc.validAccessToken(c, Instant.parse("2026-06-08T12:00:00Z"));
 
-        assertEquals("cached-access", token);
+        assertThat(token).isEqualTo("cached-access");
     }
 
     @Test
@@ -123,11 +124,11 @@ class GoogleTokenServiceTest {
 
         String token = svc.validAccessToken(c, now);
 
-        assertEquals("fresh-access", token);
+        assertThat(token).isEqualTo("fresh-access");
         GoogleCredential reloaded = GoogleCredential.forOwner(1L);
-        assertEquals("fresh-access", reloaded.accessToken);
+        assertThat(reloaded.accessToken).isEqualTo("fresh-access");
         // Refresh responses omit a new refresh token; the original is preserved.
-        assertEquals("refresh-1", reloaded.refreshToken);
-        assertEquals(now.plusSeconds(3600), reloaded.accessTokenExpiry);
+        assertThat(reloaded.refreshToken).isEqualTo("refresh-1");
+        assertThat(reloaded.accessTokenExpiry).isEqualTo(now.plusSeconds(3600));
     }
 }

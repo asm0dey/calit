@@ -2,7 +2,7 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
@@ -29,7 +29,7 @@ class AdminAvailabilityBulkTest {
             .post("/me/availability")
             .then()
             .statusCode(200);
-        assertEquals(1, globalCount(DayOfWeek.SUNDAY));
+        assertThat(globalCount(DayOfWeek.SUNDAY)).isOne();
         // Bulk replace: two Monday frames, nothing else.
         given()
             .cookie("quarkus-credential", cred)
@@ -42,8 +42,8 @@ class AdminAvailabilityBulkTest {
             .then()
             .statusCode(200);
 
-        assertEquals(0, globalCount(DayOfWeek.SUNDAY), "stale rule should be wiped");
-        assertEquals(2, globalCount(DayOfWeek.MONDAY), "two new Monday frames");
+        assertThat(globalCount(DayOfWeek.SUNDAY)).as("stale rule should be wiped").isZero();
+        assertThat(globalCount(DayOfWeek.MONDAY)).as("two new Monday frames").isEqualTo(2);
     }
 
     @Test
@@ -68,7 +68,7 @@ class AdminAvailabilityBulkTest {
             .post("/me/availability/bulk")
             .then()
             .statusCode(200);
-        assertEquals(1, globalCount(DayOfWeek.TUESDAY), "only the valid frame persists");
+        assertThat(globalCount(DayOfWeek.TUESDAY)).as("only the valid frame persists").isOne();
     }
 
     @Test
@@ -112,8 +112,8 @@ class AdminAvailabilityBulkTest {
             .then()
             .statusCode(200);
 
-        assertEquals(0, AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.FRIDAY));
-        assertEquals(1, AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY));
+        assertThat(AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.FRIDAY)).isZero();
+        assertThat(AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY)).isOne();
     }
 
     @Test
@@ -167,7 +167,7 @@ class AdminAvailabilityBulkTest {
             .post("/me/meeting-types/" + t.id + "/availability/bulk")
             .then()
             .statusCode(200);
-        assertEquals(1, globalCount(DayOfWeek.SUNDAY), "global rule survives per-type bulk save");
+        assertThat(globalCount(DayOfWeek.SUNDAY)).as("global rule survives per-type bulk save").isOne();
         // Global bulk save must NOT touch the per-type rules (MONDAY frame from above survives).
         given()
             .cookie("quarkus-credential", cred)
@@ -179,13 +179,11 @@ class AdminAvailabilityBulkTest {
             .post("/me/availability/bulk")
             .then()
             .statusCode(200);
-        assertEquals(
-                1,
-                AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY),
-                "per-type rule survives global bulk save"
-        );
-        assertEquals(0, globalCount(DayOfWeek.SUNDAY), "global bulk save did replace the global scope");
-        assertEquals(1, globalCount(DayOfWeek.WEDNESDAY), "global bulk save wrote the new global frame");
+        assertThat(AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY))
+            .as("per-type rule survives global bulk save")
+            .isOne();
+        assertThat(globalCount(DayOfWeek.SUNDAY)).as("global bulk save did replace the global scope").isZero();
+        assertThat(globalCount(DayOfWeek.WEDNESDAY)).as("global bulk save wrote the new global frame").isOne();
     }
 
     @Test

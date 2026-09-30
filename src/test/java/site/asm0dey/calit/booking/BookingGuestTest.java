@@ -1,8 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -50,11 +49,11 @@ class BookingGuestTest {
         BookingGuest g = guest(bookingId, "ana@example.com", GuestStatus.INVITED);
 
         BookingGuest loaded = BookingGuest.findById(g.id);
-        assertEquals(1L, loaded.ownerId);
-        assertEquals(bookingId, loaded.bookingId);
-        assertEquals("ana@example.com", loaded.email);
-        assertEquals(GuestStatus.INVITED, loaded.status);
-        assertEquals(g.declineToken, loaded.declineToken);
+        assertThat(loaded.ownerId).isOne();
+        assertThat(loaded.bookingId).isEqualTo(bookingId);
+        assertThat(loaded.email).isEqualTo("ana@example.com");
+        assertThat(loaded.status).isEqualTo(GuestStatus.INVITED);
+        assertThat(loaded.declineToken).isEqualTo(g.declineToken);
     }
 
     @Test
@@ -66,9 +65,9 @@ class BookingGuestTest {
         guest(bookingId, "cyd@example.com", GuestStatus.REMOVED);
 
         List<BookingGuest> active = BookingGuest.activeForBooking(bookingId);
-        assertEquals(1, active.size());
-        assertEquals("ana@example.com", active.getFirst().email);
-        assertEquals(3, BookingGuest.allForBooking(bookingId).size());
+        assertThat(active).hasSize(1);
+        assertThat(active.getFirst().email).isEqualTo("ana@example.com");
+        assertThat(BookingGuest.allForBooking(bookingId)).hasSize(3);
     }
 
     @Test
@@ -77,10 +76,10 @@ class BookingGuestTest {
         var bookingId = createBooking();
         BookingGuest g = guest(bookingId, "Ana@Example.com", GuestStatus.INVITED);
 
-        assertEquals(g.id, BookingGuest.findByDeclineToken(g.declineToken).id);
+        assertThat(BookingGuest.findByDeclineToken(g.declineToken).id).isEqualTo(g.id);
         // findInBooking is case-insensitive on email
-        assertEquals(g.id, BookingGuest.findInBooking(bookingId, "ana@example.com").id);
-        assertNull(BookingGuest.findInBooking(bookingId, "nobody@example.com"));
+        assertThat(BookingGuest.findInBooking(bookingId, "ana@example.com").id).isEqualTo(g.id);
+        assertThat(BookingGuest.findInBooking(bookingId, "nobody@example.com")).isNull();
     }
 
     @Test
@@ -88,9 +87,9 @@ class BookingGuestTest {
     void bookingIcsSequenceDefaultsToZeroAndRoundTrips() {
         var bookingId = createBooking();
         Booking b = Booking.findById(bookingId);
-        assertEquals(0, b.icsSequence);
+        assertThat(b.icsSequence).isZero();
         b.icsSequence = 2;
         b.persistAndFlush();
-        assertEquals(2, Booking.<Booking>findById(bookingId).icsSequence);
+        assertThat(Booking.<Booking>findById(bookingId).icsSequence).isEqualTo(2);
     }
 }

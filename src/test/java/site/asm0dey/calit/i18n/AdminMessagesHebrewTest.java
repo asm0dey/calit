@@ -1,7 +1,7 @@
 package site.asm0dey.calit.i18n;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -15,8 +15,8 @@ class AdminMessagesHebrewTest {
     void hebrewAdminStringsResolveAndDifferFromEnglish() {
         String he = admin.forLocale(Locale.forLanguageTag("he")).adm_nav_dashboard();
         String en = admin.forLocale(Locale.ENGLISH).adm_nav_dashboard();
-        assertFalse(he.isBlank(), "Hebrew admin nav label must not be blank");
-        assertNotEquals(en, he, "Hebrew admin label must differ from English");
-        assertEquals("לוח בקרה", he);
+        assertThat(he.isBlank()).as("Hebrew admin nav label must not be blank").isFalse();
+        assertThat(he).as("Hebrew admin label must differ from English").isNotEqualTo(en);
+        assertThat(he).isEqualTo("לוח בקרה");
     }
 }

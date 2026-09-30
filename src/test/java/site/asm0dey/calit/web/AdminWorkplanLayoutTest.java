@@ -1,7 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
@@ -25,18 +25,19 @@ class AdminWorkplanLayoutTest {
             .asString();
 
         var cardStart = body.indexOf("data-day=\"MONDAY\"");
-        assertTrue(cardStart > 0, "Monday day card is rendered");
+        assertThat(cardStart > 0).as("Monday day card is rendered").isTrue();
         var frames = body.indexOf("data-frames", cardStart);
         var actions = body.indexOf("data-copy-all=\"MONDAY\"", cardStart);
-        assertTrue(frames > 0 && actions > 0, "Monday card has both a frames box and its actions");
-        assertTrue(
-                actions > frames,
-                "day actions come after the frames box, so they share the frames' axis (frames at "
-                + frames
-                + ", actions at "
-                + actions
-                + ")"
-        );
+        assertThat(frames > 0 && actions > 0).as("Monday card has both a frames box and its actions").isTrue();
+        assertThat(actions > frames)
+            .as(
+                    "day actions come after the frames box, so they share the frames' axis (frames at "
+                    + frames
+                    + ", actions at "
+                    + actions
+                    + ")"
+            )
+            .isTrue();
     }
 
     @Test
@@ -53,12 +54,13 @@ class AdminWorkplanLayoutTest {
 
         var cardStart = body.indexOf("data-day=\"MONDAY\"");
         var cardEnd = body.indexOf("data-day=\"TUESDAY\"");
-        assertTrue(cardStart > 0 && cardEnd > cardStart, "Monday and Tuesday cards both rendered");
+        assertThat(cardStart > 0 && cardEnd > cardStart).as("Monday and Tuesday cards both rendered").isTrue();
         var mondayCard = body.substring(cardStart, cardEnd);
-        assertTrue(
-                !mondayCard.contains("justify-between"),
-                "no justify-between inside a day card: all slack would land between the label and the "
-                + "buttons, making the gap a function of viewport width instead of a spacing step"
-        );
+        assertThat(mondayCard)
+            .as(
+                    "no justify-between inside a day card: all slack would land between the label and the "
+                    + "buttons, making the gap a function of viewport width instead of a spacing step"
+            )
+            .doesNotContain("justify-between");
     }
 }

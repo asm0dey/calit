@@ -1,6 +1,8 @@
 package site.asm0dey.calit.user;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.InstanceOfAssertFactories.throwable;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.credential.PasswordCredential;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -37,8 +39,8 @@ class LoginTicketAuthTest {
         String token = tickets.issue(u.id, FIXED);
 
         SecurityIdentity id = provider.authenticateBlocking(req("ticket-login", token));
-        assertEquals("ticket-login", id.getPrincipal().getName());
-        assertTrue(id.getRoles().contains("user"));
+        assertThat(id.getPrincipal().getName()).isEqualTo("ticket-login");
+        assertThat(id.getRoles()).contains("user");
     }
 
     @Test
@@ -51,7 +53,8 @@ class LoginTicketAuthTest {
         String token = tickets.issue(u.id, FIXED);
         // Token is valid but submitted under the wrong username -> reject (defence in depth).
         var request = req("someone-else", token);
-        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(request));
+        assertThatThrownBy(() -> provider.authenticateBlocking(request))
+            .asInstanceOf(throwable(AuthenticationFailedException.class));
     }
 
     @Test
@@ -61,7 +64,7 @@ class LoginTicketAuthTest {
         AppUser u = AppUser.create("pw-user", new site.asm0dey.calit.user.PasswordHasher().hash("s3cret"), false);
         u.persistAndFlush();
         SecurityIdentity id = provider.authenticateBlocking(req("pw-user", "s3cret"));
-        assertEquals("pw-user", id.getPrincipal().getName());
+        assertThat(id.getPrincipal().getName()).isEqualTo("pw-user");
     }
 
     @Test
@@ -73,6 +76,7 @@ class LoginTicketAuthTest {
         String token = tickets.issue(u.id, FIXED);
         // A valid ticket must NOT log in a disabled account (the enabled gate).
         var request = req("disabled-tkt", token);
-        assertThrows(AuthenticationFailedException.class, () -> provider.authenticateBlocking(request));
+        assertThatThrownBy(() -> provider.authenticateBlocking(request))
+            .asInstanceOf(throwable(AuthenticationFailedException.class));
     }
 }

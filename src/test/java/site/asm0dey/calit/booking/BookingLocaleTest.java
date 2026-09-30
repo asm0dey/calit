@@ -1,7 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -80,7 +80,7 @@ class BookingLocaleTest {
                 java.util.List.of()
         );
 
-        assertEquals("de", b.locale);
+        assertThat(b.locale).isEqualTo("de");
     }
 
     @Test
@@ -108,7 +108,7 @@ class BookingLocaleTest {
                 java.util.List.of()
         );
 
-        assertEquals("en", b.locale);
+        assertThat(b.locale).isEqualTo("en");
     }
 
     @Test
@@ -136,6 +136,6 @@ class BookingLocaleTest {
                 java.util.List.of()
         );
 
-        assertEquals("en", b.locale);
+        assertThat(b.locale).isEqualTo("en");
     }
 }

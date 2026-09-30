@@ -1,7 +1,7 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -43,14 +43,14 @@ class PurgeSchedulerTest {
     void sentMailOlderThanThirtyDaysGoes() {
         var id = outbox(daysAgo(40), daysAgo(31), null);
         purger.purge();
-        assertEquals(0L, count(id));
+        assertThat(count(id)).isZero();
     }
 
     @Test
     void recentlySentMailStays() {
         var id = outbox(daysAgo(10), daysAgo(3), null);
         purger.purge();
-        assertEquals(1L, count(id));
+        assertThat(count(id)).isOne();
     }
 
     @Test
@@ -58,7 +58,7 @@ class PurgeSchedulerTest {
         // next_attempt_at null = dead
         var id = outbox(daysAgo(31), null, null);
         purger.purge();
-        assertEquals(0L, count(id));
+        assertThat(count(id)).isZero();
     }
 
     /**
@@ -70,14 +70,14 @@ class PurgeSchedulerTest {
         // dead, but only 5 days old
         var id = outbox(daysAgo(5), null, null);
         purger.purge();
-        assertEquals(1L, count(id), "a dead row inside the 30-day inspection window must survive");
+        assertThat(count(id)).as("a dead row inside the 30-day inspection window must survive").isOne();
     }
 
     @Test
     void mailStillInItsRetryWindowIsNeverTouched() {
         var id = outbox(daysAgo(60), null, Instant.now().plusSeconds(60));
         purger.purge();
-        assertEquals(1L, count(id), "a row still due for retry must survive regardless of age");
+        assertThat(count(id)).as("a row still due for retry must survive regardless of age").isOne();
     }
 
     @Test
@@ -85,8 +85,8 @@ class PurgeSchedulerTest {
         Long fresh = TokenFixtures.seedResetToken(Instant.now().plusSeconds(3600));
         Long stale = TokenFixtures.seedResetToken(daysAgo(2));
         purger.purge();
-        assertEquals(1L, TokenFixtures.countResetToken(fresh));
-        assertEquals(0L, TokenFixtures.countResetToken(stale));
+        assertThat(TokenFixtures.countResetToken(fresh)).isOne();
+        assertThat(TokenFixtures.countResetToken(stale)).isZero();
     }
 
     /**
@@ -98,7 +98,7 @@ class PurgeSchedulerTest {
         Long fresh = TokenFixtures.seedLoginTicket(Instant.now().plusSeconds(3600));
         Long stale = TokenFixtures.seedLoginTicket(daysAgo(2));
         purger.purge();
-        assertEquals(1L, TokenFixtures.countLoginTicket(fresh));
-        assertEquals(0L, TokenFixtures.countLoginTicket(stale));
+        assertThat(TokenFixtures.countLoginTicket(fresh)).isOne();
+        assertThat(TokenFixtures.countLoginTicket(stale)).isZero();
     }
 }

@@ -1,7 +1,7 @@
 package site.asm0dey.calit.user;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -25,13 +25,13 @@ class LoginTicketServiceTest {
         var uid = newUserId();
 
         String raw = tickets.issue(uid, now);
-        assertNotNull(raw, "issue returns the raw token");
+        assertThat(raw).as("issue returns the raw token").isNotNull();
 
         AppUser first = tickets.consume(raw, now.plusSeconds(5));
-        assertNotNull(first, "first consume returns the user");
-        assertEquals(uid, first.id);
+        assertThat(first).as("first consume returns the user").isNotNull();
+        assertThat(first.id).isEqualTo(uid);
 
-        assertNull(tickets.consume(raw, now.plusSeconds(6)), "ticket is single-use");
+        assertThat(tickets.consume(raw, now.plusSeconds(6))).as("ticket is single-use").isNull();
     }
 
     @Test
@@ -42,15 +42,15 @@ class LoginTicketServiceTest {
         String raw = tickets.issue(uid, now);
 
         Instant tooLate = now.plus(LoginTicketService.TTL).plus(Duration.ofSeconds(1));
-        assertNull(tickets.consume(raw, tooLate), "expired ticket is rejected");
+        assertThat(tickets.consume(raw, tooLate)).as("expired ticket is rejected").isNull();
     }
 
     @Test
     @TestTransaction
     void unknownOrNullTokenRejected() {
         var now = Instant.parse("2026-06-12T12:00:00Z");
-        assertNull(tickets.consume("not-a-real-token", now));
-        assertNull(tickets.consume(null, now));
+        assertThat(tickets.consume("not-a-real-token", now)).isNull();
+        assertThat(tickets.consume(null, now)).isNull();
     }
 
     @Test
@@ -58,7 +58,7 @@ class LoginTicketServiceTest {
     void eachIssueProducesADistinctToken() {
         var now = Instant.parse("2026-06-12T12:00:00Z");
         var uid = newUserId();
-        assertNotEquals(tickets.issue(uid, now), tickets.issue(uid, now), "tokens are random");
+        assertThat(tickets.issue(uid, now)).as("tokens are random").isNotEqualTo(tickets.issue(uid, now));
     }
 
     @Test
@@ -70,6 +70,6 @@ class LoginTicketServiceTest {
         // User deleted between ticket issuance and consumption -> consume yields null.
         AppUser.deleteById(uid);
 
-        assertNull(tickets.consume(raw, now.plusSeconds(5)), "no user -> no login");
+        assertThat(tickets.consume(raw, now.plusSeconds(5))).as("no user -> no login").isNull();
     }
 }

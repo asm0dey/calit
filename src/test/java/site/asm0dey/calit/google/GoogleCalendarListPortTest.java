@@ -1,7 +1,8 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -53,18 +54,20 @@ class GoogleCalendarListPortTest {
     }
 
     @Test
-    void googleErrorCarriesStatusAndMessageOnTheFirstLine() throws IOException {
+    void googleErrorCarriesStatusAndMessageOnTheFirstLine() throws Exception {
         var port = portThatFailsWith(serviceDisabled());
 
         var credential = new GoogleCredential();
-        var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(credential));
+        var thrown = assertThatExceptionOfType(UncheckedIOException.class)
+            .isThrownBy(() -> port.listCalendars(credential))
+            .actual();
         // Operators read the first line of the WARN; the status and Google's own words must be there.
-        assertTrue(thrown.getMessage().contains("HTTP 403"), thrown.getMessage());
-        assertTrue(thrown.getMessage().contains("has not been used in project"), thrown.getMessage());
+        assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("HTTP 403");
+        assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("has not been used in project");
     }
 
     @Test
-    void googleErrorWithoutParsableDetailsStillReportsTheStatus() throws IOException {
+    void googleErrorWithoutParsableDetailsStillReportsTheStatus() throws Exception {
         // A non-JSON error body (proxy HTML, gateway page) leaves getDetails() null. The status still
         // has to reach the log, and appending a null message must not.
         var port = portThatFailsWith(
@@ -75,19 +78,23 @@ class GoogleCalendarListPortTest {
         );
 
         var credential = new GoogleCredential();
-        var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(credential));
+        var thrown = assertThatExceptionOfType(UncheckedIOException.class)
+            .isThrownBy(() -> port.listCalendars(credential))
+            .actual();
 
-        assertEquals("calendarList.list failed: HTTP 502", thrown.getMessage());
+        assertThat(thrown.getMessage()).isEqualTo("calendarList.list failed: HTTP 502");
     }
 
     @Test
-    void plainIoErrorStillWrapsWithTheCallName() throws IOException {
+    void plainIoErrorStillWrapsWithTheCallName() throws Exception {
         var port = portThatFailsWith(new IOException("connect timed out"));
 
         var credential = new GoogleCredential();
-        var thrown = assertThrows(UncheckedIOException.class, () -> port.listCalendars(credential));
+        var thrown = assertThatExceptionOfType(UncheckedIOException.class)
+            .isThrownBy(() -> port.listCalendars(credential))
+            .actual();
 
-        assertEquals("calendarList.list failed", thrown.getMessage());
-        assertEquals("connect timed out", thrown.getCause().getMessage());
+        assertThat(thrown.getMessage()).isEqualTo("calendarList.list failed");
+        assertThat(thrown.getCause().getMessage()).isEqualTo("connect timed out");
     }
 }

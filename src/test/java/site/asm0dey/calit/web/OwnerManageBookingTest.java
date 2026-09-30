@@ -3,8 +3,8 @@ package site.asm0dey.calit.web;
 import module java.base;
 import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -140,8 +140,8 @@ class OwnerManageBookingTest {
         Booking after = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.findById(id));
-        org.junit.jupiter.api.Assertions.assertEquals(target, after.startUtc);
-        org.junit.jupiter.api.Assertions.assertTrue(after.icsSequence > beforeSeq, "sequence bumped");
+        assertThat(after.startUtc).isEqualTo(target);
+        assertThat(after.icsSequence > beforeSeq).as("sequence bumped").isTrue();
     }
 
     @Test
@@ -160,7 +160,7 @@ class OwnerManageBookingTest {
         Booking after = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.findById(id));
-        org.junit.jupiter.api.Assertions.assertEquals(site.asm0dey.calit.booking.BookingStatus.CANCELLED, after.status);
+        assertThat(after.status).isEqualTo(site.asm0dey.calit.booking.BookingStatus.CANCELLED);
     }
 
     /**
@@ -208,8 +208,8 @@ class OwnerManageBookingTest {
                 QuarkusTransaction
             .requiringNew()
             .call(() -> BookingGuest.activeForBooking(bookingId));
-        assertEquals(1, afterGuests.size(), "guest must be preserved across owner reschedule");
-        assertEquals("guest@example.com", afterGuests.getFirst().email);
+        assertThat(afterGuests).as("guest must be preserved across owner reschedule").hasSize(1);
+        assertThat(afterGuests.getFirst().email).isEqualTo("guest@example.com");
     }
 
     @Test
@@ -242,6 +242,6 @@ class OwnerManageBookingTest {
             .then()
             .statusCode(404);
 
-        org.junit.jupiter.api.Assertions.assertEquals(before, ((Booking) Booking.findById(id)).startUtc);
+        assertThat(((Booking) Booking.findById(id)).startUtc).isEqualTo(before);
     }
 }

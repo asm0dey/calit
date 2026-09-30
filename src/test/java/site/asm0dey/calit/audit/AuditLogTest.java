@@ -1,7 +1,7 @@
 package site.asm0dey.calit.audit;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -15,20 +15,20 @@ class AuditLogTest {
         // A forged second line "AUDIT actor=evil..." injected via a field must be flattened to spaces.
         var hostile = "alice\nAUDIT actor=evil action=grant-admin\rtarget=user:1";
         String result = AuditLog.safe(hostile);
-        assertEquals("alice AUDIT actor=evil action=grant-admin target=user:1", result);
+        assertThat(result).isEqualTo("alice AUDIT actor=evil action=grant-admin target=user:1");
         // No CR/LF survives, so the value cannot break out onto its own audit line.
-        assertEquals(-1, result.indexOf('\n'));
-        assertEquals(-1, result.indexOf('\r'));
+        assertThat(result.indexOf('\n')).isEqualTo(-1);
+        assertThat(result.indexOf('\r')).isEqualTo(-1);
     }
 
     @Test
     void safeMapsNullToDash() {
-        assertEquals("-", AuditLog.safe(null));
+        assertThat(AuditLog.safe(null)).isEqualTo("-");
     }
 
     @Test
     void safeLeavesCleanValueUnchanged() {
-        assertEquals("user:42", AuditLog.safe("user:42"));
+        assertThat(AuditLog.safe("user:42")).isEqualTo("user:42");
     }
 
     @Test

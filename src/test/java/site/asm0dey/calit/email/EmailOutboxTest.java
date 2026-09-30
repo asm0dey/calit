@@ -1,6 +1,6 @@
 package site.asm0dey.calit.email;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -15,12 +15,12 @@ class EmailOutboxTest {
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox r = EmailOutbox.findById(id);
-            assertNotNull(r);
-            assertEquals("a@b.com", r.recipient);
-            assertEquals(0, r.attempts);
-            assertNull(r.sentAt);
-            assertNotNull(r.nextAttemptAt, "enqueued rows are due immediately");
-            assertEquals("boom", r.lastError);
+            assertThat(r).isNotNull();
+            assertThat(r.recipient).isEqualTo("a@b.com");
+            assertThat(r.attempts).isZero();
+            assertThat(r.sentAt).isNull();
+            assertThat(r.nextAttemptAt).as("enqueued rows are due immediately").isNotNull();
+            assertThat(r.lastError).isEqualTo("boom");
         });
     }
 
@@ -35,9 +35,9 @@ class EmailOutboxTest {
             EmailOutbox r = EmailOutbox.findById(id);
             java.time.Instant before = r.nextAttemptAt;
             r.deadOrBackoff("smtp down");
-            assertEquals(1, r.attempts);
-            assertEquals("smtp down", r.lastError);
-            assertTrue(r.nextAttemptAt.isAfter(before), "next attempt pushed into the future");
+            assertThat(r.attempts).isOne();
+            assertThat(r.lastError).isEqualTo("smtp down");
+            assertThat(r.nextAttemptAt.isAfter(before)).as("next attempt pushed into the future").isTrue();
         });
     }
 
@@ -55,8 +55,8 @@ class EmailOutboxTest {
                 // next failure is the 10th -> dead
                 r.attempts = 9;
                 r.deadOrBackoff("still down");
-                assertEquals(10, r.attempts);
-                assertNull(r.nextAttemptAt, "capped row is dead: excluded from the claim query");
+                assertThat(r.attempts).isEqualTo(10);
+                assertThat(r.nextAttemptAt).as("capped row is dead: excluded from the claim query").isNull();
             });
     }
 
@@ -66,14 +66,14 @@ class EmailOutboxTest {
         EmailOutbox r = new EmailOutbox();
         // No deadline -> never past it.
         r.notAfter = null;
-        assertFalse(r.pastDeadline(now));
+        assertThat(r.pastDeadline(now)).isFalse();
         // Deadline in the future -> not yet.
         r.notAfter = now.plusSeconds(60);
-        assertFalse(r.pastDeadline(now));
+        assertThat(r.pastDeadline(now)).isFalse();
         // Deadline in the past -> past it; markExpired kills the row without sending.
         r.notAfter = now.minusSeconds(1);
-        assertTrue(r.pastDeadline(now));
+        assertThat(r.pastDeadline(now)).isTrue();
         r.markExpired();
-        assertNull(r.nextAttemptAt, "expired row is dead");
+        assertThat(r.nextAttemptAt).as("expired row is dead").isNull();
     }
 }

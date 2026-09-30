@@ -1,6 +1,7 @@
 package site.asm0dey.calit.user;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
@@ -13,9 +14,10 @@ class CurrentOwnerTest {
 
     @Test
     void unsetByDefaultAndRequireThrows401() {
-        assertFalse(currentOwner.isSet());
-        WebApplicationException ex = assertThrows(WebApplicationException.class, currentOwner::require);
-        assertEquals(401, ex.getResponse().getStatus());
+        assertThat(currentOwner.isSet()).isFalse();
+        WebApplicationException ex =
+                assertThatExceptionOfType(WebApplicationException.class).isThrownBy(currentOwner::require).actual();
+        assertThat(ex.getResponse().getStatus()).isEqualTo(401);
     }
 
     @Test
@@ -23,9 +25,9 @@ class CurrentOwnerTest {
         AppUser u = new AppUser();
         u.id = 42L;
         currentOwner.set(u);
-        assertTrue(currentOwner.isSet());
-        assertSame(u, currentOwner.get());
-        assertSame(u, currentOwner.require());
-        assertEquals(42L, currentOwner.id());
+        assertThat(currentOwner.isSet()).isTrue();
+        assertThat(currentOwner.get()).isSameAs(u);
+        assertThat(currentOwner.require()).isSameAs(u);
+        assertThat(currentOwner.id()).isEqualTo(42L);
     }
 }

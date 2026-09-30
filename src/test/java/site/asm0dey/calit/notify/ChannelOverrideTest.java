@@ -2,7 +2,7 @@ package site.asm0dey.calit.notify;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -60,8 +60,8 @@ class ChannelOverrideTest {
             .then()
             .statusCode(200);
 
-        assertEquals(1, router.channelsFor(HOST_A, type.id).size(), "creator narrowed");
-        assertEquals(2, router.channelsFor(HOST_B, type.id).size(), "co-host still inherits");
+        assertThat(router.channelsFor(HOST_A, type.id)).as("creator narrowed").hasSize(1);
+        assertThat(router.channelsFor(HOST_B, type.id)).as("co-host still inherits").hasSize(2);
     }
 
     @Test
@@ -73,7 +73,7 @@ class ChannelOverrideTest {
         QuarkusTransaction
             .requiringNew()
             .run(() -> NotificationChannelMeetingType.replaceLinks(type.id, List.of(a1), List.of(a1)));
-        assertEquals(1, router.channelsFor(HOST_A, type.id).size());
+        assertThat(router.channelsFor(HOST_A, type.id)).hasSize(1);
 
         given()
             .contentType("application/x-www-form-urlencoded")
@@ -83,7 +83,7 @@ class ChannelOverrideTest {
             .then()
             .statusCode(200);
 
-        assertEquals(2, router.channelsFor(HOST_A, type.id).size(), "back to inheriting everything");
+        assertThat(router.channelsFor(HOST_A, type.id)).as("back to inheriting everything").hasSize(2);
     }
 
     @Test
@@ -104,7 +104,7 @@ class ChannelOverrideTest {
             .statusCode(200)
             .body(org.hamcrest.Matchers.containsString("at least one"));
 
-        assertEquals(1, router.channelsFor(HOST_A, type.id).size(), "the previous override survives a rejected save");
+        assertThat(router.channelsFor(HOST_A, type.id)).as("the previous override survives a rejected save").hasSize(1);
     }
 
     @Test
@@ -125,8 +125,8 @@ class ChannelOverrideTest {
             .then()
             .statusCode(200);
 
-        assertEquals(1, router.channelsFor(HOST_B, type.id).size(), "co-host narrowed");
-        assertEquals(2, router.channelsFor(HOST_A, type.id).size(), "creator still inherits");
+        assertThat(router.channelsFor(HOST_B, type.id)).as("co-host narrowed").hasSize(1);
+        assertThat(router.channelsFor(HOST_A, type.id)).as("creator still inherits").hasSize(2);
     }
 
     /**
@@ -150,7 +150,7 @@ class ChannelOverrideTest {
         QuarkusTransaction
             .requiringNew()
             .run(() -> NotificationChannelMeetingType.replaceLinks(type.id, List.of(bPinned), List.of(bPinned)));
-        assertEquals(1, router.channelsFor(HOST_B, type.id).size(), "co-host starts pinned to one channel");
+        assertThat(router.channelsFor(HOST_B, type.id)).as("co-host starts pinned to one channel").hasSize(1);
 
         given()
             .contentType("application/x-www-form-urlencoded")
@@ -162,8 +162,8 @@ class ChannelOverrideTest {
             .statusCode(200);
 
         List<NotificationChannel> forB = router.channelsFor(HOST_B, type.id);
-        assertEquals(1, forB.size(), "the co-host's own override survives the creator's save");
-        assertEquals("b-phone", forB.getFirst().label, "and it is still the channel the co-host picked");
-        assertEquals(1, router.channelsFor(HOST_A, type.id).size(), "creator narrowed to their own pick");
+        assertThat(forB).as("the co-host's own override survives the creator's save").hasSize(1);
+        assertThat(forB.getFirst().label).as("and it is still the channel the co-host picked").isEqualTo("b-phone");
+        assertThat(router.channelsFor(HOST_A, type.id)).as("creator narrowed to their own pick").hasSize(1);
     }
 }

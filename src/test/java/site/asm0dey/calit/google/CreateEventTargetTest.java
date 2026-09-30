@@ -1,7 +1,7 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -26,7 +26,7 @@ class CreateEventTargetTest {
 
     @Test
     @Transactional
-    void insertsOnTheGivenCalendar() throws IOException {
+    void insertsOnTheGivenCalendar() throws Exception {
         seedOwnerSettings();
         var credId = seedWriteTarget("sub-create-target", "default@example.com");
         seedCalendar(credId, "work@example.com");
@@ -45,13 +45,13 @@ class CreateEventTargetTest {
         );
 
         verify(events).insert(eqCalendar("work@example.com"), any());
-        assertEquals("work@example.com", created.calendar().googleCalendarId());
-        assertEquals(credId, created.calendar().credentialId());
+        assertThat(created.calendar().googleCalendarId()).isEqualTo("work@example.com");
+        assertThat(created.calendar().credentialId()).isEqualTo(credId);
     }
 
     @Test
     @Transactional
-    void nullTargetInsertsOnTheWriteTarget() throws IOException {
+    void nullTargetInsertsOnTheWriteTarget() throws Exception {
         seedOwnerSettings();
         seedWriteTarget("sub-create-null", "default@example.com");
         GoogleCalendarPort port = port();
@@ -73,7 +73,7 @@ class CreateEventTargetTest {
 
     @Test
     @Transactional
-    void unresolvableTargetInsertsOnTheWriteTarget() throws IOException {
+    void unresolvableTargetInsertsOnTheWriteTarget() throws Exception {
         seedOwnerSettings();
         var credId = seedWriteTarget("sub-create-dangling", "default@example.com");
         GoogleCalendarPort port = port();

@@ -2,8 +2,8 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import io.quarkus.test.InjectMock;
@@ -94,10 +94,9 @@ class HostRemovalInterstitialTest {
             .body(containsString("choice=keep"))
             .body(containsString("choice=cancel"));
 
-        assertNotNull(
-                MeetingTypeHost.find(seeded.type().id, seeded.cohostId()),
-                "cohost row must survive the interstitial"
-        );
+        assertThat(MeetingTypeHost.find(seeded.type().id, seeded.cohostId()))
+            .as("cohost row must survive the interstitial")
+            .isNotNull();
     }
 
     @Test
@@ -125,9 +124,9 @@ class HostRemovalInterstitialTest {
             .then()
             .statusCode(200);
 
-        assertNull(MeetingTypeHost.find(seeded.type().id, seeded.cohostId()), "cohost row removed on keep");
+        assertThat(MeetingTypeHost.find(seeded.type().id, seeded.cohostId())).as("cohost row removed on keep").isNull();
         for (Booking row : Booking.<Booking>group(lead.groupId)) {
-            assertEquals(BookingStatus.CONFIRMED, row.status, "existing booking honored on keep");
+            assertThat(row.status).as("existing booking honored on keep").isEqualTo(BookingStatus.CONFIRMED);
         }
     }
 
@@ -156,9 +155,9 @@ class HostRemovalInterstitialTest {
             .then()
             .statusCode(200);
 
-        assertNull(MeetingTypeHost.find(seeded.type().id, seeded.cohostId()), "cohost row removed on cancel");
+        assertThat(MeetingTypeHost.find(seeded.type().id, seeded.cohostId())).as("cohost row removed on cancel").isNull();
         for (Booking row : Booking.<Booking>group(lead.groupId)) {
-            assertEquals(BookingStatus.CANCELLED, row.status, "group booking cancelled");
+            assertThat(row.status).as("group booking cancelled").isEqualTo(BookingStatus.CANCELLED);
         }
     }
 
@@ -174,6 +173,6 @@ class HostRemovalInterstitialTest {
             .then()
             .statusCode(200);
 
-        assertNull(MeetingTypeHost.find(seeded.type().id, seeded.cohostId()), "cohost row removed immediately");
+        assertThat(MeetingTypeHost.find(seeded.type().id, seeded.cohostId())).as("cohost row removed immediately").isNull();
     }
 }

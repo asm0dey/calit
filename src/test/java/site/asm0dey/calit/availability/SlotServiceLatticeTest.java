@@ -1,7 +1,7 @@
 package site.asm0dey.calit.availability;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -114,7 +114,7 @@ class SlotServiceLatticeTest {
         Set<Instant> both = starts(t, london, latticeZone);
         both.retainAll(starts(t, berlin, latticeZone));
 
-        assertFalse(both.isEmpty(), "London and Berlin must share start instants on a 45-minute cadence");
+        assertThat(both).as("London and Berlin must share start instants on a 45-minute cadence").isNotEmpty();
     }
 
     @Test
@@ -127,7 +127,7 @@ class SlotServiceLatticeTest {
         Set<Instant> both = starts(t, berlin, latticeZone);
         both.retainAll(starts(t, kathmandu, latticeZone));
 
-        assertFalse(both.isEmpty(), "Berlin and Kathmandu must share start instants");
+        assertThat(both).as("Berlin and Kathmandu must share start instants").isNotEmpty();
     }
 
     /**
@@ -153,14 +153,12 @@ class SlotServiceLatticeTest {
         both.retainAll(starts(t, kathmandu, latticeZone));
         List<Instant> shared = both.stream().sorted().toList();
 
-        assertFalse(shared.isEmpty(), "one comb per type must survive a 285-minute offset at a 29-minute cadence");
+        assertThat(shared).as("one comb per type must survive a 285-minute offset at a 29-minute cadence").isNotEmpty();
         // Every surviving start sits on ONE comb: consecutive shared starts are exactly one step apart.
         for (var i = 1; i < shared.size(); i++) {
-            assertEquals(
-                    29 * 60L,
-                    shared.get(i).getEpochSecond() - shared.get(i - 1).getEpochSecond(),
-                    "shared starts must be consecutive points of a single 29-minute comb"
-            );
+            assertThat(shared.get(i).getEpochSecond() - shared.get(i - 1).getEpochSecond())
+                .as("shared starts must be consecutive points of a single 29-minute comb")
+                .isEqualTo(29 * 60L);
         }
         // 2027-03-01 is winter: Berlin is +01:00, Kathmandu +05:45 (no DST there).
         // Berlin's window is 08:00Z-16:00Z, Kathmandu's is 05:15Z-13:15Z, so a slot is bookable by
@@ -168,16 +166,15 @@ class SlotServiceLatticeTest {
         var berlinOpen = MONDAY.atTime(9, 0).atZone(ZoneId.of("Europe/Berlin")).toInstant();
         var kathmanduClose = MONDAY.atTime(19, 0).atZone(ZoneId.of("Asia/Kathmandu")).toInstant();
         for (Instant s : shared) {
-            assertFalse(s.isBefore(berlinOpen), "a shared slot cannot start before Berlin opens");
-            assertFalse(
-                    s.plusSeconds(29 * 60L).isAfter(kathmanduClose),
-                    "a shared slot cannot run past Kathmandu's close"
-            );
+            assertThat(s.isBefore(berlinOpen)).as("a shared slot cannot start before Berlin opens").isFalse();
+            assertThat(s.plusSeconds(29 * 60L).isAfter(kathmanduClose))
+                .as("a shared slot cannot run past Kathmandu's close")
+                .isFalse();
         }
         // The comb over that overlap is exact: on the 29-minute-from-UTC-midnight comb, the first
         // point >= Berlin's 08:00Z open is 08:13Z (k=17) and the last point <= Kathmandu's
         // 12:46Z close-minus-body is 12:34Z (k=26) -- 26-17+1 = 10 points.
-        assertEquals(10, shared.size(), "expected exactly 10 shared starts over the ~4h45 overlap");
+        assertThat(shared).as("expected exactly 10 shared starts over the ~4h45 overlap").hasSize(10);
     }
 
     /**
@@ -200,10 +197,10 @@ class SlotServiceLatticeTest {
             .sorted()
             .toList();
 
-        assertFalse(local.isEmpty());
-        assertEquals(LocalTime.of(9, 0), local.getFirst(), "an all-Kathmandu team must keep 09:00, not 09:15");
+        assertThat(local).isNotEmpty();
+        assertThat(local).first().as("an all-Kathmandu team must keep 09:00, not 09:15").isEqualTo(LocalTime.of(9, 0));
         for (LocalTime lt : local) {
-            assertEquals(0, lt.getMinute() % 30, "every start's Kathmandu-local minute must be :00 or :30, got " + lt);
+            assertThat(lt.getMinute() % 30).as("every start's Kathmandu-local minute must be :00 or :30, got " + lt).isZero();
         }
     }
 
@@ -223,20 +220,19 @@ class SlotServiceLatticeTest {
         ZoneId latticeZone = slotService.latticeZoneFor(t);
 
         Set<Instant> berlinHostStarts = starts(t, berlin, latticeZone);
-        assertFalse(berlinHostStarts.isEmpty());
+        assertThat(berlinHostStarts).isNotEmpty();
         for (Instant s : berlinHostStarts) {
-            assertEquals(
-                    0,
-                    s.atZone(ZoneId.of("Asia/Kathmandu")).getMinute() % 30,
-                    "Kathmandu(Creator)-local minute must be :00 or :30"
-            );
+            assertThat(s.atZone(ZoneId.of("Asia/Kathmandu")).getMinute() % 30)
+                .as("Kathmandu(Creator)-local minute must be :00 or :30")
+                .isZero();
             var berlinMinute = s.atZone(ZoneId.of("Europe/Berlin")).getMinute();
-            assertTrue(
-                    berlinMinute == 15 || berlinMinute == 45,
-                    "Berlin(Host)-local minute must be off-lattice (:15/:45), proving the phase is"
-                    + " neither Berlin's zone nor plain UTC, got "
-                    + berlinMinute
-            );
+            assertThat(berlinMinute == 15 || berlinMinute == 45)
+                .as(
+                        "Berlin(Host)-local minute must be off-lattice (:15/:45), proving the phase is"
+                        + " neither Berlin's zone nor plain UTC, got "
+                        + berlinMinute
+                )
+                .isTrue();
         }
     }
 
@@ -257,8 +253,10 @@ class SlotServiceLatticeTest {
         Set<Instant> wideRange = starts(t, host, latticeZone, MONDAY.minusDays(3), MONDAY.plusDays(3));
         Set<Instant> narrowRange = starts(t, host, latticeZone, MONDAY, MONDAY);
 
-        assertFalse(narrowRange.isEmpty());
-        assertEquals(narrowRange, wideRange, "the lattice for MONDAY must not depend on how wide the request range is");
+        assertThat(narrowRange).isNotEmpty();
+        assertThat(wideRange)
+            .as("the lattice for MONDAY must not depend on how wide the request range is")
+            .isEqualTo(narrowRange);
     }
 
     @Test
@@ -269,7 +267,8 @@ class SlotServiceLatticeTest {
             .stream()
             .map(s -> s.start().toLocalTime())
             .toList();
-        assertEquals(LocalTime.of(9, 0), local.getFirst(), "window-anchored: the first slot IS the window start");
+        assertThat(local).first().as("window-anchored: the first slot IS the window start").isEqualTo(LocalTime.of(9, 0)
+        );
     }
 
     /**
@@ -300,23 +299,21 @@ class SlotServiceLatticeTest {
             .sorted()
             .toList();
 
-        assertEquals(
-                5,
-                host1Starts.size(),
-                "the lattice path must emit 5 starts across the fall-back (the elapsed real time), "
-                + "matching the single-host window-anchored path's count, not 4"
-        );
+        assertThat(host1Starts)
+            .as(
+                    "the lattice path must emit 5 starts across the fall-back (the elapsed real time), "
+                    + "matching the single-host window-anchored path's count, not 4"
+            )
+            .hasSize(5);
         // The repeated local hour (02:00 Berlin, walked once as a Creator-local minute) resolves to
         // two distinct, one-hour-apart instants: 00:00Z is 02:00 CEST (before the transition), 01:00Z
         // is 02:00 CET (after it). Both must be present.
-        assertTrue(
-                host1Starts.contains(Instant.parse("2026-10-25T00:00:00Z")),
-                "must include the first (CEST) occurrence of the repeated 02:00 hour"
-        );
-        assertTrue(
-                host1Starts.contains(Instant.parse("2026-10-25T01:00:00Z")),
-                "must include the second (CET) occurrence of the repeated 02:00 hour"
-        );
+        assertThat(host1Starts)
+            .as("must include the first (CEST) occurrence of the repeated 02:00 hour")
+            .contains(Instant.parse("2026-10-25T00:00:00Z"));
+        assertThat(host1Starts)
+            .as("must include the second (CET) occurrence of the repeated 02:00 hour")
+            .contains(Instant.parse("2026-10-25T01:00:00Z"));
         // Every Host of the shared type sees the identical start set, so the multi-host intersection
         // (BookingService.availableSlots) does not lose the extra hour to a host mismatch either.
         List<Instant> host2Starts = slotService
@@ -325,6 +322,6 @@ class SlotServiceLatticeTest {
             .map(s -> s.start().toInstant())
             .sorted()
             .toList();
-        assertEquals(host1Starts, host2Starts);
+        assertThat(host2Starts).containsExactlyElementsOf(host1Starts);
     }
 }

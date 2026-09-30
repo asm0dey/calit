@@ -1,7 +1,7 @@
 package site.asm0dey.calit.domain;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -19,17 +19,17 @@ class MeetingTypeTest {
         t.persist();
 
         MeetingType loaded = MeetingType.findBySlug(1L, "intro-30");
-        assertEquals(t.id, loaded.id);
-        assertEquals(0, loaded.bufferBeforeMinutes);
-        assertEquals(0, loaded.bufferAfterMinutes);
-        assertEquals(true, loaded.active);
-        assertEquals(false, loaded.secret);
+        assertThat(loaded.id).isEqualTo(t.id);
+        assertThat(loaded.bufferBeforeMinutes).isZero();
+        assertThat(loaded.bufferAfterMinutes).isZero();
+        assertThat(loaded.active).isTrue();
+        assertThat(loaded.secret).isFalse();
     }
 
     @Test
     @TestTransaction
     void findBySlugReturnsNullWhenMissing() {
-        assertNull(MeetingType.findBySlug(1L, "does-not-exist"));
+        assertThat(MeetingType.findBySlug(1L, "does-not-exist")).isNull();
     }
 
     @Test
@@ -51,13 +51,13 @@ class MeetingTypeTest {
         hidden.persist();
 
         List<MeetingType> publicList = MeetingType.listPublic(1L);
-        assertTrue(publicList
+        assertThat(publicList
             .stream()
-            .anyMatch(m -> "pub-listpublic".equals(m.slug)));
-        assertFalse(publicList
+            .anyMatch(m -> "pub-listpublic".equals(m.slug))).isTrue();
+        assertThat(publicList
             .stream()
-            .anyMatch(m -> "secret-listpublic".equals(m.slug)));
+            .anyMatch(m -> "secret-listpublic".equals(m.slug))).isFalse();
         // Direct slug access bypasses the public filter.
-        assertEquals(hidden.id, MeetingType.findBySlug(1L, "secret-listpublic").id);
+        assertThat(MeetingType.findBySlug(1L, "secret-listpublic").id).isEqualTo(hidden.id);
     }
 }

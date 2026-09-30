@@ -1,6 +1,6 @@
 package site.asm0dey.calit.domain;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -19,6 +19,6 @@ class OwnerSettingsHomeRedirectTest {
     void seededOwnerHasHomeRedirectEnabled() {
         OwnerSettings.seed(1L, "admin@example.com");
 
-        assertTrue(OwnerSettings.forOwner(1L).homeRedirectEnabled);
+        assertThat(OwnerSettings.forOwner(1L).homeRedirectEnabled).isTrue();
     }
 }

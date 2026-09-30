@@ -1,7 +1,7 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.times;
@@ -63,7 +63,7 @@ class GoogleConnectionTickTest {
         GoogleCredential c = QuarkusTransaction
             .requiringNew()
             .call(() -> GoogleCredential.findById(id));
-        assertNotNull(c.lastProbedAt, "probe must stamp last_probed_at");
+        assertThat(c.lastProbedAt).as("probe must stamp last_probed_at").isNotNull();
     }
 
     @Test
@@ -76,7 +76,7 @@ class GoogleConnectionTickTest {
         GoogleCredential c = QuarkusTransaction
             .requiringNew()
             .call(() -> GoogleCredential.findById(id));
-        assertNotNull(c.reconnectNotifiedAt, "notify must stamp reconnect_notified_at");
+        assertThat(c.reconnectNotifiedAt).as("notify must stamp reconnect_notified_at").isNotNull();
         // Second run: already stamped -> no second email (exactly-once).
         scheduler.notifyPendingDisconnects();
         verify(emailService, times(1)).sendGoogleDisconnected(any(), any(), any(), any());

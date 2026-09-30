@@ -1,6 +1,6 @@
 package site.asm0dey.calit.user;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 class PasswordHasherTest {
@@ -9,20 +9,20 @@ class PasswordHasherTest {
     @Test
     void hashHasArgon2idMcfShape() {
         String encoded = hasher.hash("correct horse battery staple");
-        assertTrue(encoded.startsWith("$argon2id$v=19$m=19456,t=2,p=1$"), "unexpected encoding: " + encoded);
+        assertThat(encoded).as("unexpected encoding: " + encoded).startsWith("$argon2id$v=19$m=19456,t=2,p=1$");
         var parts = encoded.split("\\$");
-        assertEquals(6, parts.length, "expected 6 MCF segments, got " + encoded);
+        assertThat(parts.length).as("expected 6 MCF segments, got " + encoded).isEqualTo(6);
     }
 
     @Test
     void verifyAcceptsCorrectPasswordAndRejectsWrong() {
         String encoded = hasher.hash("s3cret-pass");
-        assertTrue(hasher.verify("s3cret-pass", encoded));
-        assertFalse(hasher.verify("wrong-pass", encoded));
+        assertThat(hasher.verify("s3cret-pass", encoded)).isTrue();
+        assertThat(hasher.verify("wrong-pass", encoded)).isFalse();
     }
 
     @Test
     void saltIsRandomPerHash() {
-        assertNotEquals(hasher.hash("same"), hasher.hash("same"));
+        assertThat(hasher.hash("same")).isNotEqualTo(hasher.hash("same"));
     }
 }

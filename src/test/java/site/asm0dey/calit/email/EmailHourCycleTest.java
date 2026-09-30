@@ -1,9 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.mailer.Mail;
@@ -99,9 +97,9 @@ class EmailHourCycleTest {
         emailService.handleConfirmed(new BookingConfirmed(id));
 
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
-        assertEquals(1, toOwner.size(), "host must receive their copy");
+        assertThat(toOwner).as("host must receive their copy").hasSize(1);
         String html = toOwner.getFirst().getHtml();
-        assertTrue(html.contains("1:00 PM"), "host copy must be 12-hour; got: " + html);
+        assertThat(html).as("host copy must be 12-hour; got: " + html).contains("1:00 PM");
     }
 
     @Test
@@ -112,10 +110,10 @@ class EmailHourCycleTest {
         emailService.handleConfirmed(new BookingConfirmed(id));
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
-        assertEquals(1, toInvitee.size(), "invitee must receive confirmation");
+        assertThat(toInvitee).as("invitee must receive confirmation").hasSize(1);
         String html = toInvitee.getFirst().getHtml();
-        assertTrue(html.contains("13:00"), "invitee copy must keep the translated 24h pattern; got: " + html);
-        assertFalse(html.contains("1:00 PM"), "host preference must not leak to the invitee");
+        assertThat(html).as("invitee copy must keep the translated 24h pattern; got: " + html).contains("13:00");
+        assertThat(html).as("host preference must not leak to the invitee").doesNotContain("1:00 PM");
     }
 
     @Test
@@ -126,7 +124,7 @@ class EmailHourCycleTest {
         emailService.handleConfirmed(new BookingConfirmed(id));
 
         String html = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getHtml();
-        assertTrue(html.contains("13:00"), "auto must reproduce today's 24h output; got: " + html);
+        assertThat(html).as("auto must reproduce today's 24h output; got: " + html).contains("13:00");
     }
 
     @Test
@@ -137,7 +135,7 @@ class EmailHourCycleTest {
         emailService.handleConfirmed(new BookingConfirmed(id));
 
         String html = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getHtml();
-        assertTrue(html.contains("13:00"), "h23 must render 24-hour; got: " + html);
-        assertFalse(html.contains("1:00 PM"), "h23's entire purpose is never AM/PM; got: " + html);
+        assertThat(html).as("h23 must render 24-hour; got: " + html).contains("13:00");
+        assertThat(html).as("h23's entire purpose is never AM/PM; got: " + html).doesNotContain("1:00 PM");
     }
 }

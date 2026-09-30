@@ -2,6 +2,7 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import io.quarkus.test.junit.QuarkusTest;
@@ -182,7 +183,7 @@ class GooglePageResourceTest {
                 credId,
                 googleCalId
         );
-        org.junit.jupiter.api.Assertions.assertEquals(1, n, "expected " + googleCalId + " to be the write target");
+        assertThat(n).as("expected " + googleCalId + " to be the write target").isOne();
     }
 
     @Transactional
@@ -193,20 +194,13 @@ class GooglePageResourceTest {
                 googleCalId,
                 expected
         );
-        org.junit.jupiter.api.Assertions.assertEquals(1, n, "expected readForBusy="
-                + expected
-                + " for "
-                + googleCalId);
+        assertThat(n).as("expected readForBusy=" + expected + " for " + googleCalId).isOne();
     }
 
     @Transactional
     void assertCalendarExists(long credId, String googleCalId) {
         long n = GoogleCalendar.count("googleCredentialId = ?1 and googleCalendarId = ?2", credId, googleCalId);
-        org.junit.jupiter.api.Assertions.assertEquals(
-                1,
-                n,
-                "expected calendar " + googleCalId + " to still exist for credential " + credId
-        );
+        assertThat(n).as("expected calendar " + googleCalId + " to still exist for credential " + credId).isOne();
     }
 
     @Transactional

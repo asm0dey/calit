@@ -1,7 +1,8 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -48,11 +49,9 @@ class EmailMissingOwnerSettingsTest {
 
         QuarkusTransaction
             .requiringNew()
-            .run(() -> assertEquals(
-                    0,
-                    EmailOutbox.count("recipient", INVITEE_EMAIL),
-                    "nothing is enqueued — there is no owner to address the copy to"
-            ));
+            .run(() -> assertThat(EmailOutbox.count("recipient", INVITEE_EMAIL))
+                .as("nothing is enqueued — there is no owner to address the copy to")
+                .isZero());
 
         cleanup(bookingId);
     }
@@ -71,11 +70,9 @@ class EmailMissingOwnerSettingsTest {
 
         QuarkusTransaction
             .requiringNew()
-            .run(() -> assertEquals(
-                    1,
-                    EmailOutbox.count("recipient", INVITEE_EMAIL),
-                    "the reminder still goes out, coerced to UTC"
-            ));
+            .run(() -> assertThat(EmailOutbox.count("recipient", INVITEE_EMAIL))
+                .as("the reminder still goes out, coerced to UTC")
+                .isOne());
 
         cleanup(bookingId);
     }

@@ -2,10 +2,9 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
@@ -45,8 +44,8 @@ class SharedWriteCalendarTest {
         saveBuffers(typeId, credId + ":work@example.com").statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertEquals(credId, h.googleCredentialId);
-        assertEquals("work@example.com", h.googleCalendarId);
+        assertThat(h.googleCredentialId).isEqualTo(credId);
+        assertThat(h.googleCalendarId).isEqualTo("work@example.com");
     }
 
     @Test
@@ -58,8 +57,8 @@ class SharedWriteCalendarTest {
         saveBuffers(typeId, foreignCredId + ":creator@example.com").statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertNull(h.googleCredentialId);
-        assertNull(h.googleCalendarId);
+        assertThat(h.googleCredentialId).isNull();
+        assertThat(h.googleCalendarId).isNull();
     }
 
     @Test
@@ -73,8 +72,8 @@ class SharedWriteCalendarTest {
         saveBuffers(typeId, "keep").statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertEquals(credId, h.googleCredentialId);
-        assertEquals("unticked@example.com", h.googleCalendarId);
+        assertThat(h.googleCredentialId).isEqualTo(credId);
+        assertThat(h.googleCalendarId).isEqualTo("unticked@example.com");
     }
 
     @Test
@@ -100,8 +99,8 @@ class SharedWriteCalendarTest {
             .statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertNull(h.googleCredentialId);
-        assertEquals("was-on-a-disconnected-account@example.com", h.googleCalendarId);
+        assertThat(h.googleCredentialId).isNull();
+        assertThat(h.googleCalendarId).isEqualTo("was-on-a-disconnected-account@example.com");
     }
 
     @Test
@@ -118,16 +117,16 @@ class SharedWriteCalendarTest {
         saveBuffers(typeId, credId + ":work@example.com").statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertEquals(credId, h.googleCredentialId);
-        assertEquals("work@example.com", h.googleCalendarId);
+        assertThat(h.googleCredentialId).isEqualTo(credId);
+        assertThat(h.googleCalendarId).isEqualTo("work@example.com");
 
         MeetingType t = MeetingType.findById(typeId);
-        assertNull(t.googleCredentialId);
-        assertEquals("creator-own-override@example.com", t.googleCalendarId);
+        assertThat(t.googleCredentialId).isNull();
+        assertThat(t.googleCalendarId).isEqualTo("creator-own-override@example.com");
 
         MeetingTypeHost other = MeetingTypeHost.find(typeId, otherCohostId);
-        assertNull(other.googleCredentialId);
-        assertEquals("other-cohost-override@example.com", other.googleCalendarId);
+        assertThat(other.googleCredentialId).isNull();
+        assertThat(other.googleCalendarId).isEqualTo("other-cohost-override@example.com");
     }
 
     @Test
@@ -144,12 +143,12 @@ class SharedWriteCalendarTest {
         saveBuffers(typeId, credId + ":work@example.com").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertEquals(credId, t.googleCredentialId);
-        assertEquals("work@example.com", t.googleCalendarId);
+        assertThat(t.googleCredentialId).isEqualTo(credId);
+        assertThat(t.googleCalendarId).isEqualTo("work@example.com");
         // Never on the Creator's own host row either.
         MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertNull(h.googleCredentialId);
-        assertNull(h.googleCalendarId);
+        assertThat(h.googleCredentialId).isNull();
+        assertThat(h.googleCalendarId).isNull();
     }
 
     @Test

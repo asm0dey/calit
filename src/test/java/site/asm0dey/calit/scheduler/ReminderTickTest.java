@@ -1,8 +1,7 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -36,9 +35,9 @@ class ReminderTickTest {
 
         scheduler.dispatchDueReminders();
         // Only the due+unsent reminder is now marked sent.
-        assertNotNull(reloadSentAt(dueId), "due reminder must be marked sent");
-        assertNull(reloadSentAt(futureId), "not-yet-due reminder must stay unsent");
-        assertNotNull(reloadSentAt(sentId), "already-sent reminder is untouched (still sent)");
+        assertThat(reloadSentAt(dueId)).as("due reminder must be marked sent").isNotNull();
+        assertThat(reloadSentAt(futureId)).as("not-yet-due reminder must stay unsent").isNull();
+        assertThat(reloadSentAt(sentId)).as("already-sent reminder is untouched (still sent)").isNotNull();
     }
 
     private Long seedBooking() {

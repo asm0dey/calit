@@ -3,9 +3,7 @@ package site.asm0dey.calit.web;
 import module java.base;
 import module java.desktop;
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +21,7 @@ class OgImageResourceIT {
     static final byte[] PNG_MAGIC = {(byte) 0x89, 'P', 'N', 'G'};
 
     @Test
-    void productCardRendersFromThePackagedArtifact() throws IOException {
+    void productCardRendersFromThePackagedArtifact() throws Exception {
         byte[] body = given()
             .when()
             .get("/og.png")
@@ -34,11 +32,11 @@ class OgImageResourceIT {
             .extract()
             .asByteArray();
 
-        assertArrayEquals(PNG_MAGIC, Arrays.copyOf(body, 4));
+        assertThat(Arrays.copyOf(body, 4)).containsExactly(PNG_MAGIC);
 
         var image = ImageIO.read(new ByteArrayInputStream(body));
-        assertNotNull(image, "response body must decode as a real image, not just start with PNG magic bytes");
-        assertEquals(1200, image.getWidth());
-        assertEquals(630, image.getHeight());
+        assertThat(image).as("response body must decode as a real image, not just start with PNG magic bytes").isNotNull();
+        assertThat(image.getWidth()).isEqualTo(1200);
+        assertThat(image.getHeight()).isEqualTo(630);
     }
 }

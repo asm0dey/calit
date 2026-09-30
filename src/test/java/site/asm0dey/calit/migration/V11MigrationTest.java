@@ -1,7 +1,6 @@
 package site.asm0dey.calit.migration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -24,19 +23,19 @@ class V11MigrationTest {
                 "select count(*) from information_schema.columns "
                 + "where table_name='app_user' and column_name='password_hash' and is_nullable='NO'"
         );
-        assertEquals(0L, notNullable, "password_hash must be nullable after V11");
+        assertThat(notNullable).as("password_hash must be nullable after V11").isZero();
 
         var sub = scalar(
                 "select count(*) from information_schema.columns " + "where table_name='app_user' and column_name='google_sub'"
         );
-        assertEquals(1L, sub, "app_user.google_sub must exist");
+        assertThat(sub).as("app_user.google_sub must exist").isOne();
     }
 
     @Test
     @Transactional
     void loginTicketTableExists() {
         var table = scalar("select count(*) from information_schema.tables where table_name='login_ticket'");
-        assertEquals(1L, table, "login_ticket table must exist");
-        assertTrue(scalar("select count(*) from login_ticket") >= 0, "login_ticket must be queryable");
+        assertThat(table).as("login_ticket table must exist").isOne();
+        assertThat(scalar("select count(*) from login_ticket") >= 0).as("login_ticket must be queryable").isTrue();
     }
 }

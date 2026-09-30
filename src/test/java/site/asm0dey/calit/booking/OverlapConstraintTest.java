@@ -1,7 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -52,6 +52,6 @@ class OverlapConstraintTest {
         held(1L).persist();
         // GenerationType.IDENTITY forces an immediate insert on persist() (can't batch identity
         // inserts), so the exclusion-constraint violation surfaces here rather than at em.flush().
-        assertThrows(PersistenceException.class, () -> held(1L).persist());
+        assertThatExceptionOfType(PersistenceException.class).isThrownBy(() -> held(1L).persist());
     }
 }

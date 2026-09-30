@@ -1,7 +1,7 @@
 package site.asm0dey.calit.notify;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -50,14 +50,14 @@ class NotificationChannelTest {
                 .createNativeQuery("select url from notification_channel where id = :id")
                 .setParameter("id", id)
                 .getSingleResult());
-        assertTrue(raw.startsWith("enc:v1:"), "url column must hold ciphertext, was: " + raw);
-        assertFalse(raw.contains("AAbbCC"), "the bot token must not appear in the column");
+        assertThat(raw).as("url column must hold ciphertext, was: " + raw).startsWith("enc:v1:");
+        assertThat(raw).as("the bot token must not appear in the column").doesNotContain("AAbbCC");
 
         String readBack =
                 QuarkusTransaction
             .requiringNew()
             .call(() -> ((NotificationChannel) NotificationChannel.findById(id)).url);
-        assertEquals(TELEGRAM, readBack);
+        assertThat(readBack).isEqualTo(TELEGRAM);
     }
 
     @Test
@@ -69,19 +69,19 @@ class NotificationChannelTest {
         var mine = QuarkusTransaction
             .requiringNew()
             .call(() -> NotificationChannel.forOwner(1L));
-        assertEquals(1, mine.size());
-        assertEquals("Mine", mine.getFirst().label);
+        assertThat(mine).hasSize(1);
+        assertThat(mine.getFirst().label).isEqualTo("Mine");
     }
 
     @Test
     void ownedByRejectsAnotherOwnersId() {
         otherOwner();
         var theirs = persist(2L, "slack://T00/B00/xxxx", "Theirs");
-        assertNull(QuarkusTransaction
+        assertThat(QuarkusTransaction
             .requiringNew()
-            .call(() -> NotificationChannel.ownedBy(theirs, 1L)));
-        assertNotNull(QuarkusTransaction
+            .call(() -> NotificationChannel.ownedBy(theirs, 1L))).isNull();
+        assertThat(QuarkusTransaction
             .requiringNew()
-            .call(() -> NotificationChannel.ownedBy(theirs, 2L)));
+            .call(() -> NotificationChannel.ownedBy(theirs, 2L))).isNotNull();
     }
 }

@@ -1,10 +1,8 @@
 package site.asm0dey.calit.notify;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
@@ -77,7 +75,7 @@ class ChannelAllowlistDeliveryTest {
     }
 
     @Test
-    void aChannelWhoseSchemeLeftTheAllowlistStopsDeliveringAndTheFailureIsRecorded() throws InterruptedException {
+    void aChannelWhoseSchemeLeftTheAllowlistStopsDeliveringAndTheFailureIsRecorded() throws Exception {
         // Saved while "ntfy" was allowed: the row exists and carries no failure yet.
         var channelId = seedChannel();
         var bookingId = seedBooking();
@@ -88,10 +86,12 @@ class ChannelAllowlistDeliveryTest {
             .requiringNew()
             .run(() -> confirmed.fire(new BookingConfirmed(bookingId)));
 
-        assertFalse(hit.await(2, TimeUnit.SECONDS), "a channel whose scheme left the allowlist must not be delivered");
+        assertThat(hit.await(2, TimeUnit.SECONDS))
+            .as("a channel whose scheme left the allowlist must not be delivered")
+            .isFalse();
         NotificationChannel c = awaitFailureStamp(channelId);
-        assertNotNull(c.lastFailureAt, "the skip must be visible on /me/settings, not only in the log");
-        assertNull(c.lastSuccessAt);
+        assertThat(c.lastFailureAt).as("the skip must be visible on /me/settings, not only in the log").isNotNull();
+        assertThat(c.lastSuccessAt).isNull();
     }
 
     private Long seedChannel() {

@@ -1,7 +1,7 @@
 package site.asm0dey.calit.availability;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -75,19 +75,17 @@ class SlotServiceDurationTest {
     void theLatticeIsAnchoredToTheShortestLengthNotTheChosenOne() {
         MeetingType t = seed("lattice", 60, List.of(30, 120));
         // Shortest allowed is 30, so candidate starts are every 30 minutes for BOTH picks.
-        assertEquals(
-                List.of(
-                        LocalTime.of(9, 0),
-                        LocalTime.of(9, 30),
-                        LocalTime.of(10, 0),
-                        LocalTime.of(10, 30),
-                        LocalTime.of(11, 0),
-                        LocalTime.of(11, 30)
-                ),
-                startsFor(t, 30)
-        );
+        assertThat(startsFor(t, 30))
+            .containsExactly(
+                    LocalTime.of(9, 0),
+                    LocalTime.of(9, 30),
+                    LocalTime.of(10, 0),
+                    LocalTime.of(10, 30),
+                    LocalTime.of(11, 0),
+                    LocalTime.of(11, 30)
+            );
         // 120 keeps the same lattice and simply drops the starts that run past 12:00.
-        assertEquals(List.of(LocalTime.of(9, 0), LocalTime.of(9, 30), LocalTime.of(10, 0)), startsFor(t, 120));
+        assertThat(startsFor(t, 120)).containsExactly(LocalTime.of(9, 0), LocalTime.of(9, 30), LocalTime.of(10, 0));
     }
 
     @Test
@@ -97,19 +95,16 @@ class SlotServiceDurationTest {
         // 09:00-12:00 is 180 minutes, so four back-to-back 45-min slots fit exactly (the last ending
         // precisely at 12:00), matching the inclusive-end-of-window behavior established by
         // SlotServiceTest#generatesBackToBackSlotsWithinGlobalWindow (120min window / 60min -> 2 slots).
-        assertEquals(
-                List.of(LocalTime.of(9, 0), LocalTime.of(9, 45), LocalTime.of(10, 30), LocalTime.of(11, 15)),
-                startsFor(t, 45)
-        );
+        assertThat(startsFor(t, 45))
+            .containsExactly(LocalTime.of(9, 0), LocalTime.of(9, 45), LocalTime.of(10, 30), LocalTime.of(11, 15));
         // and the old overload agrees with the explicit one
-        assertEquals(
-                startsFor(t, 45),
-                slotService
-                    .generateRawSlots(t, OWNER, MONDAY, MONDAY, null)
-                    .stream()
-                    .map(s -> s.start().toLocalTime())
-                    .toList()
-        );
+        assertThat(slotService
+            .generateRawSlots(t, OWNER, MONDAY, MONDAY, null)
+            .stream()
+            .map(s -> s.start().toLocalTime())
+            .toList()
+        )
+            .containsExactlyElementsOf(startsFor(t, 45));
     }
 
     @Test
@@ -117,6 +112,6 @@ class SlotServiceDurationTest {
         // slotIntervalMinutes is set INSIDE the seeding transaction — assigning it to a detached
         // entity afterwards would never reach the row SlotService reads back.
         MeetingType t = seed("explicit-cadence", 60, List.of(30), 60);
-        assertEquals(List.of(LocalTime.of(9, 0), LocalTime.of(10, 0), LocalTime.of(11, 0)), startsFor(t, 30));
+        assertThat(startsFor(t, 30)).containsExactly(LocalTime.of(9, 0), LocalTime.of(10, 0), LocalTime.of(11, 0));
     }
 }

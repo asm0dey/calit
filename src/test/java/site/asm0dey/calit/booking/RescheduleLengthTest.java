@@ -1,7 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -79,7 +79,7 @@ class RescheduleLengthTest {
                 List.of(),
                 120
         );
-        assertEquals(120, Duration.between(b.startUtc, b.endUtc).toMinutes());
+        assertThat(Duration.between(b.startUtc, b.endUtc)).hasMinutes(120);
 
         var target = slots
             .stream()
@@ -89,11 +89,9 @@ class RescheduleLengthTest {
         bookingService.reschedule(b.manageToken, target.start().toInstant());
 
         Booking moved = Booking.findById(b.id);
-        assertEquals(
-                120,
-                Duration.between(moved.startUtc, moved.endUtc).toMinutes(),
-                "reschedule moves a booking; it must never resize it"
-        );
+        assertThat(Duration.between(moved.startUtc, moved.endUtc).toMinutes())
+            .as("reschedule moves a booking; it must never resize it")
+            .isEqualTo(120);
     }
 
     private static final ZoneId AMS = ZoneId.of("Europe/Amsterdam");
@@ -143,12 +141,10 @@ class RescheduleLengthTest {
                 90
         );
         List<Booking> rows = Booking.group(lead.groupId);
-        assertEquals(2, rows.size(), "both hosts get a row");
-        rows.forEach(r -> assertEquals(
-                90,
-                Duration.between(r.startUtc, r.endUtc).toMinutes(),
-                "booked at the chosen non-default length"
-        ));
+        assertThat(rows).as("both hosts get a row").hasSize(2);
+        rows.forEach(r -> assertThat(Duration.between(r.startUtc, r.endUtc).toMinutes())
+            .as("booked at the chosen non-default length")
+            .isEqualTo(90));
 
         Booking freshLead = Booking.leadOfGroup(lead.groupId, OWNER);
         bookingService.reschedule(freshLead.manageToken, nextMonday(13));
@@ -156,10 +152,8 @@ class RescheduleLengthTest {
         // length from the wrong row is exactly the bug this path could hide.
         Booking
             .<Booking>group(lead.groupId)
-            .forEach(r -> assertEquals(
-                    90,
-                    Duration.between(r.startUtc, r.endUtc).toMinutes(),
-                    "group reschedule moves every row; it must never resize any of them"
-            ));
+            .forEach(r -> assertThat(Duration.between(r.startUtc, r.endUtc).toMinutes())
+                .as("group reschedule moves every row; it must never resize any of them")
+                .isEqualTo(90));
     }
 }

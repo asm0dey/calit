@@ -1,7 +1,8 @@
 package site.asm0dey.calit.notify;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
@@ -113,7 +114,7 @@ class ChannelDeliveryTest {
     // S2925: polling for an async DB write with no latch to observe it; a single fixed sleep would be worse.
     @SuppressWarnings("java:S2925")
     private NotificationChannel await(Long channelId, boolean success) throws InterruptedException {
-        assertTrue(hit.await(10, TimeUnit.SECONDS), "the stub never received a POST");
+        assertThat(hit.await(10, TimeUnit.SECONDS)).as("the stub never received a POST").isTrue();
         for (var i = 0; i < 100; i++) {
             // the timestamp write happens just after the POST returns
             NotificationChannel c =
@@ -130,28 +131,28 @@ class ChannelDeliveryTest {
     }
 
     @Test
-    void aConfirmedBookingIsDeliveredAndStamped() throws InterruptedException {
+    void aConfirmedBookingIsDeliveredAndStamped() throws Exception {
         var channelId = channel(1L);
         fireConfirmed(booking());
 
         NotificationChannel c = await(channelId, true);
-        assertNotNull(c.lastSuccessAt);
-        assertNull(c.lastFailureAt);
+        assertThat(c.lastSuccessAt).isNotNull();
+        assertThat(c.lastFailureAt).isNull();
     }
 
     @Test
-    void aFailingChannelStampsTheFailureAndNotTheSuccess() throws InterruptedException {
+    void aFailingChannelStampsTheFailureAndNotTheSuccess() throws Exception {
         status.set(500);
         var channelId = channel(1L);
         fireConfirmed(booking());
 
         NotificationChannel c = await(channelId, false);
-        assertNotNull(c.lastFailureAt);
-        assertNull(c.lastSuccessAt);
+        assertThat(c.lastFailureAt).isNotNull();
+        assertThat(c.lastSuccessAt).isNull();
     }
 
     @Test
-    void anotherOwnersChannelIsNeverDelivered() throws InterruptedException {
+    void anotherOwnersChannelIsNeverDelivered() throws Exception {
         // Another owner's channel; the booking below belongs to owner 1. notification_channel.owner_id
         // is FK-constrained to app_user, so the second owner has to actually exist.
         Long other = QuarkusTransaction
@@ -160,6 +161,6 @@ class ChannelDeliveryTest {
         channel(other);
         fireConfirmed(booking());
 
-        assertFalse(hit.await(2, TimeUnit.SECONDS), "another owner's channel must not receive owner 1's booking");
+        assertThat(hit.await(2, TimeUnit.SECONDS)).as("another owner's channel must not receive owner 1's booking").isFalse();
     }
 }

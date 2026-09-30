@@ -2,9 +2,9 @@ package site.asm0dey.calit.notify;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.*;
 import com.sun.net.httpserver.HttpServer;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -56,7 +56,7 @@ class ChannelSettingsPageTest {
 
     private static String extractValue(String line) {
         var m = VALUE_ATTR.matcher(line);
-        assertTrue(m.find(), "no value attribute found: " + line);
+        assertThat(m.find()).as("no value attribute found: " + line).isTrue();
         return m.group(1);
     }
 
@@ -106,8 +106,8 @@ class ChannelSettingsPageTest {
             .then()
             .statusCode(200);
 
-        assertEquals(before + 1, hits.get(), "the typed URL was actually delivered to");
-        assertTrue(channelsOf(1L).isEmpty(), "a test must not persist the channel");
+        assertThat(hits.get()).as("the typed URL was actually delivered to").isEqualTo(before + 1);
+        assertThat(channelsOf(1L)).as("a test must not persist the channel").isEmpty();
     }
 
     @Test
@@ -123,7 +123,7 @@ class ChannelSettingsPageTest {
             .then()
             .statusCode(200);
 
-        assertTrue(channelsOf(1L).isEmpty());
+        assertThat(channelsOf(1L)).isEmpty();
     }
 
     /**
@@ -159,8 +159,8 @@ class ChannelSettingsPageTest {
             .then()
             .statusCode(200);
 
-        assertEquals(before + 1, hits.get(), "the mask resolved back to the stored URL");
-        assertEquals(url, channelsOf(1L).getFirst().url, "and the stored URL is untouched");
+        assertThat(hits.get()).as("the mask resolved back to the stored URL").isEqualTo(before + 1);
+        assertThat(channelsOf(1L).getFirst().url).as("and the stored URL is untouched").isEqualTo(url);
     }
 
     @Test
@@ -176,7 +176,7 @@ class ChannelSettingsPageTest {
             .then()
             .statusCode(200);
 
-        assertTrue(channelsOf(1L).getFirst().defaultEnabled, "a brand-new channel is created enabled");
+        assertThat(channelsOf(1L).getFirst().defaultEnabled).as("a brand-new channel is created enabled").isTrue();
     }
 
     @Test
@@ -195,8 +195,8 @@ class ChannelSettingsPageTest {
             .statusCode(200);
 
         var saved = channelsOf(1L);
-        assertEquals(1, saved.size(), "unticking is not deleting");
-        assertFalse(saved.getFirst().defaultEnabled);
+        assertThat(saved).as("unticking is not deleting").hasSize(1);
+        assertThat(saved.getFirst().defaultEnabled).isFalse();
     }
 
     @Test
@@ -219,7 +219,7 @@ class ChannelSettingsPageTest {
             .then()
             .statusCode(200);
 
-        assertTrue(channelsOf(1L).getFirst().defaultEnabled);
+        assertThat(channelsOf(1L).getFirst().defaultEnabled).isTrue();
     }
 
     @Test
@@ -237,9 +237,9 @@ class ChannelSettingsPageTest {
             .body(not(containsString("AAbbCC")));
 
         var saved = channelsOf(1L);
-        assertEquals(1, saved.size());
-        assertEquals(TELEGRAM, saved.getFirst().url, "the real URL is stored");
-        assertEquals("Telegram", saved.getFirst().label, "a blank label defaults to the display name");
+        assertThat(saved).hasSize(1);
+        assertThat(saved.getFirst().url).as("the real URL is stored").isEqualTo(TELEGRAM);
+        assertThat(saved.getFirst().label).as("a blank label defaults to the display name").isEqualTo("Telegram");
     }
 
     @Test
@@ -270,7 +270,9 @@ class ChannelSettingsPageTest {
             .then()
             .statusCode(200);
 
-        assertEquals(TELEGRAM, channelsOf(1L).getFirst().url, "an untouched redacted value must not overwrite");
+        assertThat(channelsOf(1L).getFirst().url).as("an untouched redacted value must not overwrite").isEqualTo(
+                TELEGRAM
+        );
     }
 
     @Test
@@ -287,7 +289,7 @@ class ChannelSettingsPageTest {
             .statusCode(200)
             .body(containsString("supported"));
 
-        assertTrue(channelsOf(1L).isEmpty());
+        assertThat(channelsOf(1L)).isEmpty();
     }
 
     /**
@@ -308,7 +310,7 @@ class ChannelSettingsPageTest {
             .statusCode(200)
             .body(containsString("supported"));
 
-        assertTrue(channelsOf(1L).isEmpty(), "a redaction marker must never be stored as a URL");
+        assertThat(channelsOf(1L)).as("a redaction marker must never be stored as a URL").isEmpty();
     }
 
     /**
@@ -330,8 +332,8 @@ class ChannelSettingsPageTest {
             .statusCode(200);
 
         var saved = channelsOf(1L);
-        assertEquals(1, saved.size(), "a path-less webhook URL is a legitimate channel");
-        assertEquals("webhook://example.com", saved.getFirst().url);
+        assertThat(saved).as("a path-less webhook URL is a legitimate channel").hasSize(1);
+        assertThat(saved.getFirst().url).isEqualTo("webhook://example.com");
     }
 
     /**
@@ -355,7 +357,7 @@ class ChannelSettingsPageTest {
             .body(containsString("missing a part"))
             .body(not(containsString("not a supported")));
 
-        assertTrue(channelsOf(1L).isEmpty(), "a channel that could never deliver must not be stored");
+        assertThat(channelsOf(1L)).as("a channel that could never deliver must not be stored").isEmpty();
     }
 
     @Test
@@ -386,7 +388,7 @@ class ChannelSettingsPageTest {
             .post("/me/settings/channels/" + theirs + "/delete")
             .then()
             .statusCode(200);
-        assertEquals(1, channelsOf(other).size(), "another owner's channel must survive");
+        assertThat(channelsOf(other)).as("another owner's channel must survive").hasSize(1);
 
         given()
             .contentType("application/x-www-form-urlencoded")
@@ -394,6 +396,6 @@ class ChannelSettingsPageTest {
             .post("/me/settings/channels/" + mine + "/delete")
             .then()
             .statusCode(200);
-        assertTrue(channelsOf(1L).isEmpty());
+        assertThat(channelsOf(1L)).isEmpty();
     }
 }

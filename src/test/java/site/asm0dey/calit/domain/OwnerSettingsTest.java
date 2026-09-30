@@ -1,7 +1,6 @@
 package site.asm0dey.calit.domain;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -22,7 +21,7 @@ class OwnerSettingsTest {
         s.persist();
 
         OwnerSettings loaded = OwnerSettings.forOwner(1L);
-        assertNotNull(loaded);
-        assertEquals("Europe/Amsterdam", loaded.timezone);
+        assertThat(loaded).isNotNull();
+        assertThat(loaded.timezone).isEqualTo("Europe/Amsterdam");
     }
 }

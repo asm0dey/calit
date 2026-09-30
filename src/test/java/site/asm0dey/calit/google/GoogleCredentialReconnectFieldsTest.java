@@ -1,8 +1,7 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -23,11 +22,11 @@ class GoogleCredentialReconnectFieldsTest {
         c.flush();
 
         GoogleCredential reloaded = GoogleCredential.findById(c.id);
-        assertEquals(t, reloaded.reconnectNotifiedAt);
-        assertEquals(t, reloaded.lastProbedAt);
+        assertThat(reloaded.reconnectNotifiedAt).isEqualTo(t);
+        assertThat(reloaded.lastProbedAt).isEqualTo(t);
 
         GoogleCredential fresh = new GoogleCredential();
-        assertNull(fresh.reconnectNotifiedAt);
-        assertNull(fresh.lastProbedAt);
+        assertThat(fresh.reconnectNotifiedAt).isNull();
+        assertThat(fresh.lastProbedAt).isNull();
     }
 }

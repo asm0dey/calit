@@ -1,7 +1,8 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import com.google.api.client.http.HttpTransport;
@@ -68,11 +69,8 @@ class GoogleTokenServiceRequestTokenTest {
                 )
         );
 
-        assertThrows(GoogleInvalidGrantException.class, () -> svc.requestToken(
-                "refresh_token",
-                "dead-refresh-token",
-                NOW
-        ));
+        assertThatExceptionOfType(GoogleInvalidGrantException.class)
+            .isThrownBy(() -> svc.requestToken("refresh_token", "dead-refresh-token", NOW));
     }
 
     @Test
@@ -81,16 +79,14 @@ class GoogleTokenServiceRequestTokenTest {
                 respondingWith(401, "{\"error\":\"invalid_client\",\"error_description\":" + "\"Unauthorized\"}")
         );
 
-        var thrown = assertThrows(IllegalStateException.class, () -> svc.requestToken(
-                "refresh_token",
-                "some-refresh-token",
-                NOW
-        ));
+        var thrown = assertThatExceptionOfType(IllegalStateException.class)
+            .isThrownBy(() -> svc.requestToken("refresh_token", "some-refresh-token", NOW))
+            .actual();
 
-        assertFalse(thrown instanceof GoogleInvalidGrantException, "401 must NOT be treated as a dead grant");
-        assertTrue(thrown.getMessage().contains("refresh_token"), thrown.getMessage());
-        assertTrue(thrown.getMessage().contains("error=invalid_client"), thrown.getMessage());
-        assertTrue(thrown.getMessage().contains("description=Unauthorized"), thrown.getMessage());
+        assertThat((thrown instanceof GoogleInvalidGrantException)).as("401 must NOT be treated as a dead grant").isFalse();
+        assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("refresh_token");
+        assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("error=invalid_client");
+        assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("description=Unauthorized");
     }
 
     @Test
@@ -99,14 +95,12 @@ class GoogleTokenServiceRequestTokenTest {
                 respondingWith(400, "{\"error\":\"invalid_client\",\"error_description\":\"Bad client " + "secret\"}")
         );
 
-        var thrown = assertThrows(IllegalStateException.class, () -> svc.requestToken(
-                "refresh_token",
-                "some-refresh-token",
-                NOW
-        ));
+        var thrown = assertThatExceptionOfType(IllegalStateException.class)
+            .isThrownBy(() -> svc.requestToken("refresh_token", "some-refresh-token", NOW))
+            .actual();
         // The status alone must not condemn the grant: only 400 AND invalid_grant does.
-        assertFalse(thrown instanceof GoogleInvalidGrantException, "400 alone must not mean a dead grant");
-        assertTrue(thrown.getMessage().contains("error=invalid_client"), thrown.getMessage());
+        assertThat((thrown instanceof GoogleInvalidGrantException)).as("400 alone must not mean a dead grant").isFalse();
+        assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("error=invalid_client");
     }
 
     @Test
@@ -117,8 +111,8 @@ class GoogleTokenServiceRequestTokenTest {
 
         var first = svc.transport();
 
-        assertInstanceOf(com.google.api.client.http.javanet.NetHttpTransport.class, first);
-        assertNotSame(first, svc.transport());
+        assertThat(first).isInstanceOf(com.google.api.client.http.javanet.NetHttpTransport.class);
+        assertThat(svc.transport()).isNotSameAs(first);
     }
 
     @Test
@@ -129,14 +123,14 @@ class GoogleTokenServiceRequestTokenTest {
                 respondingWith(503, "{\"error\":\"invalid_grant\",\"error_description\":\"Backend " + "error\"}")
         );
 
-        var thrown = assertThrows(IllegalStateException.class, () -> svc.requestToken(
-                "refresh_token",
-                "some-refresh-token",
-                NOW
-        ));
+        var thrown = assertThatExceptionOfType(IllegalStateException.class)
+            .isThrownBy(() -> svc.requestToken("refresh_token", "some-refresh-token", NOW))
+            .actual();
 
-        assertFalse(thrown instanceof GoogleInvalidGrantException, "only 400 AND invalid_grant means a dead grant");
-        assertTrue(thrown.getMessage().contains("HTTP 503"), thrown.getMessage());
+        assertThat((thrown instanceof GoogleInvalidGrantException))
+            .as("only 400 AND invalid_grant means a dead grant")
+            .isFalse();
+        assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("HTTP 503");
     }
 
     @Test
@@ -150,14 +144,12 @@ class GoogleTokenServiceRequestTokenTest {
         }).build();
         var svc = new TransportStubbedService(transport);
 
-        var thrown = assertThrows(IllegalStateException.class, () -> svc.requestToken(
-                "refresh_token",
-                "some-refresh-token",
-                NOW
-        ));
+        var thrown = assertThatExceptionOfType(IllegalStateException.class)
+            .isThrownBy(() -> svc.requestToken("refresh_token", "some-refresh-token", NOW))
+            .actual();
 
-        assertFalse(thrown instanceof GoogleInvalidGrantException, "a blip must not flag the account dead");
-        assertTrue(thrown.getMessage().contains("I/O error"), thrown.getMessage());
+        assertThat((thrown instanceof GoogleInvalidGrantException)).as("a blip must not flag the account dead").isFalse();
+        assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("I/O error");
     }
 
     @Test
@@ -171,8 +163,8 @@ class GoogleTokenServiceRequestTokenTest {
 
         var resp = svc.requestToken("refresh_token", "good-refresh-token", NOW);
 
-        assertEquals("fresh-token", resp.accessToken());
-        assertEquals(NOW.plusSeconds(3600), resp.expiry());
-        assertNull(resp.googleSub(), "a refresh response carries no id_token claims");
+        assertThat(resp.accessToken()).isEqualTo("fresh-token");
+        assertThat(resp.expiry()).isEqualTo(NOW.plusSeconds(3600));
+        assertThat(resp.googleSub()).as("a refresh response carries no id_token claims").isNull();
     }
 }

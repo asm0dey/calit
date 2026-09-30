@@ -1,7 +1,8 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -55,15 +56,12 @@ class GoogleTokenServiceIdentityTest {
                 io.quarkus.narayana.jta.QuarkusTransaction
             .requiringNew()
             .call(() -> GoogleCredential.findById(credId));
-        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> svc.validAccessToken(c, now));
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> svc.validAccessToken(c, now));
         GoogleCredential reloaded =
                 io.quarkus.narayana.jta.QuarkusTransaction
             .requiringNew()
             .call(() -> GoogleCredential.findById(credId));
-        org.junit.jupiter.api.Assertions.assertTrue(
-                reloaded.needsReconnect,
-                "needsReconnect must be committed despite the rethrow"
-        );
+        assertThat(reloaded.needsReconnect).as("needsReconnect must be committed despite the rethrow").isTrue();
     }
 
     @Test
@@ -74,7 +72,7 @@ class GoogleTokenServiceIdentityTest {
         svc.exchangeCode(1L, "code-1", now);
         // same sub -> upsert, not duplicate
         svc.exchangeCode(1L, "code-2", now);
-        assertEquals(1, GoogleCredential.countForOwner(1L));
-        assertEquals("me@example.com", GoogleCredential.findByOwnerAndSub(1L, "sub-123").accountEmail);
+        assertThat(GoogleCredential.countForOwner(1L)).isOne();
+        assertThat(GoogleCredential.findByOwnerAndSub(1L, "sub-123").accountEmail).isEqualTo("me@example.com");
     }
 }

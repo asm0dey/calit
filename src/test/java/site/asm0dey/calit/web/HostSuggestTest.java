@@ -1,6 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
@@ -68,10 +69,11 @@ class HostSuggestTest {
             .extract()
             .asString();
 
-        org.hamcrest.MatcherAssert.assertThat(body, containsString(eligible.username));
-        org.hamcrest.MatcherAssert.assertThat(body, not(containsString(disabled.username)));
-        org.hamcrest.MatcherAssert.assertThat(body, not(containsString(incomplete.username)));
-        org.hamcrest.MatcherAssert.assertThat(body, not(containsString(alreadyHost.username)));
+        assertThat(body)
+            .contains(eligible.username)
+            .doesNotContain(disabled.username)
+            .doesNotContain(incomplete.username)
+            .doesNotContain(alreadyHost.username);
     }
 
     @Test

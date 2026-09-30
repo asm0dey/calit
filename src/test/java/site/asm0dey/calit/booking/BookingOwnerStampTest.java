@@ -1,7 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -81,6 +81,6 @@ class BookingOwnerStampTest {
                 java.util.List.of()
         );
 
-        assertEquals(t.ownerId, b.ownerId, "booking.ownerId must equal the meeting type's owner");
+        assertThat(b.ownerId).as("booking.ownerId must equal the meeting type's owner").isEqualTo(t.ownerId);
     }
 }

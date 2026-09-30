@@ -1,8 +1,8 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.*;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
@@ -85,11 +85,11 @@ class BookServiceTest {
                 List.of()
         );
 
-        assertEquals(BookingStatus.CONFIRMED, b.status);
-        assertEquals("evt-99", b.googleEventId);
-        assertEquals("https://meet.google.com/xyz-1234-pqr", b.meetLink);
+        assertThat(b.status).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(b.googleEventId).isEqualTo("evt-99");
+        assertThat(b.meetLink).isEqualTo("https://meet.google.com/xyz-1234-pqr");
         Booking loaded = Booking.findById(b.id);
-        assertEquals("https://meet.google.com/xyz-1234-pqr", loaded.meetLink);
+        assertThat(loaded.meetLink).isEqualTo("https://meet.google.com/xyz-1234-pqr");
         // Owner email is included as an attendee; createMeetLink=true for GOOGLE_MEET; null locationText.
         verify(calendarPort, times(1))
             .createEvent(
@@ -141,8 +141,8 @@ class BookServiceTest {
                 List.of()
         );
 
-        assertEquals(BookingStatus.CONFIRMED, b.status);
-        assertNull(b.meetLink, "no Meet link for a non-Meet location");
+        assertThat(b.status).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(b.meetLink).as("no Meet link for a non-Meet location").isNull();
         verify(calendarPort, times(1))
             .createEvent(
                     anyLong(),
@@ -178,9 +178,9 @@ class BookServiceTest {
                 List.of()
         );
 
-        assertEquals(BookingStatus.CONFIRMED, b.status);
-        assertNull(b.googleEventId);
-        assertNull(b.meetLink);
+        assertThat(b.status).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(b.googleEventId).isNull();
+        assertThat(b.meetLink).isNull();
         // createEvent and freeBusy must never be called when disconnected.
         verify(calendarPort, never())
             .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
@@ -211,14 +211,14 @@ class BookServiceTest {
                 List.of()
         );
 
-        assertEquals(BookingStatus.PENDING, b.status);
-        assertNull(b.googleEventId);
-        assertNull(b.meetLink);
+        assertThat(b.status).isEqualTo(BookingStatus.PENDING);
+        assertThat(b.googleEventId).isNull();
+        assertThat(b.meetLink).isNull();
         // The PENDING request must NOT touch Google.
         verify(calendarPort, never())
             .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
-        assertEquals(requestedBefore + 1, REQUESTED.get(), "BookingRequested fired for approval type");
-        assertEquals(confirmedBefore, CONFIRMED.get(), "BookingConfirmed NOT fired for a PENDING request");
+        assertThat(REQUESTED.get()).as("BookingRequested fired for approval type").isEqualTo(requestedBefore + 1);
+        assertThat(CONFIRMED.get()).as("BookingConfirmed NOT fired for a PENDING request").isEqualTo(confirmedBefore);
     }
 
     @Test
@@ -256,7 +256,7 @@ class BookServiceTest {
                 List.of()
         );
 
-        assertEquals(BookingStatus.CONFIRMED, b.status);
+        assertThat(b.status).isEqualTo(BookingStatus.CONFIRMED);
     }
 
     @Test
@@ -269,18 +269,19 @@ class BookServiceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         // answers lacks "company" -> 422-mapped validation failure, before any Google call.
-        assertThrows(BookingValidationException.class, () -> bookingService.book(
-                1L,
-                "book-required-missing",
-                SLOT_09,
-                "Sam",
-                "sam@example.com",
-                Map.of(),
-                "tok",
-                "",
-                "en",
-                List.of()
-        ));
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "book-required-missing",
+                    SLOT_09,
+                    "Sam",
+                    "sam@example.com",
+                    Map.of(),
+                    "tok",
+                    "",
+                    "en",
+                    List.of()
+            ));
     }
 
     @Test
@@ -294,18 +295,19 @@ class BookServiceTest {
         // Present but blank value is rejected just like a missing key.
         Map<String, String> answers = Map.of("company", "   ");
         List<String> guestEmails = List.of();
-        assertThrows(BookingValidationException.class, () -> bookingService.book(
-                1L,
-                "book-required-blank",
-                SLOT_09,
-                "Sam",
-                "sam@example.com",
-                answers,
-                "tok",
-                "",
-                "en",
-                guestEmails
-        ));
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "book-required-blank",
+                    SLOT_09,
+                    "Sam",
+                    "sam@example.com",
+                    answers,
+                    "tok",
+                    "",
+                    "en",
+                    guestEmails
+            ));
     }
 
     @Test
@@ -343,10 +345,11 @@ class BookServiceTest {
         );
 
         Booking loaded = Booking.findById(b.id);
-        assertEquals(BookingStatus.CONFIRMED, loaded.status);
-        // The submitted answers (including the unknown extra key) are stored verbatim.
-        assertEquals("Acme", loaded.answers.get("company"));
-        assertEquals("extra-key-kept", loaded.answers.get("note"));
+        assertThat(loaded.status).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(loaded.answers)
+            // The submitted answers (including the unknown extra key) are stored verbatim.
+            .containsEntry("company", "Acme")
+            .containsEntry("note", "extra-key-kept");
     }
 
     @Test
@@ -384,18 +387,19 @@ class BookServiceTest {
         // Second attempt on the now-taken slot is rejected (the persisted booking is busy).
         // The app-level re-check catches it here; the DB exclusion constraint is the
         // cross-replica backstop (guards against concurrent inserts from multiple replicas).
-        assertThrows(BookingConflictException.class, () -> bookingService.book(
-                1L,
-                "book-double",
-                SLOT_09,
-                "Second",
-                "second@example.com",
-                Map.of(),
-                "tok",
-                "",
-                "en",
-                List.of()
-        ));
+        assertThatExceptionOfType(BookingConflictException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "book-double",
+                    SLOT_09,
+                    "Second",
+                    "second@example.com",
+                    Map.of(),
+                    "tok",
+                    "",
+                    "en",
+                    List.of()
+            ));
     }
 
     @Test
@@ -423,18 +427,19 @@ class BookServiceTest {
             prior.persist();
         }
 
-        assertThrows(RateLimitException.class, () -> bookingService.book(
-                1L,
-                "book-cap",
-                SLOT_09,
-                "Spammer",
-                "spam@example.com",
-                Map.of(),
-                "tok",
-                "",
-                "en",
-                List.of()
-        ));
+        assertThatExceptionOfType(RateLimitException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "book-cap",
+                    SLOT_09,
+                    "Spammer",
+                    "spam@example.com",
+                    Map.of(),
+                    "tok",
+                    "",
+                    "en",
+                    List.of()
+            ));
     }
 
     @Test
@@ -448,18 +453,19 @@ class BookServiceTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
 
-        assertThrows(AbuseException.class, () -> bookingService.book(
-                1L,
-                "book-honeypot",
-                SLOT_09,
-                "Bot",
-                "bot@example.com",
-                Map.of(),
-                "tok",
-                "http://spam.example",
-                "en",
-                List.of()
-        ));
+        assertThatExceptionOfType(AbuseException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "book-honeypot",
+                    SLOT_09,
+                    "Bot",
+                    "bot@example.com",
+                    Map.of(),
+                    "tok",
+                    "http://spam.example",
+                    "en",
+                    List.of()
+            ));
     }
 
     @Test
@@ -473,18 +479,19 @@ class BookServiceTest {
         var start = DAY.atTime(9, 13).atZone(ZONE).toInstant();
         Map<String, String> answers = Map.of();
         List<String> guestEmails = List.of();
-        assertThrows(BookingConflictException.class, () -> bookingService.book(
-                1L,
-                "book-bad-start",
-                start,
-                "X",
-                "x@example.com",
-                answers,
-                "tok",
-                "",
-                "en",
-                guestEmails
-        ));
+        assertThatExceptionOfType(BookingConflictException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "book-bad-start",
+                    start,
+                    "X",
+                    "x@example.com",
+                    answers,
+                    "tok",
+                    "",
+                    "en",
+                    guestEmails
+            ));
     }
 
     // --- helpers ---

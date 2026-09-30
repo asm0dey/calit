@@ -2,6 +2,7 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
@@ -207,14 +208,10 @@ class BookPageTest {
         var startUtc =
                 html.substring(html.indexOf("name=\"startUtc\" value=\"") + "name=\"startUtc\" value=\"".length());
         startUtc = startUtc.substring(0, startUtc.indexOf('"'));
-        org.junit.jupiter.api.Assertions.assertTrue(
-                startUtc.endsWith("Z"),
-                "slot value must be an absolute UTC instant (…Z), was: " + startUtc
-        );
-        org.junit.jupiter.api.Assertions.assertTrue(
-                html.contains("data-utc=\"" + startUtc + "\""),
-                "the same absolute instant must appear as a data-utc display attribute"
-        );
+        assertThat(startUtc).as("slot value must be an absolute UTC instant (…Z), was: " + startUtc).endsWith("Z");
+        assertThat(html)
+            .as("the same absolute instant must appear as a data-utc display attribute")
+            .contains("data-utc=\"" + startUtc + "\"");
 
         given()
             .when()
@@ -301,13 +298,12 @@ class BookPageTest {
                 furthest = d;
             }
         }
-        org.junit.jupiter.api.Assertions.assertNotNull(furthest, "expected at least one bookable day");
+        assertThat(furthest).as("expected at least one bookable day").isNotNull();
         // With the old 14-day cap the furthest day would be ~today+14. horizonDays=60 must extend it.
         var today = java.time.LocalDate.now(java.time.ZoneId.of("Europe/Amsterdam"));
-        org.junit.jupiter.api.Assertions.assertTrue(
-                furthest.isAfter(today.plusDays(20)),
-                "booking window should follow type.horizonDays (60), not a 14-day cap; furthest day was " + furthest
-        );
+        assertThat(furthest.isAfter(today.plusDays(20)))
+            .as("booking window should follow type.horizonDays (60), not a 14-day cap; furthest day was " + furthest)
+            .isTrue();
     }
 
     @Test

@@ -1,7 +1,7 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -83,10 +83,10 @@ class PendingExpiryTest {
 
         scheduler.expirePendingBookings();
 
-        assertEquals(BookingStatus.DECLINED, reloadStatus(expired));
-        assertEquals(BookingStatus.PENDING, reloadStatus(fresh));
-        assertEquals(BookingStatus.PENDING, reloadStatus(soonStart));
-        assertEquals(BookingStatus.CONFIRMED, reloadStatus(confirmed));
+        assertThat(reloadStatus(expired)).isEqualTo(BookingStatus.DECLINED);
+        assertThat(reloadStatus(fresh)).isEqualTo(BookingStatus.PENDING);
+        assertThat(reloadStatus(soonStart)).isEqualTo(BookingStatus.PENDING);
+        assertThat(reloadStatus(confirmed)).isEqualTo(BookingStatus.CONFIRMED);
     }
 
     @Test
@@ -102,7 +102,7 @@ class PendingExpiryTest {
 
         scheduler.expirePendingBookings();
 
-        assertEquals(BookingStatus.DECLINED, reloadStatus(pastStart));
+        assertThat(reloadStatus(pastStart)).isEqualTo(BookingStatus.DECLINED);
     }
 
     private Long seedMeetingType() {

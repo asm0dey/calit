@@ -2,10 +2,9 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
@@ -43,8 +42,8 @@ class AdminWriteCalendarTest {
         edit(typeId, credId + ":work@example.com").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertEquals(credId, t.googleCredentialId);
-        assertEquals("work@example.com", t.googleCalendarId);
+        assertThat(t.googleCredentialId).isEqualTo(credId);
+        assertThat(t.googleCalendarId).isEqualTo("work@example.com");
     }
 
     @Test
@@ -55,8 +54,8 @@ class AdminWriteCalendarTest {
         edit(typeId, "").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertNull(t.googleCredentialId);
-        assertNull(t.googleCalendarId);
+        assertThat(t.googleCredentialId).isNull();
+        assertThat(t.googleCalendarId).isNull();
     }
 
     @Test
@@ -68,8 +67,8 @@ class AdminWriteCalendarTest {
         edit(typeId, foreignCredId + ":foreign@example.com").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertNull(t.googleCredentialId);
-        assertNull(t.googleCalendarId);
+        assertThat(t.googleCredentialId).isNull();
+        assertThat(t.googleCalendarId).isNull();
     }
 
     @Test
@@ -131,8 +130,8 @@ class AdminWriteCalendarTest {
         edit(typeId, "keep").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertEquals(credId, t.googleCredentialId);
-        assertEquals("unticked@example.com", t.googleCalendarId);
+        assertThat(t.googleCredentialId).isEqualTo(credId);
+        assertThat(t.googleCalendarId).isEqualTo("unticked@example.com");
     }
 
     @Test
@@ -163,8 +162,8 @@ class AdminWriteCalendarTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertNull(t.googleCredentialId);
-        assertEquals("was-on-a-disconnected-account@example.com", t.googleCalendarId);
+        assertThat(t.googleCredentialId).isNull();
+        assertThat(t.googleCalendarId).isEqualTo("was-on-a-disconnected-account@example.com");
     }
 
     @Test
@@ -231,8 +230,8 @@ class AdminWriteCalendarTest {
         create(slug, credId + ":work@example.com").statusCode(200);
 
         MeetingType t = MeetingType.find("slug", slug).firstResult();
-        assertEquals(credId, t.googleCredentialId);
-        assertEquals("work@example.com", t.googleCalendarId);
+        assertThat(t.googleCredentialId).isEqualTo(credId);
+        assertThat(t.googleCalendarId).isEqualTo("work@example.com");
     }
 
     @Test
@@ -243,7 +242,7 @@ class AdminWriteCalendarTest {
 
         create(slug, foreignCredId + ":foreign@example.com").statusCode(200);
 
-        assertNull(MeetingType.find("slug", slug).firstResult());
+        assertThat(MeetingType.find("slug", slug).<MeetingType>firstResult()).isNull();
     }
 
     private io.restassured.response.ValidatableResponse edit(Long typeId, String writeCalendar) {

@@ -1,6 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -50,10 +51,7 @@ class HomeRedirectSettingTest {
         given().when().get("/me/settings").then().statusCode(200).body(containsString("name=\"homeRedirectEnabled\""));
         // The literal rendered markup is brittle against a daisyUI class/attribute-order bump; the
         // checked *state* is verified against the persisted domain value instead.
-        org.junit.jupiter.api.Assertions.assertTrue(
-                readHomeRedirectEnabled(),
-                "home redirect must default to enabled on a freshly-seeded row"
-        );
+        assertThat(readHomeRedirectEnabled()).as("home redirect must default to enabled on a freshly-seeded row").isTrue();
     }
 
     @Test

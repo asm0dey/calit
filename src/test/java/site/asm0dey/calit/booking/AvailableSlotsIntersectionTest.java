@@ -1,7 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import static site.asm0dey.calit.test.MultiHostFixtures.*;
 import io.quarkus.test.InjectMock;
@@ -48,8 +48,8 @@ class AvailableSlotsIntersectionTest {
         var mon = LocalDate.now(AMS).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         List<TimeSlot> slots = bookingService.availableSlots(t, mon, mon);
         // 60-min slots in 10:00-12:00 -> 10:00 and 11:00 only (09:00 excluded: cohost busy)
-        assertEquals(2, slots.size());
-        assertEquals(java.time.LocalTime.of(10, 0), slots.get(0).start().withZoneSameInstant(AMS).toLocalTime());
+        assertThat(slots).hasSize(2);
+        assertThat(slots.get(0).start().withZoneSameInstant(AMS).toLocalTime()).isEqualTo(java.time.LocalTime.of(10, 0));
     }
 
     @Test
@@ -69,7 +69,7 @@ class AvailableSlotsIntersectionTest {
                 new CalendarUnavailableException("needs reconnect")
         );
         var mon = LocalDate.now(AMS).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
-        assertTrue(bookingService.availableSlots(t, mon, mon).isEmpty());
+        assertThat(bookingService.availableSlots(t, mon, mon)).isEmpty();
     }
 
     @Test
@@ -80,7 +80,7 @@ class AvailableSlotsIntersectionTest {
         MeetingTypeHost.find(t.id, meetingHosts.hostOwnerIds(t).get(1)).status = MeetingTypeHost.PENDING;
         MeetingTypeHost.find(t.id, 1L).persistAndFlush();
         var mon = LocalDate.now(AMS).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
-        assertTrue(bookingService.availableSlots(t, mon, mon).isEmpty());
+        assertThat(bookingService.availableSlots(t, mon, mon)).isEmpty();
     }
 
     /**
@@ -112,8 +112,8 @@ class AvailableSlotsIntersectionTest {
         var monday = LocalDate.now(AMS).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
         List<TimeSlot> slots = bookingService.availableSlots(t, monday, monday);
 
-        assertFalse(slots.isEmpty());
-        assertEquals(LocalTime.of(9, 30), slots.get(0).start().withZoneSameInstant(AMS).toLocalTime());
+        assertThat(slots).isNotEmpty();
+        assertThat(slots.get(0).start().withZoneSameInstant(AMS).toLocalTime()).isEqualTo(LocalTime.of(9, 30));
     }
 
     /**
@@ -149,6 +149,6 @@ class AvailableSlotsIntersectionTest {
         var monday = LocalDate.now(london).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
 
         List<TimeSlot> slots = bookingService.availableSlots(t, monday, monday);
-        assertFalse(slots.isEmpty(), "a London host and a Berlin host must share some overlapping availability");
+        assertThat(slots).as("a London host and a Berlin host must share some overlapping availability").isNotEmpty();
     }
 }

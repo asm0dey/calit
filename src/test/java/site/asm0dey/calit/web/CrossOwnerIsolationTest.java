@@ -2,9 +2,10 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static site.asm0dey.calit.domain.MeetingTypeDuration.allowedDurations;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -153,7 +154,7 @@ class CrossOwnerIsolationTest {
             .statusCode(404);
         // Owner B's own type must be untouched by the rejected cross-owner attempt.
         MeetingType t = MeetingType.findById(typeId);
-        assertEquals(java.util.List.of(30), site.asm0dey.calit.domain.MeetingTypeDuration.allowedDurations(t));
+        assertThat(allowedDurations(t)).containsExactly(30);
     }
 
     @Test
@@ -268,10 +269,9 @@ class CrossOwnerIsolationTest {
             .availableSlots(ta, day, day)
             .stream()
             .anyMatch(s -> s.start().toInstant().equals(bStart));
-        org.junit.jupiter.api.Assertions.assertTrue(
-                tenAmBookableForA,
-                "A's 10:00 slot must stay free — owner B's held booking is not in A's busy-set"
-        );
+        assertThat(tenAmBookableForA)
+            .as("A's 10:00 slot must stay free — owner B's held booking is not in A's busy-set")
+            .isTrue();
     }
 
     /**
@@ -312,11 +312,9 @@ class CrossOwnerIsolationTest {
         tb.durationMinutes = 30;
         tb.persist();
         // B has NO global rule of their own; A's global rule must not leak into B's resolution.
-        assertEquals(
-                0,
-                slotService.generateRawSlots(tb, day, day).size(),
-                "owner B has no availability; owner A's global rule must not apply"
-        );
+        assertThat(slotService.generateRawSlots(tb, day, day))
+            .as("owner B has no availability; owner A's global rule must not apply")
+            .hasSize(0);
     }
 
     /**
@@ -327,9 +325,6 @@ class CrossOwnerIsolationTest {
     void seededOwnersAreDistinct() {
         // seed owner B; return value unused here
         seedOwnerB();
-        org.junit.jupiter.api.Assertions.assertNotEquals(
-                AppUser.findByUsername("admin").id,
-                AppUser.findByUsername("ownerb").id
-        );
+        assertThat(AppUser.findByUsername("ownerb").id).isNotEqualTo(AppUser.findByUsername("admin").id);
     }
 }

@@ -2,9 +2,9 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -81,13 +81,12 @@ class AdminMailBannerTest {
             .body()
             .asString();
         var m = java.util.regex.Pattern.compile("data-mail-dead-letters[^>]*>([^<]*)</p>").matcher(body);
-        assertTrue(m.find(), "dead-letter line rendered");
+        assertThat(m.find()).as("dead-letter line rendered").isTrue();
         // startsWith, not contains: the count is the first token of the message, so a wrong count
         // that merely happens to contain a 1 (11, 21, "1 hour") cannot satisfy this.
-        assertTrue(
-                m.group(1).trim().startsWith("1 message(s)"),
-                "dead-letter line leads with the count, got: " + m.group(1)
-        );
+        assertThat(m.group(1).trim())
+            .as("dead-letter line leads with the count, got: " + m.group(1))
+            .startsWith("1 message(s)");
     }
 
     // The state the branch originally dropped: SMTP got fixed, the probe reports OK, but the rows
@@ -117,10 +116,9 @@ class AdminMailBannerTest {
             .asString();
 
         var m = java.util.regex.Pattern.compile("data-mail-dead-letters[^>]*>([^<]*)</p>").matcher(body);
-        assertTrue(m.find(), "dead-letter line rendered even though mail is working");
-        assertTrue(
-                m.group(1).trim().startsWith("3 message(s)"),
-                "dead-letter line leads with the count, got: " + m.group(1)
-        );
+        assertThat(m.find()).as("dead-letter line rendered even though mail is working").isTrue();
+        assertThat(m.group(1).trim())
+            .as("dead-letter line leads with the count, got: " + m.group(1))
+            .startsWith("3 message(s)");
     }
 }

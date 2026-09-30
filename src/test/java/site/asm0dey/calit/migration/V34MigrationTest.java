@@ -1,6 +1,6 @@
 package site.asm0dey.calit.migration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -28,14 +28,12 @@ class V34MigrationTest {
     @Test
     @Transactional
     void privacyColumnsExist() {
-        assertEquals(1L, column("booking", "erased_at"), "booking.erased_at must exist");
-        assertEquals(
-                1L,
-                column("owner_settings", "booking_retention_days"),
-                "owner_settings.booking_retention_days must exist"
-        );
-        assertEquals(1L, column("email_outbox", "booking_id"), "email_outbox.booking_id must exist");
-        assertEquals(1L, column("email_outbox", "owner_id"), "email_outbox.owner_id must exist");
+        assertThat(column("booking", "erased_at")).as("booking.erased_at must exist").isOne();
+        assertThat(column("owner_settings", "booking_retention_days"))
+            .as("owner_settings.booking_retention_days must exist")
+            .isOne();
+        assertThat(column("email_outbox", "booking_id")).as("email_outbox.booking_id must exist").isOne();
+        assertThat(column("email_outbox", "owner_id")).as("email_outbox.owner_id must exist").isOne();
     }
 
     @Test
@@ -51,7 +49,7 @@ class V34MigrationTest {
                 + "or (table_name='email_outbox' and column_name='booking_id' and is_nullable='NO') "
                 + "or (table_name='email_outbox' and column_name='owner_id' and is_nullable='NO')"
         );
-        assertEquals(0L, notNullable, "every V34 column must be nullable — no backfill");
+        assertThat(notNullable).as("every V34 column must be nullable — no backfill").isZero();
     }
 
     @Test
@@ -63,7 +61,7 @@ class V34MigrationTest {
                 + "where k.table_name='booking' and k.column_name='meeting_type_id' "
                 + "and rc.delete_rule='CASCADE'"
         );
-        assertEquals(1L, cascade, "booking.meeting_type_id must declare ON DELETE CASCADE");
+        assertThat(cascade).as("booking.meeting_type_id must declare ON DELETE CASCADE").isOne();
     }
 
     @Test
@@ -75,6 +73,6 @@ class V34MigrationTest {
                 + "where k.table_name='email_outbox' and k.column_name in ('booking_id','owner_id') "
                 + "and rc.delete_rule='CASCADE'"
         );
-        assertEquals(2L, cascades, "both email_outbox links must cascade");
+        assertThat(cascades).as("both email_outbox links must cascade").isEqualTo(2L);
     }
 }

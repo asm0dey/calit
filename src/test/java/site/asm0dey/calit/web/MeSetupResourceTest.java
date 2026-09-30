@@ -2,8 +2,8 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
@@ -107,7 +107,7 @@ class MeSetupResourceTest {
                 request.formParam("ownerEmail", c[1]);
             }
             request.when().post("/me/setup").then().statusCode(200).body(containsString(c[2]));
-            assertFalse(reload(id).settingsComplete, "an invalid submit must not finish the wizard");
+            assertThat(reload(id).settingsComplete).as("an invalid submit must not finish the wizard").isFalse();
         }
     }
 
@@ -129,15 +129,15 @@ class MeSetupResourceTest {
             .statusCode(303);
 
         AppUser after = reload(id);
-        assertFalse(after.mustChangePassword);
-        assertTrue(after.settingsComplete);
-        assertTrue(HASHER.verify("Brand-new-pw-12345", after.passwordHash), "password should have been updated");
+        assertThat(after.mustChangePassword).isFalse();
+        assertThat(after.settingsComplete).isTrue();
+        assertThat(HASHER.verify("Brand-new-pw-12345", after.passwordHash)).as("password should have been updated").isTrue();
 
         OwnerSettings s = OwnerSettings.forOwner(id);
-        assertNotNull(s);
-        assertEquals("Wiz Two", s.ownerName);
-        assertEquals("wiz2@example.com", s.ownerEmail);
-        assertEquals("Europe/Amsterdam", s.timezone);
+        assertThat(s).isNotNull();
+        assertThat(s.ownerName).isEqualTo("Wiz Two");
+        assertThat(s.ownerEmail).isEqualTo("wiz2@example.com");
+        assertThat(s.timezone).isEqualTo("Europe/Amsterdam");
     }
 
     @Test
@@ -158,8 +158,8 @@ class MeSetupResourceTest {
             .statusCode(303);
 
         AppUser after = reload(id);
-        assertTrue(after.settingsComplete);
-        assertTrue(HASHER.verify("Initial-pw-12345", after.passwordHash), "password unchanged");
+        assertThat(after.settingsComplete).isTrue();
+        assertThat(HASHER.verify("Initial-pw-12345", after.passwordHash)).as("password unchanged").isTrue();
     }
 
     @Test
@@ -182,12 +182,11 @@ class MeSetupResourceTest {
             .statusCode(303);
 
         AppUser after = reload(id);
-        assertTrue(after.settingsComplete);
-        assertTrue(
-                HASHER.verify("Initial-pw-12345", after.passwordHash),
-                "non-forced user's password must be unchanged even when newPassword is supplied"
-        );
-        assertFalse(HASHER.verify("Sneaky-new-pw-12345", after.passwordHash));
+        assertThat(after.settingsComplete).isTrue();
+        assertThat(HASHER.verify("Initial-pw-12345", after.passwordHash))
+            .as("non-forced user's password must be unchanged even when newPassword is supplied")
+            .isTrue();
+        assertThat(HASHER.verify("Sneaky-new-pw-12345", after.passwordHash)).isFalse();
     }
 
     @Test
@@ -207,8 +206,8 @@ class MeSetupResourceTest {
             .body(containsString("Please choose a new password"));
 
         AppUser after = reload(id);
-        assertTrue(after.mustChangePassword, "still forced — onboarding not advanced");
-        assertFalse(after.settingsComplete, "settings must not be marked complete on the error path");
+        assertThat(after.mustChangePassword).as("still forced — onboarding not advanced").isTrue();
+        assertThat(after.settingsComplete).as("settings must not be marked complete on the error path").isFalse();
     }
 
     /**
@@ -234,7 +233,7 @@ class MeSetupResourceTest {
             .then()
             .statusCode(303);
 
-        assertEquals("UTC", readTimezone(id), "an unknown zone id must be coerced, not stored");
+        assertThat(readTimezone(id)).as("an unknown zone id must be coerced, not stored").isEqualTo("UTC");
         // And the owner's own /me pages still render (they call ZoneId.of on this value).
         given().when().get("/me").then().statusCode(200);
     }
@@ -252,25 +251,24 @@ class MeSetupResourceTest {
     @TestSecurity(user = "wiz6", roles = {"user"})
     void completingTheWizardSeedsWeekdayDefaults() {
         var id = seed("wiz6", false);
-        assertEquals(0, countGlobalRules(id), "precondition: a fresh user has no availability");
+        assertThat(countGlobalRules(id)).as("precondition: a fresh user has no availability").isZero();
 
         completeWizard();
 
-        assertEquals(5, countGlobalRules(id), "Mon–Fri seeded");
+        assertThat(countGlobalRules(id)).as("Mon–Fri seeded").isEqualTo(5);
         var monday = AvailabilityRule.globalForOwner(id, DayOfWeek.MONDAY);
-        assertEquals(1, monday.size());
-        assertEquals(LocalTime.of(9, 0), monday.getFirst().startTime);
-        assertEquals(LocalTime.of(18, 0), monday.getFirst().endTime);
-        assertNull(monday.getFirst().meetingTypeId, "defaults are global, not per-type");
+        assertThat(monday).hasSize(1);
+        assertThat(monday.getFirst().startTime).isEqualTo(LocalTime.of(9, 0));
+        assertThat(monday.getFirst().endTime).isEqualTo(LocalTime.of(18, 0));
+        assertThat(monday.getFirst().meetingTypeId).as("defaults are global, not per-type").isNull();
         // The point of the bean: a meeting type made right after onboarding is bookable, with the
         // availability editor never opened.
         MeetingType t = seedMeetingType(id);
         // a Monday
         var monday1 = LocalDate.of(2026, 9, 7);
-        assertFalse(
-                slotService.generateRawSlots(t, monday1, monday1.plusDays(1)).isEmpty(),
-                "a new user's meeting type must offer slots without touching the availability editor"
-        );
+        assertThat(slotService.generateRawSlots(t, monday1, monday1.plusDays(1)))
+            .as("a new user's meeting type must offer slots without touching the availability editor")
+            .isNotEmpty();
     }
 
     @Test
@@ -280,7 +278,7 @@ class MeSetupResourceTest {
         completeWizard();
         // the wizard is still POST-able; a second submit must not double the rules
         completeWizard();
-        assertEquals(5, countGlobalRules(id));
+        assertThat(countGlobalRules(id)).isEqualTo(5);
     }
 
     @Test
@@ -288,18 +286,16 @@ class MeSetupResourceTest {
     void reSubmittingAfterClearingHoursDoesNotReSeed() {
         var id = seed("wiz8", false);
         completeWizard();
-        assertEquals(5, countGlobalRules(id), "precondition: wizard seeded the usual defaults");
+        assertThat(countGlobalRules(id)).as("precondition: wizard seeded the usual defaults").isEqualTo(5);
         // owner deliberately cleared their weekly grid via bulk-save
         clearGlobalRules(id);
-        assertEquals(0, countGlobalRules(id), "precondition: hours are now empty");
+        assertThat(countGlobalRules(id)).as("precondition: hours are now empty").isZero();
         // MeOwnerFilter still lets an onboarded user re-POST /me/setup
         completeWizard();
 
-        assertEquals(
-                0,
-                countGlobalRules(id),
-                "re-submitting an already-onboarded wizard must not re-seed cleared hours"
-        );
+        assertThat(countGlobalRules(id))
+            .as("re-submitting an already-onboarded wizard must not re-seed cleared hours")
+            .isZero();
     }
 
     @Transactional

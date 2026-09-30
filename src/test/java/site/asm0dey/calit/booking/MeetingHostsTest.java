@@ -1,7 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.test.InjectMock;
@@ -41,13 +41,13 @@ class MeetingHostsTest {
     @TestTransaction
     void notBookableUntilAllAccepted() {
         MeetingType t = multiHostType();
-        assertFalse(meetingHosts.bookable(t));
+        assertThat(meetingHosts.bookable(t)).isFalse();
         MeetingTypeHost
             .forType(t.id)
             .forEach(h -> h.status = MeetingTypeHost.ACCEPTED);
         em.flush();
-        assertTrue(meetingHosts.bookable(t));
-        assertEquals(2, meetingHosts.hostOwnerIds(t).size());
+        assertThat(meetingHosts.bookable(t)).isTrue();
+        assertThat(meetingHosts.hostOwnerIds(t)).hasSize(2);
     }
 
     @Test
@@ -61,7 +61,7 @@ class MeetingHostsTest {
             .forEach(h -> h.status = MeetingTypeHost.ACCEPTED);
         em.flush();
         List<Long> hosts = meetingHosts.hostOwnerIds(t);
-        assertEquals(2, hosts.size());
+        assertThat(hosts).hasSize(2);
         var cohostId = hosts
             .stream()
             .filter(id -> !id.equals(1L))
@@ -70,14 +70,14 @@ class MeetingHostsTest {
 
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(cohostId)).thenReturn(false);
-        assertEquals(1L, meetingHosts.chooseOrganizer(t, hosts));
+        assertThat(meetingHosts.chooseOrganizer(t, hosts)).isOne();
 
         when(calendarPort.isConnected(1L)).thenReturn(false);
         when(calendarPort.isConnected(cohostId)).thenReturn(true);
-        assertEquals(cohostId, meetingHosts.chooseOrganizer(t, hosts));
+        assertThat(meetingHosts.chooseOrganizer(t, hosts)).isEqualTo(cohostId);
 
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        assertNull(meetingHosts.chooseOrganizer(t, hosts));
+        assertThat(meetingHosts.chooseOrganizer(t, hosts)).isNull();
     }
 
     @Test
@@ -89,9 +89,9 @@ class MeetingHostsTest {
         creator.bufferBeforeMinutes = 20;
         em.flush();
         // overridden
-        assertEquals(20, meetingHosts.effectiveBufferBefore(t, 1L, t.durationMinutes));
+        assertThat(meetingHosts.effectiveBufferBefore(t, 1L, t.durationMinutes)).isEqualTo(20);
         // inherits type
-        assertEquals(10, meetingHosts.effectiveBufferAfter(t, 1L, t.durationMinutes));
+        assertThat(meetingHosts.effectiveBufferAfter(t, 1L, t.durationMinutes)).isEqualTo(10);
     }
 
     @Test
@@ -103,21 +103,21 @@ class MeetingHostsTest {
         AppUser disabled = MultiHostFixtures.enabledUser("disabled-user");
         disabled.enabled = false;
         em.flush();
-        assertFalse(meetingHosts.eligibleCohost(t.id, creatorOwnerId, disabled));
+        assertThat(meetingHosts.eligibleCohost(t.id, creatorOwnerId, disabled)).isFalse();
 
         AppUser incomplete = MultiHostFixtures.enabledUser("incomplete-user");
         incomplete.settingsComplete = false;
         em.flush();
-        assertFalse(meetingHosts.eligibleCohost(t.id, creatorOwnerId, incomplete));
+        assertThat(meetingHosts.eligibleCohost(t.id, creatorOwnerId, incomplete)).isFalse();
 
         AppUser creator = AppUser.findById(creatorOwnerId);
-        assertFalse(meetingHosts.eligibleCohost(t.id, creatorOwnerId, creator));
+        assertThat(meetingHosts.eligibleCohost(t.id, creatorOwnerId, creator)).isFalse();
 
         AppUser alreadyHost = MultiHostFixtures.enabledUser("already-host");
         MeetingTypeHost.of(t.id, alreadyHost.id, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING).persist();
-        assertFalse(meetingHosts.eligibleCohost(t.id, creatorOwnerId, alreadyHost));
+        assertThat(meetingHosts.eligibleCohost(t.id, creatorOwnerId, alreadyHost)).isFalse();
 
         AppUser fresh = MultiHostFixtures.enabledUser("fresh-candidate");
-        assertTrue(meetingHosts.eligibleCohost(t.id, creatorOwnerId, fresh));
+        assertThat(meetingHosts.eligibleCohost(t.id, creatorOwnerId, fresh)).isTrue();
     }
 }

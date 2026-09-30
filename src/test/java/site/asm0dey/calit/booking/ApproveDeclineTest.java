@@ -1,9 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
@@ -64,14 +62,14 @@ class ApproveDeclineTest {
                         "en",
                         List.of()
         );
-        assertEquals(BookingStatus.PENDING, b.status);
+        assertThat(b.status).isEqualTo(BookingStatus.PENDING);
 
         bookingService.approve(b.id);
 
         Booking loaded = Booking.findById(b.id);
-        assertEquals(BookingStatus.CONFIRMED, loaded.status);
-        assertEquals("evt-ap", loaded.googleEventId);
-        assertEquals("https://meet.google.com/ap-1-2", loaded.meetLink);
+        assertThat(loaded.status).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(loaded.googleEventId).isEqualTo("evt-ap");
+        assertThat(loaded.meetLink).isEqualTo("https://meet.google.com/ap-1-2");
         // The event is created at approve time (createMeetLink=true for GOOGLE_MEET), not at book time.
         verify(calendarPort, times(1))
             .createEvent(
@@ -110,23 +108,24 @@ class ApproveDeclineTest {
                         List.of()
         );
         // While PENDING, the 09:00 slot is held.
-        assertTrue(bookingService
+        assertThat(bookingService
             .availableSlots(t, DAY, DAY)
             .stream()
             .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))
-        );
+        )
+            .isTrue();
 
         bookingService.decline(b.id);
 
         Booking loaded = Booking.findById(b.id);
-        assertEquals(BookingStatus.DECLINED, loaded.status);
+        assertThat(loaded.status).isEqualTo(BookingStatus.DECLINED);
         verify(calendarPort, never())
             .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
         // DECLINED leaves the partial constraint -> 09:00 is bookable again.
         List<TimeSlot> avail = bookingService.availableSlots(t, DAY, DAY);
-        assertTrue(avail
+        assertThat(avail
             .stream()
-            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
+            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))).isTrue();
     }
 
     @Test
@@ -142,7 +141,7 @@ class ApproveDeclineTest {
 
         bookingService.approve(b.id);
 
-        assertEquals(BookingStatus.CANCELLED, Booking.<Booking>findById(b.id).status);
+        assertThat(Booking.<Booking>findById(b.id).status).isEqualTo(BookingStatus.CANCELLED);
         verify(calendarPort, never())
             .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
@@ -159,7 +158,7 @@ class ApproveDeclineTest {
 
         bookingService.approve(b.id);
 
-        assertEquals(BookingStatus.DECLINED, Booking.<Booking>findById(b.id).status);
+        assertThat(Booking.<Booking>findById(b.id).status).isEqualTo(BookingStatus.DECLINED);
         verify(calendarPort, never())
             .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
@@ -206,7 +205,7 @@ class ApproveDeclineTest {
 
         bookingService.decline(b.id);
 
-        assertEquals(BookingStatus.CONFIRMED, Booking.<Booking>findById(b.id).status);
+        assertThat(Booking.<Booking>findById(b.id).status).isEqualTo(BookingStatus.CONFIRMED);
     }
 
     @Test
@@ -221,7 +220,7 @@ class ApproveDeclineTest {
 
         bookingService.decline(b.id);
 
-        assertEquals(BookingStatus.CANCELLED, Booking.<Booking>findById(b.id).status);
+        assertThat(Booking.<Booking>findById(b.id).status).isEqualTo(BookingStatus.CANCELLED);
     }
 
     @Test
@@ -296,7 +295,7 @@ class ApproveDeclineTest {
     private Booking pendingBooking(String slug) {
         Booking b =
                 bookingService.book(1L, slug, SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
-        assertEquals(BookingStatus.PENDING, b.status);
+        assertThat(b.status).isEqualTo(BookingStatus.PENDING);
         return b;
     }
 

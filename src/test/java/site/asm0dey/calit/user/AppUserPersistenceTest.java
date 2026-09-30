@@ -1,6 +1,6 @@
 package site.asm0dey.calit.user;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -12,15 +12,15 @@ class AppUserPersistenceTest {
     void createAdminSyncsRolesAndPersists() {
         AppUser u = AppUser.create("Root-User", "hash-placeholder", true);
         u.persist();
-        assertNotNull(u.id);
+        assertThat(u.id).isNotNull();
         // normalized
-        assertEquals("root-user", u.username);
-        assertEquals("user,admin", u.roles);
-        assertTrue(u.isAdmin);
-        assertTrue(u.enabled);
-        assertFalse(u.mustChangePassword);
-        assertFalse(u.settingsComplete);
-        assertNotNull(u.createdAt);
+        assertThat(u.username).isEqualTo("root-user");
+        assertThat(u.roles).isEqualTo("user,admin");
+        assertThat(u.isAdmin).isTrue();
+        assertThat(u.enabled).isTrue();
+        assertThat(u.mustChangePassword).isFalse();
+        assertThat(u.settingsComplete).isFalse();
+        assertThat(u.createdAt).isNotNull();
     }
 
     @Test
@@ -28,17 +28,17 @@ class AppUserPersistenceTest {
     void createNonAdminGetsUserRoleOnly() {
         AppUser u = AppUser.create("plainuser", "h", false);
         u.persist();
-        assertEquals("user", u.roles);
-        assertFalse(u.isAdmin);
+        assertThat(u.roles).isEqualTo("user");
+        assertThat(u.isAdmin).isFalse();
     }
 
     @Test
     @TestTransaction
     void findByUsernameAndUsernameTaken() {
         AppUser.create("findme", "h", false).persist();
-        assertNotNull(AppUser.findByUsername("findme"));
-        assertNull(AppUser.findByUsername("nobody"));
-        assertTrue(AppUser.usernameTaken("findme"));
-        assertFalse(AppUser.usernameTaken("nobody"));
+        assertThat(AppUser.findByUsername("findme")).isNotNull();
+        assertThat(AppUser.findByUsername("nobody")).isNull();
+        assertThat(AppUser.usernameTaken("findme")).isTrue();
+        assertThat(AppUser.usernameTaken("nobody")).isFalse();
     }
 }

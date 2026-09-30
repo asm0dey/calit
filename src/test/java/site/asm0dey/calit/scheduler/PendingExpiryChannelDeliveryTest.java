@@ -1,9 +1,8 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
@@ -70,13 +69,13 @@ class PendingExpiryChannelDeliveryTest {
     }
 
     @Test
-    void anAutoExpiredApprovalReachesTheHostsChannel() throws InterruptedException {
+    void anAutoExpiredApprovalReachesTheHostsChannel() throws Exception {
         var channelId = seed();
 
         scheduler.expirePendingBookings();
 
-        assertTrue(hit.await(10, TimeUnit.SECONDS), "the auto-expired decline never reached the channel");
-        assertNotNull(awaitStamp(channelId).lastSuccessAt);
+        assertThat(hit.await(10, TimeUnit.SECONDS)).as("the auto-expired decline never reached the channel").isTrue();
+        assertThat(awaitStamp(channelId).lastSuccessAt).isNotNull();
     }
 
     /**

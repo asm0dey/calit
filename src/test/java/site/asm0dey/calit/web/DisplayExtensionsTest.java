@@ -1,9 +1,8 @@
 package site.asm0dey.calit.web;
 
 import module java.base;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
@@ -11,17 +10,17 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 class DisplayExtensionsTest {
     @Test
     void humanizesUpperSnakeEnums() {
-        assertEquals("Google Meet", DisplayExtensions.display(LocationType.GOOGLE_MEET));
-        assertEquals("In Person", DisplayExtensions.display(LocationType.IN_PERSON));
-        assertEquals("Phone", DisplayExtensions.display(LocationType.PHONE));
-        assertEquals("Long Text", DisplayExtensions.display(FieldType.LONG_TEXT));
-        assertEquals("Short Text", DisplayExtensions.display(FieldType.SHORT_TEXT));
-        assertEquals("Monday", DisplayExtensions.display(DayOfWeek.MONDAY));
+        assertThat(DisplayExtensions.display(LocationType.GOOGLE_MEET)).isEqualTo("Google Meet");
+        assertThat(DisplayExtensions.display(LocationType.IN_PERSON)).isEqualTo("In Person");
+        assertThat(DisplayExtensions.display(LocationType.PHONE)).isEqualTo("Phone");
+        assertThat(DisplayExtensions.display(FieldType.LONG_TEXT)).isEqualTo("Long Text");
+        assertThat(DisplayExtensions.display(FieldType.SHORT_TEXT)).isEqualTo("Short Text");
+        assertThat(DisplayExtensions.display(DayOfWeek.MONDAY)).isEqualTo("Monday");
     }
 
     @Test
     void nullRendersAsEmptyString() {
-        assertEquals("", DisplayExtensions.display(null));
+        assertThat(DisplayExtensions.display(null)).isEmpty();
     }
 
     @Test
@@ -29,12 +28,12 @@ class DisplayExtensionsTest {
         var i = Instant.parse("2026-08-20T13:00:00Z");
         // Asia/Tokyo has no DST, so this is stable regardless of when the test runs.
         String out = DisplayExtensions.when(i, "Asia/Tokyo");
-        assertEquals("Thursday, 20 August 2026 at 22:00 (JST)", out);
+        assertThat(out).isEqualTo("Thursday, 20 August 2026 at 22:00 (JST)");
     }
 
     @Test
     void whenNullInstantRendersAsEmptyString() {
-        assertEquals("", DisplayExtensions.when(null, "UTC"));
+        assertThat(DisplayExtensions.when(null, "UTC")).isEmpty();
     }
 
     /**
@@ -48,15 +47,12 @@ class DisplayExtensionsTest {
         // ZoneId.of throws a different exception per input: ZoneRulesException for an unknown id,
         // DateTimeException for blank, NullPointerException for null. assertAll reports every
         // failing input in one run rather than stopping at the first.
-        assertAll(() -> assertTrue(
-                DisplayExtensions.when(i, "Not/AZone").contains("(UTC)"),
-                "unknown zone id must fall back to UTC; got: " + DisplayExtensions.when(i, "Not/AZone")
-        ), () -> assertTrue(
-                DisplayExtensions.when(i, "").contains("(UTC)"),
-                "blank zone id must fall back to UTC; got: " + DisplayExtensions.when(i, "")
-        ), () -> assertTrue(
-                DisplayExtensions.when(i, null).contains("(UTC)"),
-                "null zone id must fall back to UTC; got: " + DisplayExtensions.when(i, null)
-        ));
+        assertAll(() -> assertThat(DisplayExtensions.when(i, "Not/AZone"))
+            .as("unknown zone id must fall back to UTC; got: " + DisplayExtensions.when(i, "Not/AZone"))
+            .contains("(UTC)"), () -> assertThat(DisplayExtensions.when(i, ""))
+            .as("blank zone id must fall back to UTC; got: " + DisplayExtensions.when(i, ""))
+            .contains("(UTC)"), () -> assertThat(DisplayExtensions.when(i, null))
+            .as("null zone id must fall back to UTC; got: " + DisplayExtensions.when(i, null))
+            .contains("(UTC)"));
     }
 }

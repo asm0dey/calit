@@ -1,8 +1,7 @@
 package site.asm0dey.calit.web.og;
 
 import module java.desktop;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 // java.desktop's module import would otherwise bind List to java.awt.List
@@ -22,36 +21,35 @@ class CardFontsTest {
 
     @Test
     void regularIsRubikRegular() {
-        assertEquals("Rubik Regular", fonts.regular().getFontName());
+        assertThat(fonts.regular().getFontName()).isEqualTo("Rubik Regular");
     }
 
     @Test
     void semiboldIsRubikSemiBold() {
         // regular() and semibold() must be genuinely different weights, not the same face loaded
         // twice -- the whole point of the pre-baked static instances (see the class javadoc).
-        assertEquals("Rubik SemiBold", fonts.semibold().getFontName());
+        assertThat(fonts.semibold().getFontName()).isEqualTo("Rubik SemiBold");
     }
 
     @Test
     void wordmarkIsHankenGroteskBold() {
-        assertEquals("Hanken Grotesk Bold", fonts.wordmark().getFontName());
+        assertThat(fonts.wordmark().getFontName()).isEqualTo("Hanken Grotesk Bold");
     }
 
     @Test
     void chipIsFraunces() {
-        assertTrue(
-                fonts.chip().getFontName().startsWith("Fraunces"),
-                "chip font should be a Fraunces instance, got " + fonts.chip().getFontName()
-        );
+        assertThat(fonts.chip().getFontName())
+            .as("chip font should be a Fraunces instance, got " + fonts.chip().getFontName())
+            .startsWith("Fraunces");
     }
 
     @Test
     void regularChainPairsRegularWeightsInFallbackOrder() {
         List<Font> chain = fonts.chain(false);
-        assertEquals(3, chain.size());
-        assertEquals("Rubik Regular", chain.get(0).getFontName());
-        assertEquals("Noto Sans Regular", chain.get(1).getFontName());
-        assertEquals("Noto Sans Hebrew Regular", chain.get(2).getFontName());
+        assertThat(chain).hasSize(3);
+        assertThat(chain.get(0).getFontName()).isEqualTo("Rubik Regular");
+        assertThat(chain.get(1).getFontName()).isEqualTo("Noto Sans Regular");
+        assertThat(chain.get(2).getFontName()).isEqualTo("Noto Sans Hebrew Regular");
     }
 
     @Test
@@ -59,9 +57,9 @@ class CardFontsTest {
         // Noto Sans Hebrew ships only a Regular instance -- the semibold chain must still fall back
         // to it rather than omitting Hebrew coverage entirely.
         List<Font> chain = fonts.chain(true);
-        assertEquals(3, chain.size());
-        assertEquals("Rubik SemiBold", chain.get(0).getFontName());
-        assertEquals("Noto Sans SemiBold", chain.get(1).getFontName());
-        assertEquals("Noto Sans Hebrew Regular", chain.get(2).getFontName());
+        assertThat(chain).hasSize(3);
+        assertThat(chain.get(0).getFontName()).isEqualTo("Rubik SemiBold");
+        assertThat(chain.get(1).getFontName()).isEqualTo("Noto Sans SemiBold");
+        assertThat(chain.get(2).getFontName()).isEqualTo("Noto Sans Hebrew Regular");
     }
 }
