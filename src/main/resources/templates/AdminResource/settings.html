@@ -9,8 +9,12 @@
 {@java.lang.String channelError}
 {@java.lang.String channelNotice}
 {@java.lang.Integer retentionInstanceDefault}
+{@java.lang.String settingsError}
 {#include adminBase title=title pendingCount=pendingCount active="settings" isAdmin=isAdmin}
   <h1 class="text-2xl font-bold mb-4">{adm:adm_settings_h1}</h1>
+  {#if settingsError}
+  <div class="alert alert-error mb-2 max-w-2xl"><span>{settingsError}</span></div>
+  {/if}
   <form method="post" action="/me/settings" class="fieldset bg-base-100 border border-base-300 rounded-box p-4 max-w-2xl">
     <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
     <label class="label" for="set-name">{adm:adm_settings_label_name}</label>

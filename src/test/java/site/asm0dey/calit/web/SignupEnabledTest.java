@@ -65,6 +65,18 @@ class SignupEnabledTest {
     }
 
     @Test
+    void postRejectsBlankMissingOrWhitespacePassword() {
+        for (String password : new String[] {"", "   ", null}) {
+            var request = given().contentType("application/x-www-form-urlencoded").formParam("username", "ivan");
+            if (password != null) {
+                request.formParam("password", password);
+            }
+            request.when().post("/signup").then().statusCode(200).body(containsString("Enter a password."));
+            assertNull(AppUser.findByUsername("ivan"));
+        }
+    }
+
+    @Test
     void postRejectsReservedUsername() {
         // Reserved word -> re-render form (200) with the localized aggregate error, no user created.
         given()

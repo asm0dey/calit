@@ -123,7 +123,8 @@ public class AdminResource {
                 List<ChannelRow> channels,
                 String channelError,
                 String channelNotice,
-                Integer retentionInstanceDefault
+                Integer retentionInstanceDefault,
+                String settingsError
         );
 
         public static native TemplateInstance bookingFields(
@@ -1682,6 +1683,10 @@ public class AdminResource {
             @RestForm String timeFormat,
             @RestForm String bookingRetentionDays
     ) {
+        String detailsError = MeSetupResource.ownerDetailsError(ownerName, ownerEmail, m());
+        if (detailsError != null) {
+            return settingsInstance(null, null, detailsError);
+        }
         // Persist in its own tx that commits before the settings render (#75); return the (now
         // detached) row so the render below reads its committed field values with no connection held.
         OwnerSettings s = QuarkusTransaction
@@ -1724,7 +1729,8 @@ public class AdminResource {
                 channelRows(),
                 null,
                 null,
-                privacyConfig.bookingRetentionDays().orElse(null)
+                privacyConfig.bookingRetentionDays().orElse(null),
+                null
         );
     }
 
@@ -1759,6 +1765,10 @@ public class AdminResource {
      * Re-render /me/settings with an optional channel error/notice.
      */
     private TemplateInstance settingsInstance(String channelError, String channelNotice) {
+        return settingsInstance(channelError, channelNotice, null);
+    }
+
+    private TemplateInstance settingsInstance(String channelError, String channelNotice, String settingsError) {
         return Templates.settings(
                 OwnerSettings.forOwner(currentOwner.id()),
                 reminderLeadMinutes,
@@ -1769,7 +1779,8 @@ public class AdminResource {
                 channelRows(),
                 channelError,
                 channelNotice,
-                privacyConfig.bookingRetentionDays().orElse(null)
+                privacyConfig.bookingRetentionDays().orElse(null),
+                settingsError
         );
     }
 

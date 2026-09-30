@@ -15,6 +15,7 @@ import site.asm0dey.calit.availability.DefaultAvailabilitySeeder;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AdminMessageResolver;
+import site.asm0dey.calit.i18n.AdminMessages;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.CurrentOwner;
 import site.asm0dey.calit.user.PasswordHasher;
@@ -79,6 +80,18 @@ public class MeSetupResource {
         Long ownerId = currentOwner.require().id;
         // managed entity for dirty-checking in this tx
         AppUser me = AppUser.findById(ownerId);
+        String detailsError = ownerDetailsError(ownerName, ownerEmail, adminMsgs.forLocale(activeLocale.current()));
+        if (detailsError != null) {
+            return Response
+                .ok(Templates.meSetup(
+                        me.mustChangePassword,
+                        OwnerSettings.forOwner(ownerId),
+                        OwnerSettings.zoneIds(),
+                        detailsError,
+                        adminMsgs.forLocale(activeLocale.current()).mesetup_title()
+                ))
+                .build();
+        }
         // Step 1: only when a forced reset is pending.
         if (me.mustChangePassword) {
             if (newPassword == null || newPassword.isBlank()) {
@@ -122,5 +135,20 @@ public class MeSetupResource {
 
         me.settingsComplete = true;
         return Response.seeOther(UriBuilder.fromUri("/me").build()).build();
+    }
+
+    /**
+     * Owner name and email are NOT NULL and read by every email and booking page, so a crafted POST
+     * that skips the form's {@code required} must not store a blank name or a non-address. Shared by
+     * the first-login wizard and {@code /me/settings}. Returns the localized error, or null when valid.
+     */
+    static String ownerDetailsError(String ownerName, String ownerEmail, AdminMessages m) {
+        if (ownerName == null || ownerName.isBlank()) {
+            return m.owner_error_name_blank();
+        }
+        if (ownerEmail == null || !UsersResource.looksLikeEmail(ownerEmail)) {
+            return m.users_error_email_invalid();
+        }
+        return null;
     }
 }

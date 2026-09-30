@@ -2,11 +2,13 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.domain.OwnerSettings;
 
 @QuarkusTest
 class AdminSettingsTest {
@@ -83,6 +85,48 @@ class AdminSettingsTest {
     String readTimezone() {
         em.clear();
         return site.asm0dey.calit.domain.OwnerSettings.forOwner(1L).timezone;
+    }
+
+    @Transactional
+    OwnerSettings readSettings() {
+        em.clear();
+        return OwnerSettings.forOwner(1L);
+    }
+
+    @Test
+    void updateSettingsRejectsBlankNameAndInvalidEmail() {
+        // Pin a known-good row first: the reseeded admin may not have one yet.
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("ownerName", "Good Owner")
+            .formParam("ownerEmail", "good@example.com")
+            .formParam("timezone", "UTC")
+            .formParam("locale", "en")
+            .when()
+            .post("/me/settings")
+            .then()
+            .statusCode(200);
+        String[][] bad = {
+                {"   ", "new@example.com", "Enter your name."},
+                {"New Owner", "not-an-email", "Enter a valid email address."},
+                {"New Owner", null, "Enter a valid email address."}
+        };
+        for (String[] c : bad) {
+            var request = given()
+                .cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("ownerName", c[0])
+                .formParam("timezone", "UTC")
+                .formParam("locale", "en");
+            if (c[1] != null) {
+                request.formParam("ownerEmail", c[1]);
+            }
+            request.when().post("/me/settings").then().statusCode(200).body(containsString(c[2]));
+            var after = readSettings();
+            assertEquals("Good Owner", after.ownerName);
+            assertEquals("good@example.com", after.ownerEmail);
+        }
     }
 
     @Test

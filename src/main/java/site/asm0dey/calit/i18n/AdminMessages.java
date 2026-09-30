@@ -1177,4 +1177,7 @@ public interface AdminMessages {
 
     @Message("Please choose a new password.")
     String mesetup_choose_new_password();
+
+    @Message("Enter your name.")
+    String owner_error_name_blank();
 }

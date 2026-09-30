@@ -1060,6 +1060,9 @@ public interface AppMessages {
             + "lowercase letters or digits, with single hyphens between.")
     String auth_signup_error();
 
+    @Message("Enter a password.")
+    String auth_signup_password_blank();
+
     @Message("Username")
     String auth_setup_username_label();
 

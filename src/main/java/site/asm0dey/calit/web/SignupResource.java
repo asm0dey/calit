@@ -78,6 +78,10 @@ public class SignupResource {
             String error = messages.forLocale(activeLocale.current()).auth_signup_error();
             return Response.ok(Templates.signup(title, error, ogCards.product("/signup"))).build();
         }
+        if (password == null || password.isBlank()) {
+            String error = messages.forLocale(activeLocale.current()).auth_signup_password_blank();
+            return Response.ok(Templates.signup(title, error, ogCards.product("/signup"))).build();
+        }
         AppUser u = AppUser.create(normalized, passwordHasher.hash(password), false);
         // self-chosen password → no forced reset
         u.mustChangePassword = false;
