@@ -19,8 +19,17 @@ Merged but not yet in a tagged release.
 - Approve and decline act only on pending requests; a cancelled, declined or confirmed booking is
   left unchanged, and a double-click no longer creates a second calendar event.
   ([#237](https://github.com/asm0dey/calit/pull/237))
+- Sign-up, the first-login wizard and settings reject a blank password, blank name or invalid
+  email with a form error instead of storing it. ([#245](https://github.com/asm0dey/calit/pull/245))
+- Weekly hours and date-override windows skip rows whose end is not after the start; overrides
+  keep at most three windows. ([#245](https://github.com/asm0dey/calit/pull/245))
+- Meeting types refuse negative buffers or notice, a zero or non-numeric slot interval, and a
+  horizon over 730 days. ([#245](https://github.com/asm0dey/calit/pull/245))
+- Too-long meeting names or descriptions on the manage page show a translated form error
+  instead of a plain-text 422. ([#245](https://github.com/asm0dey/calit/pull/245))
 
-Upgrade: nothing to do; GHCR image references keep working.
+Upgrade: nothing to do; GHCR image references keep working. A meeting type whose stored horizon,
+notice or buffer is over the new limits must be lowered on its next edit.
 
 ## 1.27.0
 
