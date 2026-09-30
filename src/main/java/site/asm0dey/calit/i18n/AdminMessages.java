@@ -425,6 +425,9 @@ public interface AdminMessages {
     @Message("Duration must be at least 1 minute.")
     String adm_detail_error_duration_positive();
 
+    @Message("{field}: enter a whole number from {min} to {max}.")
+    String adm_detail_error_range(String field, int min, int max);
+
     @Message("Buffer after (minutes)")
     String adm_detail_label_buffer_after();
 

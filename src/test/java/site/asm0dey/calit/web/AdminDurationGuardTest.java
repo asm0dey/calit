@@ -1,6 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.test.junit.QuarkusTest;
@@ -99,5 +100,45 @@ class AdminDurationGuardTest {
             .statusCode(200);
 
         assertEquals(30, ((MeetingType) MeetingType.findById(id)).durationMinutes);
+    }
+
+    @Test
+    void outOfRangeSchedulingFieldsAreRefusedNotStoredAnd500Free() {
+        var id = seedType("guard-range-" + System.nanoTime());
+        String[][] bad = {
+                {"bufferBeforeMinutes", "-5"},
+                {"bufferAfterMinutes", "100000"},
+                {"minNoticeMinutes", "-1"},
+                {"horizonDays", "100000"},
+                {"slotIntervalMinutes", "abc"},
+                {"slotIntervalMinutes", "0"}
+        };
+        for (String[] c : bad) {
+            var request = given()
+                .cookie("quarkus-credential", FormAuth.login())
+                .contentType("application/x-www-form-urlencoded")
+                .formParam("name", "Guard seed")
+                .formParam("slug", "guard-range-kept")
+                .formParam("durationMinutes", "45")
+                .formParam("locationType", "CUSTOM")
+                .formParam("locationDetail", "x");
+            for (String field : new String[] {"minNoticeMinutes", "horizonDays"}) {
+                if (!field.equals(c[0])) {
+                    request.formParam(field, field.equals("horizonDays") ? "60" : "0");
+                }
+            }
+            request
+                .formParam(c[0], c[1])
+                .when()
+                .post("/me/meeting-types/" + id + "/edit")
+                .then()
+                .statusCode(200)
+                .body(containsString("enter a whole number from"));
+            assertEquals(
+                    30,
+                    ((MeetingType) MeetingType.findById(id)).durationMinutes,
+                    c[0] + "=" + c[1] + " must not save"
+            );
+        }
     }
 }

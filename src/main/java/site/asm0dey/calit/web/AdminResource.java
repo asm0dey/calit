@@ -310,6 +310,8 @@ public class AdminResource {
                     .adm_hosts_error_slug_cohosts((String) hre.args[0], (String) hre.args[1]);
                 case "adm_hosts_error_slug_across" -> m().adm_hosts_error_slug_across((String) hre.args[0]);
                 case "adm_detail_error_duration_positive" -> m().adm_detail_error_duration_positive();
+                case "adm_detail_error_range" -> m()
+                    .adm_detail_error_range((String) hre.args[0], (int) hre.args[1], (int) hre.args[2]);
                 default -> e.getMessage();
             };
         }
@@ -610,6 +612,26 @@ public class AdminResource {
         return renderMeetingTypes();
     }
 
+    // ponytail: fixed ceilings, not config — move to MeetingType if an owner ever needs more.
+    static final int MAX_BUFFER_MINUTES = 24 * 60;
+    static final int MAX_MIN_NOTICE_MINUTES = 365 * 24 * 60;
+    static final int MAX_HORIZON_DAYS = 730;
+
+    private static int inRange(int value, int min, int max, String label) {
+        if (value < min || value > max) {
+            throw new HostRuleException("adm_detail_error_range", label, min, max);
+        }
+        return value;
+    }
+
+    private static int parseIntOr(String raw, int fallback) {
+        try {
+            return Integer.parseInt(raw.strip());
+        } catch (NumberFormatException _) {
+            return fallback;
+        }
+    }
+
     /**
      * Copy the editable scheduling fields shared by create + edit from the submitted form params.
      * Name/slug are handled separately by each caller (they differ in uniqueness/guard handling).
@@ -638,12 +660,19 @@ public class AdminResource {
             throw new HostRuleException("adm_detail_error_duration_positive");
         }
         t.durationMinutes = durationMinutes;
-        t.bufferBeforeMinutes = bufferBeforeMinutes;
-        t.bufferAfterMinutes = bufferAfterMinutes;
+        // Same story for the rest: min= is a browser hint. Negatives corrupt slot math, a zero cadence
+        // never advances, and an unbounded horizon makes the public page enumerate years of slots.
+        t.bufferBeforeMinutes = inRange(
+                bufferBeforeMinutes,
+                0,
+                MAX_BUFFER_MINUTES,
+                m().adm_detail_label_buffer_before()
+        );
+        t.bufferAfterMinutes = inRange(bufferAfterMinutes, 0, MAX_BUFFER_MINUTES, m().adm_detail_label_buffer_after());
         // unchecked checkbox sends no value
         t.secret = "on".equals(secret);
-        t.minNoticeMinutes = minNoticeMinutes;
-        t.horizonDays = horizonDays;
+        t.minNoticeMinutes = inRange(minNoticeMinutes, 0, MAX_MIN_NOTICE_MINUTES, m().adm_detail_label_min_notice());
+        t.horizonDays = inRange(horizonDays, 0, MAX_HORIZON_DAYS, m().adm_detail_label_horizon());
         t.locationType = parseLocationType(locationType, t);
         t.locationDetail = (locationDetail == null || locationDetail.isBlank()) ? null : locationDetail;
         // The owner-authored note shown to bookers (GH #128). Blank clears it back to "no note",
@@ -652,7 +681,12 @@ public class AdminResource {
         // Slot cadence: blank = back-to-back (null → falls back to durationMinutes).
         t.slotIntervalMinutes = (slotIntervalMinutes == null || slotIntervalMinutes.isBlank())
                 ? null
-                : Integer.valueOf(slotIntervalMinutes);
+                : inRange(
+                        parseIntOr(slotIntervalMinutes, 0),
+                        1,
+                        MAX_BUFFER_MINUTES,
+                        m().adm_detail_label_slot_interval()
+        );
         t.requiresApproval = "on".equals(requiresApproval);
         // Built-in invitee fields (GH #130). A blank or unknown value falls back to the default; guests
         // can't be REQUIRED, so anything but HIDDEN collapses to OPTIONAL.

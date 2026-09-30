@@ -97,13 +97,14 @@ class AdminDateOverridesTest {
             .post("/me/date-overrides")
             .then()
             .statusCode(200);
-
-        var windows = windowsOn(LocalDate.of(2026, 7, 2));
-        assertEquals(3, windows.size(), "the inverted window is dropped and only three are kept");
-        assertTrue(windows
-            .stream()
-            .allMatch(w -> w.endTime.isAfter(w.startTime)));
-        assertEquals(LocalTime.of(8, 0), windows.getFirst().startTime);
+        // the inverted 12:00-11:00 is dropped and only the first three valid windows are kept
+        assertEquals(
+                List.of("08:00-08:30", "09:00-09:30", "10:00-10:30"),
+                windowsOn(LocalDate.of(2026, 7, 2))
+                    .stream()
+                    .map(w -> w.startTime + "-" + w.endTime)
+                    .toList()
+        );
     }
 
     @Test
