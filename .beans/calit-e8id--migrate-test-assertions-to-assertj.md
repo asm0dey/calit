@@ -1,11 +1,11 @@
 ---
 # calit-e8id
 title: Migrate test assertions to AssertJ
-status: in-progress
+status: completed
 type: task
 priority: low
 created_at: 2026-09-30T10:12:16Z
-updated_at: 2026-09-30T11:16:07Z
+updated_at: 2026-09-30T11:23:41Z
 ---
 
 Replace JUnit assertEquals/assertTrue/assertNull (and plain Hamcrest assertThat) in src/test with AssertJ assertThat, so failures describe the actual value instead of "expected true".
@@ -22,8 +22,8 @@ Replace JUnit assertEquals/assertTrue/assertNull (and plain Hamcrest assertThat)
 - [x] Run the OpenRewrite Assertj recipe
 - [x] Hand pass on collection assertions (pattern map below), then steroid SimplifiableAssertion over src/test
 - [x] Fold any single-type imports the recipe adds into the project's import style; `mvn spotless:apply`
-- [ ] Full `mvn test` green
-- [ ] Record the choice in precedent (AssertJ over JUnit asserts/Hamcrest)
+- [x] Full `mvn test` green
+- [x] Record the choice in precedent (AssertJ over JUnit asserts/Hamcrest)
 
 ## Focus: collection assertions first
 
@@ -59,3 +59,7 @@ Pattern map:
 4. Leave RestAssured `.body(containsString(...))` Hamcrest matchers alone.
 5. Imports: `import static org.assertj.core.api.Assertions.*` style per file as the formatter leaves it, and no FQNs. Then `mvn spotless:apply`.
 6. Full `mvn test` green, then record the choice in precedent.
+
+## Summary of Changes
+
+Added assertj-core 3.27.7 (test scope, assertj.version property). One-off OpenRewrite run (rewrite-testing-frameworks 3.44.0, stock Assertj composite incl. JUnit5BestPractices) converted JUnit/Hamcrest asserts; it needed JDK 25 and a temporary expansion of `import module` lines, which it cannot parse. Hand/scripted passes: assertDoesNotThrow -> assertThatCode, assertAll -> assertSoftly, boolean-wrapped checks -> anyMatch/extracting/hasSize/isGreaterThan/isAfter/isNotBlank. RestAssured .body() matchers untouched. Convention in CLAUDE.md and precedent.
