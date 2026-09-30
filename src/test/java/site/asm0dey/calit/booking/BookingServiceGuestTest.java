@@ -111,8 +111,9 @@ class BookingServiceGuestTest {
         );
 
         List<BookingGuest> guests = BookingGuest.activeForBooking(b.id);
-        assertThat(guests).as("capped at the max").hasSize(BookingService.MAX_GUESTS_PER_BOOKING);
         assertThat(guests)
+            .as("capped at the max")
+            .hasSize(BookingService.MAX_GUESTS_PER_BOOKING)
             .as("invitee dropped")
             .noneMatch(g -> g.email.equalsIgnoreCase("sam@example.com"));
         assertThat(guests)
@@ -126,8 +127,7 @@ class BookingServiceGuestTest {
             .count()).as("deduped").isEqualTo(guests.size());
         assertThat(guests)
             .as("owner-scoped")
-            .allMatch(g -> g.ownerId.equals(1L));
-        assertThat(guests)
+            .allMatch(g -> g.ownerId.equals(1L))
             .as("decline tokens")
             .allMatch(g -> g.declineToken != null && !g.declineToken.isBlank());
     }

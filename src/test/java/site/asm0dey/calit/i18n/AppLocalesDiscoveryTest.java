@@ -19,12 +19,14 @@ class AppLocalesDiscoveryTest {
     void supportedContainsEnglishGermanAndHebrew() {
         List<Locale> supported = AppLocales.supported();
         // Default (en) must be first
-        assertThat(supported).first().as("Default locale must be first").isEqualTo(Locale.ENGLISH);
-        assertThat(supported).as("German must be discovered from msg_de.properties").contains(Locale.GERMAN);
-        assertThat(supported).as("Hebrew must be discovered from msg_he.properties").contains(Locale.forLanguageTag(
-                "he"
-        ));
-        assertThat(supported).as("Exactly three locales expected: en + de + he").hasSize(3);
+        assertThat(supported)
+            .as("Exactly three locales expected: en + de + he")
+            .hasSize(3)
+            .as("German and Hebrew must be discovered from msg_de/msg_he.properties")
+            .contains(Locale.GERMAN, Locale.forLanguageTag("he"))
+            .first()
+            .as("Default locale must be first")
+            .isEqualTo(Locale.ENGLISH);
     }
 
     @Test

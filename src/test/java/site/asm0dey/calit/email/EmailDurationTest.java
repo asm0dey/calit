@@ -99,18 +99,18 @@ class EmailDurationTest {
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
         assertThat(toOwner).as("host must receive their copy").hasSize(1);
         String hostHtml = toOwner.getFirst().getHtml();
-        assertThat(hostHtml).as("host copy must show the booked 120 minutes; got: " + hostHtml).contains("120 minutes");
-        assertThat(hostHtml).as("host copy must not show the type's default; got: " + hostHtml).doesNotContain(
-                "30 minutes"
-        );
+        assertThat(hostHtml)
+            .as("host copy must show the booked 120 minutes; got: " + hostHtml)
+            .contains("120 minutes")
+            .as("host copy must not show the type's default; got: " + hostHtml)
+            .doesNotContain("30 minutes");
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertThat(toInvitee).as("invitee must receive confirmation").hasSize(1);
         String inviteeHtml = toInvitee.getFirst().getHtml();
         assertThat(inviteeHtml)
             .as("invitee copy must show the booked 120 minutes; got: " + inviteeHtml)
-            .contains("120 minutes");
-        assertThat(inviteeHtml)
+            .contains("120 minutes")
             .as("invitee copy must not show the type's default; got: " + inviteeHtml)
             .doesNotContain("30 minutes");
     }

@@ -80,8 +80,9 @@ class BookingTest {
         // Window 06:00-08:00 catches the CONFIRMED + PENDING holds, not CANCELLED/DECLINED.
         List<Booking> hits = Booking.heldOverlapping(1L, base.minusSeconds(3600), base.plusSeconds(3600));
 
-        assertThat(hits).hasSize(2);
-        assertThat(hits).allMatch(x -> x.status == BookingStatus.PENDING || x.status == BookingStatus.CONFIRMED);
+        assertThat(hits)
+            .hasSize(2)
+            .allMatch(x -> x.status == BookingStatus.PENDING || x.status == BookingStatus.CONFIRMED);
     }
 
     @Test

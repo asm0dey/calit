@@ -53,7 +53,7 @@ class MeetingHostsMutationTest {
         meetingHosts.removeHost(t, v.id);
         em.flush();
         // creator row gone too
-        assertThat(MeetingTypeHost.forType(t.id)).hasSize(0);
+        assertThat(MeetingTypeHost.forType(t.id)).isEmpty();
         assertThat(MeetingTypeHost.isMultiHost(t.id)).isFalse();
     }
 

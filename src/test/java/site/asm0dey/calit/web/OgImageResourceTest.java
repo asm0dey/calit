@@ -187,10 +187,10 @@ class OgImageResourceTest {
             .statusCode(200)
             .extract()
             .header("ETag");
-        assertThat(after).isNotNull();
-        assertThat(after).as("renaming the meeting type must change the ETag (no-invalidation design)").isNotEqualTo(
-                before
-        );
+        assertThat(after)
+            .isNotNull()
+            .as("renaming the meeting type must change the ETag (no-invalidation design)")
+            .isNotEqualTo(before);
     }
 
     @Test
@@ -239,8 +239,9 @@ class OgImageResourceTest {
         });
         String afterDuration =
                 given().when().get("/og/admin/card-etag-axes.png").then().statusCode(200).extract().header("ETag");
-        assertThat(afterDuration).isNotNull();
-        assertThat(afterDuration).as("changing the allowed duration must change the ETag").isNotEqualTo(before);
+        assertThat(afterDuration).isNotNull().as("changing the allowed duration must change the ETag").isNotEqualTo(
+                before
+        );
 
         QuarkusTransaction.requiringNew().run(() -> {
             MeetingType t = MeetingType.findBySlug(1L, "card-etag-axes");
@@ -248,8 +249,10 @@ class OgImageResourceTest {
         });
         String afterLocation =
                 given().when().get("/og/admin/card-etag-axes.png").then().statusCode(200).extract().header("ETag");
-        assertThat(afterLocation).isNotNull();
-        assertThat(afterLocation).as("changing the location kind must change the ETag").isNotEqualTo(afterDuration);
+        assertThat(afterLocation)
+            .isNotNull()
+            .as("changing the location kind must change the ETag")
+            .isNotEqualTo(afterDuration);
     }
 
     @Test

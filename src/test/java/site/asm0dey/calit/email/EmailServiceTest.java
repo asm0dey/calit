@@ -458,8 +458,11 @@ class EmailServiceTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         String ownerHtml = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getHtml();
-        assertThat(ownerHtml).as("owner can click through to the invitee").contains("mailto:" + INVITEE_EMAIL);
-        assertThat(ownerHtml).as("owner copy labels the line").contains("Invitee:");
+        assertThat(ownerHtml)
+            .as("owner can click through to the invitee")
+            .contains("mailto:" + INVITEE_EMAIL)
+            .as("owner copy labels the line")
+            .contains("Invitee:");
 
         String inviteeHtml = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getHtml();
         assertThat(inviteeHtml).as("invitee copy is unchanged").doesNotContain("mailto:" + INVITEE_EMAIL);

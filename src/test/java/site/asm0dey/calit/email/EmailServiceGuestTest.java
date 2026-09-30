@@ -158,8 +158,11 @@ class EmailServiceGuestTest {
         List<Mail> toGuest = mailbox.getMailsSentTo(GUEST_EMAIL);
         assertThat(toGuest).as("guest always gets a calit link email").hasSize(1);
         String html = toGuest.getFirst().getHtml();
-        assertThat(html).as("guest copy must always be 24-hour ('auto'); got: " + html).contains("13:00");
-        assertThat(html).as("host's h12 preference must never leak to a guest; got: " + html).doesNotContain("1:00 PM");
+        assertThat(html)
+            .as("guest copy must always be 24-hour ('auto'); got: " + html)
+            .contains("13:00")
+            .as("host's h12 preference must never leak to a guest; got: " + html)
+            .doesNotContain("1:00 PM");
     }
 
     @Test

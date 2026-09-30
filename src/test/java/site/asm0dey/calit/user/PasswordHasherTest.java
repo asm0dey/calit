@@ -11,7 +11,7 @@ class PasswordHasherTest {
         String encoded = hasher.hash("correct horse battery staple");
         assertThat(encoded).as("unexpected encoding: " + encoded).startsWith("$argon2id$v=19$m=19456,t=2,p=1$");
         var parts = encoded.split("\\$");
-        assertThat(parts.length).as("expected 6 MCF segments, got " + encoded).isEqualTo(6);
+        assertThat(parts).as("expected 6 MCF segments, got " + encoded).hasSize(6);
     }
 
     @Test

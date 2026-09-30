@@ -64,8 +64,9 @@ class GoogleDisconnectedEmailTest {
             );
 
         String deSubject = subject.getValue();
-        assertThat(deSubject).as("German google-disconnected subject must not be blank").isNotBlank();
         assertThat(deSubject)
+            .as("German google-disconnected subject must not be blank")
+            .isNotBlank()
             .as("German subject must differ from hardcoded English")
             .isNotEqualTo("Action needed: reconnect your Google Calendar");
     }

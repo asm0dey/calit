@@ -151,7 +151,7 @@ class InviteeFieldModesTest {
         assertThat(post("Sam", "ana@example.com, bob@example.com")).isEqualTo(200);
         Booking b = booked();
         assertThat(b.inviteeName).isEqualTo("sam");
-        assertThat(BookingGuest.activeForBooking(b.id)).hasSize(0);
+        assertThat(BookingGuest.activeForBooking(b.id)).isEmpty();
     }
 
     @Test

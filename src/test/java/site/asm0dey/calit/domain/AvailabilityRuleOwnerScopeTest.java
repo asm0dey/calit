@@ -50,7 +50,7 @@ class AvailabilityRuleOwnerScopeTest {
 
         assertThat(AvailabilityRule.globalForOwner(4001L, DayOfWeek.MONDAY)).hasSize(1);
         assertThat(AvailabilityRule.globalForOwner(4002L, DayOfWeek.MONDAY)).hasSize(1);
-        assertThat(AvailabilityRule.globalForOwner(4001L, DayOfWeek.TUESDAY)).hasSize(0);
+        assertThat(AvailabilityRule.globalForOwner(4001L, DayOfWeek.TUESDAY)).isEmpty();
     }
 
     @Test

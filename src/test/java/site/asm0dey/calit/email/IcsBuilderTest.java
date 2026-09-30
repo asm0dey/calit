@@ -19,15 +19,23 @@ class IcsBuilderTest {
             .build()
         );
 
-        assertThat(ics).as("must be a VCALENDAR").startsWith("BEGIN:VCALENDAR");
-        assertThat(ics).contains("BEGIN:VEVENT").contains("END:VEVENT").contains("END:VCALENDAR");
-        assertThat(ics).as("uid drives calendar de-dup/updates").contains("UID:tok-123");
         assertThat(ics)
-            .contains("SUMMARY:Discovery Call")
-            .contains("LOCATION:https://meet.google.com/abc-defg-hij")
-            .contains("ORGANIZER;CN=\"Owner Name\":mailto:owner@example.com");
-        assertThat(ics).as("start in UTC basic format").contains("DTSTART:20260608T090000Z");
-        assertThat(ics).as("end in UTC basic format").contains("DTEND:20260608T093000Z");
+            .contains(
+                    "BEGIN:VEVENT",
+                    "END:VEVENT",
+                    "END:VCALENDAR",
+                    "SUMMARY:Discovery Call",
+                    "LOCATION:https://meet.google.com/abc-defg-hij",
+                    "ORGANIZER;CN=\"Owner Name\":mailto:owner@example.com"
+            )
+            .as("must be a VCALENDAR")
+            .startsWith("BEGIN:VCALENDAR")
+            .as("uid drives calendar de-dup/updates")
+            .contains("UID:tok-123")
+            .as("start in UTC basic format")
+            .contains("DTSTART:20260608T090000Z")
+            .as("end in UTC basic format")
+            .contains("DTEND:20260608T093000Z");
     }
 
     @Test
@@ -43,8 +51,10 @@ class IcsBuilderTest {
             .end(Instant.parse("2026-06-08T09:30:00Z"))
             .build()
         );
-        assertThat(ics).contains("BEGIN:VEVENT");
-        assertThat(ics).as("no LOCATION line when location is null/blank").doesNotContain("LOCATION:");
+        assertThat(ics)
+            .contains("BEGIN:VEVENT")
+            .as("no LOCATION line when location is null/blank")
+            .doesNotContain("LOCATION:");
     }
 
     @Test
@@ -67,10 +77,13 @@ class IcsBuilderTest {
             .isTrue();
         assertThat(ics)
             .as("owner must be the ORGANIZER with a CN")
-            .contains("ORGANIZER;CN=\"Olivia Owner\":mailto:owner@example.com");
-        assertThat(ics).as("REQUEST needs a SEQUENCE").contains("SEQUENCE:0");
-        assertThat(ics).as("event needs a STATUS").contains("STATUS:CONFIRMED");
-        assertThat(ics).as("CRLF line endings preserved").contains("BEGIN:VEVENT\r\n");
+            .contains("ORGANIZER;CN=\"Olivia Owner\":mailto:owner@example.com")
+            .as("REQUEST needs a SEQUENCE")
+            .contains("SEQUENCE:0")
+            .as("event needs a STATUS")
+            .contains("STATUS:CONFIRMED")
+            .as("CRLF line endings preserved")
+            .contains("BEGIN:VEVENT\r\n");
     }
 
     @Test
@@ -90,11 +103,17 @@ class IcsBuilderTest {
             .build()
         );
 
-        assertThat(ics).as("cancel must be an iTIP CANCEL").contains("METHOD:CANCEL");
-        assertThat(ics).as("cancelled event status").contains("STATUS:CANCELLED");
-        assertThat(ics).as("sequence carried through").contains("SEQUENCE:3");
-        assertThat(ics).as("same UID so the client matches the prior event").contains("UID:tok-9");
-        assertThat(ics).as("guest is the attendee").contains("mailto:guest@example.com");
+        assertThat(ics)
+            .as("cancel must be an iTIP CANCEL")
+            .contains("METHOD:CANCEL")
+            .as("cancelled event status")
+            .contains("STATUS:CANCELLED")
+            .as("sequence carried through")
+            .contains("SEQUENCE:3")
+            .as("same UID so the client matches the prior event")
+            .contains("UID:tok-9")
+            .as("guest is the attendee")
+            .contains("mailto:guest@example.com");
     }
 
     @Test
@@ -133,8 +152,10 @@ class IcsBuilderTest {
             .attendeeRsvp(false)
             .build()
         );
-        assertThat(ics).as("guest invite suppresses the calendar RSVP buttons").contains("RSVP=FALSE");
-        assertThat(ics).doesNotContain("RSVP=TRUE");
+        assertThat(ics)
+            .doesNotContain("RSVP=TRUE")
+            .as("guest invite suppresses the calendar RSVP buttons")
+            .contains("RSVP=FALSE");
     }
 
     @Test

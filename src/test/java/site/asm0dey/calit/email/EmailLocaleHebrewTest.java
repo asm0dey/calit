@@ -15,9 +15,13 @@ class EmailLocaleHebrewTest {
     void hebrewSubjectResolvesAndDiffersFromEnglish() {
         String he = messages.forTag("he").email_confirmed_subject("X");
         String en = messages.forTag("en").email_confirmed_subject("X");
-        assertThat(he).as("Hebrew confirmation subject must not be blank").isNotBlank();
-        assertThat(he).as("Hebrew subject must differ from English").isNotEqualTo(en);
-        // Placeholder is preserved verbatim
-        assertThat(he).as("Subject must keep the {meetingTypeName} value").contains("X");
+        assertThat(he)
+            .as("Hebrew confirmation subject must not be blank")
+            .isNotBlank()
+            .as("Hebrew subject must differ from English")
+            .isNotEqualTo(en)
+            // Placeholder is preserved verbatim
+            .as("Subject must keep the {meetingTypeName} value")
+            .contains("X");
     }
 }

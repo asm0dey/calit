@@ -181,8 +181,9 @@ class MultiHostEmailFanoutTest {
         assertThat(leadHtml).as("lead host chose h12; got: " + leadHtml).contains("9:00 AM");
 
         String cohostHtml = mailbox.getMailsSentTo("Cohost@x.com").getFirst().getHtml();
-        assertThat(cohostHtml).as("co-host chose auto (24h); got: " + cohostHtml).contains("09:00");
         assertThat(cohostHtml)
+            .as("co-host chose auto (24h); got: " + cohostHtml)
+            .contains("09:00")
             .as("lead host's h12 preference must not leak into the co-host's copy; got: " + cohostHtml)
             .doesNotContain("9:00 AM");
     }

@@ -45,7 +45,7 @@ class EmailEnqueueTest {
             assertThat(r.subject.toLowerCase()).as("subject identifies the reminder").contains("reminder");
             assertThat(r.sentAt).as("queued, not sent").isNull();
         });
-        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("no direct SMTP send on the enqueue path").hasSize(0);
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("no direct SMTP send on the enqueue path").isEmpty();
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox.delete("recipient", INVITEE_EMAIL);

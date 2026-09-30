@@ -197,8 +197,11 @@ class SlotServiceLatticeTest {
             .sorted()
             .toList();
 
-        assertThat(local).isNotEmpty();
-        assertThat(local).first().as("an all-Kathmandu team must keep 09:00, not 09:15").isEqualTo(LocalTime.of(9, 0));
+        assertThat(local)
+            .isNotEmpty()
+            .first()
+            .as("an all-Kathmandu team must keep 09:00, not 09:15")
+            .isEqualTo(LocalTime.of(9, 0));
         for (LocalTime lt : local) {
             assertThat(lt.getMinute() % 30).as("every start's Kathmandu-local minute must be :00 or :30, got " + lt).isZero();
         }
@@ -304,16 +307,10 @@ class SlotServiceLatticeTest {
                     "the lattice path must emit 5 starts across the fall-back (the elapsed real time), "
                     + "matching the single-host window-anchored path's count, not 4"
             )
-            .hasSize(5);
-        // The repeated local hour (02:00 Berlin, walked once as a Creator-local minute) resolves to
-        // two distinct, one-hour-apart instants: 00:00Z is 02:00 CEST (before the transition), 01:00Z
-        // is 02:00 CET (after it). Both must be present.
-        assertThat(host1Starts)
-            .as("must include the first (CEST) occurrence of the repeated 02:00 hour")
-            .contains(Instant.parse("2026-10-25T00:00:00Z"));
-        assertThat(host1Starts)
-            .as("must include the second (CET) occurrence of the repeated 02:00 hour")
-            .contains(Instant.parse("2026-10-25T01:00:00Z"));
+            .hasSize(5)
+            // is 02:00 CET (after it). Both must be present.
+            .as("must include both the CEST and the CET occurrence of the repeated 02:00 hour")
+            .contains(Instant.parse("2026-10-25T00:00:00Z"), Instant.parse("2026-10-25T01:00:00Z"));
         // Every Host of the shared type sees the identical start set, so the multi-host intersection
         // (BookingService.availableSlots) does not lose the extra hour to a host mismatch either.
         List<Instant> host2Starts = slotService

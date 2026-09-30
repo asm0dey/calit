@@ -310,7 +310,7 @@ class CrossOwnerIsolationTest {
         // B has NO global rule of their own; A's global rule must not leak into B's resolution.
         assertThat(slotService.generateRawSlots(tb, day, day))
             .as("owner B has no availability; owner A's global rule must not apply")
-            .hasSize(0);
+            .isEmpty();
     }
 
     /**

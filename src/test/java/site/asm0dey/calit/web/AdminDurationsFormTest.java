@@ -256,11 +256,17 @@ class AdminDurationsFormTest {
             .body()
             .asString();
 
-        assertThat(html).as("form must be the script's scope root").contains("data-durations");
-        assertThat(html).as("rows container must be findable").contains("data-duration-list");
-        assertThat(html).as("template to clone must be present").contains("data-duration-template");
-        assertThat(html).as("add button must be present").contains("data-add-duration");
-        assertThat(html).as("the script must actually be loaded").contains("/durations.js");
+        assertThat(html)
+            .as("form must be the script's scope root")
+            .contains("data-durations")
+            .as("rows container must be findable")
+            .contains("data-duration-list")
+            .as("template to clone must be present")
+            .contains("data-duration-template")
+            .as("add button must be present")
+            .contains("data-add-duration")
+            .as("the script must actually be loaded")
+            .contains("/durations.js");
     }
 
     /**

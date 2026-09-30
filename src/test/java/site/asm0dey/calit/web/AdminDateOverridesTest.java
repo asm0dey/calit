@@ -205,9 +205,11 @@ class AdminDateOverridesTest {
         var beforeCollapse = body.substring(0, marker);
         var insideCollapse = body.substring(marker);
 
-        assertThat(beforeCollapse).as("upcoming override must render above the collapse").contains(future.toString());
-        assertThat(beforeCollapse).as("past override must not render above the collapse").doesNotContain(history.toString()
-        );
+        assertThat(beforeCollapse)
+            .as("upcoming override must render above the collapse")
+            .contains(future.toString())
+            .as("past override must not render above the collapse")
+            .doesNotContain(history.toString());
         assertThat(insideCollapse).as("past override must render inside the collapse").contains(history.toString());
         assertThat(body).as("collapse summary must show the correct past count").contains("Past overrides (1)");
     }

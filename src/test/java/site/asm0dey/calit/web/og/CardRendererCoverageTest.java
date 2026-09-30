@@ -33,8 +33,11 @@ class CardRendererCoverageTest {
 
         assertThat(lines).as("still fits on one line once shrunk").hasSize(1);
         float size = lines.getFirst().getFirst().font().getSize2D();
-        assertThat(size).as("expected the ladder to shrink below the default 74, got " + size).isLessThan(74f);
-        assertThat(size).as("the ladder must not shrink past its floor of 52, got " + size).isGreaterThanOrEqualTo(52f);
+        assertThat(size)
+            .as("expected the ladder to shrink below the default 74, got " + size)
+            .isLessThan(74f)
+            .as("the ladder must not shrink past its floor of 52, got " + size)
+            .isGreaterThanOrEqualTo(52f);
         int maxWidth = CardRenderer.SAFE_X1 - CardRenderer.SAFE_X0 - 40;
         assertThat(width(g, lines.getFirst())).isLessThanOrEqualTo(maxWidth);
         g.dispose();

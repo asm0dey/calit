@@ -99,8 +99,7 @@ class PersonalDataInventoryTest {
     void outboundDestinationsAreRecorded() {
         assertThat(PersonalData.OUTBOUND)
             .as("the four known outbound destinations must be listed")
-            .hasSizeGreaterThanOrEqualTo(4);
-        assertThat(PersonalData.OUTBOUND)
+            .hasSizeGreaterThanOrEqualTo(4)
             .as("at least one destination is known to be beyond erasure — say so")
             .anyMatch(d -> !d.reachableByErasure());
     }

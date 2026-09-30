@@ -133,8 +133,9 @@ class MeetingTypeDescriptionTest {
         // Asserted on the re-rendered detail page, not a re-read entity: the test thread's
         // persistence context still holds the pre-edit instance, so findBySlug would hand back a
         // stale first-level-cache hit rather than the committed row.
-        assertThat(body).as("edited note should render back into the detail form").contains(NOTE);
-        assertThat(body).doesNotContain("old note");
+        assertThat(body).doesNotContain("old note").as("edited note should render back into the detail form").contains(
+                NOTE
+        );
     }
 
     @Test

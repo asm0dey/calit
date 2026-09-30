@@ -83,7 +83,9 @@ class GoogleTokenServiceRequestTokenTest {
             .isThrownBy(() -> svc.requestToken("refresh_token", "some-refresh-token", NOW))
             .actual();
 
-        assertThat((thrown instanceof GoogleInvalidGrantException)).as("401 must NOT be treated as a dead grant").isFalse();
+        assertThat(thrown).as("401 must NOT be treated as a dead grant").isNotInstanceOf(
+                GoogleInvalidGrantException.class
+        );
         assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("refresh_token");
         assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("error=invalid_client");
         assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("description=Unauthorized");
@@ -99,7 +101,7 @@ class GoogleTokenServiceRequestTokenTest {
             .isThrownBy(() -> svc.requestToken("refresh_token", "some-refresh-token", NOW))
             .actual();
         // The status alone must not condemn the grant: only 400 AND invalid_grant does.
-        assertThat((thrown instanceof GoogleInvalidGrantException)).as("400 alone must not mean a dead grant").isFalse();
+        assertThat(thrown).as("400 alone must not mean a dead grant").isNotInstanceOf(GoogleInvalidGrantException.class);
         assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("error=invalid_client");
     }
 
@@ -127,9 +129,9 @@ class GoogleTokenServiceRequestTokenTest {
             .isThrownBy(() -> svc.requestToken("refresh_token", "some-refresh-token", NOW))
             .actual();
 
-        assertThat((thrown instanceof GoogleInvalidGrantException))
+        assertThat(thrown)
             .as("only 400 AND invalid_grant means a dead grant")
-            .isFalse();
+            .isNotInstanceOf(GoogleInvalidGrantException.class);
         assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("HTTP 503");
     }
 
@@ -148,7 +150,9 @@ class GoogleTokenServiceRequestTokenTest {
             .isThrownBy(() -> svc.requestToken("refresh_token", "some-refresh-token", NOW))
             .actual();
 
-        assertThat((thrown instanceof GoogleInvalidGrantException)).as("a blip must not flag the account dead").isFalse();
+        assertThat(thrown).as("a blip must not flag the account dead").isNotInstanceOf(
+                GoogleInvalidGrantException.class
+        );
         assertThat(thrown.getMessage()).as(thrown.getMessage()).contains("I/O error");
     }
 

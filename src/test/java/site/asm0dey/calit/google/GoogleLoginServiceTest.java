@@ -20,9 +20,13 @@ class GoogleLoginServiceTest {
         assertThat(url.contains("login%2Fcallback") || url.contains("login/callback"))
             .as("uses the sign-in redirect URI")
             .isTrue();
-        assertThat(url).as("carries a login-purpose state").contains("state=");
-        assertThat(url).as("sign-in uses select_account").contains("prompt=select_account");
-        assertThat(url).as("requests the openid identity scope").contains("openid");
+        assertThat(url)
+            .as("carries a login-purpose state")
+            .contains("state=")
+            .as("sign-in uses select_account")
+            .contains("prompt=select_account")
+            .as("requests the openid identity scope")
+            .contains("openid");
         assertThat(url.contains("auth%2Fcalendar") || url.contains("auth/calendar"))
             .as("must NOT request the calendar scope on sign-in")
             .isFalse();

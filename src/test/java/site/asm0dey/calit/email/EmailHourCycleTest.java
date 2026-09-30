@@ -112,8 +112,11 @@ class EmailHourCycleTest {
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         assertThat(toInvitee).as("invitee must receive confirmation").hasSize(1);
         String html = toInvitee.getFirst().getHtml();
-        assertThat(html).as("invitee copy must keep the translated 24h pattern; got: " + html).contains("13:00");
-        assertThat(html).as("host preference must not leak to the invitee").doesNotContain("1:00 PM");
+        assertThat(html)
+            .as("invitee copy must keep the translated 24h pattern; got: " + html)
+            .contains("13:00")
+            .as("host preference must not leak to the invitee")
+            .doesNotContain("1:00 PM");
     }
 
     @Test
@@ -135,7 +138,10 @@ class EmailHourCycleTest {
         emailService.handleConfirmed(new BookingConfirmed(id));
 
         String html = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getHtml();
-        assertThat(html).as("h23 must render 24-hour; got: " + html).contains("13:00");
-        assertThat(html).as("h23's entire purpose is never AM/PM; got: " + html).doesNotContain("1:00 PM");
+        assertThat(html)
+            .as("h23 must render 24-hour; got: " + html)
+            .contains("13:00")
+            .as("h23's entire purpose is never AM/PM; got: " + html)
+            .doesNotContain("1:00 PM");
     }
 }

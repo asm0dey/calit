@@ -52,24 +52,33 @@ class EmailLocaleTest {
     void germanSubjectResolves() {
         String deSubj = messages.forTag("de").email_confirmed_subject("X");
         String enSubj = messages.forTag("en").email_confirmed_subject("X");
-        assertThat(deSubj).as("German confirmation subject must not be blank").isNotBlank();
-        assertThat(deSubj).as("German subject must differ from English").isNotEqualTo(enSubj);
+        assertThat(deSubj)
+            .as("German confirmation subject must not be blank")
+            .isNotBlank()
+            .as("German subject must differ from English")
+            .isNotEqualTo(enSubj);
     }
 
     @Test
     void germanPasswordResetSubjectNonBlankAndDiffersFromEnglish() {
         String enSubj = messages.forTag("en").email_password_reset_subject();
         String deSubj = messages.forTag("de").email_password_reset_subject();
-        assertThat(deSubj).as("German password-reset subject must not be blank").isNotBlank();
-        assertThat(deSubj).as("German password-reset subject must differ from English").isNotEqualTo(enSubj);
+        assertThat(deSubj)
+            .as("German password-reset subject must not be blank")
+            .isNotBlank()
+            .as("German password-reset subject must differ from English")
+            .isNotEqualTo(enSubj);
     }
 
     @Test
     void germanGoogleDisconnectedSubjectNonBlankAndDiffersFromEnglish() {
         String enSubj = messages.forTag("en").email_google_disconnected_subject();
         String deSubj = messages.forTag("de").email_google_disconnected_subject();
-        assertThat(deSubj).as("German Google-disconnected subject must not be blank").isNotBlank();
-        assertThat(deSubj).as("German Google-disconnected subject must differ from English").isNotEqualTo(enSubj);
+        assertThat(deSubj)
+            .as("German Google-disconnected subject must not be blank")
+            .isNotBlank()
+            .as("German Google-disconnected subject must differ from English")
+            .isNotEqualTo(enSubj);
     }
 
     // ---- 1b. h12 pattern is a valid, renderable DateTimeFormatter pattern in every locale ----
@@ -286,10 +295,11 @@ class EmailLocaleTest {
         assertThat(toInvitee).as("invitee must receive one confirmation email").hasSize(1);
         String html = toInvitee.getFirst().getHtml();
         // German body strings added by task 9d — both must be present (body-specific, not just subject)
-        assertThat(html).as("German confirmation body must contain greeting 'Hallo'; got: " + html).contains("Hallo");
-        assertThat(html).as("German confirmation body must contain 'Minuten' (duration); got: " + html).contains(
-                "Minuten"
-        );
+        assertThat(html)
+            .as("German confirmation body must contain greeting 'Hallo'; got: " + html)
+            .contains("Hallo")
+            .as("German confirmation body must contain 'Minuten' (duration); got: " + html)
+            .contains("Minuten");
     }
 
     // ---- 5. English default locale email body contains English body strings ----
@@ -345,10 +355,11 @@ class EmailLocaleTest {
         assertThat(toInvitee).as("invitee must receive one confirmation email").hasSize(1);
         String html = toInvitee.getFirst().getHtml();
         // English body strings from task 9d — both must be present (body-specific)
-        assertThat(html).as("English confirmation body must contain greeting 'Hi '; got: " + html).contains("Hi ");
-        assertThat(html).as("English confirmation body must contain 'minutes' (duration); got: " + html).contains(
-                "minutes"
-        );
+        assertThat(html)
+            .as("English confirmation body must contain greeting 'Hi '; got: " + html)
+            .contains("Hi ")
+            .as("English confirmation body must contain 'minutes' (duration); got: " + html)
+            .contains("minutes");
     }
 
     // ---- 7. German email has <html lang="de" ----

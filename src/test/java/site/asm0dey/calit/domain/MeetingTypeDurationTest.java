@@ -1,6 +1,5 @@
 package site.asm0dey.calit.domain;
 
-import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static site.asm0dey.calit.domain.MeetingTypeDuration.allowedDurations;
 import io.quarkus.test.junit.QuarkusTest;

@@ -25,8 +25,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z")
         ));
 
-        assertThat(merged).hasSize(2);
-        assertThat(merged).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z"));
+        assertThat(merged).hasSize(2).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z"));
         assertThat(merged.get(1)).isEqualTo(bi("2026-06-08T11:00:00Z", "2026-06-08T12:00:00Z"));
     }
 
@@ -37,8 +36,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z")
         ));
 
-        assertThat(merged).hasSize(1);
-        assertThat(merged).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"));
+        assertThat(merged).hasSize(1).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"));
     }
 
     @Test
@@ -48,8 +46,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z")
         ));
 
-        assertThat(merged).hasSize(1);
-        assertThat(merged).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"));
+        assertThat(merged).hasSize(1).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"));
     }
 
     @Test
@@ -59,8 +56,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z")
         ));
 
-        assertThat(merged).hasSize(1);
-        assertThat(merged).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T12:00:00Z"));
+        assertThat(merged).hasSize(1).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T12:00:00Z"));
     }
 
     @Test
@@ -72,8 +68,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T14:30:00Z", "2026-06-08T16:00:00Z")
         ));
 
-        assertThat(merged).hasSize(2);
-        assertThat(merged).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"));
+        assertThat(merged).hasSize(2).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"));
         assertThat(merged.get(1)).isEqualTo(bi("2026-06-08T14:00:00Z", "2026-06-08T16:00:00Z"));
     }
 }

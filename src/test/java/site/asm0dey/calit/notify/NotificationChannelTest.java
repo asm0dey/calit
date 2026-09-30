@@ -50,8 +50,11 @@ class NotificationChannelTest {
                 .createNativeQuery("select url from notification_channel where id = :id")
                 .setParameter("id", id)
                 .getSingleResult());
-        assertThat(raw).as("url column must hold ciphertext, was: " + raw).startsWith("enc:v1:");
-        assertThat(raw).as("the bot token must not appear in the column").doesNotContain("AAbbCC");
+        assertThat(raw)
+            .as("url column must hold ciphertext, was: " + raw)
+            .startsWith("enc:v1:")
+            .as("the bot token must not appear in the column")
+            .doesNotContain("AAbbCC");
 
         String readBack =
                 QuarkusTransaction

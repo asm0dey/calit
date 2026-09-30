@@ -17,8 +17,9 @@ class GoogleCalendarTest {
 
         List<GoogleCalendar> readers = GoogleCalendar.readForBusy(1L);
 
-        assertThat(readers).hasSize(2);
-        assertThat(readers).allMatch(c -> c.readForBusy);
+        assertThat(readers)
+            .hasSize(2)
+            .allMatch(c -> c.readForBusy);
     }
 
     @Test

@@ -44,8 +44,11 @@ class PerUserOAuthStateTest {
     @Test
     void consentUrlCarriesSignedStateForOwner() {
         String url = tokenService.buildConsentUrl(7L, Instant.parse("2026-06-08T12:00:00Z"));
-        assertThat(url).as("consent URL must include a state param").contains("state=");
-        assertThat(url).as("consent URL points at Google").startsWith("https://accounts.google.com/");
+        assertThat(url)
+            .as("consent URL must include a state param")
+            .contains("state=")
+            .as("consent URL points at Google")
+            .startsWith("https://accounts.google.com/");
     }
 
     /**
