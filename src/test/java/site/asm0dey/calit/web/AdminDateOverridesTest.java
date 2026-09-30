@@ -75,7 +75,7 @@ class AdminDateOverridesTest {
             .body(containsString("2026-07-01"))
             .body(containsString("10:00"));
 
-        org.junit.jupiter.api.Assertions.assertEquals(before + 1, DateOverride.count());
+        assertEquals(before + 1, DateOverride.count());
     }
 
     @Transactional
@@ -139,7 +139,7 @@ class AdminDateOverridesTest {
             .then()
             .statusCode(400);
 
-        org.junit.jupiter.api.Assertions.assertEquals(before, DateOverride.count());
+        assertEquals(before, DateOverride.count());
     }
 
     @Test
@@ -158,7 +158,7 @@ class AdminDateOverridesTest {
             .then()
             .statusCode(400);
 
-        org.junit.jupiter.api.Assertions.assertEquals(before, DateOverride.count());
+        assertEquals(before, DateOverride.count());
     }
 
     @Test
