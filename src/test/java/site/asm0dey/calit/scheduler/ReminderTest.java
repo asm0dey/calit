@@ -1,8 +1,7 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -26,10 +25,10 @@ class ReminderTest {
         r.persist();
 
         Reminder loaded = Reminder.findById(r.id);
-        assertEquals(bookingId, loaded.bookingId);
-        assertEquals(sendAt, loaded.sendAt);
-        assertEquals("REMINDER", loaded.kind);
-        assertNull(loaded.sentAt);
+        assertThat(loaded.bookingId).isEqualTo(bookingId);
+        assertThat(loaded.sendAt).isEqualTo(sendAt);
+        assertThat(loaded.kind).isEqualTo("REMINDER");
+        assertThat(loaded.sentAt).isNull();
     }
 
     @Test
@@ -50,9 +49,9 @@ class ReminderTest {
 
         Reminder.deleteUnsentFor(a);
 
-        assertEquals(0, Reminder.count("bookingId = ?1 and sentAt is null", a));
-        assertEquals(1, Reminder.count("bookingId = ?1 and sentAt is not null", a));
-        assertEquals(1, Reminder.count("bookingId = ?1 and sentAt is null", b));
+        assertThat(Reminder.count("bookingId = ?1 and sentAt is null", a)).isZero();
+        assertThat(Reminder.count("bookingId = ?1 and sentAt is not null", a)).isOne();
+        assertThat(Reminder.count("bookingId = ?1 and sentAt is null", b)).isOne();
     }
 
     // A unique far-future start instant (seconds-aligned), so seeded HELD bookings never collide

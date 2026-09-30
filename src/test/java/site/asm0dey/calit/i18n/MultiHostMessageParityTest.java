@@ -1,8 +1,7 @@
 package site.asm0dey.calit.i18n;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.qute.i18n.Message;
 import org.junit.jupiter.api.Test;
 
@@ -38,7 +37,7 @@ class MultiHostMessageParityTest {
 
     private static void assertParity(Class<?> bundle, String... localeResources) {
         Set<String> methodNames = messageMethodNames(bundle);
-        assertTrue(!methodNames.isEmpty(), "Expected at least one @Message method on " + bundle.getSimpleName());
+        assertThat(methodNames).as("Expected at least one @Message method on " + bundle.getSimpleName()).isNotEmpty();
 
         var failures = new StringBuilder();
         for (String resource : localeResources) {
@@ -59,10 +58,7 @@ class MultiHostMessageParityTest {
             }
         }
 
-        assertTrue(
-                failures.isEmpty(),
-                "Missing translations for " + bundle.getSimpleName() + " @Message keys:" + failures
-        );
+        assertThat(failures).as("Missing translations for " + bundle.getSimpleName() + " @Message keys:" + failures).isEmpty();
     }
 
     private static void assertNoOrphans(Class<?> bundle, String... localeResources) {
@@ -87,14 +83,15 @@ class MultiHostMessageParityTest {
             }
         }
 
-        assertTrue(
-                failures.isEmpty(),
-                "Orphan property keys for "
-                + bundle.getSimpleName()
-                + " (rename/remove them or add the @Message"
-                + " method):"
-                + failures
-        );
+        assertThat(failures)
+            .as(
+                    "Orphan property keys for "
+                    + bundle.getSimpleName()
+                    + " (rename/remove them or add the @Message"
+                    + " method):"
+                    + failures
+            )
+            .isEmpty();
     }
 
     private static Set<String> messageMethodNames(Class<?> bundle) {
@@ -109,7 +106,7 @@ class MultiHostMessageParityTest {
     private static Properties loadProperties(String classpathResource) {
         var props = new Properties();
         try (var in = MultiHostMessageParityTest.class.getClassLoader().getResourceAsStream(classpathResource)) {
-            assertNotNull(in, "Missing classpath resource: " + classpathResource);
+            assertThat(in).as("Missing classpath resource: " + classpathResource).isNotNull();
             props.load(in);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to load " + classpathResource, e);

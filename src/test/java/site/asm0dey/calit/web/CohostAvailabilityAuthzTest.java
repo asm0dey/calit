@@ -2,7 +2,7 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.transaction.Transactional;
@@ -72,8 +72,8 @@ class CohostAvailabilityAuthzTest {
             .statusCode(200);
 
         List<AvailabilityRule> rules = AvailabilityRule.list("ownerId = ?1 and meetingTypeId = ?2", cohost.id, t.id);
-        assertEquals(1, rules.size(), "rule must be persisted under the cohost's own owner_id + typeId");
-        assertEquals(DayOfWeek.MONDAY, rules.get(0).dayOfWeek);
+        assertThat(rules).as("rule must be persisted under the cohost's own owner_id + typeId").hasSize(1);
+        assertThat(rules.get(0).dayOfWeek).isEqualTo(DayOfWeek.MONDAY);
     }
 
     @Test
@@ -103,11 +103,9 @@ class CohostAvailabilityAuthzTest {
             .then()
             .statusCode(404);
 
-        assertEquals(
-                0,
-                AvailabilityRule.count("meetingTypeId = ?1", t.id),
-                "a non-host POST must not create any availability rows"
-        );
+        assertThat(AvailabilityRule.count("meetingTypeId = ?1", t.id))
+            .as("a non-host POST must not create any availability rows")
+            .isZero();
     }
 
     @Test
@@ -130,12 +128,12 @@ class CohostAvailabilityAuthzTest {
             .statusCode(200);
 
         List<AvailabilityRule> aRules = AvailabilityRule.list("ownerId = ?1 and meetingTypeId = ?2", cohostA.id, t.id);
-        assertEquals(1, aRules.size(), "cohost B's write must not touch cohost A's rows");
-        assertEquals(DayOfWeek.TUESDAY, aRules.get(0).dayOfWeek);
+        assertThat(aRules).as("cohost B's write must not touch cohost A's rows").hasSize(1);
+        assertThat(aRules.get(0).dayOfWeek).isEqualTo(DayOfWeek.TUESDAY);
 
         List<AvailabilityRule> bRules = AvailabilityRule.list("ownerId = ?1 and meetingTypeId = ?2", cohostB.id, t.id);
-        assertEquals(1, bRules.size(), "cohost B's own row must be written under their own owner_id");
-        assertEquals(DayOfWeek.WEDNESDAY, bRules.get(0).dayOfWeek);
+        assertThat(bRules).as("cohost B's own row must be written under their own owner_id").hasSize(1);
+        assertThat(bRules.get(0).dayOfWeek).isEqualTo(DayOfWeek.WEDNESDAY);
     }
 
     // ---- Task 19-fix: crafted/garbage input must never 500 ----
@@ -155,8 +153,8 @@ class CohostAvailabilityAuthzTest {
             .statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(t.id, cohost.id);
-        assertEquals(null, h.bufferBeforeMinutes, "non-numeric buffer must be treated as unset (inherit default)");
-        assertEquals(null, h.bufferAfterMinutes, "non-numeric buffer must be treated as unset (inherit default)");
+        assertThat(h.bufferBeforeMinutes).as("non-numeric buffer must be treated as unset (inherit default)").isNull();
+        assertThat(h.bufferAfterMinutes).as("non-numeric buffer must be treated as unset (inherit default)").isNull();
     }
 
     @Test
@@ -175,8 +173,8 @@ class CohostAvailabilityAuthzTest {
             .statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(t.id, cohost.id);
-        assertEquals(0, h.bufferBeforeMinutes, "negative buffer must be clamped to 0, never persisted as negative");
-        assertEquals(10, h.bufferAfterMinutes);
+        assertThat(h.bufferBeforeMinutes).as("negative buffer must be clamped to 0, never persisted as negative").isZero();
+        assertThat(h.bufferAfterMinutes).isEqualTo(10);
     }
 
     @Test
@@ -196,8 +194,8 @@ class CohostAvailabilityAuthzTest {
             .statusCode(200);
 
         List<AvailabilityRule> rules = AvailabilityRule.list("ownerId = ?1 and meetingTypeId = ?2", cohost.id, t.id);
-        assertEquals(1, rules.size(), "the malformed frame must be skipped, the valid one persisted");
-        assertEquals(DayOfWeek.TUESDAY, rules.get(0).dayOfWeek);
+        assertThat(rules).as("the malformed frame must be skipped, the valid one persisted").hasSize(1);
+        assertThat(rules.get(0).dayOfWeek).isEqualTo(DayOfWeek.TUESDAY);
     }
 
     @Test
@@ -216,10 +214,8 @@ class CohostAvailabilityAuthzTest {
             .then()
             .statusCode(200);
 
-        assertEquals(
-                0,
-                DateOverride.count("ownerId = ?1 and meetingTypeId = ?2", cohost.id, t.id),
-                "a malformed override date must not be persisted"
-        );
+        assertThat(DateOverride.count("ownerId = ?1 and meetingTypeId = ?2", cohost.id, t.id))
+            .as("a malformed override date must not be persisted")
+            .isZero();
     }
 }

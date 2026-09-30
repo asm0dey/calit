@@ -1,7 +1,7 @@
 package site.asm0dey.calit.availability;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static site.asm0dey.calit.test.MultiHostFixtures.*;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -34,7 +34,7 @@ class SlotServicePerHostTest {
 
         List<TimeSlot> slots = slotService.generateRawSlots(t, cohost.id, monday, monday);
         // 09:00 and 09:30 (30-min grid within 09:00-10:00)
-        assertEquals(2, slots.size());
+        assertThat(slots).hasSize(2);
     }
 
     /**
@@ -63,6 +63,6 @@ class SlotServicePerHostTest {
         r.persist();
 
         List<TimeSlot> slots = slotService.generateRawSlots(t, cohost.id, monday, monday);
-        assertEquals(LocalTime.of(9, 15), slots.get(0).start().toLocalTime());
+        assertThat(slots.get(0).start().toLocalTime()).isEqualTo(LocalTime.of(9, 15));
     }
 }

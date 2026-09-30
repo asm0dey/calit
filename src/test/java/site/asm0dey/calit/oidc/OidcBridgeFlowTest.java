@@ -2,9 +2,8 @@ package site.asm0dey.calit.oidc;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -148,12 +147,14 @@ class OidcBridgeFlowTest {
             // the single-use ticket
             .body(containsString("name=\"j_password\""));
 
-        assertNotNull(AppUser.findByOidcSub(MOCK_SUB), "expected first-time SSO login to provision a new AppUser");
+        assertThat(AppUser.findByOidcSub(MOCK_SUB)).as("expected first-time SSO login to provision a new AppUser").isNotNull();
     }
 
     private static String between(String s, String start, String end) {
         var i = s.indexOf(start);
-        assertTrue(i >= 0, () -> "missing '" + start + "' in: " + s);
+        assertThat(i)
+            .as(() -> "missing '" + start + "' in: " + s)
+            .isGreaterThanOrEqualTo(0);
         var from = i + start.length();
         return s.substring(from, s.indexOf(end, from));
     }

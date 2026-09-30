@@ -1,7 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.mailer.MockMailbox;
@@ -39,13 +39,13 @@ class EmailEnqueueTest {
             .run(() -> emailService.enqueueReminder(bookingId));
 
         QuarkusTransaction.requiringNew().run(() -> {
-            assertEquals(1, EmailOutbox.count("recipient", INVITEE_EMAIL), "invitee reminder enqueued");
-            assertEquals(1, EmailOutbox.count("recipient", OWNER_EMAIL), "owner reminder enqueued");
+            assertThat(EmailOutbox.count("recipient", INVITEE_EMAIL)).as("invitee reminder enqueued").isOne();
+            assertThat(EmailOutbox.count("recipient", OWNER_EMAIL)).as("owner reminder enqueued").isOne();
             EmailOutbox r = EmailOutbox.find("recipient", INVITEE_EMAIL).firstResult();
-            assertTrue(r.subject.toLowerCase().contains("reminder"), "subject identifies the reminder");
-            assertNull(r.sentAt, "queued, not sent");
+            assertThat(r.subject.toLowerCase()).as("subject identifies the reminder").contains("reminder");
+            assertThat(r.sentAt).as("queued, not sent").isNull();
         });
-        assertEquals(0, mailbox.getMailsSentTo(INVITEE_EMAIL).size(), "no direct SMTP send on the enqueue path");
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("no direct SMTP send on the enqueue path").isEmpty();
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox.delete("recipient", INVITEE_EMAIL);

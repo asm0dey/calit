@@ -1,7 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.mailer.MockMailbox;
@@ -83,8 +83,8 @@ class EmailServiceEventWiringTest {
             confirmedEvent.fire(new BookingConfirmed(b.id));
         });
 
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size());
-        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
-        assertEquals(2, mailbox.getTotalMessagesSent());
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).hasSize(1);
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL)).hasSize(1);
+        assertThat(mailbox.getTotalMessagesSent()).isEqualTo(2);
     }
 }

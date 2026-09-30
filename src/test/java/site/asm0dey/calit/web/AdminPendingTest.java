@@ -3,6 +3,7 @@ package site.asm0dey.calit.web;
 import module java.base;
 import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
@@ -119,7 +120,7 @@ class AdminPendingTest {
             .then()
             .statusCode(200);
 
-        org.junit.jupiter.api.Assertions.assertEquals(BookingStatus.CONFIRMED, ((Booking) Booking.findById(id)).status);
+        assertThat(((Booking) Booking.findById(id)).status).isEqualTo(BookingStatus.CONFIRMED);
     }
 
     @Test
@@ -136,7 +137,7 @@ class AdminPendingTest {
             .then()
             .statusCode(200);
 
-        org.junit.jupiter.api.Assertions.assertEquals(BookingStatus.DECLINED, ((Booking) Booking.findById(id)).status);
+        assertThat(((Booking) Booking.findById(id)).status).isEqualTo(BookingStatus.DECLINED);
     }
 
     @Test

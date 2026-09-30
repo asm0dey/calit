@@ -2,15 +2,12 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.domain.AvailabilityRule;
-import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.Slugs;
+import site.asm0dey.calit.domain.*;
 
 @QuarkusTest
 class AdminMeetingTypeFormTest {
@@ -48,9 +45,9 @@ class AdminMeetingTypeFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
-        assertNotNull(t);
-        assertEquals(10, t.bufferBeforeMinutes);
-        assertEquals(15, t.bufferAfterMinutes);
+        assertThat(t).isNotNull();
+        assertThat(t.bufferBeforeMinutes).isEqualTo(10);
+        assertThat(t.bufferAfterMinutes).isEqualTo(15);
     }
 
     @Test
@@ -77,7 +74,7 @@ class AdminMeetingTypeFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, Slugs.slugify(name));
-        org.junit.jupiter.api.Assertions.assertNotNull(t);
+        assertThat(t).isNotNull();
     }
 
     @Test
@@ -101,8 +98,8 @@ class AdminMeetingTypeFormTest {
                 .then()
                 .statusCode(200);
         }
-        org.junit.jupiter.api.Assertions.assertNotNull(MeetingType.findBySlug(1L, base));
-        org.junit.jupiter.api.Assertions.assertNotNull(MeetingType.findBySlug(1L, base + "-2"));
+        assertThat(MeetingType.findBySlug(1L, base)).isNotNull();
+        assertThat(MeetingType.findBySlug(1L, base + "-2")).isNotNull();
     }
 
     @Test
@@ -185,9 +182,9 @@ class AdminMeetingTypeFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
-        assertNotNull(t);
+        assertThat(t).isNotNull();
         // blank Tuesday skipped
-        assertEquals(1, AvailabilityRule.count("meetingTypeId = ?1", t.id));
+        assertThat(AvailabilityRule.count("meetingTypeId = ?1", t.id)).isOne();
     }
 
     @Test
@@ -214,17 +211,13 @@ class AdminMeetingTypeFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
-        assertNotNull(t);
-        assertEquals(
-                2,
-                AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY),
-                "both Monday frames persist"
-        );
-        assertEquals(
-                0,
-                AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.FRIDAY),
-                "inverted frame dropped, not 500"
-        );
+        assertThat(t).isNotNull();
+        assertThat(AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY))
+            .as("both Monday frames persist")
+            .isEqualTo(2);
+        assertThat(AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.FRIDAY))
+            .as("inverted frame dropped, not 500")
+            .isZero();
     }
 
     @Test
@@ -252,10 +245,10 @@ class AdminMeetingTypeFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
-        assertNotNull(t);
-        assertEquals(2, AvailabilityRule.count("meetingTypeId = ?1", t.id));
-        assertEquals(1, AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY));
-        assertEquals(1, AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.WEDNESDAY));
+        assertThat(t).isNotNull();
+        assertThat(AvailabilityRule.count("meetingTypeId = ?1", t.id)).isEqualTo(2);
+        assertThat(AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.MONDAY)).isOne();
+        assertThat(AvailabilityRule.count("meetingTypeId = ?1 and dayOfWeek = ?2", t.id, DayOfWeek.WEDNESDAY)).isOne();
     }
 
     @Test
@@ -281,11 +274,10 @@ class AdminMeetingTypeFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
-        assertNotNull(t);
-        site.asm0dey.calit.domain.DateOverride o =
-                site.asm0dey.calit.domain.DateOverride.find("meetingTypeId = ?1", t.id).firstResult();
-        assertNotNull(o);
-        assertEquals(1, site.asm0dey.calit.domain.DateOverrideWindow.count("dateOverrideId = ?1", o.id));
+        assertThat(t).isNotNull();
+        DateOverride o = DateOverride.find("meetingTypeId = ?1", t.id).firstResult();
+        assertThat(o).isNotNull();
+        assertThat(DateOverrideWindow.count("dateOverrideId = ?1", o.id)).isOne();
     }
 
     @Test
@@ -316,12 +308,8 @@ class AdminMeetingTypeFormTest {
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
         // the type itself is still created
-        assertNotNull(t);
-        assertEquals(
-                0,
-                site.asm0dey.calit.domain.DateOverride.count("meetingTypeId = ?1", t.id),
-                "unparseable date skipped, not persisted"
-        );
+        assertThat(t).isNotNull();
+        assertThat(DateOverride.count("meetingTypeId = ?1", t.id)).as("unparseable date skipped, not persisted").isZero();
     }
 
     @Test
@@ -348,15 +336,12 @@ class AdminMeetingTypeFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
-        assertNotNull(t);
-        site.asm0dey.calit.domain.DateOverride o =
-                site.asm0dey.calit.domain.DateOverride.find("meetingTypeId = ?1", t.id).firstResult();
-        assertNotNull(o, "valid date still persists the override");
-        assertEquals(
-                1,
-                site.asm0dey.calit.domain.DateOverrideWindow.count("dateOverrideId = ?1", o.id),
-                "garbage window skipped, valid window kept"
-        );
+        assertThat(t).isNotNull();
+        DateOverride o = DateOverride.find("meetingTypeId = ?1", t.id).firstResult();
+        assertThat(o).as("valid date still persists the override").isNotNull();
+        assertThat(DateOverrideWindow.count("dateOverrideId = ?1", o.id))
+            .as("garbage window skipped, valid window kept")
+            .isOne();
     }
 
     @Test
@@ -379,7 +364,7 @@ class AdminMeetingTypeFormTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
-        assertNotNull(t);
-        assertEquals(0, site.asm0dey.calit.domain.AvailabilityRule.count("meetingTypeId = ?1", t.id));
+        assertThat(t).isNotNull();
+        assertThat(AvailabilityRule.count("meetingTypeId = ?1", t.id)).isZero();
     }
 }

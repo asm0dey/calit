@@ -1,7 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.mailer.Mail;
@@ -62,23 +62,23 @@ class EmailServiceTest {
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
-        assertEquals(1, toInvitee.size(), "disconnected -> invitee fallback mail");
-        assertEquals(1, toOwner.size(), "owner always (enabled)");
-        assertEquals(2, mailbox.getTotalMessagesSent());
+        assertThat(toInvitee).as("disconnected -> invitee fallback mail").hasSize(1);
+        assertThat(toOwner).as("owner always (enabled)").hasSize(1);
+        assertThat(mailbox.getTotalMessagesSent()).isEqualTo(2);
 
         Mail m = toInvitee.getFirst();
-        assertTrue(m.getHtml().contains("Discovery Call"), "meeting type name");
+        assertThat(m.getHtml()).as("meeting type name").contains("Discovery Call");
         // location present (Meet link, GOOGLE_MEET type)
-        assertTrue(m.getHtml().contains("https://meet.google.com/abc-defg-hij"), "location/meet link");
+        assertThat(m.getHtml()).as("location/meet link").contains("https://meet.google.com/abc-defg-hij");
         // manage link from manageToken
-        assertTrue(m.getHtml().contains("/booking/"), "manage link path present");
-        assertTrue(m.getHtml().contains("/manage"), "manage link suffix present");
+        assertThat(m.getHtml()).as("manage link path present").contains("/booking/");
+        assertThat(m.getHtml()).as("manage link suffix present").contains("/manage");
         // answers
-        assertTrue(m.getHtml().contains("What do you want to discuss?"), "field label");
-        assertTrue(m.getHtml().contains("Pricing tiers"), "answer value");
-        assertTrue(m.getHtml().contains("Company"));
-        assertTrue(m.getHtml().contains("Acme"));
-        assertTrue(m.getSubject().toLowerCase().contains("confirmed"));
+        assertThat(m.getHtml()).as("field label").contains("What do you want to discuss?");
+        assertThat(m.getHtml()).as("answer value").contains("Pricing tiers");
+        assertThat(m.getHtml()).contains("Company");
+        assertThat(m.getHtml()).contains("Acme");
+        assertThat(m.getSubject().toLowerCase()).contains("confirmed");
         // .ics attachment present on an app-sent mail
         assertHasIcsAttachment(m);
     }
@@ -94,21 +94,17 @@ class EmailServiceTest {
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
-        assertEquals(
-                1,
-                mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
-                "connected -> invitee still gets calit link email"
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("connected -> invitee still gets calit link email").hasSize(
+                1
         );
-        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size(), "owner still gets the app mail");
-        assertEquals(2, mailbox.getTotalMessagesSent());
-        assertTrue(
-                mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getAttachments().isEmpty(),
-                "no .ics when Google notifies"
-        );
-        assertTrue(
-                mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getAttachments().isEmpty(),
-                "no .ics when Google notifies"
-        );
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL)).as("owner still gets the app mail").hasSize(1);
+        assertThat(mailbox.getTotalMessagesSent()).isEqualTo(2);
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getAttachments())
+            .as("no .ics when Google notifies")
+            .isEmpty();
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getAttachments())
+            .as("no .ics when Google notifies")
+            .isEmpty();
     }
 
     // ---- BookingRequested (PENDING): always to invitee + owner, regardless of Google ----
@@ -124,14 +120,14 @@ class EmailServiceTest {
 
         emailService.handleRequested(new BookingRequested(bookingId));
 
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(), "invitee always gets the request notice");
-        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
-        assertEquals(2, mailbox.getTotalMessagesSent());
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("invitee always gets the request notice").hasSize(1);
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL)).hasSize(1);
+        assertThat(mailbox.getTotalMessagesSent()).isEqualTo(2);
         Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
-        assertTrue(m.getSubject().toLowerCase().contains("request"));
-        assertTrue(m.getHtml().contains("Need a demo"));
+        assertThat(m.getSubject().toLowerCase()).contains("request");
+        assertThat(m.getHtml()).contains("Need a demo");
         // No .ics when Google is connected (Google notifies natively)
-        assertTrue(m.getAttachments().isEmpty(), "no .ics when Google connected");
+        assertThat(m.getAttachments()).as("no .ics when Google connected").isEmpty();
     }
 
     // ---- BookingDeclined: always to invitee, regardless of Google ----
@@ -145,15 +141,13 @@ class EmailServiceTest {
 
         emailService.handleDeclined(new BookingDeclined(bookingId));
 
-        assertEquals(
-                1,
-                mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
-                "declined is an always-send exception (no Google event)"
-        );
-        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL))
+            .as("declined is an always-send exception (no Google event)")
+            .hasSize(1);
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL)).hasSize(1);
         Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
-        assertTrue(m.getSubject().toLowerCase().contains("declin"));
-        assertTrue(m.getAttachments().isEmpty(), "no .ics when Google connected (no calendar event was ever created)");
+        assertThat(m.getSubject().toLowerCase()).contains("declin");
+        assertThat(m.getAttachments()).as("no .ics when Google connected (no calendar event was ever created)").isEmpty();
     }
 
     // ---- ownerNotificationsEnabled = false: owner gets nothing; invitee per rules ----
@@ -168,9 +162,9 @@ class EmailServiceTest {
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
-        assertTrue(mailbox.getMailsSentTo(OWNER_EMAIL).isEmpty(), "owner opted out -> no owner mail");
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(), "invitee still gets fallback (disconnected)");
-        assertEquals(1, mailbox.getTotalMessagesSent());
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL)).as("owner opted out -> no owner mail").isEmpty();
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("invitee still gets fallback (disconnected)").hasSize(1);
+        assertThat(mailbox.getTotalMessagesSent()).isOne();
     }
 
     @Test
@@ -183,13 +177,12 @@ class EmailServiceTest {
 
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
-        assertTrue(mailbox.getMailsSentTo(OWNER_EMAIL).isEmpty(), "owner opted out -> no owner mail");
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size(), "invitee always gets the calit link email");
-        assertEquals(1, mailbox.getTotalMessagesSent());
-        assertTrue(
-                mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getAttachments().isEmpty(),
-                "no .ics when Google connected"
-        );
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL)).as("owner opted out -> no owner mail").isEmpty();
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("invitee always gets the calit link email").hasSize(1);
+        assertThat(mailbox.getTotalMessagesSent()).isOne();
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getAttachments())
+            .as("no .ics when Google connected")
+            .isEmpty();
     }
 
     // ---- Non-Meet location (PHONE) renders locationDetail, not a link ----
@@ -204,8 +197,8 @@ class EmailServiceTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
-        assertTrue(m.getHtml().contains("+1 555 0100"), "phone locationDetail rendered");
-        assertFalse(m.getHtml().contains("meet.google.com"), "no meet link for PHONE type");
+        assertThat(m.getHtml()).as("phone locationDetail rendered").contains("+1 555 0100");
+        assertThat(m.getHtml()).as("no meet link for PHONE type").doesNotContain("meet.google.com");
     }
 
     // ---- Reschedule when connected: invitee + owner both get a link email, but NO .ics ----
@@ -221,21 +214,17 @@ class EmailServiceTest {
 
         emailService.handleRescheduled(new BookingRescheduled(bookingId, oldStart, false));
 
-        assertEquals(
-                1,
-                mailbox.getMailsSentTo(INVITEE_EMAIL).size(),
-                "connected -> invitee still gets calit link email"
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("connected -> invitee still gets calit link email").hasSize(
+                1
         );
-        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
-        assertTrue(mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getSubject().toLowerCase().contains("reschedul"));
-        assertTrue(
-                mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getAttachments().isEmpty(),
-                "no .ics when Google notifies"
-        );
-        assertTrue(
-                mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getAttachments().isEmpty(),
-                "no .ics when Google notifies"
-        );
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL)).hasSize(1);
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getSubject().toLowerCase()).contains("reschedul");
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getAttachments())
+            .as("no .ics when Google notifies")
+            .isEmpty();
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getAttachments())
+            .as("no .ics when Google notifies")
+            .isEmpty();
     }
 
     // ---- Reschedule attribution: who moved it drives the wording, not who receives ----
@@ -249,15 +238,13 @@ class EmailServiceTest {
         emailService.handleRescheduled(new BookingRescheduled(bookingId, oldStart, true));
 
         Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
-        assertTrue(
-                invitee.getHtml().contains("Owner rescheduled your booking"),
-                "host-initiated: invitee copy names the host"
-        );
+        assertThat(invitee.getHtml())
+            .as("host-initiated: invitee copy names the host")
+            .contains("Owner rescheduled your booking");
         Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
-        assertFalse(
-                owner.getHtml().contains("Sam Invitee rescheduled"),
-                "host-initiated: owner copy must not blame the guest"
-        );
+        assertThat(owner.getHtml())
+            .as("host-initiated: owner copy must not blame the guest")
+            .doesNotContain("Sam Invitee rescheduled");
     }
 
     @Test
@@ -270,15 +257,13 @@ class EmailServiceTest {
         emailService.handleRescheduled(new BookingRescheduled(bookingId, oldStart, false));
 
         Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
-        assertTrue(
-                owner.getHtml().contains("Sam Invitee rescheduled their booking"),
-                "guest-initiated: owner copy names the guest"
-        );
+        assertThat(owner.getHtml())
+            .as("guest-initiated: owner copy names the guest")
+            .contains("Sam Invitee rescheduled their booking");
         Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
-        assertFalse(
-                invitee.getHtml().contains("rescheduled your booking"),
-                "guest-initiated: invitee copy stays passive"
-        );
+        assertThat(invitee.getHtml())
+            .as("guest-initiated: invitee copy stays passive")
+            .doesNotContain("rescheduled your booking");
     }
 
     // ---- Cancellation: fallback rule, no location/meet link in body ----
@@ -292,11 +277,11 @@ class EmailServiceTest {
 
         emailService.handleCancelled(new BookingCancelled(bookingId, false));
 
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size());
-        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).hasSize(1);
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL)).hasSize(1);
         Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
-        assertTrue(m.getSubject().toLowerCase().contains("cancel"));
-        assertFalse(m.getHtml().contains("will-not-appear"), "cancellation body must not include a meet link");
+        assertThat(m.getSubject().toLowerCase()).contains("cancel");
+        assertThat(m.getHtml()).as("cancellation body must not include a meet link").doesNotContain("will-not-appear");
     }
 
     @Test
@@ -307,19 +292,16 @@ class EmailServiceTest {
         emailService.handleCancelled(new BookingCancelled(bookingId, true));
 
         Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
-        assertTrue(
-                invitee.getHtml().contains("Owner cancelled your booking"),
-                "host-initiated: invitee copy names the host"
-        );
+        assertThat(invitee.getHtml())
+            .as("host-initiated: invitee copy names the host")
+            .contains("Owner cancelled your booking");
         Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
-        assertTrue(
-                owner.getHtml().contains("You cancelled your meeting with Sam Invitee."),
-                "host-initiated: owner copy says the host acted and names the guest"
-        );
-        assertFalse(
-                owner.getHtml().contains("Your booking has been cancelled."),
-                "host-initiated: owner copy must not reuse the invitee's passive string"
-        );
+        assertThat(owner.getHtml())
+            .as("host-initiated: owner copy says the host acted and names the guest")
+            .contains("You cancelled your meeting with Sam Invitee.");
+        assertThat(owner.getHtml())
+            .as("host-initiated: owner copy must not reuse the invitee's passive string")
+            .doesNotContain("Your booking has been cancelled.");
     }
 
     @Test
@@ -331,22 +313,19 @@ class EmailServiceTest {
         emailService.handleCancelled(new BookingCancelled(creatorBookingId, true));
 
         Mail cohostMail = mailbox.getMailsSentTo("volodya@x.com").getFirst();
-        assertFalse(
-                cohostMail.getHtml().contains("You cancelled"),
-                "non-acting co-host must not be told they personally cancelled"
-        );
-        assertTrue(
-                cohostMail.getHtml().contains("Your booking has been cancelled."),
-                "non-acting co-host falls back to the same passive body group bookings used before this fix"
-        );
+        assertThat(cohostMail.getHtml())
+            .as("non-acting co-host must not be told they personally cancelled")
+            .doesNotContain("You cancelled");
+        assertThat(cohostMail.getHtml())
+            .as("non-acting co-host falls back to the same passive body group bookings used before this fix")
+            .contains("Your booking has been cancelled.");
         // The single-host case (already covered elsewhere) keeps the active first-person body; a
         // group booking's OWN acting host also gets the passive fallback -- hostSelfCancel is keyed
         // purely on groupId == null, matching the reviewer's prescribed narrowing.
         Mail creatorMail = mailbox.getMailsSentTo("pasha@x.com").getFirst();
-        assertFalse(
-                creatorMail.getHtml().contains("You cancelled"),
-                "group booking never uses the first-person self-cancel body, even for the acting host"
-        );
+        assertThat(creatorMail.getHtml())
+            .as("group booking never uses the first-person self-cancel body, even for the acting host")
+            .doesNotContain("You cancelled");
     }
 
     @Test
@@ -357,15 +336,13 @@ class EmailServiceTest {
         emailService.handleCancelled(new BookingCancelled(bookingId, false));
 
         Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
-        assertTrue(
-                owner.getHtml().contains("Sam Invitee cancelled their booking."),
-                "guest-initiated: owner copy names the guest as the actor"
-        );
+        assertThat(owner.getHtml())
+            .as("guest-initiated: owner copy names the guest as the actor")
+            .contains("Sam Invitee cancelled their booking.");
         Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
-        assertTrue(
-                invitee.getHtml().contains("Your booking has been cancelled."),
-                "guest-initiated: invitee copy stays passive — it happened to them"
-        );
+        assertThat(invitee.getHtml())
+            .as("guest-initiated: invitee copy stays passive — it happened to them")
+            .contains("Your booking has been cancelled.");
     }
 
     // ---- Reminder follows the fallback rule ----
@@ -379,9 +356,9 @@ class EmailServiceTest {
 
         emailService.handleReminder(new ReminderDue(bookingId));
 
-        assertEquals(1, mailbox.getMailsSentTo(INVITEE_EMAIL).size());
-        assertEquals(1, mailbox.getMailsSentTo(OWNER_EMAIL).size());
-        assertTrue(mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getSubject().toLowerCase().contains("reminder"));
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).hasSize(1);
+        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL)).hasSize(1);
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getSubject().toLowerCase()).contains("reminder");
     }
 
     // ---- From header carries owner display name for booking mail ----
@@ -393,7 +370,7 @@ class EmailServiceTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
-        assertEquals("Owner via calit <calit@example.com>", owner.getFrom());
+        assertThat(owner.getFrom()).isEqualTo("Owner via calit <calit@example.com>");
     }
 
     @Test
@@ -404,12 +381,13 @@ class EmailServiceTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
-        assertTrue(
-                owner.getHtml().contains("/me/bookings/" + bookingId + "/manage"),
-                "owner copy links to the /me manage page"
-        );
+        assertThat(owner.getHtml())
+            .as("owner copy links to the /me manage page")
+            .contains("/me/bookings/" + bookingId + "/manage");
         Mail invitee = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
-        assertFalse(invitee.getHtml().contains("/me/bookings/"), "invitee copy must NOT contain the owner /me link");
+        assertThat(invitee.getHtml()).as("invitee copy must NOT contain the owner /me link").doesNotContain(
+                "/me/bookings/"
+        );
     }
 
     @Test
@@ -427,7 +405,9 @@ class EmailServiceTest {
 
         Mail owner = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst();
         String from = owner.getFrom();
-        assertFalse(from.contains("\r") || from.contains("\n"), "From header must not contain CR or LF; got: " + from);
+        assertThat(from.contains("\r") || from.contains("\n"))
+            .as("From header must not contain CR or LF; got: " + from)
+            .isFalse();
     }
 
     @Test
@@ -440,10 +420,9 @@ class EmailServiceTest {
                 Instant.now().plusSeconds(3600),
                 java.util.Locale.ENGLISH
         );
-        assertNull(
-                mailbox.getMailsSentTo("u@example.com").getFirst().getFrom(),
-                "no per-message From -> falls back to config default"
-        );
+        assertThat(mailbox.getMailsSentTo("u@example.com").getFirst().getFrom())
+            .as("no per-message From -> falls back to config default")
+            .isNull();
     }
 
     @Test
@@ -456,23 +435,19 @@ class EmailServiceTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
-        assertEquals(1, toInvitee.size(), "invitee still gets the calit notice (carries the manage link)");
+        assertThat(toInvitee).as("invitee still gets the calit notice (carries the manage link)").hasSize(1);
         Mail m = toInvitee.getFirst();
-        assertTrue(m.getHtml().contains("/manage"), "manage/reschedule link present");
-        assertTrue(m.getAttachments().isEmpty(), "no .ics when Google notifies");
+        assertThat(m.getHtml()).as("manage/reschedule link present").contains("/manage");
+        assertThat(m.getAttachments()).as("no .ics when Google notifies").isEmpty();
     }
 
     // --- attachment assertion: every app-sent mail carries an .ics ---
     private static void assertHasIcsAttachment(Mail m) {
-        assertFalse(m.getAttachments().isEmpty(), "mail must carry an attachment");
-        assertTrue(
-                m
-                    .getAttachments()
-                    .stream()
-                    .anyMatch(a -> "invite.ics".equals(a.getName())
-                    || (a.getContentType() != null && a.getContentType().contains("text/calendar"))),
-                "an .ics (text/calendar) attachment must be present"
-        );
+        assertThat(m.getAttachments()).as("mail must carry an attachment").isNotEmpty();
+        assertThat(m.getAttachments())
+            .as("an .ics (text/calendar) attachment must be present")
+            .anyMatch(a -> "invite.ics".equals(a.getName())
+                    || (a.getContentType() != null && a.getContentType().contains("text/calendar")));
     }
 
     @Test
@@ -483,11 +458,14 @@ class EmailServiceTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         String ownerHtml = mailbox.getMailsSentTo(OWNER_EMAIL).getFirst().getHtml();
-        assertTrue(ownerHtml.contains("mailto:" + INVITEE_EMAIL), "owner can click through to the invitee");
-        assertTrue(ownerHtml.contains("Invitee:"), "owner copy labels the line");
+        assertThat(ownerHtml)
+            .as("owner can click through to the invitee")
+            .contains("mailto:" + INVITEE_EMAIL)
+            .as("owner copy labels the line")
+            .contains("Invitee:");
 
         String inviteeHtml = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getHtml();
-        assertFalse(inviteeHtml.contains("mailto:" + INVITEE_EMAIL), "invitee copy is unchanged");
+        assertThat(inviteeHtml).as("invitee copy is unchanged").doesNotContain("mailto:" + INVITEE_EMAIL);
     }
 
     // --- seeding helpers ---

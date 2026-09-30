@@ -1,7 +1,7 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -17,11 +17,9 @@ class PerUserOAuthStateTest {
     void stateRoundTripsTheOwnerId() {
         var now = Instant.parse("2026-06-08T12:00:00Z");
         String state = tokenService.issueState(42L, now);
-        assertEquals(
-                42L,
-                tokenService.validateState(state, now),
-                "callback must recover the owner id that initiated /connect"
-        );
+        assertThat(tokenService.validateState(state, now))
+            .as("callback must recover the owner id that initiated /connect")
+            .isEqualTo(42L);
     }
 
     @Test
@@ -30,9 +28,9 @@ class PerUserOAuthStateTest {
         String state = tokenService.issueState(42L, now);
         // flips owner id -> signature mismatch
         var tampered = state.replace(":42:", ":99:");
-        assertNull(tokenService.validateState(tampered, now), "tampered state must be rejected");
-        assertNull(tokenService.validateState("garbage.value", now), "malformed state must be rejected");
-        assertNull(tokenService.validateState(null, now), "null state must be rejected");
+        assertThat(tokenService.validateState(tampered, now)).as("tampered state must be rejected").isNull();
+        assertThat(tokenService.validateState("garbage.value", now)).as("malformed state must be rejected").isNull();
+        assertThat(tokenService.validateState(null, now)).as("null state must be rejected").isNull();
     }
 
     @Test
@@ -40,14 +38,17 @@ class PerUserOAuthStateTest {
         var issued = Instant.parse("2026-06-08T12:00:00Z");
         String state = tokenService.issueState(7L, issued);
         Instant tooLate = issued.plus(GoogleTokenService.STATE_TTL).plusSeconds(60);
-        assertNull(tokenService.validateState(state, tooLate), "expired state must be rejected");
+        assertThat(tokenService.validateState(state, tooLate)).as("expired state must be rejected").isNull();
     }
 
     @Test
     void consentUrlCarriesSignedStateForOwner() {
         String url = tokenService.buildConsentUrl(7L, Instant.parse("2026-06-08T12:00:00Z"));
-        assertTrue(url.contains("state="), "consent URL must include a state param");
-        assertTrue(url.startsWith("https://accounts.google.com/"), "consent URL points at Google");
+        assertThat(url)
+            .as("consent URL must include a state param")
+            .contains("state=")
+            .as("consent URL points at Google")
+            .startsWith("https://accounts.google.com/");
     }
 
     /**
@@ -76,9 +77,9 @@ class PerUserOAuthStateTest {
         stub.exchangeCode(b.id, "any-code", Instant.parse("2026-06-08T12:00:00Z"));
 
         GoogleCredential credB = GoogleCredential.forOwner(b.id);
-        assertNotNull(credB, "credential must be written for owner B");
-        assertEquals(b.id, credB.ownerId);
-        assertEquals("access-tok", credB.accessToken);
-        assertNull(GoogleCredential.forOwner(a.id), "owner A must have no credential");
+        assertThat(credB).as("credential must be written for owner B").isNotNull();
+        assertThat(credB.ownerId).isEqualTo(b.id);
+        assertThat(credB.accessToken).isEqualTo("access-tok");
+        assertThat(GoogleCredential.forOwner(a.id)).as("owner A must have no credential").isNull();
     }
 }

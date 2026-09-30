@@ -1,6 +1,6 @@
 package site.asm0dey.calit.domain;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -33,9 +33,9 @@ class MeetingTypeOwnerScopeTest {
         // same slug, different owner is allowed
         seed(2002L, "intro-call", true, false);
 
-        assertEquals(2001L, MeetingType.findBySlug(2001L, "intro-call").ownerId);
-        assertEquals(2002L, MeetingType.findBySlug(2002L, "intro-call").ownerId);
-        assertNull(MeetingType.findBySlug(2003L, "intro-call"), "no such owner -> null");
+        assertThat(MeetingType.findBySlug(2001L, "intro-call").ownerId).isEqualTo(2001L);
+        assertThat(MeetingType.findBySlug(2002L, "intro-call").ownerId).isEqualTo(2002L);
+        assertThat(MeetingType.findBySlug(2003L, "intro-call")).as("no such owner -> null").isNull();
     }
 
     @Test
@@ -49,12 +49,9 @@ class MeetingTypeOwnerScopeTest {
         // other owner
         seed(2002L, "d", true, false);
         // only "a"
-        assertEquals(1, MeetingType.listPublic(2001L).size());
+        assertThat(MeetingType.listPublic(2001L)).hasSize(1);
         // a,b,c — includes secret+inactive
-        assertEquals(3, MeetingType.listForOwner(2001L).size());
-        assertTrue(MeetingType
-            .listForOwner(2002L)
-            .stream()
-            .allMatch(t -> t.ownerId.equals(2002L)));
+        assertThat(MeetingType.listForOwner(2001L)).hasSize(3);
+        assertThat(MeetingType.listForOwner(2002L)).allMatch(t -> t.ownerId.equals(2002L));
     }
 }

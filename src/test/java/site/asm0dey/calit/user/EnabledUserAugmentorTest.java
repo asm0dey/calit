@@ -1,9 +1,8 @@
 package site.asm0dey.calit.user;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.oidc.IdTokenCredential;
 import io.quarkus.security.identity.AuthenticationRequestContext;
@@ -90,8 +89,8 @@ class EnabledUserAugmentorTest {
 
         SecurityIdentity result = augmentor.augment(oidcIdentity, SYNC_CONTEXT).await().indefinitely();
 
-        assertFalse(result.isAnonymous());
-        assertTrue(result.getRoles().contains("user"));
+        assertThat(result.isAnonymous()).isFalse();
+        assertThat(result.getRoles()).contains("user");
     }
 
     @Test
@@ -107,6 +106,6 @@ class EnabledUserAugmentorTest {
 
         SecurityIdentity result = augmentor.augment(plainIdentity, SYNC_CONTEXT).await().indefinitely();
 
-        assertTrue(result.isAnonymous());
+        assertThat(result.isAnonymous()).isTrue();
     }
 }

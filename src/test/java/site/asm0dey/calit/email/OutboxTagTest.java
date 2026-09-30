@@ -1,8 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -33,8 +32,8 @@ class OutboxTagTest {
                 MailTag.forBooking(bookingId, 1L)
         );
         EmailOutbox row = EmailOutbox.findById(id);
-        assertEquals(bookingId, row.bookingId);
-        assertEquals(1L, row.ownerId);
+        assertThat(row.bookingId).isEqualTo(bookingId);
+        assertThat(row.ownerId).isOne();
     }
 
     @Test
@@ -42,8 +41,8 @@ class OutboxTagTest {
     void untaggedEnqueueLeavesBothLinksNull() {
         Long id = EmailOutbox.enqueue("a@example.com", "s", "<p>hi</p>", null, null, "test");
         EmailOutbox row = EmailOutbox.findById(id);
-        assertNull(row.bookingId);
-        assertNull(row.ownerId);
+        assertThat(row.bookingId).isNull();
+        assertThat(row.ownerId).isNull();
     }
 
     @Test
@@ -62,9 +61,9 @@ class OutboxTagTest {
                 "t",
                 MailTag.forBooking(bookingTwoId, ownerTwoId)
         );
-        assertEquals(1L, EmailOutbox.deleteForBooking(bookingOneId));
-        assertEquals(0L, EmailOutbox.count("bookingId", bookingOneId));
-        assertEquals(1L, EmailOutbox.count("bookingId", bookingTwoId));
+        assertThat(EmailOutbox.deleteForBooking(bookingOneId)).isOne();
+        assertThat(EmailOutbox.count("bookingId", bookingOneId)).isZero();
+        assertThat(EmailOutbox.count("bookingId", bookingTwoId)).isOne();
     }
 
     @Test
@@ -73,8 +72,8 @@ class OutboxTagTest {
         var ownerTwoId = createOwner("second-owner");
         EmailOutbox.enqueue("a@example.com", "s", "<p>a</p>", null, null, "t", MailTag.forOwner(1L));
         EmailOutbox.enqueue("a@example.com", "s", "<p>b</p>", null, null, "t", MailTag.forOwner(ownerTwoId));
-        assertEquals(1L, EmailOutbox.deleteForOwner(1L));
-        assertEquals(1L, EmailOutbox.count("ownerId", ownerTwoId));
+        assertThat(EmailOutbox.deleteForOwner(1L)).isOne();
+        assertThat(EmailOutbox.count("ownerId", ownerTwoId)).isOne();
     }
 
     // --- fixtures: booking_id/owner_id are real FKs (V34), so a tag needs a real row behind it. ---

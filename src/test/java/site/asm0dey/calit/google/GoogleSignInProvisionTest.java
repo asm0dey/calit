@@ -1,6 +1,6 @@
 package site.asm0dey.calit.google;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -20,13 +20,13 @@ class GoogleSignInProvisionTest {
     @TestTransaction
     void unknownIdentityProvisionsNewOnboardingUser() {
         AppUser got = signIn.resolveOrProvision(new GoogleIdentity("sub-prov", "jane.doe@x.com", true));
-        assertNotNull(got.id);
-        assertNull(got.passwordHash, "provisioned Google user has no password");
-        assertFalse(got.settingsComplete, "provisioned user must run the onboarding wizard");
-        assertEquals("sub-prov", got.googleSub);
+        assertThat(got.id).isNotNull();
+        assertThat(got.passwordHash).as("provisioned Google user has no password").isNull();
+        assertThat(got.settingsComplete).as("provisioned user must run the onboarding wizard").isFalse();
+        assertThat(got.googleSub).isEqualTo("sub-prov");
 
         OwnerSettings s = OwnerSettings.forOwner(got.id);
-        assertNotNull(s, "settings row is pre-created so the wizard can pre-fill");
-        assertEquals("jane.doe@x.com", s.ownerEmail, "email pre-filled from Google");
+        assertThat(s).as("settings row is pre-created so the wizard can pre-fill").isNotNull();
+        assertThat(s.ownerEmail).as("email pre-filled from Google").isEqualTo("jane.doe@x.com");
     }
 }

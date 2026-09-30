@@ -1,8 +1,7 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -26,10 +25,11 @@ class ReminderCreationTest {
         Reminder r = QuarkusTransaction
             .requiringNew()
             .call(() -> Reminder.find("bookingId", id).firstResult());
-        assertEquals(Reminder.KIND_REMINDER, r.kind);
-        // start in 48h, lead 24h -> sendAt ~ 24h from now (well in the future).
-        assertTrue(r.sendAt.isAfter(Instant.now().plus(23, ChronoUnit.HOURS)));
-        assertTrue(r.sendAt.isBefore(Instant.now().plus(25, ChronoUnit.HOURS)));
+        assertThat(r.kind).isEqualTo(Reminder.KIND_REMINDER);
+        assertThat(r.sendAt)
+            // start in 48h, lead 24h -> sendAt ~ 24h from now (well in the future).
+            .isAfter(Instant.now().plus(23, ChronoUnit.HOURS))
+            .isBefore(Instant.now().plus(25, ChronoUnit.HOURS));
     }
 
     @Test
@@ -42,7 +42,7 @@ class ReminderCreationTest {
         long count = QuarkusTransaction
             .requiringNew()
             .call(() -> Reminder.count("bookingId", id));
-        assertEquals(0, count);
+        assertThat(count).isZero();
     }
 
     @Test
@@ -57,7 +57,7 @@ class ReminderCreationTest {
                 QuarkusTransaction
             .requiringNew()
             .call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
-        assertEquals(1, count);
+        assertThat(count).isOne();
     }
 
     @Test
@@ -71,7 +71,7 @@ class ReminderCreationTest {
                 QuarkusTransaction
             .requiringNew()
             .call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
-        assertEquals(0, count);
+        assertThat(count).isZero();
     }
 
     // These bookings/reminders are COMMITTED (no @TestTransaction). Each test uses a distinct

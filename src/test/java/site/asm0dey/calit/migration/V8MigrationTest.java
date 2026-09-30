@@ -1,7 +1,6 @@
 package site.asm0dey.calit.migration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -40,7 +39,7 @@ class V8MigrationTest {
                 "google_calendar",
                 "booking_field"
         }) {
-            assertTrue(hasOwnerIdColumn(t), "owner_id missing on " + t);
+            assertThat(hasOwnerIdColumn(t)).as("owner_id missing on " + t).isTrue();
         }
     }
 
@@ -48,13 +47,12 @@ class V8MigrationTest {
     @Transactional
     void ownerIdAddedToAvailabilityRuleAndDateOverride() {
         // Global rows (meeting_type_id IS NULL) need their own owner attribution.
-        assertTrue(hasOwnerIdColumn("availability_rule"), "owner_id missing on availability_rule");
-        assertTrue(hasOwnerIdColumn("date_override"), "owner_id missing on date_override");
+        assertThat(hasOwnerIdColumn("availability_rule")).as("owner_id missing on availability_rule").isTrue();
+        assertThat(hasOwnerIdColumn("date_override")).as("owner_id missing on date_override").isTrue();
         // date_override_window stays parent-scoped — it must NOT gain an owner_id.
-        assertTrue(
-                !hasOwnerIdColumn("date_override_window"),
-                "date_override_window must stay parent-scoped (no owner_id)"
-        );
+        assertThat(hasOwnerIdColumn("date_override_window"))
+            .as("date_override_window must stay parent-scoped (no owner_id)")
+            .isFalse();
     }
 
     @Test
@@ -64,7 +62,7 @@ class V8MigrationTest {
             .createNativeQuery("select count(*) from booking_field where meeting_type_id is null and owner_id is null")
             .getSingleResult())
             .longValue();
-        assertEquals(0L, count, "the V1 global description field must be gone");
+        assertThat(count).as("the V1 global description field must be gone").isZero();
     }
 
     @Test
@@ -87,7 +85,7 @@ class V8MigrationTest {
                 )
                 .setParameter("t", t)
                 .getSingleResult();
-            assertEquals("NO", nullable, "owner_id must be NOT NULL on " + t);
+            assertThat(nullable).as("owner_id must be NOT NULL on " + t).isEqualTo("NO");
         }
     }
 
@@ -106,6 +104,6 @@ class V8MigrationTest {
             )
             .getSingleResult())
             .longValue();
-        assertEquals(0L, globalUnique, "single-column slug UNIQUE must be replaced by (owner_id, slug)");
+        assertThat(globalUnique).as("single-column slug UNIQUE must be replaced by (owner_id, slug)").isZero();
     }
 }

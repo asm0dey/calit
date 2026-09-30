@@ -1,10 +1,8 @@
 package site.asm0dey.calit.privacy;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -52,14 +50,11 @@ class AccountDeletionTest {
         privacy.deleteAccount(id);
 
         QuarkusTransaction.requiringNew().run(() -> {
-            assertEquals(0L, AppUser.count("id", id), "the app_user row is gone");
+            assertThat(AppUser.count("id", id)).as("the app_user row is gone").isZero();
             for (PersonalData.Classified c : PersonalData.TABLES) {
                 if (c.columns().contains("owner_id")) {
-                    assertEquals(
-                            0L,
-                            rowsFor(c.table(), "owner_id", id),
-                            c.table() + " must not survive account deletion"
-                    );
+                    assertThat(rowsFor(c.table(), "owner_id", id)).as(c.table()
+                            + " must not survive account deletion").isZero();
                 }
             }
         });
@@ -71,17 +66,17 @@ class AccountDeletionTest {
         privacy.deleteAccount(id);
         QuarkusTransaction
             .requiringNew()
-            .run(() -> assertEquals(0L, EmailOutbox.count("ownerId", id)));
+            .run(() -> assertThat(EmailOutbox.count("ownerId", id)).isZero());
     }
 
     @Test
     void theLastEnabledAdminCannotBeDeleted() {
         // DatabaseResetCallback seeds exactly one admin, always id 1.
-        assertTrue(privacy.isLastEnabledAdmin(1L));
-        assertThrows(IllegalStateException.class, () -> privacy.deleteAccount(1L));
+        assertThat(privacy.isLastEnabledAdmin(1L)).isTrue();
+        assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> privacy.deleteAccount(1L));
         QuarkusTransaction
             .requiringNew()
-            .run(() -> assertEquals(1L, AppUser.count("id", 1L)));
+            .run(() -> assertThat(AppUser.count("id", 1L)).isOne());
     }
 
     /**
@@ -109,8 +104,8 @@ class AccountDeletionTest {
         privacy.deleteAccount(id);
 
         QuarkusTransaction.requiringNew().run(() -> {
-            assertEquals(0L, rowsFor("password_reset_token", "user_id", id));
-            assertEquals(0L, rowsFor("login_ticket", "user_id", id));
+            assertThat(rowsFor("password_reset_token", "user_id", id)).isZero();
+            assertThat(rowsFor("login_ticket", "user_id", id)).isZero();
         });
     }
 
@@ -146,14 +141,12 @@ class AccountDeletionTest {
         privacy.deleteAccount(cohostId);
 
         QuarkusTransaction.requiringNew().run(() -> {
-            assertEquals(0L, AppUser.count("id", cohostId), "the co-host's own app_user row is gone");
-            assertNotNull(MeetingType.findById(typeId), "the other owner's meeting type survives");
-            assertEquals(1L, AppUser.count("id", creatorId), "the other owner's account survives");
-            assertEquals(
-                    0L,
-                    MeetingTypeHost.count("meetingTypeId = ?1 and ownerId = ?2", typeId, cohostId),
-                    "the deleted co-host's own host row is gone"
-            );
+            assertThat(AppUser.count("id", cohostId)).as("the co-host's own app_user row is gone").isZero();
+            assertThat(MeetingType.<MeetingType>findById(typeId)).as("the other owner's meeting type survives").isNotNull();
+            assertThat(AppUser.count("id", creatorId)).as("the other owner's account survives").isOne();
+            assertThat(MeetingTypeHost.count("meetingTypeId = ?1 and ownerId = ?2", typeId, cohostId))
+                .as("the deleted co-host's own host row is gone")
+                .isZero();
         });
     }
 }

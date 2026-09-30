@@ -1,6 +1,6 @@
 package site.asm0dey.calit.user;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.request.TrustedAuthenticationRequest;
 import io.quarkus.test.junit.QuarkusTest;
@@ -22,15 +22,15 @@ class AppUserTrustedIdentityProviderTest {
     @Test
     void unknownUserReestablishesAsAnonymousNotAuthFailure() {
         SecurityIdentity id = provider.build(new TrustedAuthenticationRequest("ghost-user-does-not-exist"));
-        assertTrue(id.isAnonymous(), "a cookie for a vanished user must yield anonymous, never throw");
+        assertThat(id.isAnonymous()).as("a cookie for a vanished user must yield anonymous, never throw").isTrue();
     }
 
     @Test
     void existingUserReestablishesWithRoles() {
         // baseline admin is reseeded before each test
         SecurityIdentity id = provider.build(new TrustedAuthenticationRequest("admin"));
-        assertFalse(id.isAnonymous());
-        assertEquals("admin", id.getPrincipal().getName());
-        assertTrue(id.hasRole("admin"));
+        assertThat(id.isAnonymous()).isFalse();
+        assertThat(id.getPrincipal().getName()).isEqualTo("admin");
+        assertThat(id.hasRole("admin")).isTrue();
     }
 }

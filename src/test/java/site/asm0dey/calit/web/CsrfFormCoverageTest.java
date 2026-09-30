@@ -1,8 +1,7 @@
 package site.asm0dey.calit.web;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 class CsrfFormCoverageTest {
@@ -11,7 +10,7 @@ class CsrfFormCoverageTest {
     private static final Set<String> EXCLUDED = Set.of("login.html", "bridge.html");
 
     @Test
-    void everyPostFormCarriesACsrfToken() throws IOException {
+    void everyPostFormCarriesACsrfToken() throws Exception {
         try (Stream<Path> paths = Files.walk(TEMPLATES)) {
             List<Path> htmls = paths.filter(p -> p.toString().endsWith(".html")).toList();
             for (Path p : htmls) {
@@ -22,17 +21,18 @@ class CsrfFormCoverageTest {
                 }
                 var tokens = count(body, "{inject:csrf.token}");
                 if (EXCLUDED.contains(p.getFileName().toString())) {
-                    assertEquals(0, tokens, p + " is a j_security_check form and must NOT carry a REST-CSRF token");
+                    assertThat(tokens).as(p + " is a j_security_check form and must NOT carry a REST-CSRF token").isZero();
                 } else {
-                    assertTrue(
-                            tokens >= postForms,
-                            p
-                            + " has "
-                            + postForms
-                            + " post form(s) but only "
-                            + tokens
-                            + " csrf token(s) — every form-urlencoded POST must carry {inject:csrf.token}"
-                    );
+                    assertThat(tokens)
+                        .as(
+                                p
+                                + " has "
+                                + postForms
+                                + " post form(s) but only "
+                                + tokens
+                                + " csrf token(s) — every form-urlencoded POST must carry {inject:csrf.token}"
+                        )
+                        .isGreaterThanOrEqualTo(postForms);
                 }
             }
         }

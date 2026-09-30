@@ -1,7 +1,6 @@
 package site.asm0dey.calit.domain;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -32,9 +31,9 @@ class OwnerSettingsForOwnerTest {
         b.timezone = "Europe/Berlin";
         b.persist();
 
-        assertEquals("A", OwnerSettings.forOwner(1001L).ownerName);
-        assertEquals("Europe/Berlin", OwnerSettings.forOwner(1002L).timezone);
-        assertNull(OwnerSettings.forOwner(9999L), "unknown owner -> null");
+        assertThat(OwnerSettings.forOwner(1001L).ownerName).isEqualTo("A");
+        assertThat(OwnerSettings.forOwner(1002L).timezone).isEqualTo("Europe/Berlin");
+        assertThat(OwnerSettings.forOwner(9999L)).as("unknown owner -> null").isNull();
     }
 
     /**
@@ -44,12 +43,12 @@ class OwnerSettingsForOwnerTest {
      */
     @Test
     void coerceZoneKeepsAKnownZoneAndReplacesEverythingElse() {
-        assertEquals("Europe/Amsterdam", OwnerSettings.coerceZone("Europe/Amsterdam"));
-        assertEquals("UTC", OwnerSettings.coerceZone("UTC"));
-        assertEquals("UTC", OwnerSettings.coerceZone("Not/AZone"));
-        assertEquals("UTC", OwnerSettings.coerceZone(null));
-        assertEquals("UTC", OwnerSettings.coerceZone(""));
-        assertEquals("UTC", OwnerSettings.coerceZone("   "));
+        assertThat(OwnerSettings.coerceZone("Europe/Amsterdam")).isEqualTo("Europe/Amsterdam");
+        assertThat(OwnerSettings.coerceZone("UTC")).isEqualTo("UTC");
+        assertThat(OwnerSettings.coerceZone("Not/AZone")).isEqualTo("UTC");
+        assertThat(OwnerSettings.coerceZone(null)).isEqualTo("UTC");
+        assertThat(OwnerSettings.coerceZone("")).isEqualTo("UTC");
+        assertThat(OwnerSettings.coerceZone("   ")).isEqualTo("UTC");
     }
 
     /**
@@ -58,7 +57,7 @@ class OwnerSettingsForOwnerTest {
     @Test
     void coerceZoneAcceptsEveryZoneThePickerCanOffer() {
         for (String z : OwnerSettings.zoneIds()) {
-            assertEquals(z, OwnerSettings.coerceZone(z));
+            assertThat(OwnerSettings.coerceZone(z)).isEqualTo(z);
         }
     }
 
@@ -67,10 +66,10 @@ class OwnerSettingsForOwnerTest {
     void seedWritesTheNotNullPlaceholders() {
         TestOwners.ensure(em, 4242L);
         var s = OwnerSettings.seed(4242L, "invited@example.com");
-        assertEquals(4242L, s.ownerId);
-        assertEquals("", s.ownerName);
-        assertEquals("invited@example.com", s.ownerEmail);
-        assertEquals("UTC", s.timezone);
+        assertThat(s.ownerId).isEqualTo(4242L);
+        assertThat(s.ownerName).isEmpty();
+        assertThat(s.ownerEmail).isEqualTo("invited@example.com");
+        assertThat(s.timezone).isEqualTo("UTC");
     }
 
     @Test
@@ -79,6 +78,6 @@ class OwnerSettingsForOwnerTest {
         // owner_email is NOT NULL; a path with no address to seed (self-service signup, or Google
         // returning no email) must still satisfy the constraint.
         TestOwners.ensure(em, 4243L);
-        assertEquals("", OwnerSettings.seed(4243L, null).ownerEmail);
+        assertThat(OwnerSettings.seed(4243L, null).ownerEmail).isEmpty();
     }
 }

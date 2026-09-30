@@ -2,9 +2,9 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.test.InjectMock;
@@ -216,6 +216,6 @@ class AliasRoutingTest {
             .statusCode(200)
             .body(containsString("CALIT_HOST_PENDING"));
 
-        assertEquals(before, Booking.count());
+        assertThat(Booking.count()).isEqualTo(before);
     }
 }

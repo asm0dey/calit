@@ -1,8 +1,7 @@
 package site.asm0dey.calit.domain;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -18,9 +17,9 @@ class BookingFieldTest {
         desc.persist();
         // No per-type fields for this id -> falls back to the owner's global default form.
         List<BookingField> form = BookingField.formFor(1L, 999_999L);
-        assertTrue(form
-            .stream()
-            .anyMatch(f -> "description".equals(f.fieldKey)));
+        assertThat(form)
+            .extracting(f -> f.fieldKey)
+            .contains("description");
     }
 
     @Test
@@ -42,11 +41,11 @@ class BookingFieldTest {
 
         List<BookingField> form = BookingField.formFor(1L, type.id);
 
-        assertEquals(2, form.size());
+        assertThat(form).hasSize(2);
         // position 0 first
-        assertEquals("vat", form.getFirst().fieldKey);
+        assertThat(form.getFirst().fieldKey).isEqualTo("vat");
         // global description NOT included
-        assertEquals("company", form.get(1).fieldKey);
+        assertThat(form.get(1).fieldKey).isEqualTo("company");
     }
 
     private BookingField field(

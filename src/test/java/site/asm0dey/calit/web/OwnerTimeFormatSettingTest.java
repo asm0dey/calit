@@ -1,9 +1,9 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -44,21 +44,21 @@ class OwnerTimeFormatSettingTest {
     @TestSecurity(user = "admin", roles = "user")
     void savesAnExplicitTwelveHourPreference() {
         post("h12");
-        assertEquals("h12", stored());
+        assertThat(stored()).isEqualTo("h12");
     }
 
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void savesAnExplicitTwentyFourHourPreference() {
         post("h23");
-        assertEquals("h23", stored());
+        assertThat(stored()).isEqualTo("h23");
     }
 
     @Test
     @TestSecurity(user = "admin", roles = "user")
     void rejectsAnUnknownValueAndFallsBackToAuto() {
         post("h11-and-a-half");
-        assertEquals("auto", stored());
+        assertThat(stored()).isEqualTo("auto");
     }
 
     @Test

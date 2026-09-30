@@ -1,8 +1,8 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -90,12 +90,12 @@ class AdminMeetingTypeDetailTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findById(id);
-        assertEquals("Renamed Type", t.name);
-        assertEquals("renamed-type", t.slug);
-        assertEquals(45, t.durationMinutes);
-        assertEquals(5, t.bufferBeforeMinutes);
-        assertEquals(20, t.bufferAfterMinutes);
-        assertEquals(MeetingType.LocationType.PHONE, t.locationType);
+        assertThat(t.name).isEqualTo("Renamed Type");
+        assertThat(t.slug).isEqualTo("renamed-type");
+        assertThat(t.durationMinutes).isEqualTo(45);
+        assertThat(t.bufferBeforeMinutes).isEqualTo(5);
+        assertThat(t.bufferAfterMinutes).isEqualTo(20);
+        assertThat(t.locationType).isEqualTo(MeetingType.LocationType.PHONE);
     }
 
     @Test
@@ -117,9 +117,9 @@ class AdminMeetingTypeDetailTest {
             .body(containsString("LinkedIn"));
 
         BookingField f = BookingField.find("fieldKey", key).firstResult();
-        org.junit.jupiter.api.Assertions.assertNotNull(f);
+        assertThat(f).isNotNull();
         // scoped to THIS type, not global
-        assertEquals(id, f.meetingTypeId);
+        assertThat(f.meetingTypeId).isEqualTo(id);
     }
 
     @Test
@@ -147,7 +147,7 @@ class AdminMeetingTypeDetailTest {
             .then()
             .statusCode(200);
 
-        org.junit.jupiter.api.Assertions.assertNull(reloadField(f.id));
+        assertThat(reloadField(f.id)).isNull();
     }
 
     @Test
@@ -167,7 +167,7 @@ class AdminMeetingTypeDetailTest {
             .body(containsString("Wednesday"));
 
         long count = AvailabilityRule.count("meetingTypeId = ?1", id);
-        assertEquals(1, count);
+        assertThat(count).isOne();
     }
 
     @Test
@@ -186,7 +186,7 @@ class AdminMeetingTypeDetailTest {
             .body(containsString("2026-12-24"));
 
         long count = DateOverride.count("meetingTypeId = ?1", id);
-        assertEquals(1, count);
+        assertThat(count).isOne();
     }
 
     @Test
@@ -223,7 +223,7 @@ class AdminMeetingTypeDetailTest {
             .then()
             .statusCode(400);
 
-        assertEquals(0, DateOverride.count("meetingTypeId = ?1", id));
+        assertThat(DateOverride.count("meetingTypeId = ?1", id)).isZero();
     }
 
     @Test

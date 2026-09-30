@@ -2,9 +2,9 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import io.quarkus.test.InjectMock;
@@ -137,8 +137,8 @@ class SharedMeetingsResourceTest {
             .statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(t.id, 1L);
-        assertNotNull(h, "row must still exist after accept");
-        assertEquals(MeetingTypeHost.ACCEPTED, h.status, "caller's own pending row must flip to ACCEPTED");
+        assertThat(h).as("row must still exist after accept").isNotNull();
+        assertThat(h.status).as("caller's own pending row must flip to ACCEPTED").isEqualTo(MeetingTypeHost.ACCEPTED);
     }
 
     @Test
@@ -157,7 +157,7 @@ class SharedMeetingsResourceTest {
             .statusCode(404);
         // sanity: the real pending row for `t` is untouched by the 404 attempt on `unrelated`
         MeetingTypeHost h = MeetingTypeHost.find(t.id, 1L);
-        assertEquals(MeetingTypeHost.PENDING, h.status);
+        assertThat(h.status).isEqualTo(MeetingTypeHost.PENDING);
     }
 
     @Transactional
@@ -177,7 +177,7 @@ class SharedMeetingsResourceTest {
             .then()
             .statusCode(200);
 
-        assertNull(MeetingTypeHost.find(t.id, 1L), "declined row must be removed");
+        assertThat(MeetingTypeHost.find(t.id, 1L)).as("declined row must be removed").isNull();
     }
 
     @Test
@@ -237,8 +237,8 @@ class SharedMeetingsResourceTest {
             .statusCode(200);
 
         List<AvailabilityRule> rules = AvailabilityRule.list("ownerId = ?1 and meetingTypeId = ?2", 1L, t.id);
-        assertEquals(1, rules.size(), "rule must be persisted under admin's own owner_id + this typeId");
-        assertEquals(DayOfWeek.MONDAY, rules.get(0).dayOfWeek);
+        assertThat(rules).as("rule must be persisted under admin's own owner_id + this typeId").hasSize(1);
+        assertThat(rules.get(0).dayOfWeek).isEqualTo(DayOfWeek.MONDAY);
     }
 
     // ---- Date overrides: add + delete ----
@@ -258,10 +258,10 @@ class SharedMeetingsResourceTest {
             .statusCode(200);
 
         DateOverride o = DateOverride.find("ownerId = ?1 and meetingTypeId = ?2", 1L, t.id).firstResult();
-        assertNotNull(o, "override must be persisted under admin's own owner_id + this typeId");
-        assertEquals(LocalDate.parse("2030-01-15"), o.overrideDate);
+        assertThat(o).as("override must be persisted under admin's own owner_id + this typeId").isNotNull();
+        assertThat(o.overrideDate).isEqualTo(LocalDate.parse("2030-01-15"));
         List<DateOverrideWindow> windows = DateOverrideWindow.list("dateOverrideId", o.id);
-        assertEquals(1, windows.size());
+        assertThat(windows).hasSize(1);
     }
 
     @Test
@@ -278,7 +278,7 @@ class SharedMeetingsResourceTest {
             .then()
             .statusCode(200);
         DateOverride o = DateOverride.find("ownerId = ?1 and meetingTypeId = ?2", 1L, t.id).firstResult();
-        assertNotNull(o);
+        assertThat(o).isNotNull();
 
         given()
             .cookie("quarkus-credential", FormAuth.login())
@@ -291,8 +291,8 @@ class SharedMeetingsResourceTest {
         // thread's persistence context above, so findById would return the stale JPA-identity-mapped
         // instance instead of re-querying (JPA's EntityManager.find semantics never re-hit the DB
         // for an already-managed id, even though the row was deleted by a separate HTTP request).
-        assertEquals(0, DateOverride.count("id = ?1", o.id), "override row must be gone from the DB");
-        assertEquals(0, DateOverrideWindow.count("dateOverrideId", o.id), "windows must be gone too");
+        assertThat(DateOverride.count("id = ?1", o.id)).as("override row must be gone from the DB").isZero();
+        assertThat(DateOverrideWindow.count("dateOverrideId", o.id)).as("windows must be gone too").isZero();
     }
 
     /**
@@ -313,11 +313,9 @@ class SharedMeetingsResourceTest {
             // requireAcceptedHost passes (admin IS an accepted host of this type)
             .statusCode(200);
 
-        assertEquals(
-                1,
-                DateOverride.count("id = ?1", other.id),
-                "another owner's override must survive the delete attempt"
-        );
+        assertThat(DateOverride.count("id = ?1", other.id))
+            .as("another owner's override must survive the delete attempt")
+            .isOne();
     }
 
     @Transactional
@@ -351,8 +349,8 @@ class SharedMeetingsResourceTest {
             .statusCode(200);
 
         MeetingTypeHost h = MeetingTypeHost.find(t.id, 1L);
-        assertEquals(15, h.bufferBeforeMinutes);
-        assertEquals(20, h.bufferAfterMinutes);
+        assertThat(h.bufferBeforeMinutes).isEqualTo(15);
+        assertThat(h.bufferAfterMinutes).isEqualTo(20);
     }
 
     // ---- Self-revoke ----
@@ -368,7 +366,7 @@ class SharedMeetingsResourceTest {
             .then()
             .statusCode(200);
 
-        assertNull(MeetingTypeHost.find(seeded.type().id, 1L), "co-host row removed immediately");
+        assertThat(MeetingTypeHost.find(seeded.type().id, 1L)).as("co-host row removed immediately").isNull();
     }
 
     @Test
@@ -400,7 +398,7 @@ class SharedMeetingsResourceTest {
             .body(containsString("choice=keep"))
             .body(containsString("choice=cancel"));
 
-        assertNotNull(MeetingTypeHost.find(seeded.type().id, 1L), "co-host row must survive the interstitial");
+        assertThat(MeetingTypeHost.find(seeded.type().id, 1L)).as("co-host row must survive the interstitial").isNotNull();
     }
 
     @Test
@@ -428,9 +426,9 @@ class SharedMeetingsResourceTest {
             .then()
             .statusCode(200);
 
-        assertNull(MeetingTypeHost.find(seeded.type().id, 1L), "co-host row removed on keep");
+        assertThat(MeetingTypeHost.find(seeded.type().id, 1L)).as("co-host row removed on keep").isNull();
         for (Booking row : Booking.<Booking>group(lead.groupId)) {
-            assertEquals(BookingStatus.CONFIRMED, row.status, "existing booking honored on keep");
+            assertThat(row.status).as("existing booking honored on keep").isEqualTo(BookingStatus.CONFIRMED);
         }
     }
 
@@ -459,9 +457,9 @@ class SharedMeetingsResourceTest {
             .then()
             .statusCode(200);
 
-        assertNull(MeetingTypeHost.find(seeded.type().id, 1L), "co-host row removed on cancel");
+        assertThat(MeetingTypeHost.find(seeded.type().id, 1L)).as("co-host row removed on cancel").isNull();
         for (Booking row : Booking.<Booking>group(lead.groupId)) {
-            assertEquals(BookingStatus.CANCELLED, row.status, "group booking cancelled");
+            assertThat(row.status).as("group booking cancelled").isEqualTo(BookingStatus.CANCELLED);
         }
     }
 }

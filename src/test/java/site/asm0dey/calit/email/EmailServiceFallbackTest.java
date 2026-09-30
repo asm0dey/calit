@@ -1,7 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
@@ -56,7 +56,7 @@ class EmailServiceFallbackTest {
             .requiringNew()
             .call(() -> EmailOutbox.count());
         // declined notifies invitee + owner -> 2 parked mails.
-        assertTrue(queued >= 2, "both recipients' mail parked in outbox, got " + queued);
+        assertThat(queued).as("both recipients' mail parked in outbox, got " + queued).isGreaterThanOrEqualTo(2);
     }
 
     private long seedDeclined() {

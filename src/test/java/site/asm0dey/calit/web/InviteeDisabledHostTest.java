@@ -3,9 +3,9 @@ package site.asm0dey.calit.web;
 import module java.base;
 import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import io.quarkus.test.InjectMock;
@@ -158,7 +158,7 @@ class InviteeDisabledHostTest {
             .statusCode(200)
             .body(containsString("no longer taking changes"));
 
-        assertEquals(before, Booking.findByManageToken(token).startUtc, "the booking must not have moved");
+        assertThat(Booking.findByManageToken(token).startUtc).as("the booking must not have moved").isEqualTo(before);
     }
 
     @Test
@@ -176,8 +176,8 @@ class InviteeDisabledHostTest {
             .body(containsString("no longer taking changes"));
 
         Booking after = Booking.findByManageToken(token);
-        org.junit.jupiter.api.Assertions.assertNull(after.title, "title must not have been written");
-        org.junit.jupiter.api.Assertions.assertNull(after.description, "description must not have been written");
+        assertThat(after.title).as("title must not have been written").isNull();
+        assertThat(after.description).as("description must not have been written").isNull();
     }
 
     @Test
@@ -191,11 +191,9 @@ class InviteeDisabledHostTest {
             .then()
             .statusCode(200);
 
-        assertEquals(
-                BookingStatus.CANCELLED,
-                Booking.findByManageToken(token).status,
-                "an invitee must always be able to cancel, even on a departed host"
-        );
+        assertThat(Booking.findByManageToken(token).status)
+            .as("an invitee must always be able to cancel, even on a departed host")
+            .isEqualTo(BookingStatus.CANCELLED);
     }
 
     @Test

@@ -2,9 +2,8 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
@@ -106,10 +105,10 @@ class GuestBookingFlowTest {
             .statusCode(200);
 
         Booking b = Booking.find("inviteeEmail", "sam@example.com").firstResult();
-        assertNotNull(b);
-        assertEquals(2, BookingGuest.activeForBooking(b.id).size());
-        assertEquals(1, mailbox.getMailsSentTo("ana@example.com").size());
-        assertEquals(1, mailbox.getMailsSentTo("bob@example.com").size());
+        assertThat(b).isNotNull();
+        assertThat(BookingGuest.activeForBooking(b.id)).hasSize(2);
+        assertThat(mailbox.getMailsSentTo("ana@example.com")).hasSize(1);
+        assertThat(mailbox.getMailsSentTo("bob@example.com")).hasSize(1);
     }
 
     @Test
@@ -148,8 +147,8 @@ class GuestBookingFlowTest {
                 QuarkusTransaction
             .requiringNew()
             .call(() -> BookingGuest.<BookingGuest>findByDeclineToken(token).status);
-        assertEquals(GuestStatus.DECLINED, finalStatus);
-        assertEquals(1, mailbox.getMailsSentTo("sam@example.com").size(), "invitee notified of the decline");
+        assertThat(finalStatus).isEqualTo(GuestStatus.DECLINED);
+        assertThat(mailbox.getMailsSentTo("sam@example.com")).as("invitee notified of the decline").hasSize(1);
     }
 
     @Test
@@ -185,7 +184,7 @@ class GuestBookingFlowTest {
             .then()
             .statusCode(200);
 
-        assertEquals(GuestStatus.REMOVED, BookingGuest.findInBooking(b.id, "bob@example.com").status);
-        assertEquals(2, BookingGuest.activeForBooking(b.id).size());
+        assertThat(BookingGuest.findInBooking(b.id, "bob@example.com").status).isEqualTo(GuestStatus.REMOVED);
+        assertThat(BookingGuest.activeForBooking(b.id)).hasSize(2);
     }
 }

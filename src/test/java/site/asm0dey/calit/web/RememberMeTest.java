@@ -1,7 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -24,14 +24,16 @@ class RememberMeTest {
     @Test
     void rememberMeMakesCredentialCookiePersistent() {
         Cookie c = loginCookie(true);
-        assertNotNull(c);
-        assertTrue(c.getMaxAge() > 0, "Expected positive Max-Age for persistent cookie, got: " + c.getMaxAge());
+        assertThat(c).isNotNull();
+        assertThat(c.getMaxAge())
+            .as("Expected positive Max-Age for persistent cookie, got: " + c.getMaxAge())
+            .isGreaterThan(0);
     }
 
     @Test
     void withoutRememberCredentialCookieIsSessionScoped() {
         Cookie c = loginCookie(false);
-        assertNotNull(c);
-        assertEquals(-1L, c.getMaxAge(), "Expected -1 Max-Age for session cookie");
+        assertThat(c).isNotNull();
+        assertThat(c.getMaxAge()).as("Expected -1 Max-Age for session cookie").isEqualTo(-1L);
     }
 }

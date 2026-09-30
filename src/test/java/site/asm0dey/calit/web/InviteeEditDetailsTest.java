@@ -4,9 +4,8 @@ import module java.base;
 import static io.restassured.RestAssured.given;
 import static io.restassured.config.EncoderConfig.encoderConfig;
 import static java.time.LocalDate.now;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -112,7 +111,7 @@ class InviteeEditDetailsTest {
         Booking after = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.findByManageToken(token));
-        assertNull(after.title);
+        assertThat(after.title).isNull();
     }
 
     @Test
@@ -135,8 +134,8 @@ class InviteeEditDetailsTest {
         Booking after = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.findByManageToken(token));
-        assertEquals("Roadmap sync", after.title);
-        assertEquals("Q3 planning", after.description);
+        assertThat(after.title).isEqualTo("Roadmap sync");
+        assertThat(after.description).isEqualTo("Q3 planning");
     }
 
     @Test
@@ -180,7 +179,7 @@ class InviteeEditDetailsTest {
         Booking after = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.findByManageToken(token));
-        assertEquals(desc, after.description);
+        assertThat(after.description).isEqualTo(desc);
     }
 
     @Test

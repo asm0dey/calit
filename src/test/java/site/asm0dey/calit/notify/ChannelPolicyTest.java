@@ -1,6 +1,6 @@
 package site.asm0dey.calit.notify;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
@@ -16,8 +16,8 @@ class ChannelPolicyTest {
 
     @Test
     void unknownSchemeIsRejected() {
-        assertEquals(ChannelPolicy.Reason.UNKNOWN_SCHEME, policy.check("carrier-pigeon://nope").reason());
-        assertEquals(ChannelPolicy.Reason.UNKNOWN_SCHEME, policy.check("   ").reason());
+        assertThat(policy.check("carrier-pigeon://nope").reason()).isEqualTo(ChannelPolicy.Reason.UNKNOWN_SCHEME);
+        assertThat(policy.check("   ").reason()).isEqualTo(ChannelPolicy.Reason.UNKNOWN_SCHEME);
     }
 
     /**
@@ -28,14 +28,14 @@ class ChannelPolicyTest {
      */
     @Test
     void starMeansEveryScheme() {
-        assertTrue(config.schemeAllowed("carrier-pigeon"), "* must admit a scheme the catalog does not know");
-        assertTrue(config.schemeAllowed("TELEGRAM"), "scheme matching is case-insensitive");
+        assertThat(config.schemeAllowed("carrier-pigeon")).as("* must admit a scheme the catalog does not know").isTrue();
+        assertThat(config.schemeAllowed("TELEGRAM")).as("scheme matching is case-insensitive").isTrue();
     }
 
     @Test
     void starAllowsEveryKnownScheme() {
-        assertTrue(policy.check("telegram://api.telegram.org/111:AAbbCC/222333").ok());
-        assertTrue(policy.check("ntfy+http://localhost:1/topic").ok());
+        assertThat(policy.check("telegram://api.telegram.org/111:AAbbCC/222333").ok()).isTrue();
+        assertThat(policy.check("ntfy+http://localhost:1/topic").ok()).isTrue();
     }
 
     @Test
@@ -43,18 +43,20 @@ class ChannelPolicyTest {
         when(config.schemeAllowed("webhook")).thenReturn(false);
         when(config.schemeAllowed("ntfy")).thenReturn(true);
 
-        assertEquals(ChannelPolicy.Reason.SCHEME_BLOCKED, policy.check("webhook://example.com/hook").reason());
+        assertThat(policy.check("webhook://example.com/hook").reason()).isEqualTo(ChannelPolicy.Reason.SCHEME_BLOCKED);
         // "ntfy+http://" must match an allowlist entry of "ntfy": tryParse reports the channel
         // scheme with the transport suffix already split off.
-        assertTrue(policy.check("ntfy+http://localhost:1/topic").ok());
+        assertThat(policy.check("ntfy+http://localhost:1/topic").ok()).isTrue();
     }
 
     @Test
     void privateTargetIsRejectedOnlyWhenTheFlagIsOff() {
-        assertTrue(policy.check("ntfy+http://127.0.0.1:1/topic").ok(), "default-allow");
+        assertThat(policy.check("ntfy+http://127.0.0.1:1/topic").ok()).as("default-allow").isTrue();
 
         when(config.allowPrivateTargets()).thenReturn(false);
-        assertEquals(ChannelPolicy.Reason.PRIVATE_TARGET, policy.check("ntfy+http://127.0.0.1:1/topic").reason());
+        assertThat(policy.check("ntfy+http://127.0.0.1:1/topic").reason()).isEqualTo(
+                ChannelPolicy.Reason.PRIVATE_TARGET
+        );
     }
 
     @Test
@@ -66,7 +68,7 @@ class ChannelPolicyTest {
         // The discriminating input: this token DOES parse as a host ("localhost" resolves to
         // loopback), so the check passes only while the host-bearing guard excludes pushover. Drop
         // that guard and this assertion turns PRIVATE_TARGET -- which is the whole point of it.
-        assertTrue(policy.check("pushover://localhost/user-key").ok(), "an app token must never be resolved");
+        assertThat(policy.check("pushover://localhost/user-key").ok()).as("an app token must never be resolved").isTrue();
     }
 
     /**
@@ -78,12 +80,10 @@ class ChannelPolicyTest {
     @Test
     void aHostFieldIsAPrivateTargetLikeAnyOther() {
         when(config.allowPrivateTargets()).thenReturn(false);
-        assertEquals(ChannelPolicy.Reason.PRIVATE_TARGET, policy.check("ntfy://localhost/topic").reason());
-        assertEquals(ChannelPolicy.Reason.PRIVATE_TARGET, policy.check("gotify://localhost/AppToken").reason());
-        assertEquals(
-                ChannelPolicy.Reason.PRIVATE_TARGET,
-                policy.check("telegram://localhost/111:AAbbCC/222333").reason()
-        );
+        assertThat(policy.check("ntfy://localhost/topic").reason()).isEqualTo(ChannelPolicy.Reason.PRIVATE_TARGET);
+        assertThat(policy.check("gotify://localhost/AppToken").reason()).isEqualTo(ChannelPolicy.Reason.PRIVATE_TARGET);
+        assertThat(policy.check("telegram://localhost/111:AAbbCC/222333").reason())
+            .isEqualTo(ChannelPolicy.Reason.PRIVATE_TARGET);
     }
 
     /**
@@ -95,17 +95,13 @@ class ChannelPolicyTest {
      */
     @Test
     void aUrlMissingARequiredPartIsRejectedRatherThanSavedAndDead() {
-        assertEquals(
-                ChannelPolicy.Reason.INCOMPLETE,
-                policy.check("telegram://111:AAbbCC/222333").reason(),
-                "the host-less telegram URL calit used to document"
-        );
-        assertEquals(
-                ChannelPolicy.Reason.INCOMPLETE,
-                policy.check("telegram://api.telegram.org/111:AAbbCC").reason(),
-                "chat id missing"
-        );
-        assertTrue(policy.check("telegram://api.telegram.org/111:AAbbCC/222333").ok());
+        assertThat(policy.check("telegram://111:AAbbCC/222333").reason())
+            .as("the host-less telegram URL calit used to document")
+            .isEqualTo(ChannelPolicy.Reason.INCOMPLETE);
+        assertThat(policy.check("telegram://api.telegram.org/111:AAbbCC").reason())
+            .as("chat id missing")
+            .isEqualTo(ChannelPolicy.Reason.INCOMPLETE);
+        assertThat(policy.check("telegram://api.telegram.org/111:AAbbCC/222333").ok()).isTrue();
     }
 
     /**
@@ -115,18 +111,18 @@ class ChannelPolicyTest {
      */
     @Test
     void aMaskedSecretIsNotMistakenForAMissingPart() {
-        assertTrue(policy.check("webhook://example.com/hook").ok());
-        assertTrue(policy.check("slack://T000/B000/xxxx").ok());
+        assertThat(policy.check("webhook://example.com/hook").ok()).isTrue();
+        assertThat(policy.check("slack://T000/B000/xxxx").ok()).isTrue();
     }
 
     @Test
     void redactionHidesTheSecret() {
         String redacted = policy.redact("telegram://api.telegram.org/111:AAbbCC/222333");
-        assertFalse(redacted.contains("AAbbCC"), redacted);
+        assertThat(redacted).as(redacted).doesNotContain("AAbbCC");
     }
 
     @Test
     void defaultLabelIsTheChannelDisplayName() {
-        assertEquals("Telegram", policy.defaultLabel("telegram://api.telegram.org/111:AAbbCC/222333"));
+        assertThat(policy.defaultLabel("telegram://api.telegram.org/111:AAbbCC/222333")).isEqualTo("Telegram");
     }
 }

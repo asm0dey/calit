@@ -1,9 +1,7 @@
 package site.asm0dey.calit.privacy;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -52,23 +50,23 @@ class PersonalDataInventoryTest {
     @Transactional
     void everyLiveTableIsClassified() {
         var classified = new TreeSet<>(PersonalData.TABLES.stream().map(PersonalData.Classified::table).toList());
-        assertEquals(
-                liveTables(),
-                classified,
-                "PersonalData.TABLES must name exactly the live application tables — "
-                + "add the new table to the inventory and say what erasure does with it"
-        );
+        assertThat(classified)
+            .as(
+                    "PersonalData.TABLES must name exactly the live application tables — "
+                    + "add the new table to the inventory and say what erasure does with it"
+            )
+            .isEqualTo(liveTables());
     }
 
     @Test
     @Transactional
     void everyLiveColumnIsClassified() {
         for (PersonalData.Classified c : PersonalData.TABLES) {
-            assertEquals(
-                    liveColumns(c.table()),
-                    new TreeSet<>(c.columns()),
-                    "PersonalData column list for '" + c.table() + "' is out of date — " + "classify the new column as personal or not"
-            );
+            assertThat(new TreeSet<>(c.columns()))
+                .as(
+                        "PersonalData column list for '" + c.table() + "' is out of date — " + "classify the new column as personal or not"
+                )
+                .isEqualTo(liveColumns(c.table()));
         }
     }
 
@@ -76,10 +74,9 @@ class PersonalDataInventoryTest {
     @Transactional
     void personalColumnsAreASubsetOfKnownColumns() {
         for (PersonalData.Classified c : PersonalData.TABLES) {
-            assertTrue(
-                    c.columns().containsAll(c.personalColumns()),
-                    "personal columns of '" + c.table() + "' must all be real columns"
-            );
+            assertThat(c.columns())
+                .as("personal columns of '" + c.table() + "' must all be real columns")
+                .containsAll(c.personalColumns());
         }
     }
 
@@ -89,27 +86,21 @@ class PersonalDataInventoryTest {
             if (c.personalColumns().isEmpty()) {
                 continue;
             }
-            assertNotSame(
-                    PersonalData.EraseRoute.NOT_PERSONAL,
-                    c.route(),
-                    "'" + c.table() + "' carries personal columns but declares no erase route"
-            );
-            assertNotSame(
-                    PersonalData.Subject.NONE,
-                    c.subject(),
-                    "'" + c.table() + "' carries personal columns but names no data subject"
-            );
+            assertThat(c.route())
+                .withFailMessage("'" + c.table() + "' carries personal columns but declares no erase route")
+                .isNotSameAs(PersonalData.EraseRoute.NOT_PERSONAL);
+            assertThat(c.subject())
+                .withFailMessage("'" + c.table() + "' carries personal columns but names no data subject")
+                .isNotSameAs(PersonalData.Subject.NONE);
         }
     }
 
     @Test
     void outboundDestinationsAreRecorded() {
-        assertTrue(PersonalData.OUTBOUND.size() >= 4, "the four known outbound destinations must be listed");
-        assertTrue(
-                PersonalData.OUTBOUND
-                    .stream()
-                    .anyMatch(d -> !d.reachableByErasure()),
-                "at least one destination is known to be beyond erasure — say so"
-        );
+        assertThat(PersonalData.OUTBOUND)
+            .as("the four known outbound destinations must be listed")
+            .hasSizeGreaterThanOrEqualTo(4)
+            .as("at least one destination is known to be beyond erasure — say so")
+            .anyMatch(d -> !d.reachableByErasure());
     }
 }

@@ -1,6 +1,6 @@
 package site.asm0dey.calit.email;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -53,7 +53,7 @@ class OutboxSchedulerTest {
 
         QuarkusTransaction
             .requiringNew()
-            .run(() -> assertNotNull(((EmailOutbox) EmailOutbox.findById(id)).sentAt, "marked sent"));
+            .run(() -> assertThat(((EmailOutbox) EmailOutbox.findById(id)).sentAt).as("marked sent").isNotNull());
     }
 
     @Test
@@ -67,10 +67,10 @@ class OutboxSchedulerTest {
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox r = EmailOutbox.findById(id);
-            assertNull(r.sentAt);
-            assertEquals(1, r.attempts);
-            assertEquals("still down", r.lastError);
-            assertTrue(r.nextAttemptAt.isAfter(java.time.Instant.now()), "backed off into the future");
+            assertThat(r.sentAt).isNull();
+            assertThat(r.attempts).isOne();
+            assertThat(r.lastError).isEqualTo("still down");
+            assertThat(r.nextAttemptAt).as("backed off into the future").isAfter(java.time.Instant.now());
         });
     }
 
@@ -91,7 +91,9 @@ class OutboxSchedulerTest {
 
         QuarkusTransaction
             .requiringNew()
-            .run(() -> assertNull(((EmailOutbox) EmailOutbox.findById(id)).sentAt, "dead row never re-sent"));
+            .run(() -> assertThat(((EmailOutbox) EmailOutbox.findById(id)).sentAt)
+                .as("dead row never re-sent")
+                .isNull());
     }
 
     @Test
@@ -104,8 +106,8 @@ class OutboxSchedulerTest {
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox r = EmailOutbox.findById(id);
-            assertNull(r.sentAt, "past-deadline mail is never sent");
-            assertNull(r.nextAttemptAt, "past-deadline mail is marked dead");
+            assertThat(r.sentAt).as("past-deadline mail is never sent").isNull();
+            assertThat(r.nextAttemptAt).as("past-deadline mail is marked dead").isNull();
         });
         // The send was never attempted for the expired row.
         verify(mailSender, never()).sendNow(any(), anyString(), anyString(), anyString(), any());

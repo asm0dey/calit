@@ -2,10 +2,8 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -21,7 +19,7 @@ class AdminDateOverridesTest {
         o.ownerId = 1L;
         o.meetingTypeId = null;
         // Christmas — blocked
-        o.overrideDate = java.time.LocalDate.of(2026, 12, 25);
+        o.overrideDate = LocalDate.of(2026, 12, 25);
         // empty = day off
         o.windows = new java.util.ArrayList<>();
         o.persist();
@@ -75,7 +73,7 @@ class AdminDateOverridesTest {
             .body(containsString("2026-07-01"))
             .body(containsString("10:00"));
 
-        assertEquals(before + 1, DateOverride.count());
+        assertThat(DateOverride.count()).isEqualTo(before + 1);
     }
 
     @Transactional
@@ -98,13 +96,11 @@ class AdminDateOverridesTest {
             .then()
             .statusCode(200);
         // the inverted 12:00-11:00 is dropped and only the first three valid windows are kept
-        assertEquals(
-                List.of("08:00-08:30", "09:00-09:30", "10:00-10:30"),
-                windowsOn(LocalDate.of(2026, 7, 2))
-                    .stream()
-                    .map(w -> w.startTime + "-" + w.endTime)
-                    .toList()
-        );
+        assertThat(windowsOn(LocalDate.of(2026, 7, 2))
+            .stream()
+            .map(w -> w.startTime + "-" + w.endTime)
+            .toList())
+            .containsExactly("08:00-08:30", "09:00-09:30", "10:00-10:30");
     }
 
     @Test
@@ -139,7 +135,7 @@ class AdminDateOverridesTest {
             .then()
             .statusCode(400);
 
-        assertEquals(before, DateOverride.count());
+        assertThat(DateOverride.count()).isEqualTo(before);
     }
 
     @Test
@@ -158,7 +154,7 @@ class AdminDateOverridesTest {
             .then()
             .statusCode(400);
 
-        assertEquals(before, DateOverride.count());
+        assertThat(DateOverride.count()).isEqualTo(before);
     }
 
     @Test
@@ -204,15 +200,18 @@ class AdminDateOverridesTest {
 
         var body = pageBody();
         var marker = body.indexOf(PAST_MARKER);
-        assertTrue(marker >= 0, "expected the past-overrides collapse to be rendered");
+        assertThat(marker).as("expected the past-overrides collapse to be rendered").isGreaterThanOrEqualTo(0);
 
         var beforeCollapse = body.substring(0, marker);
         var insideCollapse = body.substring(marker);
 
-        assertTrue(beforeCollapse.contains(future.toString()), "upcoming override must render above the collapse");
-        assertFalse(beforeCollapse.contains(history.toString()), "past override must not render above the collapse");
-        assertTrue(insideCollapse.contains(history.toString()), "past override must render inside the collapse");
-        assertTrue(body.contains("Past overrides (1)"), "collapse summary must show the correct past count");
+        assertThat(beforeCollapse)
+            .as("upcoming override must render above the collapse")
+            .contains(future.toString())
+            .as("past override must not render above the collapse")
+            .doesNotContain(history.toString());
+        assertThat(insideCollapse).as("past override must render inside the collapse").contains(history.toString());
+        assertThat(body).as("collapse summary must show the correct past count").contains("Past overrides (1)");
     }
 
     @Test
@@ -225,13 +224,13 @@ class AdminDateOverridesTest {
         var marker = body.indexOf(PAST_MARKER);
         var beforeCollapse = marker >= 0 ? body.substring(0, marker) : body;
 
-        assertTrue(beforeCollapse.contains(today.toString()), "today's override must be treated as upcoming");
+        assertThat(beforeCollapse).as("today's override must be treated as upcoming").contains(today.toString());
     }
 
     @Test
     void noCollapseIsRenderedWhenThereAreNoPastOverrides() {
         seedOverrideOn(LocalDate.now(ZoneOffset.UTC).plusDays(30));
 
-        assertFalse(pageBody().contains(PAST_MARKER), "an owner with no past overrides gets no empty collapse");
+        assertThat(pageBody()).as("an owner with no past overrides gets no empty collapse").doesNotContain(PAST_MARKER);
     }
 }

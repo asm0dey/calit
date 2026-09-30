@@ -2,10 +2,9 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
@@ -106,7 +105,7 @@ class InviteeFieldModesTest {
 
     private static Booking booked() {
         Booking b = Booking.find("inviteeEmail", "sam@example.com").firstResult();
-        assertNotNull(b);
+        assertThat(b).isNotNull();
         return b;
     }
 
@@ -149,26 +148,26 @@ class InviteeFieldModesTest {
     @Test
     void hiddenTypeIgnoresSubmittedNameAndGuests() {
         seed(FieldMode.HIDDEN, FieldMode.HIDDEN);
-        assertEquals(200, post("Sam", "ana@example.com, bob@example.com"));
+        assertThat(post("Sam", "ana@example.com, bob@example.com")).isEqualTo(200);
         Booking b = booked();
-        assertEquals("sam", b.inviteeName);
-        assertEquals(0, BookingGuest.activeForBooking(b.id).size());
+        assertThat(b.inviteeName).isEqualTo("sam");
+        assertThat(BookingGuest.activeForBooking(b.id)).isEmpty();
     }
 
     @Test
     void blankNameOnOptionalTypeBooksWithEmailLocalPart() {
         seed(FieldMode.OPTIONAL, FieldMode.OPTIONAL);
-        assertEquals(200, post("", "ana@example.com"));
+        assertThat(post("", "ana@example.com")).isEqualTo(200);
         Booking b = booked();
-        assertEquals("sam", b.inviteeName);
-        assertEquals(1, BookingGuest.activeForBooking(b.id).size());
+        assertThat(b.inviteeName).isEqualTo("sam");
+        assertThat(BookingGuest.activeForBooking(b.id)).hasSize(1);
     }
 
     @Test
     void givenNameOnOptionalTypeIsKept() {
         seed(FieldMode.OPTIONAL, FieldMode.OPTIONAL);
-        assertEquals(200, post("Sam", null));
-        assertEquals("Sam", booked().inviteeName);
+        assertThat(post("Sam", null)).isEqualTo(200);
+        assertThat(booked().inviteeName).isEqualTo("Sam");
     }
 
     @Test
@@ -176,8 +175,8 @@ class InviteeFieldModesTest {
         seed(FieldMode.REQUIRED, FieldMode.OPTIONAL);
         // The form handler re-renders the booking page with the validation message, so it is a 200
         // with no booking row -- the same contract every other BookingValidationException has here.
-        assertEquals(200, post("", null));
-        assertEquals(0, Booking.count("inviteeEmail", "sam@example.com"));
+        assertThat(post("", null)).isEqualTo(200);
+        assertThat(Booking.count("inviteeEmail", "sam@example.com")).isZero();
     }
 
     private String apiBody(String name) {
@@ -207,7 +206,7 @@ class InviteeFieldModesTest {
     void apiBlankNameOnRequiredTypeIs422() {
         seed(FieldMode.REQUIRED, FieldMode.OPTIONAL);
         given().contentType("application/json").body(apiBody("")).when().post("/api/bookings").then().statusCode(422);
-        assertEquals(0, Booking.count("inviteeEmail", "sam@example.com"));
+        assertThat(Booking.count("inviteeEmail", "sam@example.com")).isZero();
     }
 
     @Test
@@ -271,7 +270,7 @@ class InviteeFieldModesTest {
     @Test
     void hiddenGuestsSurviveAnEditDetailsWithoutTheField() {
         seed(FieldMode.REQUIRED, FieldMode.OPTIONAL);
-        assertEquals(200, post("Sam", "ana@example.com"));
+        assertThat(post("Sam", "ana@example.com")).isEqualTo(200);
         Booking b = booked();
         flipGuestsMode(b.meetingTypeId, FieldMode.HIDDEN);
 
@@ -290,7 +289,7 @@ class InviteeFieldModesTest {
             .then()
             .statusCode(200);
         // No guests field was posted, which used to mean "remove every guest"; a HIDDEN type leaves them alone.
-        assertEquals(1, BookingGuest.activeForBooking(b.id).size());
+        assertThat(BookingGuest.activeForBooking(b.id)).hasSize(1);
     }
 
     @Test
@@ -312,9 +311,9 @@ class InviteeFieldModesTest {
             .then()
             .statusCode(200);
         MeetingType t = MeetingType.findBySlug(1L, slug);
-        assertNotNull(t);
-        assertEquals(FieldMode.OPTIONAL, t.nameMode);
-        assertEquals(FieldMode.HIDDEN, t.guestsMode);
+        assertThat(t).isNotNull();
+        assertThat(t.nameMode).isEqualTo(FieldMode.OPTIONAL);
+        assertThat(t.guestsMode).isEqualTo(FieldMode.HIDDEN);
 
         given()
             .cookie("quarkus-credential", FormAuth.login())
@@ -345,9 +344,9 @@ class InviteeFieldModesTest {
             .then()
             .statusCode(200);
         MeetingType t = MeetingType.findBySlug(1L, slug);
-        assertNotNull(t);
-        assertEquals(FieldMode.REQUIRED, t.nameMode);
-        assertEquals(FieldMode.OPTIONAL, t.guestsMode);
+        assertThat(t).isNotNull();
+        assertThat(t.nameMode).isEqualTo(FieldMode.REQUIRED);
+        assertThat(t.guestsMode).isEqualTo(FieldMode.OPTIONAL);
     }
 
     @Transactional

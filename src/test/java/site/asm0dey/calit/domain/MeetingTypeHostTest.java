@@ -1,7 +1,7 @@
 package site.asm0dey.calit.domain;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -28,10 +28,10 @@ class MeetingTypeHostTest {
         cohost.consentToken = UUID.randomUUID();
         cohost.persist();
 
-        assertTrue(MeetingTypeHost.isMultiHost(t.id));
-        assertEquals(2, MeetingTypeHost.forType(t.id).size());
-        assertEquals(1, MeetingTypeHost.acceptedForType(t.id).size());
-        assertNotNull(MeetingTypeHost.findByConsentToken(cohost.consentToken.toString()));
-        assertEquals(2L, MeetingTypeHost.find(t.id, 2L).ownerId);
+        assertThat(MeetingTypeHost.isMultiHost(t.id)).isTrue();
+        assertThat(MeetingTypeHost.forType(t.id)).hasSize(2);
+        assertThat(MeetingTypeHost.acceptedForType(t.id)).hasSize(1);
+        assertThat(MeetingTypeHost.findByConsentToken(cohost.consentToken.toString())).isNotNull();
+        assertThat(MeetingTypeHost.find(t.id, 2L).ownerId).isEqualTo(2L);
     }
 }

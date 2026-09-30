@@ -3,9 +3,8 @@ package site.asm0dey.calit.web;
 import module java.base;
 import static io.restassured.RestAssured.given;
 import static java.time.LocalDate.now;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -107,7 +106,7 @@ class OwnerEditDetailsTest {
         Booking after = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.findById(id));
-        assertNull(after.title);
+        assertThat(after.title).isNull();
     }
 
     @Test
@@ -132,8 +131,8 @@ class OwnerEditDetailsTest {
         Booking after = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.findById(id));
-        assertEquals("Roadmap sync", after.title);
-        assertEquals("Q3 planning", after.description);
+        assertThat(after.title).isEqualTo("Roadmap sync");
+        assertThat(after.description).isEqualTo("Q3 planning");
     }
 
     @Test

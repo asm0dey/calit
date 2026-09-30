@@ -2,10 +2,8 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -80,8 +78,8 @@ class MeetingTypeDeletionTest {
 
         postDelete(typeId, true);
 
-        assertNotNull(type(typeId), "the meeting type must survive a refused delete");
-        assertNotNull(booking(bookingId), "the upcoming booking must survive a refused delete");
+        assertThat(type(typeId)).as("the meeting type must survive a refused delete").isNotNull();
+        assertThat(booking(bookingId)).as("the upcoming booking must survive a refused delete").isNotNull();
     }
 
     @Test
@@ -92,9 +90,9 @@ class MeetingTypeDeletionTest {
 
         postDelete(typeId, false);
 
-        assertNull(type(typeId), "the meeting type is deleted");
-        assertNull(booking(past), "its past booking goes with it");
-        assertNull(booking(cancelledUpcoming), "a cancelled upcoming booking does not block and goes too");
+        assertThat(type(typeId)).as("the meeting type is deleted").isNull();
+        assertThat(booking(past)).as("its past booking goes with it").isNull();
+        assertThat(booking(cancelledUpcoming)).as("a cancelled upcoming booking does not block and goes too").isNull();
     }
 
     @Test
@@ -107,10 +105,10 @@ class MeetingTypeDeletionTest {
 
         postDelete(typeId, true);
 
-        assertNotNull(type(typeId));
-        assertNotNull(booking(cohostRow), "another host's upcoming row must not be cascaded away");
-        assertEquals(1L, QuarkusTransaction
+        assertThat(type(typeId)).isNotNull();
+        assertThat(booking(cohostRow)).as("another host's upcoming row must not be cascaded away").isNotNull();
+        assertThat(QuarkusTransaction
             .requiringNew()
-            .call(() -> AppUser.count("id", cohostId)));
+            .call(() -> AppUser.count("id", cohostId))).isOne();
     }
 }

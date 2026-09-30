@@ -1,7 +1,7 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -54,14 +54,12 @@ class PendingExpiryDispatchTest {
         scheduler.expirePendingBookings();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            assertEquals(
-                    BookingStatus.DECLINED,
-                    ((Booking) Booking.findById(bookingId)).status,
-                    "expired PENDING flips to DECLINED"
-            );
-            assertEquals(1, EmailOutbox.count("recipient", INVITEE_EMAIL), "invitee declined email enqueued");
-            assertEquals(1, EmailOutbox.count("recipient", OWNER_EMAIL), "owner declined email enqueued");
-            assertEquals(0, Reminder.count("bookingId", bookingId), "unsent reminder removed on decline");
+            assertThat(((Booking) Booking.findById(bookingId)).status)
+                .as("expired PENDING flips to DECLINED")
+                .isEqualTo(BookingStatus.DECLINED);
+            assertThat(EmailOutbox.count("recipient", INVITEE_EMAIL)).as("invitee declined email enqueued").isOne();
+            assertThat(EmailOutbox.count("recipient", OWNER_EMAIL)).as("owner declined email enqueued").isOne();
+            assertThat(Reminder.count("bookingId", bookingId)).as("unsent reminder removed on decline").isZero();
         });
     }
 

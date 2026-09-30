@@ -1,7 +1,7 @@
 package site.asm0dey.calit.i18n;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
@@ -19,33 +19,37 @@ class AppLocalesDiscoveryTest {
     void supportedContainsEnglishGermanAndHebrew() {
         List<Locale> supported = AppLocales.supported();
         // Default (en) must be first
-        assertEquals(Locale.ENGLISH, supported.getFirst(), "Default locale must be first");
-        assertTrue(supported.contains(Locale.GERMAN), "German must be discovered from msg_de.properties");
-        assertTrue(supported.contains(Locale.forLanguageTag("he")), "Hebrew must be discovered from msg_he.properties");
-        assertEquals(3, supported.size(), "Exactly three locales expected: en + de + he");
+        assertThat(supported)
+            .as("Exactly three locales expected: en + de + he")
+            .hasSize(3)
+            .as("German and Hebrew must be discovered from msg_de/msg_he.properties")
+            .contains(Locale.GERMAN, Locale.forLanguageTag("he"))
+            .first()
+            .as("Default locale must be first")
+            .isEqualTo(Locale.ENGLISH);
     }
 
     @Test
     void labelForDeIsDeutsch() {
-        assertEquals("Deutsch", AppLocales.labelFor("de"));
+        assertThat(AppLocales.labelFor("de")).isEqualTo("Deutsch");
     }
 
     @Test
     void labelForEnIsEnglish() {
-        assertEquals("English", AppLocales.labelFor("en"));
+        assertThat(AppLocales.labelFor("en")).isEqualTo("English");
     }
 
     @Test
     void labelForHeIsHebrewEndonym() {
-        assertEquals("עברית", AppLocales.labelFor("he"));
+        assertThat(AppLocales.labelFor("he")).isEqualTo("עברית");
     }
 
     @Test
     void supportedMatchesBundleBeans() {
         // Pick and isSupported round-trip through the live discovered list
-        assertEquals(Locale.GERMAN, AppLocales.pick("de"));
-        assertTrue(AppLocales.isSupported("de"));
-        assertTrue(AppLocales.isSupported("he"));
-        assertFalse(AppLocales.isSupported("fr"));
+        assertThat(AppLocales.pick("de")).isEqualTo(Locale.GERMAN);
+        assertThat(AppLocales.isSupported("de")).isTrue();
+        assertThat(AppLocales.isSupported("he")).isTrue();
+        assertThat(AppLocales.isSupported("fr")).isFalse();
     }
 }

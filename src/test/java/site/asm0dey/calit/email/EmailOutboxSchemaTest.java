@@ -1,6 +1,6 @@
 package site.asm0dey.calit.email;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -16,6 +16,6 @@ class EmailOutboxSchemaTest {
         long n = QuarkusTransaction
             .requiringNew()
             .call(() -> EmailOutbox.count());
-        assertEquals(0L, n);
+        assertThat(n).isZero();
     }
 }

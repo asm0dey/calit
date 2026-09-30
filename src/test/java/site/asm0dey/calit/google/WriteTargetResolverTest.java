@@ -1,10 +1,7 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -30,7 +27,7 @@ class WriteTargetResolverTest {
         t.googleCredentialId = 1L;
         t.googleCalendarId = "work@example.com";
         // No owner means no override to read — never a NullPointerException.
-        assertNull(resolver.writeOverride(null, t));
+        assertThat(resolver.writeOverride(null, t)).isNull();
     }
 
     @Test
@@ -40,8 +37,8 @@ class WriteTargetResolverTest {
         seedCalendar(1L, credId, "default@example.com", true, true);
         MeetingType t = seedType(1L);
 
-        assertNull(resolver.writeOverride(1L, t));
-        assertEquals(new CalendarRef(credId, "default@example.com"), resolver.resolve(1L, t));
+        assertThat(resolver.writeOverride(1L, t)).isNull();
+        assertThat(resolver.resolve(1L, t)).isEqualTo(new CalendarRef(credId, "default@example.com"));
     }
 
     @Test
@@ -55,7 +52,7 @@ class WriteTargetResolverTest {
         t.googleCalendarId = "work@example.com";
         t.persistAndFlush();
 
-        assertEquals(new CalendarRef(credId, "work@example.com"), resolver.resolve(1L, t));
+        assertThat(resolver.resolve(1L, t)).isEqualTo(new CalendarRef(credId, "work@example.com"));
     }
 
     @Test
@@ -76,8 +73,8 @@ class WriteTargetResolverTest {
         h.googleCalendarId = "cohost-work@example.com";
         h.persistAndFlush();
         // The creator still writes on their own default; the co-host writes on their own override.
-        assertEquals(new CalendarRef(creatorCred, "creator@example.com"), resolver.resolve(1L, t));
-        assertEquals(new CalendarRef(cohostCred, "cohost-work@example.com"), resolver.resolve(cohost.id, t));
+        assertThat(resolver.resolve(1L, t)).isEqualTo(new CalendarRef(creatorCred, "creator@example.com"));
+        assertThat(resolver.resolve(cohost.id, t)).isEqualTo(new CalendarRef(cohostCred, "cohost-work@example.com"));
     }
 
     @Test
@@ -91,8 +88,8 @@ class WriteTargetResolverTest {
         t.googleCalendarId = "unticked@example.com";
         t.persistAndFlush();
 
-        assertEquals(new CalendarRef(credId, "default@example.com"), resolver.resolve(1L, t));
-        assertFalse(resolver.owns(1L, resolver.writeOverride(1L, t)));
+        assertThat(resolver.resolve(1L, t)).isEqualTo(new CalendarRef(credId, "default@example.com"));
+        assertThat(resolver.owns(1L, resolver.writeOverride(1L, t))).isFalse();
     }
 
     @Test
@@ -108,10 +105,10 @@ class WriteTargetResolverTest {
         t.persistAndFlush();
 
         CalendarRef override = resolver.writeOverride(1L, t);
-        assertEquals("was-on-a-disconnected-account@example.com", override.googleCalendarId());
-        assertNull(override.credentialId());
-        assertFalse(resolver.owns(1L, override));
-        assertEquals(new CalendarRef(credId, "default@example.com"), resolver.resolve(1L, t));
+        assertThat(override.googleCalendarId()).isEqualTo("was-on-a-disconnected-account@example.com");
+        assertThat(override.credentialId()).isNull();
+        assertThat(resolver.owns(1L, override)).isFalse();
+        assertThat(resolver.resolve(1L, t)).isEqualTo(new CalendarRef(credId, "default@example.com"));
     }
 
     @Test
@@ -119,7 +116,7 @@ class WriteTargetResolverTest {
     void noCalendarAtAllResolvesToNull() {
         MeetingType t = seedType(1L);
 
-        assertNull(resolver.resolve(1L, t));
+        assertThat(resolver.resolve(1L, t)).isNull();
     }
 
     @Test
@@ -135,18 +132,18 @@ class WriteTargetResolverTest {
         t.googleCalendarId = "meet@example.com";
         t.persistAndFlush();
 
-        assertFalse(resolver.blocksMeet(1L, t));
+        assertThat(resolver.blocksMeet(1L, t)).isFalse();
         // a type with no override sees the default
-        assertTrue(resolver.blocksMeet(1L, seedType(1L)));
+        assertThat(resolver.blocksMeet(1L, seedType(1L))).isTrue();
     }
 
     @Test
     void parsesTheFormValue() {
-        assertEquals(new CalendarRef(7L, "a@example.com"), WriteTargetResolver.parseRef("7:a@example.com"));
-        assertNull(WriteTargetResolver.parseRef(""));
-        assertNull(WriteTargetResolver.parseRef(null));
-        assertNull(WriteTargetResolver.parseRef("nonsense"));
-        assertNull(WriteTargetResolver.parseRef("x:a@example.com"));
+        assertThat(WriteTargetResolver.parseRef("7:a@example.com")).isEqualTo(new CalendarRef(7L, "a@example.com"));
+        assertThat(WriteTargetResolver.parseRef("")).isNull();
+        assertThat(WriteTargetResolver.parseRef(null)).isNull();
+        assertThat(WriteTargetResolver.parseRef("nonsense")).isNull();
+        assertThat(WriteTargetResolver.parseRef("x:a@example.com")).isNull();
     }
 
     private static Long seedCredential(String sub) {

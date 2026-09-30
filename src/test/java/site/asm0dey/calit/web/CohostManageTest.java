@@ -2,8 +2,8 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -65,9 +65,9 @@ class CohostManageTest {
             .body(containsString(candidate.username));
 
         MeetingTypeHost host = MeetingTypeHost.find(t.id, candidate.id);
-        assertNotNull(host, "cohost row must be created");
-        assertEquals(MeetingTypeHost.PENDING, host.status);
-        assertEquals(MeetingTypeHost.COHOST, host.role);
+        assertThat(host).as("cohost row must be created").isNotNull();
+        assertThat(host.status).isEqualTo(MeetingTypeHost.PENDING);
+        assertThat(host.role).isEqualTo(MeetingTypeHost.COHOST);
 
         given()
             .cookie("quarkus-credential", FormAuth.login())
@@ -100,7 +100,7 @@ class CohostManageTest {
             .body(containsString(candidate.username + " already uses the slug &quot;" + slug + "&quot;"))
             .body(containsString("pick a different slug or ask them to free it"));
 
-        assertNull(MeetingTypeHost.find(t.id, candidate.id), "no cohost row on rejected add");
+        assertThat(MeetingTypeHost.find(t.id, candidate.id)).as("no cohost row on rejected add").isNull();
     }
 
     @Test
@@ -125,7 +125,7 @@ class CohostManageTest {
             // localized (i18n) alert text, not the raw hardcoded English string -- Task 17fix
             .body(containsString("A meeting can have at most 10 hosts."));
 
-        assertNull(MeetingTypeHost.find(t.id, extra.id), "no cohost row on rejected add past the cap");
+        assertThat(MeetingTypeHost.find(t.id, extra.id)).as("no cohost row on rejected add past the cap").isNull();
     }
 
     @Transactional
@@ -153,7 +153,7 @@ class CohostManageTest {
             .statusCode(200)
             .body(containsString("alert-error"));
 
-        assertEquals(0, MeetingTypeHost.count("meetingTypeId = ?1 and role = ?2", t.id, MeetingTypeHost.COHOST));
+        assertThat(MeetingTypeHost.count("meetingTypeId = ?1 and role = ?2", t.id, MeetingTypeHost.COHOST)).isZero();
     }
 
     @Test
@@ -170,7 +170,7 @@ class CohostManageTest {
             .then()
             .statusCode(200);
 
-        assertNull(MeetingTypeHost.find(t.id, candidate.id), "cohost row removed");
+        assertThat(MeetingTypeHost.find(t.id, candidate.id)).as("cohost row removed").isNull();
     }
 
     /**
@@ -199,9 +199,9 @@ class CohostManageTest {
             .statusCode(200)
             .body(containsString("alert-error"));
 
-        assertNotNull(MeetingTypeHost.find(t.id, 1L), "CREATOR row must survive a self-removal attempt");
-        assertEquals(rowsBefore, MeetingTypeHost.count("meetingTypeId = ?1", t.id), "no row was deleted");
-        assertTrue(meetingHosts.hostOwnerIds(t).contains(1L), "creator must still be a required host");
+        assertThat(MeetingTypeHost.find(t.id, 1L)).as("CREATOR row must survive a self-removal attempt").isNotNull();
+        assertThat(MeetingTypeHost.count("meetingTypeId = ?1", t.id)).as("no row was deleted").isEqualTo(rowsBefore);
+        assertThat(meetingHosts.hostOwnerIds(t)).as("creator must still be a required host").contains(1L);
         // A subsequent booking on the type must still succeed -- pre-fix this NPE'd in
         // BookingService.persistGuests because bookGroup never assigned a lead.
         Booking lead = bookingService.book(
@@ -216,8 +216,8 @@ class CohostManageTest {
                 "en",
                 List.of()
         );
-        assertNotNull(lead);
-        assertNotNull(lead.groupId);
+        assertThat(lead).isNotNull();
+        assertThat(lead.groupId).isNotNull();
     }
 
     @Test
@@ -331,7 +331,7 @@ class CohostManageTest {
             .body(containsString("already co-host a meeting type with the slug"))
             .body(containsString(slug));
 
-        assertNull(MeetingType.findBySlug(1L, slug), "no new own-type created on collision");
+        assertThat(MeetingType.findBySlug(1L, slug)).as("no new own-type created on collision").isNull();
     }
 
     @Test
@@ -364,11 +364,7 @@ class CohostManageTest {
             .body(containsString(collidingSlug));
 
         MeetingType reloaded = MeetingType.findById(own.id);
-        org.junit.jupiter.api.Assertions.assertNotEquals(
-                collidingSlug,
-                reloaded.slug,
-                "slug must not be renamed on collision"
-        );
+        assertThat(reloaded.slug).as("slug must not be renamed on collision").isNotEqualTo(collidingSlug);
     }
 
     @Transactional
@@ -390,7 +386,7 @@ class CohostManageTest {
     @Test
     void singleHostTypeDetailPageShowsOwnerAsCreatorChipWithNoHostRows() {
         MeetingType t = seedAdminType("single-host-" + System.nanoTime());
-        assertEquals(0, MeetingTypeHost.count("meetingTypeId = ?1", t.id), "single-host type has no host rows");
+        assertThat(MeetingTypeHost.count("meetingTypeId = ?1", t.id)).as("single-host type has no host rows").isZero();
 
         given()
             .cookie("quarkus-credential", FormAuth.login())
@@ -421,11 +417,9 @@ class CohostManageTest {
             .then()
             .statusCode(200);
 
-        assertEquals(
-                0,
-                MeetingTypeHost.count("meetingTypeId = ?1", t.id),
-                "removing the last co-host also removes the CREATOR row (revert to single-host)"
-        );
+        assertThat(MeetingTypeHost.count("meetingTypeId = ?1", t.id))
+            .as("removing the last co-host also removes the CREATOR row (revert to single-host)")
+            .isZero();
 
         given()
             .cookie("quarkus-credential", FormAuth.login())

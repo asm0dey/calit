@@ -1,7 +1,8 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.enterprise.event.Observes;
@@ -37,9 +38,9 @@ class MeetingHostsMutationTest {
         meetingHosts.addCohost(t, v);
         em.flush();
         // creator + one cohost
-        assertEquals(2, MeetingTypeHost.forType(t.id).size());
-        assertEquals(1, CONSENTS.get());
-        assertEquals(MeetingTypeHost.CREATOR, MeetingTypeHost.find(t.id, 1L).role);
+        assertThat(MeetingTypeHost.forType(t.id)).hasSize(2);
+        assertThat(CONSENTS.get()).isOne();
+        assertThat(MeetingTypeHost.find(t.id, 1L).role).isEqualTo(MeetingTypeHost.CREATOR);
     }
 
     @Test
@@ -52,8 +53,8 @@ class MeetingHostsMutationTest {
         meetingHosts.removeHost(t, v.id);
         em.flush();
         // creator row gone too
-        assertEquals(0, MeetingTypeHost.forType(t.id).size());
-        assertFalse(MeetingTypeHost.isMultiHost(t.id));
+        assertThat(MeetingTypeHost.forType(t.id)).isEmpty();
+        assertThat(MeetingTypeHost.isMultiHost(t.id)).isFalse();
     }
 
     @Test
@@ -66,6 +67,6 @@ class MeetingHostsMutationTest {
         // 1 creator + 9 cohosts = 10
         em.flush();
         AppUser extra = MultiHostFixtures.enabledUser("overflow");
-        assertThrows(IllegalStateException.class, () -> meetingHosts.addCohost(t, extra));
+        assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> meetingHosts.addCohost(t, extra));
     }
 }

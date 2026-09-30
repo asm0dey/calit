@@ -69,6 +69,7 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 - `*IT` classes (e.g. `OgImageResourceIT`) run under **`mvn verify`** via `maven-failsafe-plugin`, not under `mvn test` — `verify` therefore packages the app and boots it for real. Plain `mvn test` is unaffected and stays fast.
 - Mailer mocked in `%dev`/`%test`; Google + Turnstile disabled by default. Full booking flow runs zero external accounts.
 - RestAssured can't execute JS — tests assert on stable marker comments (e.g. `CALIT_TZ_REFORMAT`) instead of running scripts.
+- Assertions are **AssertJ** (`assertThat`, `assertThatThrownBy`, `assertThatCode`, `assertSoftly`), not JUnit `Assertions.*` or Hamcrest `MatcherAssert`. Assert on the value, never `assertThat(<boolean expr>).isTrue()` when a fluent check exists: collections via `hasSize`/`extracting(...).containsExactly(...)`/`allSatisfy`, numbers via `isGreaterThan`, dates via `isAfter`/`isBefore`, strings via `contains`/`isNotBlank`. Hamcrest stays only inside RestAssured `.body(...)`.
 
 **Never open a PR while the test suite is red.** `mvn test` must be fully green —
 0 failures, 0 errors, `BUILD SUCCESS` — before a branch becomes a pull request,

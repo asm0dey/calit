@@ -2,6 +2,7 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.*;
@@ -299,11 +300,7 @@ class BookingPostTest {
         Booking b = Booking
             .find("inviteeEmail = ?1 and status <> ?2", "owned@example.com", BookingStatus.CANCELLED)
             .firstResult();
-        org.junit.jupiter.api.Assertions.assertNotNull(b, "booking must be created");
-        org.junit.jupiter.api.Assertions.assertEquals(
-                seededOwnerId,
-                b.ownerId,
-                "Booking.ownerId must be the resolved /{user} owner"
-        );
+        assertThat(b).as("booking must be created").isNotNull();
+        assertThat(b.ownerId).as("Booking.ownerId must be the resolved /{user} owner").isEqualTo(seededOwnerId);
     }
 }

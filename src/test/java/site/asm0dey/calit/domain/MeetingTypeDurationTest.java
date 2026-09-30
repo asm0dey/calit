@@ -1,7 +1,7 @@
 package site.asm0dey.calit.domain;
 
-import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static site.asm0dey.calit.domain.MeetingTypeDuration.allowedDurations;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -37,8 +37,8 @@ class MeetingTypeDurationTest {
     @Test
     void emptyTableMeansTheSetIsExactlyTheDefault() {
         MeetingType t = seedType("empty-set", 30);
-        assertEquals(List.of(30), MeetingTypeDuration.allowedDurations(t));
-        assertEquals(30, MeetingTypeDuration.shortestAllowed(t));
+        assertThat(allowedDurations(t)).containsExactly(30);
+        assertThat(MeetingTypeDuration.shortestAllowed(t)).isEqualTo(30);
     }
 
     @Test
@@ -46,24 +46,24 @@ class MeetingTypeDurationTest {
         MeetingType t = seedType("implicit-default", 60);
         seedDuration(t.id, 30, null, null);
         seedDuration(t.id, 120, 45, 45);
-        assertEquals(List.of(30, 60, 120), MeetingTypeDuration.allowedDurations(t));
-        assertEquals(30, MeetingTypeDuration.shortestAllowed(t));
+        assertThat(allowedDurations(t)).containsExactly(30, 60, 120);
+        assertThat(MeetingTypeDuration.shortestAllowed(t)).isEqualTo(30);
     }
 
     @Test
     void aRowForTheDefaultDoesNotDuplicateIt() {
         MeetingType t = seedType("default-row", 60);
         seedDuration(t.id, 60, 15, 15);
-        assertEquals(List.of(60), MeetingTypeDuration.allowedDurations(t));
+        assertThat(allowedDurations(t)).containsExactly(60);
     }
 
     @Test
     void isAllowedAcceptsTheDefaultAndConfiguredLengthsOnly() {
         MeetingType t = seedType("allowed-check", 60);
         seedDuration(t.id, 120, null, null);
-        assertTrue(MeetingTypeDuration.isAllowed(t, 60));
-        assertTrue(MeetingTypeDuration.isAllowed(t, 120));
-        assertFalse(MeetingTypeDuration.isAllowed(t, 45));
+        assertThat(MeetingTypeDuration.isAllowed(t, 60)).isTrue();
+        assertThat(MeetingTypeDuration.isAllowed(t, 120)).isTrue();
+        assertThat(MeetingTypeDuration.isAllowed(t, 45)).isFalse();
     }
 
     @Test
@@ -71,9 +71,9 @@ class MeetingTypeDurationTest {
         MeetingType t = seedType("find-row", 30);
         seedDuration(t.id, 120, 45, 50);
         MeetingTypeDuration row = MeetingTypeDuration.findRow(t.id, 120);
-        assertNotNull(row);
-        assertEquals(45, row.bufferBeforeMinutes);
-        assertEquals(50, row.bufferAfterMinutes);
-        assertNull(MeetingTypeDuration.findRow(t.id, 30));
+        assertThat(row).isNotNull();
+        assertThat(row.bufferBeforeMinutes).isEqualTo(45);
+        assertThat(row.bufferAfterMinutes).isEqualTo(50);
+        assertThat(MeetingTypeDuration.findRow(t.id, 30)).isNull();
     }
 }

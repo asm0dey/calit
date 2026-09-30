@@ -2,11 +2,7 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -79,18 +75,18 @@ class CardCsrfCookieFilterTest {
     @Test
     void productCardHasNoCsrfCookie() {
         Response r = given().when().get("/og.png").then().statusCode(200).extract().response();
-        assertNull(r.getDetailedCookie("csrf-token"), "card image must not carry a csrf-token cookie");
-        assertEquals("public, max-age=3600", r.header("Cache-Control"));
-        assertNotNull(r.header("ETag"), "card image must still carry its ETag");
-        assertArrayEquals(PNG_MAGIC, Arrays.copyOf(r.asByteArray(), 4));
+        assertThat(r.getDetailedCookie("csrf-token")).as("card image must not carry a csrf-token cookie").isNull();
+        assertThat(r.header("Cache-Control")).isEqualTo("public, max-age=3600");
+        assertThat(r.header("ETag")).as("card image must still carry its ETag").isNotNull();
+        assertThat(Arrays.copyOf(r.asByteArray(), 4)).containsExactly(PNG_MAGIC);
     }
 
     @Test
     void ownerCardHasNoCsrfCookie() {
         Response r = given().when().get("/og/admin.png").then().statusCode(200).extract().response();
-        assertNull(r.getDetailedCookie("csrf-token"), "card image must not carry a csrf-token cookie");
-        assertEquals("public, max-age=3600", r.header("Cache-Control"));
-        assertNotNull(r.header("ETag"), "card image must still carry its ETag");
+        assertThat(r.getDetailedCookie("csrf-token")).as("card image must not carry a csrf-token cookie").isNull();
+        assertThat(r.header("Cache-Control")).isEqualTo("public, max-age=3600");
+        assertThat(r.header("ETag")).as("card image must still carry its ETag").isNotNull();
     }
 
     @Test
@@ -103,9 +99,9 @@ class CardCsrfCookieFilterTest {
             .statusCode(200)
             .extract()
             .response();
-        assertNull(r.getDetailedCookie("csrf-token"), "card image must not carry a csrf-token cookie");
-        assertEquals("public, max-age=3600", r.header("Cache-Control"));
-        assertNotNull(r.header("ETag"), "card image must still carry its ETag");
+        assertThat(r.getDetailedCookie("csrf-token")).as("card image must not carry a csrf-token cookie").isNull();
+        assertThat(r.header("Cache-Control")).isEqualTo("public, max-age=3600");
+        assertThat(r.header("ETag")).as("card image must still carry its ETag").isNotNull();
     }
 
     @Test
@@ -113,10 +109,9 @@ class CardCsrfCookieFilterTest {
         seedBookableType("csrf-booking-check");
         Response r = given().when().get("/admin/csrf-booking-check").then().statusCode(200).extract().response();
         String token = r.getCookie("csrf-token");
-        assertNotNull(token, "booking page GET must still set the csrf-token cookie");
-        assertTrue(
-                r.asString().contains("name=\"csrf-token\" value=\"" + token + "\""),
-                "booking form must still render the matching hidden csrf token field"
-        );
+        assertThat(token).as("booking page GET must still set the csrf-token cookie").isNotNull();
+        assertThat(r.asString())
+            .as("booking form must still render the matching hidden csrf token field")
+            .contains("name=\"csrf-token\" value=\"" + token + "\"");
     }
 }

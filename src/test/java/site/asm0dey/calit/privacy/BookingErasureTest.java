@@ -1,11 +1,8 @@
 package site.asm0dey.calit.privacy;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -74,14 +71,14 @@ class BookingErasureTest {
         Booking b = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.<Booking>findById(id));
-        assertEquals("", b.inviteeName);
-        assertEquals("", b.inviteeEmail, "invitee_email is NOT NULL, so erasure blanks it");
-        assertTrue(b.answers.isEmpty());
-        assertNull(b.meetLink);
-        assertNull(b.title);
-        assertNull(b.description);
-        assertNotNull(b.erasedAt);
-        assertEquals(BookingStatus.CONFIRMED, b.status, "the slot record survives erasure");
+        assertThat(b.inviteeName).isEmpty();
+        assertThat(b.inviteeEmail).as("invitee_email is NOT NULL, so erasure blanks it").isEmpty();
+        assertThat(b.answers).isEmpty();
+        assertThat(b.meetLink).isNull();
+        assertThat(b.title).isNull();
+        assertThat(b.description).isNull();
+        assertThat(b.erasedAt).isNotNull();
+        assertThat(b.status).as("the slot record survives erasure").isEqualTo(BookingStatus.CONFIRMED);
     }
 
     @Test
@@ -100,14 +97,12 @@ class BookingErasureTest {
         privacy.anonymise(id);
 
         QuarkusTransaction.requiringNew().run(() -> {
-            assertEquals(0L, BookingGuest.count("bookingId", id));
-            assertEquals(0L, Reminder.count("bookingId = ?1 and sentAt is null", id));
-            assertEquals(
-                    1L,
-                    Reminder.count("bookingId = ?1 and sentAt is not null", id),
-                    "a sent reminder carries no personal data and must survive erasure"
-            );
-            assertEquals(0L, EmailOutbox.count("bookingId", id));
+            assertThat(BookingGuest.count("bookingId", id)).isZero();
+            assertThat(Reminder.count("bookingId = ?1 and sentAt is null", id)).isZero();
+            assertThat(Reminder.count("bookingId = ?1 and sentAt is not null", id))
+                .as("a sent reminder carries no personal data and must survive erasure")
+                .isOne();
+            assertThat(EmailOutbox.count("bookingId", id)).isZero();
         });
     }
 
@@ -122,7 +117,7 @@ class BookingErasureTest {
         Instant second = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.<Booking>findById(id).erasedAt);
-        assertEquals(first, second, "a second erasure must not restamp the row");
+        assertThat(second).as("a second erasure must not restamp the row").isEqualTo(first);
     }
 
     @Test
@@ -131,14 +126,14 @@ class BookingErasureTest {
         var b = ErasureFixtures.seedPastBookingId();
 
         int count = privacy.anonymise(List.of(a, b));
-        assertEquals(2, count);
+        assertThat(count).isEqualTo(2);
 
         QuarkusTransaction.requiringNew().run(() -> {
-            assertNotNull(Booking.<Booking>findById(a).erasedAt);
-            assertNotNull(Booking.<Booking>findById(b).erasedAt);
+            assertThat(Booking.<Booking>findById(a).erasedAt).isNotNull();
+            assertThat(Booking.<Booking>findById(b).erasedAt).isNotNull();
         });
 
-        assertEquals(0, privacy.anonymise(List.of(a, b)), "already-erased ids are not re-counted");
+        assertThat(privacy.anonymise(List.of(a, b))).as("already-erased ids are not re-counted").isZero();
     }
 
     @Test
@@ -153,12 +148,12 @@ class BookingErasureTest {
         List<Booking> rows = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.group(groupId));
-        assertEquals(2, rows.size(), "both host rows for the group must still exist");
+        assertThat(rows).as("both host rows for the group must still exist").hasSize(2);
         for (Booking row : rows) {
-            assertEquals("", row.inviteeName, "owner " + row.ownerId + "'s row must be blanked too");
-            assertEquals("", row.inviteeEmail);
-            assertTrue(row.answers.isEmpty());
-            assertNotNull(row.erasedAt);
+            assertThat(row.inviteeName).as("owner " + row.ownerId + "'s row must be blanked too").isEmpty();
+            assertThat(row.inviteeEmail).isEmpty();
+            assertThat(row.answers).isEmpty();
+            assertThat(row.erasedAt).isNotNull();
         }
     }
 
@@ -178,7 +173,7 @@ class BookingErasureTest {
         privacy.anonymise(List.of(erasedRow.id));
 
         String exported = privacy.exportBooking(erasedRow.manageToken);
-        assertTrue(exported.contains("Dana Vogel"), "the co-host row still holds the invitee's data: " + exported);
+        assertThat(exported).as("the co-host row still holds the invitee's data: " + exported).contains("Dana Vogel");
 
         privacy.eraseByManageToken(erasedRow.manageToken);
 
@@ -186,11 +181,13 @@ class BookingErasureTest {
             .requiringNew()
             .run(() -> Booking
                 .<Booking>group(groupId)
-                .forEach(r -> assertTrue(r.isErased(), "row " + r.id + " must be erased")));
-        assertThrows(NotFoundException.class, () -> privacy.exportBooking(erasedRow.manageToken));
-        assertThrows(NotFoundException.class, () -> privacy.eraseByManageToken(erasedRow.manageToken));
+                .forEach(r -> assertThat(r.isErased()).as("row " + r.id + " must be erased").isTrue()));
+        assertThatExceptionOfType(NotFoundException.class).isThrownBy(() -> privacy.exportBooking(erasedRow.manageToken));
+        assertThatExceptionOfType(NotFoundException.class).isThrownBy(() -> privacy.eraseByManageToken(
+                erasedRow.manageToken
+        ));
         String coHostManageToken = rows.get(1).manageToken;
-        assertThrows(NotFoundException.class, () -> privacy.exportBooking(coHostManageToken));
+        assertThatExceptionOfType(NotFoundException.class).isThrownBy(() -> privacy.exportBooking(coHostManageToken));
     }
 
     @Test
@@ -198,11 +195,9 @@ class BookingErasureTest {
         String token = ErasureFixtures.seedPastBooking();
 
         ErasureReport report = privacy.eraseByManageToken(token);
-        assertEquals(
-                ErasureReport.GoogleOutcome.NOT_APPLICABLE,
-                report.google(),
-                "no Google event id on this row, and Google is disabled in %test"
-        );
+        assertThat(report.google())
+            .as("no Google event id on this row, and Google is disabled in %test")
+            .isEqualTo(ErasureReport.GoogleOutcome.NOT_APPLICABLE);
     }
 
     @Test
@@ -219,10 +214,8 @@ class BookingErasureTest {
         // the best-effort delete is skipped without being attempted -- this is the "Google is not
         // connected" branch of the ruling, not "the call threw". Both land on UNREACHABLE; this
         // assertion pins the disconnected case specifically.
-        assertEquals(
-                ErasureReport.GoogleOutcome.UNREACHABLE,
-                report.google(),
-                "a stored event id with no connected Google account cannot be deleted"
-        );
+        assertThat(report.google())
+            .as("a stored event id with no connected Google account cannot be deleted")
+            .isEqualTo(ErasureReport.GoogleOutcome.UNREACHABLE);
     }
 }

@@ -1,7 +1,7 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -59,8 +59,12 @@ class PendingExpiryGraceWindowTest {
 
         scheduler.expirePendingBookings();
 
-        assertEquals(BookingStatus.DECLINED, reloadStatus(withinGrace), "expiry within grace must be declined");
-        assertEquals(BookingStatus.PENDING, reloadStatus(beyondGrace), "expiry beyond grace must stay pending");
+        assertThat(reloadStatus(withinGrace)).as("expiry within grace must be declined").isEqualTo(
+                BookingStatus.DECLINED
+        );
+        assertThat(reloadStatus(beyondGrace)).as("expiry beyond grace must stay pending").isEqualTo(
+                BookingStatus.PENDING
+        );
     }
 
     private Long seedMeetingType() {

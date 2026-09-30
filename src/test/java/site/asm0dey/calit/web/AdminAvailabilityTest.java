@@ -1,8 +1,8 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
@@ -48,7 +48,9 @@ class AdminAvailabilityTest {
                 .then()
                 .statusCode(200);
         }
-        assertEquals(before, AvailabilityRule.count(), "no inverted, empty or unknown-day rule may be stored");
+        assertThat(AvailabilityRule.count()).as("no inverted, empty or unknown-day rule may be stored").isEqualTo(
+                before
+        );
     }
 
     @Test

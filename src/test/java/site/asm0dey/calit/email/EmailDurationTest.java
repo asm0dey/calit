@@ -1,9 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.mailer.Mail;
@@ -99,21 +97,21 @@ class EmailDurationTest {
         emailService.handleConfirmed(new BookingConfirmed(id));
 
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
-        assertEquals(1, toOwner.size(), "host must receive their copy");
+        assertThat(toOwner).as("host must receive their copy").hasSize(1);
         String hostHtml = toOwner.getFirst().getHtml();
-        assertTrue(hostHtml.contains("120 minutes"), "host copy must show the booked 120 minutes; got: " + hostHtml);
-        assertFalse(hostHtml.contains("30 minutes"), "host copy must not show the type's default; got: " + hostHtml);
+        assertThat(hostHtml)
+            .as("host copy must show the booked 120 minutes; got: " + hostHtml)
+            .contains("120 minutes")
+            .as("host copy must not show the type's default; got: " + hostHtml)
+            .doesNotContain("30 minutes");
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
-        assertEquals(1, toInvitee.size(), "invitee must receive confirmation");
+        assertThat(toInvitee).as("invitee must receive confirmation").hasSize(1);
         String inviteeHtml = toInvitee.getFirst().getHtml();
-        assertTrue(
-                inviteeHtml.contains("120 minutes"),
-                "invitee copy must show the booked 120 minutes; got: " + inviteeHtml
-        );
-        assertFalse(
-                inviteeHtml.contains("30 minutes"),
-                "invitee copy must not show the type's default; got: " + inviteeHtml
-        );
+        assertThat(inviteeHtml)
+            .as("invitee copy must show the booked 120 minutes; got: " + inviteeHtml)
+            .contains("120 minutes")
+            .as("invitee copy must not show the type's default; got: " + inviteeHtml)
+            .doesNotContain("30 minutes");
     }
 }

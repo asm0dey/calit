@@ -1,8 +1,8 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -23,13 +23,13 @@ class FreeBusyMultiAccountTest {
         readCal(1L, a.id, "a-cal");
         var from = Instant.now();
         var to = Instant.now().plusSeconds(86400);
-        assertThrows(CalendarUnavailableException.class, () -> port.freeBusy(1L, from, to));
+        assertThatExceptionOfType(CalendarUnavailableException.class).isThrownBy(() -> port.freeBusy(1L, from, to));
     }
 
     @Test
     @Transactional
     void noReadCalendarsYieldsEmpty() {
-        assertTrue(port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400)).isEmpty());
+        assertThat(port.freeBusy(1L, Instant.now(), Instant.now().plusSeconds(86400))).isEmpty();
     }
 
     private static GoogleCredential cred(long owner, String sub, boolean needsReconnect) {

@@ -2,7 +2,7 @@ package site.asm0dey.calit.availability;
 
 import module java.base;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -24,7 +24,7 @@ class DefaultAvailabilityBackfillTest {
 
     private String migrationSql() throws IOException {
         try (var in = getClass().getResourceAsStream(MIGRATION)) {
-            assertNotNull(in, MIGRATION + " must be on the test classpath");
+            assertThat(in).as(MIGRATION + " must be on the test classpath").isNotNull();
             return new String(in.readAllBytes(), UTF_8);
         }
     }
@@ -61,41 +61,39 @@ class DefaultAvailabilityBackfillTest {
     }
 
     @Test
-    void backfillsOwnersWithNoGlobalRules() throws IOException {
+    void backfillsOwnersWithNoGlobalRules() throws Exception {
         var bare = seedUser("legacy1");
         runBackfill();
-        assertEquals(5, globalCount(bare));
+        assertThat(globalCount(bare)).isEqualTo(5);
         var monday = AvailabilityRule.globalForOwner(bare, DayOfWeek.MONDAY);
-        assertEquals(1, monday.size());
-        assertEquals(LocalTime.of(9, 0), monday.getFirst().startTime);
-        assertEquals(LocalTime.of(18, 0), monday.getFirst().endTime);
-        assertNull(monday.getFirst().meetingTypeId);
+        assertThat(monday).hasSize(1);
+        assertThat(monday.getFirst().startTime).isEqualTo(LocalTime.of(9, 0));
+        assertThat(monday.getFirst().endTime).isEqualTo(LocalTime.of(18, 0));
+        assertThat(monday.getFirst().meetingTypeId).isNull();
     }
 
     @Test
-    void leavesOwnersWithExistingGlobalRulesAlone() throws IOException {
+    void leavesOwnersWithExistingGlobalRulesAlone() throws Exception {
         var configured = seedUser("legacy2");
         seedOneRule(configured, DayOfWeek.SATURDAY);
-        assertNotEquals(
-                1L,
-                configured,
-                "must differ from the bare admin (id 1) for the assertion below to mean anything"
-        );
+        assertThat(configured)
+            .as("must differ from the bare admin (id 1) for the assertion below to mean anything")
+            .isNotEqualTo(1L);
         runBackfill();
-        assertEquals(1, globalCount(configured), "hand-set hours must survive untouched");
-        assertTrue(AvailabilityRule.globalForOwner(configured, DayOfWeek.MONDAY).isEmpty());
+        assertThat(globalCount(configured)).as("hand-set hours must survive untouched").isOne();
+        assertThat(AvailabilityRule.globalForOwner(configured, DayOfWeek.MONDAY)).isEmpty();
         // Pins the NOT EXISTS correlation to owner_id: a non-correlated guard (e.g. "skip everyone if
         // ANY availability_rule row exists anywhere") would also make both assertions above pass by
         // seeding nobody at all. Admin (id 1, seeded bare by DatabaseResetCallback) must still be
         // backfilled in this same run to prove the guard is per-owner.
-        assertEquals(5, globalCount(1L), "another owner with no hours is still backfilled");
+        assertThat(globalCount(1L)).as("another owner with no hours is still backfilled").isEqualTo(5);
     }
 
     @Test
-    void isIdempotent() throws IOException {
+    void isIdempotent() throws Exception {
         var bare = seedUser("legacy3");
         runBackfill();
         runBackfill();
-        assertEquals(5, globalCount(bare), "a second run must add nothing");
+        assertThat(globalCount(bare)).as("a second run must add nothing").isEqualTo(5);
     }
 }

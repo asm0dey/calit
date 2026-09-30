@@ -1,7 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.mailer.Mail;
@@ -52,24 +52,33 @@ class EmailLocaleTest {
     void germanSubjectResolves() {
         String deSubj = messages.forTag("de").email_confirmed_subject("X");
         String enSubj = messages.forTag("en").email_confirmed_subject("X");
-        assertFalse(deSubj.isBlank(), "German confirmation subject must not be blank");
-        assertNotEquals(enSubj, deSubj, "German subject must differ from English");
+        assertThat(deSubj)
+            .as("German confirmation subject must not be blank")
+            .isNotBlank()
+            .as("German subject must differ from English")
+            .isNotEqualTo(enSubj);
     }
 
     @Test
     void germanPasswordResetSubjectNonBlankAndDiffersFromEnglish() {
         String enSubj = messages.forTag("en").email_password_reset_subject();
         String deSubj = messages.forTag("de").email_password_reset_subject();
-        assertFalse(deSubj.isBlank(), "German password-reset subject must not be blank");
-        assertNotEquals(enSubj, deSubj, "German password-reset subject must differ from English");
+        assertThat(deSubj)
+            .as("German password-reset subject must not be blank")
+            .isNotBlank()
+            .as("German password-reset subject must differ from English")
+            .isNotEqualTo(enSubj);
     }
 
     @Test
     void germanGoogleDisconnectedSubjectNonBlankAndDiffersFromEnglish() {
         String enSubj = messages.forTag("en").email_google_disconnected_subject();
         String deSubj = messages.forTag("de").email_google_disconnected_subject();
-        assertFalse(deSubj.isBlank(), "German Google-disconnected subject must not be blank");
-        assertNotEquals(enSubj, deSubj, "German Google-disconnected subject must differ from English");
+        assertThat(deSubj)
+            .as("German Google-disconnected subject must not be blank")
+            .isNotBlank()
+            .as("German Google-disconnected subject must differ from English")
+            .isNotEqualTo(enSubj);
     }
 
     // ---- 1b. h12 pattern is a valid, renderable DateTimeFormatter pattern in every locale ----
@@ -82,7 +91,7 @@ class EmailLocaleTest {
         for (String tag : List.of("en", "de", "he")) {
             Locale locale = AppLocales.pick(tag);
             String pattern = messages.forTag(tag).email_datetime_pattern_h12();
-            assertFalse(pattern.isBlank(), "h12 pattern for '" + tag + "' must not be blank");
+            assertThat(pattern).as("h12 pattern for '" + tag + "' must not be blank").isNotBlank();
 
             DateTimeFormatter formatter;
             try {
@@ -100,7 +109,7 @@ class EmailLocaleTest {
             } catch (RuntimeException e) {
                 throw new AssertionError("h12 pattern for '" + tag + "' failed to format an instant: " + pattern, e);
             }
-            assertFalse(rendered.isBlank(), "h12 rendering for '" + tag + "' must not be blank; pattern: " + pattern);
+            assertThat(rendered).as("h12 rendering for '" + tag + "' must not be blank; pattern: " + pattern).isNotBlank();
         }
     }
 
@@ -157,21 +166,19 @@ class EmailLocaleTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
-        assertEquals(1, toInvitee.size(), "invitee must receive confirmation email");
+        assertThat(toInvitee).as("invitee must receive confirmation email").hasSize(1);
 
         Mail inviteeMail = toInvitee.getFirst();
         String html = inviteeMail.getHtml();
         // German weekday for 2026-06-08 (Monday) = "Montag"
-        assertTrue(
-                html.contains("Montag") || html.contains("um"),
-                "German date in invitee body must contain 'Montag' (Monday) or German 'um' connector; got: " + html
-        );
+        assertThat(html.contains("Montag") || html.contains("um"))
+            .as("German date in invitee body must contain 'Montag' (Monday) or German 'um' connector; got: " + html)
+            .isTrue();
         // Subject must be the German confirmation subject
         String subject = inviteeMail.getSubject();
-        assertTrue(
-                subject.contains("bestätigt") || subject.toLowerCase().contains("buchung"),
-                "German invitee subject must be in German; got: " + subject
-        );
+        assertThat(subject.contains("bestätigt") || subject.toLowerCase().contains("buchung"))
+            .as("German invitee subject must be in German; got: " + subject)
+            .isTrue();
     }
 
     // ---- 3. Owner-copy uses owner locale (English when owner.locale = "en") ----
@@ -225,15 +232,14 @@ class EmailLocaleTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
-        assertEquals(1, toOwner.size(), "owner must receive confirmation email");
+        assertThat(toOwner).as("owner must receive confirmation email").hasSize(1);
 
         Mail ownerMail = toOwner.getFirst();
         // English owner → English date pattern includes "at" not "um"
         String html = ownerMail.getHtml();
-        assertTrue(
-                html.contains("Monday") || html.contains("at"),
-                "English owner email must use English date; got: " + html
-        );
+        assertThat(html.contains("Monday") || html.contains("at"))
+            .as("English owner email must use English date; got: " + html)
+            .isTrue();
     }
 
     // ---- 4. German invitee email body contains translated body strings ----
@@ -286,12 +292,14 @@ class EmailLocaleTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
-        assertEquals(1, toInvitee.size(), "invitee must receive one confirmation email");
+        assertThat(toInvitee).as("invitee must receive one confirmation email").hasSize(1);
         String html = toInvitee.getFirst().getHtml();
         // German body strings added by task 9d — both must be present (body-specific, not just subject)
-        assertTrue(html.contains("Hallo"), "German confirmation body must contain greeting 'Hallo'; got: " + html);
-        assertTrue(html.contains("Minuten"), "German confirmation body must contain 'Minuten' (duration); got: "
-                + html);
+        assertThat(html)
+            .as("German confirmation body must contain greeting 'Hallo'; got: " + html)
+            .contains("Hallo")
+            .as("German confirmation body must contain 'Minuten' (duration); got: " + html)
+            .contains("Minuten");
     }
 
     // ---- 5. English default locale email body contains English body strings ----
@@ -344,14 +352,14 @@ class EmailLocaleTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
 
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
-        assertEquals(1, toInvitee.size(), "invitee must receive one confirmation email");
+        assertThat(toInvitee).as("invitee must receive one confirmation email").hasSize(1);
         String html = toInvitee.getFirst().getHtml();
         // English body strings from task 9d — both must be present (body-specific)
-        assertTrue(html.contains("Hi "), "English confirmation body must contain greeting 'Hi '; got: " + html);
-        assertTrue(
-                html.contains("minutes"),
-                "English confirmation body must contain 'minutes' (duration); got: " + html
-        );
+        assertThat(html)
+            .as("English confirmation body must contain greeting 'Hi '; got: " + html)
+            .contains("Hi ")
+            .as("English confirmation body must contain 'minutes' (duration); got: " + html)
+            .contains("minutes");
     }
 
     // ---- 7. German email has <html lang="de" ----
@@ -405,19 +413,17 @@ class EmailLocaleTest {
         emailService.handleConfirmed(new BookingConfirmed(bookingId));
         // German invitee email must have lang="de"
         List<Mail> toInvitee = mailbox.getMailsSentTo(INVITEE_EMAIL);
-        assertEquals(1, toInvitee.size(), "invitee must receive confirmation email");
+        assertThat(toInvitee).as("invitee must receive confirmation email").hasSize(1);
         String inviteeHtml = toInvitee.getFirst().getHtml();
-        assertTrue(
-                inviteeHtml.contains("lang=\"de\""),
-                "German invitee email must have <html lang=\"de\">; got: " + inviteeHtml
-        );
+        assertThat(inviteeHtml)
+            .as("German invitee email must have <html lang=\"de\">; got: " + inviteeHtml)
+            .contains("lang=\"de\"");
         // English owner email must have lang="en"
         List<Mail> toOwner = mailbox.getMailsSentTo(OWNER_EMAIL);
-        assertEquals(1, toOwner.size(), "owner must receive confirmation email");
+        assertThat(toOwner).as("owner must receive confirmation email").hasSize(1);
         String ownerHtml = toOwner.getFirst().getHtml();
-        assertTrue(
-                ownerHtml.contains("lang=\"en\""),
-                "English owner email must have <html lang=\"en\">; got: " + ownerHtml
-        );
+        assertThat(ownerHtml)
+            .as("English owner email must have <html lang=\"en\">; got: " + ownerHtml)
+            .contains("lang=\"en\"");
     }
 }

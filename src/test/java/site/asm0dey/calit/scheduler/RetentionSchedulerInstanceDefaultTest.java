@@ -1,8 +1,7 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -38,7 +37,7 @@ class RetentionSchedulerInstanceDefaultTest {
     void instanceDefaultCatchesAnOldBooking() {
         Long id = ErasureFixtures.seedPastBookingId();
         scheduler.sweep();
-        assertTrue(erased(id), "a 14-day instance default must catch a booking that ended 30 days ago");
+        assertThat(erased(id)).as("a 14-day instance default must catch a booking that ended 30 days ago").isTrue();
     }
 
     @Test
@@ -49,7 +48,7 @@ class RetentionSchedulerInstanceDefaultTest {
             s.bookingRetentionDays = 365;
         });
         scheduler.sweep();
-        assertFalse(erased(id), "the owner's own window overrides the instance default in both directions");
+        assertThat(erased(id)).as("the owner's own window overrides the instance default in both directions").isFalse();
     }
 
     /**
@@ -84,11 +83,12 @@ class RetentionSchedulerInstanceDefaultTest {
 
         scheduler.sweep();
 
-        assertTrue(
-                erased(id),
-                "a 5-day owner window (shorter than the 14-day instance default) must catch a "
-                + "10-day-old booking the default alone would miss"
-        );
+        assertThat(erased(id))
+            .as(
+                    "a 5-day owner window (shorter than the 14-day instance default) must catch a "
+                    + "10-day-old booking the default alone would miss"
+            )
+            .isTrue();
     }
 
     /**
@@ -133,7 +133,7 @@ class RetentionSchedulerInstanceDefaultTest {
 
         scheduler.sweep();
 
-        assertTrue(erased(id), "an owner with no owner_settings row must still fall back to the instance default");
+        assertThat(erased(id)).as("an owner with no owner_settings row must still fall back to the instance default").isTrue();
     }
 
     public static class WithInstanceDefault implements QuarkusTestProfile {

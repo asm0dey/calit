@@ -27,7 +27,7 @@ class StoredCalendarAddressTest {
 
     @Test
     @Transactional
-    void deletesOnTheStoredCalendar() throws IOException {
+    void deletesOnTheStoredCalendar() throws Exception {
         var credId = seedWriteTarget("sub-stored", "default@example.com");
         GoogleCalendarPort port = port();
 
@@ -38,7 +38,7 @@ class StoredCalendarAddressTest {
 
     @Test
     @Transactional
-    void deletesUsingTheStoredRefsCredentialNotTheWriteTargetsCredential() throws IOException {
+    void deletesUsingTheStoredRefsCredentialNotTheWriteTargetsCredential() throws Exception {
         // The whole point of storing credentialId (not just googleCalendarId) is the multi-account
         // case: the owner's *current* write target may live on a different Google account than the
         // one the event was actually created on. writeAddress must mint the access token for the
@@ -59,7 +59,7 @@ class StoredCalendarAddressTest {
 
     @Test
     @Transactional
-    void nullRefFallsBackToTheWriteTarget() throws IOException {
+    void nullRefFallsBackToTheWriteTarget() throws Exception {
         seedWriteTarget("sub-null", "default@example.com");
         GoogleCalendarPort port = port();
 
@@ -70,7 +70,7 @@ class StoredCalendarAddressTest {
 
     @Test
     @Transactional
-    void refOfAnotherOwnersCredentialFallsBackToTheWriteTarget() throws IOException {
+    void refOfAnotherOwnersCredentialFallsBackToTheWriteTarget() throws Exception {
         seedWriteTarget("sub-foreign", "default@example.com");
         // google_credential.owner_id is FK'd to app_user(id), so the "other owner" needs a real row.
         AppUser otherOwner = AppUser.create("other-owner", "x", false);
@@ -89,7 +89,7 @@ class StoredCalendarAddressTest {
 
     @Test
     @Transactional
-    void refWithNoGoogleCalendarIdFallsBackToTheWriteTarget() throws IOException {
+    void refWithNoGoogleCalendarIdFallsBackToTheWriteTarget() throws Exception {
         // credentialId present but googleCalendarId missing: writeAddress's guard must still degrade
         // rather than pass a null calendar id through to Google.
         var credId = seedWriteTarget("sub-no-calendar-id", "default@example.com");
@@ -102,7 +102,7 @@ class StoredCalendarAddressTest {
 
     @Test
     @Transactional
-    void refWithNoCredentialIdFallsBackToTheWriteTarget() throws IOException {
+    void refWithNoCredentialIdFallsBackToTheWriteTarget() throws Exception {
         // googleCalendarId present but credentialId missing: same guard, other half.
         seedWriteTarget("sub-no-cred-id", "default@example.com");
         GoogleCalendarPort port = port();
@@ -114,7 +114,7 @@ class StoredCalendarAddressTest {
 
     @Test
     @Transactional
-    void refPointingAtADeletedCredentialFallsBackToTheWriteTarget() throws IOException {
+    void refPointingAtADeletedCredentialFallsBackToTheWriteTarget() throws Exception {
         // Both fields present but the credential row itself is gone (account fully disconnected).
         seedWriteTarget("sub-deleted-cred", "default@example.com");
         GoogleCalendarPort port = port();
@@ -126,7 +126,7 @@ class StoredCalendarAddressTest {
 
     @Test
     @Transactional
-    void updateEventPatchesTheStoredCalendarNotTheWriteTarget() throws IOException {
+    void updateEventPatchesTheStoredCalendarNotTheWriteTarget() throws Exception {
         var credId = seedWriteTarget("sub-update-stored", "default@example.com");
         // updateEvent's eventTime() needs the owner's timezone
         seedOwnerSettings();
@@ -146,7 +146,7 @@ class StoredCalendarAddressTest {
 
     @Test
     @Transactional
-    void updateEventDetailsPatchesTheStoredCalendarNotTheWriteTarget() throws IOException {
+    void updateEventDetailsPatchesTheStoredCalendarNotTheWriteTarget() throws Exception {
         var credId = seedWriteTarget("sub-update-details-stored", "default@example.com");
         GoogleCalendarPort port = portForPatch();
 

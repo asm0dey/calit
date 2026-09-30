@@ -1,8 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 class IntervalTest {
@@ -14,30 +13,30 @@ class IntervalTest {
     void overlappingIntervalsReportOverlap() {
         Interval a = iv("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z");
         Interval b = iv("2026-06-08T09:30:00Z", "2026-06-08T10:30:00Z");
-        assertTrue(a.overlaps(b));
-        assertTrue(b.overlaps(a));
+        assertThat(a.overlaps(b)).isTrue();
+        assertThat(b.overlaps(a)).isTrue();
     }
 
     @Test
     void touchingBoundariesDoNotOverlap() {
         Interval a = iv("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z");
         Interval b = iv("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z");
-        assertFalse(a.overlaps(b));
-        assertFalse(b.overlaps(a));
+        assertThat(a.overlaps(b)).isFalse();
+        assertThat(b.overlaps(a)).isFalse();
     }
 
     @Test
     void disjointIntervalsDoNotOverlap() {
         Interval a = iv("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z");
         Interval b = iv("2026-06-08T11:00:00Z", "2026-06-08T12:00:00Z");
-        assertFalse(a.overlaps(b));
+        assertThat(a.overlaps(b)).isFalse();
     }
 
     @Test
     void containedIntervalOverlaps() {
         Interval a = iv("2026-06-08T09:00:00Z", "2026-06-08T12:00:00Z");
         Interval b = iv("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z");
-        assertTrue(a.overlaps(b));
+        assertThat(a.overlaps(b)).isTrue();
     }
 
     @Test
@@ -47,7 +46,7 @@ class IntervalTest {
                 iv("2026-06-08T07:00:00Z", "2026-06-08T08:00:00Z"),
                 iv("2026-06-08T09:30:00Z", "2026-06-08T09:45:00Z")
         );
-        assertTrue(slot.overlapsAny(busy));
+        assertThat(slot.overlapsAny(busy)).isTrue();
     }
 
     @Test
@@ -57,6 +56,6 @@ class IntervalTest {
                 iv("2026-06-08T07:00:00Z", "2026-06-08T08:00:00Z"),
                 iv("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z")
         );
-        assertFalse(slot.overlapsAny(busy));
+        assertThat(slot.overlapsAny(busy)).isFalse();
     }
 }

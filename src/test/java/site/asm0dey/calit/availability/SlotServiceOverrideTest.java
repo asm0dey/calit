@@ -1,8 +1,7 @@
 package site.asm0dey.calit.availability;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -30,8 +29,8 @@ class SlotServiceOverrideTest {
 
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
-        assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(13, 0), slots.getFirst().start().toLocalTime());
+        assertThat(slots).hasSize(1);
+        assertThat(slots.getFirst().start().toLocalTime()).isEqualTo(LocalTime.of(13, 0));
     }
 
     @Test
@@ -47,7 +46,7 @@ class SlotServiceOverrideTest {
 
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
-        assertTrue(slots.isEmpty());
+        assertThat(slots).isEmpty();
     }
 
     @Test
@@ -60,9 +59,9 @@ class SlotServiceOverrideTest {
 
         List<TimeSlot> slots = slotService.generateRawSlots(t, WORKDAY, WORKDAY);
 
-        assertEquals(2, slots.size());
-        assertEquals(LocalTime.of(9, 0), slots.getFirst().start().toLocalTime());
-        assertEquals(LocalTime.of(10, 0), slots.get(1).start().toLocalTime());
+        assertThat(slots).hasSize(2);
+        assertThat(slots.getFirst().start().toLocalTime()).isEqualTo(LocalTime.of(9, 0));
+        assertThat(slots.get(1).start().toLocalTime()).isEqualTo(LocalTime.of(10, 0));
     }
 
     // --- helpers ---

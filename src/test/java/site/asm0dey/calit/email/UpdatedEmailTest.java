@@ -1,7 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
@@ -91,18 +91,13 @@ class UpdatedEmailTest {
                 any(),
                 any(MailTag.class)
         );
-        assertTrue(to.getAllValues().contains("pat@example.com"), "invitee notified");
-        assertTrue(to.getAllValues().contains("owner@example.com"), "owner notified");
-        assertTrue(subject
-            .getAllValues()
-            .stream()
-            .anyMatch(su -> su.contains("Roadmap sync")), "subject has new name");
-        assertTrue(
-                body
-                    .getAllValues()
-                    .stream()
-                    .anyMatch(bo -> bo.contains("Q3 planning agenda")),
-                "body has description"
-        );
+        assertThat(to.getAllValues()).as("invitee notified").contains("pat@example.com");
+        assertThat(to.getAllValues()).as("owner notified").contains("owner@example.com");
+        assertThat(subject.getAllValues())
+            .as("subject has new name")
+            .anyMatch(su -> su.contains("Roadmap sync"));
+        assertThat(body.getAllValues())
+            .as("body has description")
+            .anyMatch(bo -> bo.contains("Q3 planning agenda"));
     }
 }

@@ -1,7 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
@@ -49,11 +49,11 @@ class HomeRedirectQueryCountTest {
         statistics.clear();
         given().redirects().follow(false).when().get("/").then().statusCode(303);
 
-        assertEquals(
-                1,
-                statistics.getPrepareStatementCount(),
-                "the redirect preference must resolve in one statement, not an app_user find plus an" + " owner_settings find"
-        );
+        assertThat(statistics.getPrepareStatementCount())
+            .as(
+                    "the redirect preference must resolve in one statement, not an app_user find plus an" + " owner_settings find"
+            )
+            .isOne();
     }
 
     @Test
@@ -64,7 +64,7 @@ class HomeRedirectQueryCountTest {
         statistics.clear();
         given().redirects().follow(false).when().get("/").then().statusCode(200);
 
-        assertEquals(1, statistics.getPrepareStatementCount(), "a missing settings row must still cost one statement");
+        assertThat(statistics.getPrepareStatementCount()).as("a missing settings row must still cost one statement").isOne();
     }
 
     @Test
@@ -76,6 +76,6 @@ class HomeRedirectQueryCountTest {
         statistics.clear();
         given().redirects().follow(false).when().get("/").then().statusCode(200);
 
-        assertEquals(0, statistics.getPrepareStatementCount(), "an anonymous GET / must issue no SQL at all");
+        assertThat(statistics.getPrepareStatementCount()).as("an anonymous GET / must issue no SQL at all").isZero();
     }
 }

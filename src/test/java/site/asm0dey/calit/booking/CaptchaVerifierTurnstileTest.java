@@ -1,8 +1,8 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
 import io.quarkus.test.junit.QuarkusTest;
@@ -67,17 +67,17 @@ class CaptchaVerifierTurnstileTest {
 
     @Test
     void validTurnstileTokenPasses() {
-        assertDoesNotThrow(() -> verifier.verify("good", null));
+        assertThatCode(() -> verifier.verify("good", null)).doesNotThrowAnyException();
     }
 
     @Test
     void invalidTurnstileTokenThrows() {
-        assertThrows(AbuseException.class, () -> verifier.verify("bad", null));
+        assertThatExceptionOfType(AbuseException.class).isThrownBy(() -> verifier.verify("bad", null));
     }
 
     @Test
     void missingTurnstileTokenThrows() {
-        assertThrows(AbuseException.class, () -> verifier.verify(null, null));
-        assertThrows(AbuseException.class, () -> verifier.verify("   ", null));
+        assertThatExceptionOfType(AbuseException.class).isThrownBy(() -> verifier.verify(null, null));
+        assertThatExceptionOfType(AbuseException.class).isThrownBy(() -> verifier.verify("   ", null));
     }
 }

@@ -1,9 +1,9 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.when;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.mockito.InjectSpy;
@@ -83,13 +83,13 @@ class CaptchaVerifierTest {
     @Test
     void validSolutionPasses() throws Exception {
         var payload = validPayload();
-        assertDoesNotThrow(() -> verifier.verify(null, payload));
+        assertThatCode(() -> verifier.verify(null, payload)).doesNotThrowAnyException();
     }
 
     @Test
     void missingSolutionThrows() {
-        assertThrows(AbuseException.class, () -> verifier.verify(null, null));
-        assertThrows(AbuseException.class, () -> verifier.verify(null, "   "));
+        assertThatExceptionOfType(AbuseException.class).isThrownBy(() -> verifier.verify(null, null));
+        assertThatExceptionOfType(AbuseException.class).isThrownBy(() -> verifier.verify(null, "   "));
     }
 
     @Test
@@ -103,10 +103,10 @@ class CaptchaVerifierTest {
         var marker = "\"signature\":\"";
         var at = json.indexOf(marker) + marker.length();
         var tampered = json.substring(0, at) + (json.charAt(at) == '0' ? '1' : '0') + json.substring(at + 1);
-        assertNotEquals(json, tampered, "the tamper must actually change the payload");
+        assertThat(tampered).as("the tamper must actually change the payload").isNotEqualTo(json);
 
         var bad = Base64.getEncoder().encodeToString(tampered.getBytes(StandardCharsets.UTF_8));
-        assertThrows(AbuseException.class, () -> verifier.verify(null, bad));
+        assertThatExceptionOfType(AbuseException.class).isThrownBy(() -> verifier.verify(null, bad));
     }
 
     @Test
@@ -116,7 +116,7 @@ class CaptchaVerifierTest {
         // would notice if verification silently used a different secret -- or an empty one, which
         // CaptchaVerifier's altchaHmacKey().orElse("") makes reachable on a misconfigured deployment.
         var forged = payloadSignedWith("not-the-server-key", 300);
-        assertThrows(AbuseException.class, () -> verifier.verify(null, forged));
+        assertThatExceptionOfType(AbuseException.class).isThrownBy(() -> verifier.verify(null, forged));
     }
 
     @Test
@@ -124,7 +124,7 @@ class CaptchaVerifierTest {
         // CaptchaVerifier passes checkExpires=true and AltchaResource mints with a 300s window;
         // nothing exercised that until now.
         var stale = payloadSignedWith(KEY, -60);
-        assertThrows(AbuseException.class, () -> verifier.verify(null, stale));
+        assertThatExceptionOfType(AbuseException.class).isThrownBy(() -> verifier.verify(null, stale));
     }
 
     @Test
@@ -137,7 +137,7 @@ class CaptchaVerifierTest {
         // This test exists so the day someone adds that store, it fails and tells them the behaviour
         // changed, instead of the change landing unnoticed.
         var payload = validPayload();
-        assertDoesNotThrow(() -> verifier.verify(null, payload));
-        assertDoesNotThrow(() -> verifier.verify(null, payload));
+        assertThatCode(() -> verifier.verify(null, payload)).doesNotThrowAnyException();
+        assertThatCode(() -> verifier.verify(null, payload)).doesNotThrowAnyException();
     }
 }

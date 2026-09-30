@@ -1,7 +1,7 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -17,8 +17,9 @@ class GoogleCalendarTest {
 
         List<GoogleCalendar> readers = GoogleCalendar.readForBusy(1L);
 
-        assertEquals(2, readers.size());
-        assertTrue(readers.stream().allMatch(c -> c.readForBusy));
+        assertThat(readers)
+            .hasSize(2)
+            .allMatch(c -> c.readForBusy);
     }
 
     @Test
@@ -29,15 +30,15 @@ class GoogleCalendarTest {
 
         GoogleCalendar target = GoogleCalendar.writeTarget(1L);
 
-        assertNotNull(target);
-        assertEquals("write@example.com", target.googleCalendarId);
+        assertThat(target).isNotNull();
+        assertThat(target.googleCalendarId).isEqualTo("write@example.com");
     }
 
     @Test
     @TestTransaction
     void writeTargetIsNullWhenNoneSelected() {
         cal("read@example.com", "Read", true, false);
-        assertNull(GoogleCalendar.writeTarget(1L));
+        assertThat(GoogleCalendar.writeTarget(1L)).isNull();
     }
 
     private GoogleCalendar cal(String id, String summary, boolean read, boolean write) {

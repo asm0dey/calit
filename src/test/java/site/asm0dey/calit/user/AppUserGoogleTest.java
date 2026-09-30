@@ -1,6 +1,6 @@
 package site.asm0dey.calit.user;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -13,23 +13,23 @@ class AppUserGoogleTest {
         AppUser u = AppUser.createGoogleUser("alice", "google-sub-123");
         u.persistAndFlush();
 
-        assertNotNull(u.id, "id assigned");
-        assertNull(u.passwordHash, "OAuth-only user has no password hash");
-        assertEquals("user", u.roles, "non-admin role");
-        assertFalse(u.mustChangePassword, "no forced password reset for OAuth users");
-        assertFalse(u.settingsComplete, "still needs the first-login wizard");
-        assertFalse(u.isAdmin, "Google users are non-admin");
+        assertThat(u.id).as("id assigned").isNotNull();
+        assertThat(u.passwordHash).as("OAuth-only user has no password hash").isNull();
+        assertThat(u.roles).as("non-admin role").isEqualTo("user");
+        assertThat(u.mustChangePassword).as("no forced password reset for OAuth users").isFalse();
+        assertThat(u.settingsComplete).as("still needs the first-login wizard").isFalse();
+        assertThat(u.isAdmin).as("Google users are non-admin").isFalse();
 
         AppUser found = AppUser.findByGoogleSub("google-sub-123");
-        assertNotNull(found, "lookup by sub returns the user");
-        assertEquals(u.id, found.id);
-        assertEquals("google-sub-123", found.googleSub, "sub round-trips");
+        assertThat(found).as("lookup by sub returns the user").isNotNull();
+        assertThat(found.id).isEqualTo(u.id);
+        assertThat(found.googleSub).as("sub round-trips").isEqualTo("google-sub-123");
     }
 
     @Test
     @TestTransaction
     void findByGoogleSubReturnsNullForUnknownAndNull() {
-        assertNull(AppUser.findByGoogleSub("nope"));
-        assertNull(AppUser.findByGoogleSub(null));
+        assertThat(AppUser.findByGoogleSub("nope")).isNull();
+        assertThat(AppUser.findByGoogleSub(null)).isNull();
     }
 }

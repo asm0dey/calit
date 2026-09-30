@@ -1,8 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 class IcsBuilderEscapeTest {
@@ -33,15 +32,11 @@ class IcsBuilderEscapeTest {
                 noInjectedLine[1] = false;
             }
         }
-        assertTrue(noInjectedLine[0], "UID must not inject a new property line");
-        assertTrue(noInjectedLine[1], "ORGANIZER must not inject a new property line");
+        assertThat(noInjectedLine[0]).as("UID must not inject a new property line").isTrue();
+        assertThat(noInjectedLine[1]).as("ORGANIZER must not inject a new property line").isTrue();
         // And no raw CR/LF survives anywhere inside a value to fold/inject a line.
-        assertFalse(
-                Arrays
-                    .asList(ics.split("\r\n"))
-                    .stream()
-                    .anyMatch(l -> l.contains("\n") || l.contains("\r")),
-                "no raw CR/LF may survive inside any property value"
-        );
+        assertThat(ics.split("\r\n"))
+            .as("no raw CR/LF may survive inside any property value")
+            .noneMatch(l -> l.contains("\n") || l.contains("\r"));
     }
 }

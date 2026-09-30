@@ -1,6 +1,6 @@
 package site.asm0dey.calit.booking;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -46,35 +46,35 @@ class MeetingHostsBufferTest {
     @Test
     void neitherSetFallsBackToTheTypeBuffer() {
         MeetingType t = seed("buf-none", null, null);
-        assertEquals(10, meetingHosts.effectiveBufferBefore(t, OWNER, 120));
-        assertEquals(10, meetingHosts.effectiveBufferAfter(t, OWNER, 120));
+        assertThat(meetingHosts.effectiveBufferBefore(t, OWNER, 120)).isEqualTo(10);
+        assertThat(meetingHosts.effectiveBufferAfter(t, OWNER, 120)).isEqualTo(10);
     }
 
     @Test
     void aHostOverrideBelowTheTypeDefaultIsNotRaised() {
         MeetingType t = seed("buf-host-low", 5, null);
-        assertEquals(5, meetingHosts.effectiveBufferBefore(t, OWNER, 120));
+        assertThat(meetingHosts.effectiveBufferBefore(t, OWNER, 120)).isEqualTo(5);
     }
 
     @Test
     void aDurationOverrideAppliesWhenTheHostHasNone() {
         MeetingType t = seed("buf-duration", null, 45);
-        assertEquals(45, meetingHosts.effectiveBufferBefore(t, OWNER, 120));
+        assertThat(meetingHosts.effectiveBufferBefore(t, OWNER, 120)).isEqualTo(45);
     }
 
     @Test
     void theLargerOfTwoSetOverridesWins() {
         MeetingType t = seed("buf-both-duration-wins", 5, 45);
-        assertEquals(45, meetingHosts.effectiveBufferBefore(t, OWNER, 120));
+        assertThat(meetingHosts.effectiveBufferBefore(t, OWNER, 120)).isEqualTo(45);
 
         MeetingType u = seed("buf-both-host-wins", 90, 45);
-        assertEquals(90, meetingHosts.effectiveBufferBefore(u, OWNER, 120));
+        assertThat(meetingHosts.effectiveBufferBefore(u, OWNER, 120)).isEqualTo(90);
     }
 
     @Test
     void aLengthWithNoRowUsesOnlyTheHostOverride() {
         MeetingType t = seed("buf-other-length", 5, 45);
         // 30 has no meeting_type_duration row, so only the host's 5 is set.
-        assertEquals(5, meetingHosts.effectiveBufferBefore(t, OWNER, 30));
+        assertThat(meetingHosts.effectiveBufferBefore(t, OWNER, 30)).isEqualTo(5);
     }
 }

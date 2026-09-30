@@ -1,7 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -41,14 +41,15 @@ class BookingTest {
         b.persist();
 
         Booking loaded = Booking.findById(b.id);
-        assertEquals(BookingStatus.CONFIRMED, loaded.status);
-        assertEquals("https://meet.google.com/abc-defg-hij", loaded.meetLink);
-        assertEquals(start, loaded.startUtc);
+        assertThat(loaded.status).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(loaded.meetLink).isEqualTo("https://meet.google.com/abc-defg-hij");
+        assertThat(loaded.startUtc).isEqualTo(start);
         // Manage-token round-trips and is the invitee's reschedule/cancel key.
-        assertEquals("11111111-2222-3333-4444-555555555555", loaded.manageToken);
-        // Feature 10: custom answers round-trip through the JSONB column.
-        assertEquals("Quarterly sync", loaded.answers.get("description"));
-        assertEquals("+31201234567", loaded.answers.get("phone"));
+        assertThat(loaded.manageToken).isEqualTo("11111111-2222-3333-4444-555555555555");
+        assertThat(loaded.answers)
+            // Feature 10: custom answers round-trip through the JSONB column.
+            .containsEntry("description", "Quarterly sync")
+            .containsEntry("phone", "+31201234567");
     }
 
     @Test
@@ -79,11 +80,9 @@ class BookingTest {
         // Window 06:00-08:00 catches the CONFIRMED + PENDING holds, not CANCELLED/DECLINED.
         List<Booking> hits = Booking.heldOverlapping(1L, base.minusSeconds(3600), base.plusSeconds(3600));
 
-        assertEquals(2, hits.size());
-        assertTrue(hits
-            .stream()
-            .allMatch(x -> x.status == BookingStatus.PENDING || x.status == BookingStatus.CONFIRMED)
-        );
+        assertThat(hits)
+            .hasSize(2)
+            .allMatch(x -> x.status == BookingStatus.PENDING || x.status == BookingStatus.CONFIRMED);
     }
 
     @Test
@@ -98,7 +97,7 @@ class BookingTest {
 
         Booking loaded = Booking.findByManageToken("tok-abc");
 
-        assertEquals(BookingStatus.PENDING, loaded.status);
+        assertThat(loaded.status).isEqualTo(BookingStatus.PENDING);
     }
 
     private void persistBooking(Instant start, Instant end, BookingStatus status) {
@@ -126,8 +125,8 @@ class BookingTest {
         t.name = "Discovery Call";
         t.description = "A 30-min intro";
         Booking b = new Booking();
-        assertEquals("Discovery Call", b.effectiveTitle(t));
-        assertEquals("A 30-min intro", b.effectiveDescription(t));
+        assertThat(b.effectiveTitle(t)).isEqualTo("Discovery Call");
+        assertThat(b.effectiveDescription(t)).isEqualTo("A 30-min intro");
     }
 
     @Test
@@ -138,8 +137,8 @@ class BookingTest {
         Booking b = new Booking();
         b.title = "Roadmap sync";
         b.description = "Q3 planning";
-        assertEquals("Roadmap sync", b.effectiveTitle(t));
-        assertEquals("Q3 planning", b.effectiveDescription(t));
+        assertThat(b.effectiveTitle(t)).isEqualTo("Roadmap sync");
+        assertThat(b.effectiveDescription(t)).isEqualTo("Q3 planning");
     }
 
     @Test
@@ -149,7 +148,7 @@ class BookingTest {
         t.description = null;
         Booking b = new Booking();
         b.title = "   ";
-        assertEquals("Discovery Call", b.effectiveTitle(t));
-        assertNull(b.effectiveDescription(t));
+        assertThat(b.effectiveTitle(t)).isEqualTo("Discovery Call");
+        assertThat(b.effectiveDescription(t)).isNull();
     }
 }

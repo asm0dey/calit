@@ -1,8 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
@@ -63,10 +62,10 @@ class GroupApprovalTest {
                         List.of()
         );
         List<Booking> rows = Booking.group(lead.groupId);
-        assertEquals(2, rows.size());
+        assertThat(rows).hasSize(2);
         // first host approves
         bookingService.approve(rows.get(0).id);
-        assertEquals(BookingStatus.CONFIRMED, Booking.<Booking>findById(rows.get(0).id).status);
+        assertThat(Booking.<Booking>findById(rows.get(0).id).status).isEqualTo(BookingStatus.CONFIRMED);
         verify(calendarPort, never()).createEvent(
                 anyLong(),
                 any(),
@@ -82,7 +81,7 @@ class GroupApprovalTest {
         bookingService.approve(rows.get(1).id);
         Booking
             .<Booking>group(lead.groupId)
-            .forEach(r -> assertEquals(BookingStatus.CONFIRMED, r.status));
+            .forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.CONFIRMED));
         verify(calendarPort, times(1))
             .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
@@ -110,7 +109,7 @@ class GroupApprovalTest {
                         List.of()
         );
         List<Booking> rows = Booking.group(lead.groupId);
-        assertEquals(2, rows.size());
+        assertThat(rows).hasSize(2);
         // first host approves
         bookingService.approve(rows.get(0).id);
         // last host approves -> event created + group confirmed
@@ -144,17 +143,17 @@ class GroupApprovalTest {
                         List.of()
         );
         List<Booking> rows = Booking.group(lead.groupId);
-        assertEquals(2, rows.size());
+        assertThat(rows).hasSize(2);
 
         bookingService.decline(rows.get(0).id);
         Booking
             .<Booking>group(lead.groupId)
-            .forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
+            .forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.DECLINED));
         // Double-submit: decline an already-DECLINED row again -> no-op.
         bookingService.decline(rows.get(1).id);
         Booking
             .<Booking>group(lead.groupId)
-            .forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
+            .forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.DECLINED));
         verify(calendarPort, never()).createEvent(
                 anyLong(),
                 any(),
@@ -188,13 +187,13 @@ class GroupApprovalTest {
                         List.of()
         );
         List<Booking> rows = Booking.group(lead.groupId);
-        assertEquals(2, rows.size());
+        assertThat(rows).hasSize(2);
 
         bookingService.decline(rows.get(0).id);
 
         Booking
             .<Booking>group(lead.groupId)
-            .forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
+            .forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.DECLINED));
         verify(calendarPort, never()).createEvent(
                 anyLong(),
                 any(),
@@ -234,7 +233,7 @@ class GroupApprovalTest {
 
         Booking
             .<Booking>group(lead.groupId)
-            .forEach(r -> assertEquals(BookingStatus.CANCELLED, r.status));
+            .forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.CANCELLED));
     }
 
     @Test
@@ -261,13 +260,13 @@ class GroupApprovalTest {
 
         bookingService.decline(rows.get(0).id);
 
-        assertEquals(BookingStatus.CONFIRMED, Booking.<Booking>findById(rows.get(0).id).status);
-        assertEquals(BookingStatus.PENDING, Booking.<Booking>findById(rows.get(1).id).status);
+        assertThat(Booking.<Booking>findById(rows.get(0).id).status).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(Booking.<Booking>findById(rows.get(1).id).status).isEqualTo(BookingStatus.PENDING);
 
         bookingService.decline(rows.get(1).id);
 
         Booking
             .<Booking>group(lead.groupId)
-            .forEach(r -> assertEquals(BookingStatus.DECLINED, r.status));
+            .forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.DECLINED));
     }
 }

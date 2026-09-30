@@ -1,8 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
@@ -67,19 +66,19 @@ class RescheduleCancelTest {
         bookingService.reschedule(b.manageToken, SLOT_10);
 
         Booking loaded = Booking.findById(b.id);
-        assertEquals(BookingStatus.CONFIRMED, loaded.status);
-        assertEquals(SLOT_10, loaded.startUtc);
-        assertEquals(SLOT_10.plusSeconds(3600), loaded.endUtc);
+        assertThat(loaded.status).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(loaded.startUtc).isEqualTo(SLOT_10);
+        assertThat(loaded.endUtc).isEqualTo(SLOT_10.plusSeconds(3600));
         verify(calendarPort, times(1))
             .updateEvent(anyLong(), any(), eq("evt-r"), eq(SLOT_10), eq(SLOT_10.plusSeconds(3600)), any());
         // Old 09:00 time is free again; new 10:00 time is now taken.
         List<TimeSlot> avail = bookingService.availableSlots(t, DAY, DAY);
-        assertTrue(avail
-            .stream()
-            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
-        assertTrue(avail
-            .stream()
-            .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(10, 0))));
+        assertThat(avail)
+            .extracting(s -> s.start().toLocalTime())
+            .contains(LocalTime.of(9, 0));
+        assertThat(avail)
+            .extracting(s -> s.start().toLocalTime())
+            .doesNotContain(LocalTime.of(10, 0));
     }
 
     @Test
@@ -121,10 +120,10 @@ class RescheduleCancelTest {
         bookingService.reschedule(b.manageToken, SLOT_10);
 
         Booking loaded = Booking.findById(b.id);
-        assertEquals(BookingStatus.PENDING, loaded.status, "approval type re-enters PENDING on reschedule");
-        assertEquals(SLOT_10, loaded.startUtc);
-        assertNull(loaded.googleEventId, "the prior event is deleted on re-request");
-        assertNull(loaded.meetLink);
+        assertThat(loaded.status).as("approval type re-enters PENDING on reschedule").isEqualTo(BookingStatus.PENDING);
+        assertThat(loaded.startUtc).isEqualTo(SLOT_10);
+        assertThat(loaded.googleEventId).as("the prior event is deleted on re-request").isNull();
+        assertThat(loaded.meetLink).isNull();
         verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), eq("evt-ra"));
         verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any(), any());
     }
@@ -167,8 +166,8 @@ class RescheduleCancelTest {
         bookingService.reschedule(b.manageToken, SLOT_09, null, false);
 
         Booking loaded = Booking.findById(b.id);
-        assertEquals(SLOT_09, loaded.startUtc);
-        assertEquals(beforeSeq, loaded.icsSequence, "no-op must not bump the sequence");
+        assertThat(loaded.startUtc).isEqualTo(SLOT_09);
+        assertThat(loaded.icsSequence).as("no-op must not bump the sequence").isEqualTo(beforeSeq);
         verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any(), any());
     }
 
@@ -205,23 +204,19 @@ class RescheduleCancelTest {
                         "en",
                         List.of()
         );
-        assertTrue(bookingService
-            .availableSlots(t, DAY, DAY)
-            .stream()
-            .noneMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))
-        );
+        assertThat(bookingService.availableSlots(t, DAY, DAY))
+            .extracting(s -> s.start().toLocalTime())
+            .doesNotContain(LocalTime.of(9, 0));
         // Cancel is keyed by the manage-token.
         bookingService.cancel(b.manageToken);
 
         Booking loaded = Booking.findById(b.id);
-        assertEquals(BookingStatus.CANCELLED, loaded.status);
+        assertThat(loaded.status).isEqualTo(BookingStatus.CANCELLED);
         verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), eq("evt-c"));
         // 09:00 slot is bookable again.
-        assertTrue(bookingService
-            .availableSlots(t, DAY, DAY)
-            .stream()
-            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))
-        );
+        assertThat(bookingService.availableSlots(t, DAY, DAY))
+            .extracting(s -> s.start().toLocalTime())
+            .contains(LocalTime.of(9, 0));
     }
 
     @Test
@@ -260,13 +255,13 @@ class RescheduleCancelTest {
         bookingService.cancel(b.manageToken);
 
         Booking loaded = Booking.findById(b.id);
-        assertEquals(BookingStatus.CANCELLED, loaded.status);
+        assertThat(loaded.status).isEqualTo(BookingStatus.CANCELLED);
         // Same post-state the group path leaves behind (deleteGroupGoogleEvent): a cancelled row
         // must not keep pointing at an event that no longer exists on Google.
-        assertNull(loaded.googleEventId);
-        assertNull(loaded.meetLink);
-        assertNull(loaded.googleCalendarId);
-        assertNull(loaded.googleCredentialId);
+        assertThat(loaded.googleEventId).isNull();
+        assertThat(loaded.meetLink).isNull();
+        assertThat(loaded.googleCalendarId).isNull();
+        assertThat(loaded.googleCredentialId).isNull();
     }
 
     @Test
@@ -308,8 +303,8 @@ class RescheduleCancelTest {
 
         Booking loaded = Booking.findById(b.id);
         verify(calendarPort, never()).deleteEvent(anyLong(), any(), eq("evt-off"));
-        assertNull(loaded.googleEventId);
-        assertNull(loaded.meetLink);
+        assertThat(loaded.googleEventId).isNull();
+        assertThat(loaded.meetLink).isNull();
     }
 
     @Test

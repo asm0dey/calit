@@ -2,9 +2,8 @@ package site.asm0dey.calit.web.og;
 
 import module java.base;
 import module java.desktop;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static site.asm0dey.calit.web.og.TextRuns.width;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -32,12 +31,15 @@ class CardRendererCoverageTest {
 
         var lines = renderer.fitHeadline(g, "Quarterly review");
 
-        assertEquals(1, lines.size(), "still fits on one line once shrunk");
+        assertThat(lines).as("still fits on one line once shrunk").hasSize(1);
         float size = lines.getFirst().getFirst().font().getSize2D();
-        assertTrue(size < 74f, "expected the ladder to shrink below the default 74, got " + size);
-        assertTrue(size >= 52f, "the ladder must not shrink past its floor of 52, got " + size);
+        assertThat(size)
+            .as("expected the ladder to shrink below the default 74, got " + size)
+            .isLessThan(74f)
+            .as("the ladder must not shrink past its floor of 52, got " + size)
+            .isGreaterThanOrEqualTo(52f);
         int maxWidth = CardRenderer.SAFE_X1 - CardRenderer.SAFE_X0 - 40;
-        assertTrue(TextRuns.width(g, lines.getFirst()) <= maxWidth);
+        assertThat(width(g, lines.getFirst())).isLessThanOrEqualTo(maxWidth);
         g.dispose();
     }
 
@@ -50,12 +52,12 @@ class CardRendererCoverageTest {
 
         var lines = renderer.fitHeadline(g, "Quarterly architecture review session");
 
-        assertEquals(2, lines.size());
+        assertThat(lines).hasSize(2);
         int maxWidth = CardRenderer.SAFE_X1 - CardRenderer.SAFE_X0 - 40;
         for (var line : lines) {
             String text = line.stream().map(TextRuns.Run::text).reduce("", String::concat);
-            assertFalse(text.endsWith("…"), "wrapping alone should be enough here, got: " + text);
-            assertTrue(TextRuns.width(g, line) <= maxWidth, "line must fit the safe square: " + text);
+            assertThat(text).as("wrapping alone should be enough here, got: " + text).doesNotEndWith("…");
+            assertThat(width(g, line)).as("line must fit the safe square: " + text).isLessThanOrEqualTo(maxWidth);
         }
         g.dispose();
     }
@@ -69,14 +71,14 @@ class CardRendererCoverageTest {
 
         var lines = renderer.fitHeadline(g, "Quarterly architecture review and roadmap planning");
 
-        assertEquals(2, lines.size());
+        assertThat(lines).hasSize(2);
         int maxWidth = CardRenderer.SAFE_X1 - CardRenderer.SAFE_X0 - 40;
         String firstLine = lines.get(0).stream().map(TextRuns.Run::text).reduce("", String::concat);
         String secondLine = lines.get(1).stream().map(TextRuns.Run::text).reduce("", String::concat);
-        assertFalse(firstLine.endsWith("…"), "first line should fit without ellipsis: " + firstLine);
-        assertTrue(secondLine.endsWith("…"), "second line should be ellipsized: " + secondLine);
-        assertTrue(TextRuns.width(g, lines.get(0)) <= maxWidth);
-        assertTrue(TextRuns.width(g, lines.get(1)) <= maxWidth);
+        assertThat(firstLine).as("first line should fit without ellipsis: " + firstLine).doesNotEndWith("…");
+        assertThat(secondLine).as("second line should be ellipsized: " + secondLine).endsWith("…");
+        assertThat(width(g, lines.get(0))).isLessThanOrEqualTo(maxWidth);
+        assertThat(width(g, lines.get(1))).isLessThanOrEqualTo(maxWidth);
         g.dispose();
     }
 
@@ -89,8 +91,8 @@ class CardRendererCoverageTest {
                 new CardRenderer.Card("Ada Lovelace", "Quarterly architecture review session", "15, 30 or 60 min")
         );
         var img = ImageIO.read(new ByteArrayInputStream(png));
-        assertEquals(1200, img.getWidth());
-        assertEquals(630, img.getHeight());
+        assertThat(img.getWidth()).isEqualTo(1200);
+        assertThat(img.getHeight()).isEqualTo(630);
 
         var dark = 0;
         for (var x = CardRenderer.SAFE_X0; x < CardRenderer.SAFE_X1; x++) {
@@ -100,7 +102,9 @@ class CardRendererCoverageTest {
                 }
             }
         }
-        assertTrue(dark > 2000, "expected a two-line headline plus pill inside the safe square, found " + dark);
+        assertThat(dark)
+            .as("expected a two-line headline plus pill inside the safe square, found " + dark)
+            .isGreaterThan(2000);
     }
 
     @Test
@@ -116,16 +120,15 @@ class CardRendererCoverageTest {
 
         var lines = renderer.fitHeadline(g, unbrokenWord);
 
-        assertEquals(1, lines.size(), "an unbreakable single word should stay one line, not overflow");
+        assertThat(lines).as("an unbreakable single word should stay one line, not overflow").hasSize(1);
         String rendered = lines.getFirst().stream().map(TextRuns.Run::text).reduce("", String::concat);
-        assertTrue(rendered.endsWith("…"), "expected an ellipsis, got: " + rendered);
-        assertTrue(rendered.length() < unbrokenWord.length(), "expected the word to be truncated");
+        assertThat(rendered).as("expected an ellipsis, got: " + rendered).endsWith("…");
+        assertThat(rendered.length()).as("expected the word to be truncated").isLessThan(unbrokenWord.length());
 
         int maxWidth = CardRenderer.SAFE_X1 - CardRenderer.SAFE_X0 - 40;
-        assertTrue(
-                TextRuns.width(g, lines.getFirst()) <= maxWidth,
-                "ellipsized line must fit the safe square, width was " + TextRuns.width(g, lines.getFirst())
-        );
+        assertThat(width(g, lines.getFirst()))
+            .as("ellipsized line must fit the safe square, width was " + width(g, lines.getFirst()))
+            .isLessThanOrEqualTo(maxWidth);
         g.dispose();
     }
 
@@ -133,21 +136,21 @@ class CardRendererCoverageTest {
     void ownerTextNoShippedFontCanDrawIsUnrenderable() {
         // Mirrors CardRendererTest.reportsUnrenderableText's CJK type case but for the owner slot,
         // exercising the covered(owner) operand of renderable()'s AND chain on its false side.
-        assertFalse(renderer.renderable(new CardRenderer.Card("コーヒー", "Coffee chat", "30 min")));
+        assertThat(renderer.renderable(new CardRenderer.Card("コーヒー", "Coffee chat", "30 min"))).isFalse();
     }
 
     @Test
     void metaTextNoShippedFontCanDrawIsUnrenderable() {
         // Exercises the covered(meta) operand's false side -- reportsUnrenderableText only reaches
         // the type operand before short-circuiting.
-        assertFalse(renderer.renderable(new CardRenderer.Card("Ada", "Coffee chat", "コーヒー")));
+        assertThat(renderer.renderable(new CardRenderer.Card("Ada", "Coffee chat", "コーヒー"))).isFalse();
     }
 
     @Test
     void blankOwnerAndMetaAreStillRenderable() {
         // Owner and meta are optional -- nullToEmpty("").isBlank()-driven skips in render() mean a
         // blank/null owner or meta must NOT make the card unrenderable, only a blank type does.
-        assertTrue(renderer.renderable(new CardRenderer.Card(null, "Coffee chat", null)));
-        assertTrue(renderer.renderable(new CardRenderer.Card("", "Coffee chat", "")));
+        assertThat(renderer.renderable(new CardRenderer.Card(null, "Coffee chat", null))).isTrue();
+        assertThat(renderer.renderable(new CardRenderer.Card("", "Coffee chat", ""))).isTrue();
     }
 }

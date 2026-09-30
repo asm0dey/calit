@@ -1,7 +1,7 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -57,13 +57,13 @@ class GoogleTokenServiceProbeTest {
 
         GoogleTokenService.ProbeResult r = svc.probe(id, now);
 
-        assertEquals(GoogleTokenService.ProbeResult.OK, r);
+        assertThat(r).isEqualTo(GoogleTokenService.ProbeResult.OK);
         GoogleCredential c = GoogleCredential.findById(id);
         // forced refresh ran despite non-expiry
-        assertEquals("fresh", c.accessToken);
-        assertFalse(c.needsReconnect);
+        assertThat(c.accessToken).isEqualTo("fresh");
+        assertThat(c.needsReconnect).isFalse();
         // recovery resets the notify gate
-        assertNull(c.reconnectNotifiedAt);
+        assertThat(c.reconnectNotifiedAt).isNull();
     }
 
     @Test
@@ -76,11 +76,11 @@ class GoogleTokenServiceProbeTest {
 
         GoogleTokenService.ProbeResult r = svc.probe(id, now);
 
-        assertEquals(GoogleTokenService.ProbeResult.INVALID_GRANT, r);
+        assertThat(r).isEqualTo(GoogleTokenService.ProbeResult.INVALID_GRANT);
         GoogleCredential c = GoogleCredential.findById(id);
-        assertTrue(c.needsReconnect);
+        assertThat(c.needsReconnect).isTrue();
         // still unset -> notifier will email
-        assertNull(c.reconnectNotifiedAt);
+        assertThat(c.reconnectNotifiedAt).isNull();
     }
 
     @Test
@@ -93,16 +93,16 @@ class GoogleTokenServiceProbeTest {
 
         GoogleTokenService.ProbeResult r = svc.probe(id, now);
 
-        assertEquals(GoogleTokenService.ProbeResult.TRANSIENT, r);
+        assertThat(r).isEqualTo(GoogleTokenService.ProbeResult.TRANSIENT);
         GoogleCredential c = GoogleCredential.findById(id);
         // a blip must NOT flag (no false alarm)
-        assertFalse(c.needsReconnect);
+        assertThat(c.needsReconnect).isFalse();
     }
 
     @Test
     @TestTransaction
     void missingCredentialReturnsNull() {
         var svc = new StubTokenService(config);
-        assertNull(svc.probe(999_999L, Instant.parse("2026-06-15T10:00:00Z")));
+        assertThat(svc.probe(999_999L, Instant.parse("2026-06-15T10:00:00Z"))).isNull();
     }
 }

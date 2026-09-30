@@ -1,7 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -16,18 +16,19 @@ class InviteeEmailValidationTest {
         var start = Instant.parse("2099-01-01T10:00:00Z");
         Map<String, String> answers = Map.of();
         List<String> guestEmails = List.of();
-        assertThrows(BookingValidationException.class, () -> bookingService.book(
-                1L,
-                "intro",
-                start,
-                "Mallory",
-                "a@b.com\r\nBcc: attacker@evil.com",
-                answers,
-                null,
-                null,
-                "en",
-                guestEmails
-        ));
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "intro",
+                    start,
+                    "Mallory",
+                    "a@b.com\r\nBcc: attacker@evil.com",
+                    answers,
+                    null,
+                    null,
+                    "en",
+                    guestEmails
+            ));
     }
 
     @Test
@@ -36,18 +37,19 @@ class InviteeEmailValidationTest {
         var start = Instant.parse("2099-01-01T10:00:00Z");
         Map<String, String> answers = Map.of();
         List<String> guestEmails = List.of();
-        assertThrows(BookingValidationException.class, () -> bookingService.book(
-                1L,
-                "intro",
-                start,
-                "Mallory",
-                huge,
-                answers,
-                null,
-                null,
-                "en",
-                guestEmails
-        ));
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "intro",
+                    start,
+                    "Mallory",
+                    huge,
+                    answers,
+                    null,
+                    null,
+                    "en",
+                    guestEmails
+            ));
     }
 
     @Test
@@ -55,18 +57,19 @@ class InviteeEmailValidationTest {
         var start = Instant.parse("2099-01-01T10:00:00Z");
         Map<String, String> answers = Map.of();
         List<String> guestEmails = List.of();
-        assertThrows(BookingValidationException.class, () -> bookingService.book(
-                1L,
-                "intro",
-                start,
-                "Mallory",
-                "not-an-email",
-                answers,
-                null,
-                null,
-                "en",
-                guestEmails
-        ));
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "intro",
+                    start,
+                    "Mallory",
+                    "not-an-email",
+                    answers,
+                    null,
+                    null,
+                    "en",
+                    guestEmails
+            ));
     }
 
     @Test
@@ -75,18 +78,19 @@ class InviteeEmailValidationTest {
         var start = Instant.parse("2099-01-01T10:00:00Z");
         Map<String, String> answers = Map.of();
         List<String> guestEmails = List.of();
-        assertThrows(BookingValidationException.class, () -> bookingService.book(
-                1L,
-                "intro",
-                start,
-                longName,
-                "a@b.com",
-                answers,
-                null,
-                null,
-                "en",
-                guestEmails
-        ));
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "intro",
+                    start,
+                    longName,
+                    "a@b.com",
+                    answers,
+                    null,
+                    null,
+                    "en",
+                    guestEmails
+            ));
     }
 
     @Test
@@ -95,17 +99,18 @@ class InviteeEmailValidationTest {
         var start = Instant.parse("2099-01-01T10:00:00Z");
         Map<String, String> answers = Map.of("note", longAnswer);
         List<String> guestEmails = List.of();
-        assertThrows(BookingValidationException.class, () -> bookingService.book(
-                1L,
-                "intro",
-                start,
-                "Bob",
-                "a@b.com",
-                answers,
-                null,
-                null,
-                "en",
-                guestEmails
-        ));
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "intro",
+                    start,
+                    "Bob",
+                    "a@b.com",
+                    answers,
+                    null,
+                    null,
+                    "en",
+                    guestEmails
+            ));
     }
 }

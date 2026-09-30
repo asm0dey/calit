@@ -1,8 +1,6 @@
 package site.asm0dey.calit.privacy;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -62,11 +60,11 @@ class ErasureGoogleOutcomeTest {
 
         ErasureReport report = privacy.eraseByManageToken(token);
 
-        assertEquals(ErasureReport.GoogleOutcome.REMOVED, report.google());
+        assertThat(report.google()).isEqualTo(ErasureReport.GoogleOutcome.REMOVED);
         verify(calendarPort).deleteEvent(eq(ErasureFixtures.OWNER), any(), eq(EVENT));
         Booking b = reload(id);
-        assertTrue(b.isErased());
-        assertEquals(BookingStatus.CANCELLED, b.status);
+        assertThat(b.isErased()).isTrue();
+        assertThat(b.status).isEqualTo(BookingStatus.CANCELLED);
     }
 
     @Test
@@ -77,12 +75,12 @@ class ErasureGoogleOutcomeTest {
 
         ErasureReport report = privacy.eraseByManageToken(token);
 
-        assertEquals(ErasureReport.GoogleOutcome.UNREACHABLE, report.google());
+        assertThat(report.google()).isEqualTo(ErasureReport.GoogleOutcome.UNREACHABLE);
         Booking b = reload(id);
-        assertTrue(b.isErased(), "a Google failure must not block the erasure");
-        assertEquals(BookingStatus.CANCELLED, b.status, "the booking is still cancelled");
-        assertEquals("", b.inviteeName);
-        assertNull(b.googleEventId);
+        assertThat(b.isErased()).as("a Google failure must not block the erasure").isTrue();
+        assertThat(b.status).as("the booking is still cancelled").isEqualTo(BookingStatus.CANCELLED);
+        assertThat(b.inviteeName).isEmpty();
+        assertThat(b.googleEventId).isNull();
     }
 
     @Test
@@ -92,13 +90,13 @@ class ErasureGoogleOutcomeTest {
 
         ErasureReport report = privacy.eraseByManageToken(token);
 
-        assertEquals(ErasureReport.GoogleOutcome.REMOVED, report.google());
+        assertThat(report.google()).isEqualTo(ErasureReport.GoogleOutcome.REMOVED);
         verify(calendarPort).deleteEvent(eq(ErasureFixtures.OWNER), any(), eq(EVENT));
         Booking b = reload(id);
-        assertTrue(b.isErased());
-        assertEquals(BookingStatus.CONFIRMED, b.status, "a past booking is not cancelled");
-        assertNull(b.googleEventId, "an erased row must not keep pointing at the owner's event");
-        assertNull(b.googleCalendarId);
-        assertNull(b.googleCredentialId);
+        assertThat(b.isErased()).isTrue();
+        assertThat(b.status).as("a past booking is not cancelled").isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(b.googleEventId).as("an erased row must not keep pointing at the owner's event").isNull();
+        assertThat(b.googleCalendarId).isNull();
+        assertThat(b.googleCredentialId).isNull();
     }
 }

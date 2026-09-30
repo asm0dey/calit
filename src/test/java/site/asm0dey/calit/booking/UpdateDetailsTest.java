@@ -1,8 +1,8 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.*;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
@@ -91,9 +91,9 @@ class UpdateDetailsTest {
         Booking after = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.findById(b.id));
-        assertEquals("Roadmap sync", after.title);
-        assertEquals("Q3 planning", after.description);
-        assertTrue(after.icsSequence > beforeSeq, "sequence bumped");
+        assertThat(after.title).isEqualTo("Roadmap sync");
+        assertThat(after.description).isEqualTo("Q3 planning");
+        assertThat(after.icsSequence).as("sequence bumped").isGreaterThan(beforeSeq);
         verify(calendarPort, times(1))
             .updateEventDetails(anyLong(), any(), eq("evt-ud"), eq("Roadmap sync with Pat"), eq("Q3 planning"), any());
     }
@@ -108,8 +108,8 @@ class UpdateDetailsTest {
         List<BookingGuest> guests = QuarkusTransaction
             .requiringNew()
             .call(() -> BookingGuest.activeForBooking(b.id));
-        assertEquals(1, guests.size());
-        assertEquals("ana@example.com", guests.getFirst().email);
+        assertThat(guests).hasSize(1);
+        assertThat(guests.getFirst().email).isEqualTo("ana@example.com");
     }
 
     @Test
@@ -123,8 +123,8 @@ class UpdateDetailsTest {
         Booking after = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.findById(b.id));
-        assertNull(after.title, "blank title → null → falls back to type name");
-        assertNull(after.description);
+        assertThat(after.title).as("blank title → null → falls back to type name").isNull();
+        assertThat(after.description).isNull();
     }
 
     @Test
@@ -153,7 +153,7 @@ class UpdateDetailsTest {
         Booking after = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.findById(b.id));
-        assertEquals(beforeSeq, after.icsSequence, "no-op must not bump the sequence");
+        assertThat(after.icsSequence).as("no-op must not bump the sequence").isEqualTo(beforeSeq);
         verify(calendarPort, never()).updateEventDetails(anyLong(), any(), any(), any(), any(), any());
     }
 
@@ -163,12 +163,7 @@ class UpdateDetailsTest {
         Booking b = seedConfirmed("upd-5");
         var title = "x".repeat(201);
         List<String> guestEmails = List.of();
-        assertThrows(BookingValidationException.class, () -> bookingService.updateDetails(
-                b.manageToken,
-                title,
-                null,
-                guestEmails,
-                true
-        ));
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.updateDetails(b.manageToken, title, null, guestEmails, true));
     }
 }

@@ -1,8 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
@@ -39,7 +38,7 @@ class AvailableSlotsTest {
 
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
-        assertEquals(2, slots.size());
+        assertThat(slots).hasSize(2);
     }
 
     @Test
@@ -60,8 +59,8 @@ class AvailableSlotsTest {
 
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
-        assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(10, 0), slots.getFirst().start().toLocalTime());
+        assertThat(slots).hasSize(1);
+        assertThat(slots.getFirst().start().toLocalTime()).isEqualTo(LocalTime.of(10, 0));
     }
 
     @Test
@@ -84,7 +83,7 @@ class AvailableSlotsTest {
 
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
-        assertTrue(slots.isEmpty(), "buffer-zone busy must remove the adjacent slot (feature 6)");
+        assertThat(slots).as("buffer-zone busy must remove the adjacent slot (feature 6)").isEmpty();
     }
 
     @Test
@@ -104,8 +103,8 @@ class AvailableSlotsTest {
 
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
-        assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(10, 0), slots.getFirst().start().toLocalTime());
+        assertThat(slots).hasSize(1);
+        assertThat(slots.getFirst().start().toLocalTime()).isEqualTo(LocalTime.of(10, 0));
     }
 
     @Test
@@ -126,8 +125,8 @@ class AvailableSlotsTest {
 
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
-        assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(10, 0), slots.getFirst().start().toLocalTime());
+        assertThat(slots).hasSize(1);
+        assertThat(slots.getFirst().start().toLocalTime()).isEqualTo(LocalTime.of(10, 0));
     }
 
     @Test
@@ -146,8 +145,8 @@ class AvailableSlotsTest {
 
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY);
 
-        assertEquals(1, slots.size());
-        assertEquals(LocalTime.of(10, 0), slots.getFirst().start().toLocalTime());
+        assertThat(slots).hasSize(1);
+        assertThat(slots.getFirst().start().toLocalTime()).isEqualTo(LocalTime.of(10, 0));
         // freeBusy must NOT be consulted when disconnected.
         verify(calendarPort, never()).freeBusy(anyLong(), any(), any());
     }
@@ -171,7 +170,7 @@ class AvailableSlotsTest {
 
         List<TimeSlot> slots = bookingService.availableSlots(t, someday, someday);
 
-        assertTrue(slots.isEmpty(), "min-notice must drop slots earlier than now + minNoticeMinutes");
+        assertThat(slots).as("min-notice must drop slots earlier than now + minNoticeMinutes").isEmpty();
     }
 
     @Test
@@ -191,7 +190,7 @@ class AvailableSlotsTest {
 
         List<TimeSlot> slots = bookingService.availableSlots(t, farDay, farDay);
 
-        assertTrue(slots.isEmpty(), "horizon must drop slots later than now + horizonDays");
+        assertThat(slots).as("horizon must drop slots later than now + horizonDays").isEmpty();
     }
 
     @Test
@@ -209,16 +208,14 @@ class AvailableSlotsTest {
         );
         // Excluding b: both slots available again.
         List<TimeSlot> slots = bookingService.availableSlots(t, DAY, DAY, b.id);
-        assertEquals(2, slots.size());
-        assertTrue(slots
-            .stream()
-            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0))));
+        assertThat(slots).hasSize(2);
+        assertThat(slots)
+            .extracting(s -> s.start().toLocalTime())
+            .contains(LocalTime.of(9, 0));
         // Without exclusion the 09:00 slot is blocked.
-        assertFalse(bookingService
-            .availableSlots(t, DAY, DAY)
-            .stream()
-            .anyMatch(s -> s.start().toLocalTime().equals(LocalTime.of(9, 0)))
-        );
+        assertThat(bookingService.availableSlots(t, DAY, DAY))
+            .extracting(s -> s.start().toLocalTime())
+            .doesNotContain(LocalTime.of(9, 0));
     }
 
     // --- helpers ---

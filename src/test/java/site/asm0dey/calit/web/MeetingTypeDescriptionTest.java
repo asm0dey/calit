@@ -1,13 +1,9 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -79,8 +75,8 @@ class MeetingTypeDescriptionTest {
         createType(slug, NOTE);
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
-        assertNotNull(t);
-        assertEquals(NOTE, t.description);
+        assertThat(t).isNotNull();
+        assertThat(t.description).isEqualTo(NOTE);
     }
 
     @Test
@@ -89,8 +85,8 @@ class MeetingTypeDescriptionTest {
         createType(slug, "   ");
 
         MeetingType t = MeetingType.findBySlug(1L, slug);
-        assertNotNull(t);
-        assertNull(t.description);
+        assertThat(t).isNotNull();
+        assertThat(t.description).isNull();
     }
 
     @Test
@@ -137,8 +133,9 @@ class MeetingTypeDescriptionTest {
         // Asserted on the re-rendered detail page, not a re-read entity: the test thread's
         // persistence context still holds the pre-edit instance, so findBySlug would hand back a
         // stale first-level-cache hit rather than the committed row.
-        assertTrue(body.contains(NOTE), "edited note should render back into the detail form");
-        assertFalse(body.contains("old note"));
+        assertThat(body).doesNotContain("old note").as("edited note should render back into the detail form").contains(
+                NOTE
+        );
     }
 
     @Test

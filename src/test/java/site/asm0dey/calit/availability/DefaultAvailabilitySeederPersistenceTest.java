@@ -1,7 +1,7 @@
 package site.asm0dey.calit.availability;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -22,33 +22,33 @@ class DefaultAvailabilitySeederPersistenceTest {
     @Test
     void seedsFiveOwnerStampedWeekdayRules() {
         // admin is always id 1 (DatabaseResetCallback)
-        assertEquals(5, seed(1L));
-        assertEquals(5, globalCount(1L));
+        assertThat(seed(1L)).isEqualTo(5);
+        assertThat(globalCount(1L)).isEqualTo(5);
 
         List<AvailabilityRule> monday = AvailabilityRule.globalForOwner(1L, DayOfWeek.MONDAY);
-        assertEquals(1, monday.size());
-        assertEquals(1L, monday.getFirst().ownerId, "every seeded rule must carry the owner id");
-        assertEquals(LocalTime.of(9, 0), monday.getFirst().startTime);
-        assertEquals(LocalTime.of(18, 0), monday.getFirst().endTime);
+        assertThat(monday).hasSize(1);
+        assertThat(monday.getFirst().ownerId).as("every seeded rule must carry the owner id").isOne();
+        assertThat(monday.getFirst().startTime).isEqualTo(LocalTime.of(9, 0));
+        assertThat(monday.getFirst().endTime).isEqualTo(LocalTime.of(18, 0));
     }
 
     @Test
     void isIdempotent() {
-        assertEquals(5, seed(1L));
-        assertEquals(0, seed(1L), "second call must write nothing");
-        assertEquals(5, globalCount(1L), "rules must not double");
+        assertThat(seed(1L)).isEqualTo(5);
+        assertThat(seed(1L)).as("second call must write nothing").isZero();
+        assertThat(globalCount(1L)).as("rules must not double").isEqualTo(5);
     }
 
     @Test
     void doesNothingForNullOwner() {
-        assertEquals(0, seed(null), "a null owner id must write nothing");
+        assertThat(seed(null)).as("a null owner id must write nothing").isZero();
     }
 
     @Test
     void doesNotSeedWhenOwnerAlreadyHasGlobalRules() {
         seedOneSaturdayRule(1L);
-        assertEquals(0, seed(1L));
-        assertEquals(1, globalCount(1L), "an existing hand-made rule means the owner is not new");
+        assertThat(seed(1L)).isZero();
+        assertThat(globalCount(1L)).as("an existing hand-made rule means the owner is not new").isOne();
     }
 
     @Transactional

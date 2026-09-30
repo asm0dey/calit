@@ -1,10 +1,8 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -44,7 +42,7 @@ class RetentionSchedulerTest {
         // ends 30 days ago
         Long id = ErasureFixtures.seedPastBookingId();
         scheduler.sweep();
-        assertFalse(erased(id), "an unset retention window must keep bookings forever");
+        assertThat(erased(id)).as("an unset retention window must keep bookings forever").isFalse();
     }
 
     @Test
@@ -55,7 +53,7 @@ class RetentionSchedulerTest {
             s.bookingRetentionDays = 7;
         });
         scheduler.sweep();
-        assertTrue(erased(id), "a 7-day owner window must catch a booking that ended 30 days ago");
+        assertThat(erased(id)).as("a 7-day owner window must catch a booking that ended 30 days ago").isTrue();
     }
 
     @Test
@@ -66,7 +64,7 @@ class RetentionSchedulerTest {
             s.bookingRetentionDays = 1;
         });
         scheduler.sweep();
-        assertFalse(erased(id), "retention measures from end_utc; a future booking has not ended");
+        assertThat(erased(id)).as("retention measures from end_utc; a future booking has not ended").isFalse();
     }
 
     /**
@@ -82,12 +80,12 @@ class RetentionSchedulerTest {
             s.bookingRetentionDays = 7;
         });
         scheduler.sweep();
-        assertTrue(erased(id), "precondition: the first sweep must have erased the booking");
+        assertThat(erased(id)).as("precondition: the first sweep must have erased the booking").isTrue();
         var firstStamp = erasedAt(id);
 
         scheduler.sweep();
 
-        assertEquals(firstStamp, erasedAt(id), "a second sweep must not touch an already-erased booking");
+        assertThat(erasedAt(id)).as("a second sweep must not touch an already-erased booking").isEqualTo(firstStamp);
     }
 
     /**
@@ -106,9 +104,9 @@ class RetentionSchedulerTest {
             s.bookingRetentionDays = 7;
         });
 
-        assertEquals(5, scheduler.sweep(2), "every row past its window is anonymised in one tick");
+        assertThat(scheduler.sweep(2)).as("every row past its window is anonymised in one tick").isEqualTo(5);
 
-        ids.forEach(id -> assertTrue(erased(id), "booking " + id + " must be erased"));
+        ids.forEach(id -> assertThat(erased(id)).as("booking " + id + " must be erased").isTrue());
     }
 
     /**
@@ -126,9 +124,11 @@ class RetentionSchedulerTest {
             s.bookingRetentionDays = 99_999_999;
         });
 
-        assertDoesNotThrow(() -> scheduler.sweep(), "a huge retention window must not blow up interval arithmetic");
+        assertThatCode(() -> scheduler.sweep())
+            .as("a huge retention window must not blow up interval arithmetic")
+            .doesNotThrowAnyException();
 
-        assertFalse(erased(id), "clamped to ~100 years, a 30-day-old booking is still well inside the window");
+        assertThat(erased(id)).as("clamped to ~100 years, a 30-day-old booking is still well inside the window").isFalse();
     }
 
     /**
@@ -146,7 +146,7 @@ class RetentionSchedulerTest {
                 s.bookingRetentionDays = 60;
             });
         scheduler.sweep();
-        assertFalse(erased(id), "a 60-day window must keep a booking that ended only 30 days ago");
+        assertThat(erased(id)).as("a 60-day window must keep a booking that ended only 30 days ago").isFalse();
     }
 
     /**
@@ -210,7 +210,7 @@ class RetentionSchedulerTest {
 
         scheduler.sweep();
 
-        assertTrue(erased(ownerOneBookingId), "owner 1's 7-day window must catch its 30-day-old booking");
-        assertFalse(erased(ownerTwoBookingId), "owner 2's 365-day window must keep its 30-day-old booking");
+        assertThat(erased(ownerOneBookingId)).as("owner 1's 7-day window must catch its 30-day-old booking").isTrue();
+        assertThat(erased(ownerTwoBookingId)).as("owner 2's 365-day window must keep its 30-day-old booking").isFalse();
     }
 }

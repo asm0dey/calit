@@ -1,10 +1,8 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
@@ -71,15 +69,15 @@ class ReminderChannelDeliveryTest {
     }
 
     @Test
-    void aClaimedReminderReachesTheHostsChannel() throws InterruptedException {
+    void aClaimedReminderReachesTheHostsChannel() throws Exception {
         var channelId = seed();
 
         scheduler.claimAndMarkDueReminders();
 
-        assertTrue(hit.await(10, TimeUnit.SECONDS), "the claimed reminder never reached the channel");
+        assertThat(hit.await(10, TimeUnit.SECONDS)).as("the claimed reminder never reached the channel").isTrue();
         NotificationChannel c = awaitStamp(channelId);
-        assertNotNull(c.lastSuccessAt);
-        assertNull(c.lastFailureAt);
+        assertThat(c.lastSuccessAt).isNotNull();
+        assertThat(c.lastFailureAt).isNull();
     }
 
     /**

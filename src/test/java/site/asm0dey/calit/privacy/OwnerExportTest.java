@@ -2,6 +2,7 @@ package site.asm0dey.calit.privacy;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasKey;
@@ -71,26 +72,19 @@ class OwnerExportTest {
             cred.persist();
         });
         String body = given().when().get("/me/export").then().statusCode(200).extract().asString();
-        org.junit.jupiter.api.Assertions.assertFalse(
-                body.contains("passwordHash") || body.contains("password_hash"),
-                "the argon2id hash must never appear in an export"
-        );
-        org.junit.jupiter.api.Assertions.assertFalse(
-                body.contains("accessToken") || body.contains("refreshToken"),
-                "Google OAuth tokens must never appear in an export"
-        );
-        org.junit.jupiter.api.Assertions.assertFalse(
-                body.contains("KNOWN-ACCESS-TOKEN-VALUE") || body.contains("KNOWN-REFRESH-TOKEN-VALUE"),
-                "a stored Google token value must never appear in an export"
-        );
-        org.junit.jupiter.api.Assertions.assertFalse(
-                body.contains("$argon2") || body.contains("Known-admin-pw-9f3"),
-                "no password hash (or password) may appear in an export"
-        );
-        org.junit.jupiter.api.Assertions.assertTrue(
-                body.contains("export@example.com"),
-                "precondition: the seeded Google account is exported"
-        );
+        assertThat(body.contains("passwordHash") || body.contains("password_hash"))
+            .as("the argon2id hash must never appear in an export")
+            .isFalse();
+        assertThat(body.contains("accessToken") || body.contains("refreshToken"))
+            .as("Google OAuth tokens must never appear in an export")
+            .isFalse();
+        assertThat(body.contains("KNOWN-ACCESS-TOKEN-VALUE") || body.contains("KNOWN-REFRESH-TOKEN-VALUE"))
+            .as("a stored Google token value must never appear in an export")
+            .isFalse();
+        assertThat(body.contains("$argon2") || body.contains("Known-admin-pw-9f3"))
+            .as("no password hash (or password) may appear in an export")
+            .isFalse();
+        assertThat(body).as("precondition: the seeded Google account is exported").contains("export@example.com");
     }
 
     @Test

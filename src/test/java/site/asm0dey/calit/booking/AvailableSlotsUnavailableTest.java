@@ -1,7 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
@@ -63,6 +63,7 @@ class AvailableSlotsUnavailableTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenThrow(new CalendarUnavailableException("down"));
 
-        assertThrows(CalendarUnavailableException.class, () -> bookingService.availableSlots(t, DAY, DAY));
+        assertThatExceptionOfType(CalendarUnavailableException.class)
+            .isThrownBy(() -> bookingService.availableSlots(t, DAY, DAY));
     }
 }

@@ -1,9 +1,8 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
@@ -54,8 +53,8 @@ class AdminDurationGuardTest {
             .body()
             .asString();
 
-        assertEquals(before, MeetingType.count(), "no meeting type may be created with a zero duration");
-        assertTrue(body.contains("at least 1 minute"), "the owner is told why the save was refused");
+        assertThat(MeetingType.count()).as("no meeting type may be created with a zero duration").isEqualTo(before);
+        assertThat(body).as("the owner is told why the save was refused").contains("at least 1 minute");
     }
 
     @Test
@@ -77,7 +76,9 @@ class AdminDurationGuardTest {
             .then()
             .statusCode(200);
 
-        assertEquals(30, ((MeetingType) MeetingType.findById(id)).durationMinutes, "the stored duration is untouched");
+        assertThat(((MeetingType) MeetingType.findById(id)).durationMinutes)
+            .as("the stored duration is untouched")
+            .isEqualTo(30);
     }
 
     @Test
@@ -99,7 +100,7 @@ class AdminDurationGuardTest {
             .then()
             .statusCode(200);
 
-        assertEquals(30, ((MeetingType) MeetingType.findById(id)).durationMinutes);
+        assertThat(((MeetingType) MeetingType.findById(id)).durationMinutes).isEqualTo(30);
     }
 
     @Test
@@ -134,11 +135,9 @@ class AdminDurationGuardTest {
                 .then()
                 .statusCode(200)
                 .body(containsString("enter a whole number from"));
-            assertEquals(
-                    30,
-                    ((MeetingType) MeetingType.findById(id)).durationMinutes,
-                    c[0] + "=" + c[1] + " must not save"
-            );
+            assertThat(((MeetingType) MeetingType.findById(id)).durationMinutes)
+                .as(c[0] + "=" + c[1] + " must not save")
+                .isEqualTo(30);
         }
     }
 }

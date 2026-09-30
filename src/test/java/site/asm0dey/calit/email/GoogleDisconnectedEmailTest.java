@@ -1,7 +1,7 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -36,10 +36,10 @@ class GoogleDisconnectedEmailTest {
                     Mockito.eq(MailTag.forOwner(1L))
             );
 
-        org.junit.jupiter.api.Assertions.assertEquals("owner@example.com", to.getValue());
-        assertTrue(subject.getValue().toLowerCase().contains("reconnect"));
-        assertTrue(body.getValue().contains("/me/google"), "body must link to the Google settings page");
-        assertTrue(body.getValue().contains("work@gmail.com"), "body names the affected account");
+        assertThat(to.getValue()).isEqualTo("owner@example.com");
+        assertThat(subject.getValue().toLowerCase()).contains("reconnect");
+        assertThat(body.getValue()).as("body must link to the Google settings page").contains("/me/google");
+        assertThat(body.getValue()).as("body names the affected account").contains("work@gmail.com");
     }
 
     @Test
@@ -64,14 +64,10 @@ class GoogleDisconnectedEmailTest {
             );
 
         String deSubject = subject.getValue();
-        org.junit.jupiter.api.Assertions.assertFalse(
-                deSubject.isBlank(),
-                "German google-disconnected subject must not be blank"
-        );
-        org.junit.jupiter.api.Assertions.assertNotEquals(
-                "Action needed: reconnect your Google Calendar",
-                deSubject,
-                "German subject must differ from hardcoded English"
-        );
+        assertThat(deSubject)
+            .as("German google-disconnected subject must not be blank")
+            .isNotBlank()
+            .as("German subject must differ from hardcoded English")
+            .isNotEqualTo("Action needed: reconnect your Google Calendar");
     }
 }

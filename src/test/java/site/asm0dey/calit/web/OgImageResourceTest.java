@@ -2,10 +2,7 @@ package site.asm0dey.calit.web;
 
 import module java.base;
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -126,20 +123,22 @@ class OgImageResourceTest {
             .header("Cache-Control", "public, max-age=3600")
             .extract()
             .asByteArray();
-        assertArrayEquals(PNG_MAGIC, Arrays.copyOf(body, 4));
+        assertThat(Arrays.copyOf(body, 4)).containsExactly(PNG_MAGIC);
     }
 
     @Test
     void productAndOwnerCardsRender() {
         seed("card-owner", false);
-        assertArrayEquals(
-                PNG_MAGIC,
-                Arrays.copyOf(given().when().get("/og.png").then().statusCode(200).extract().asByteArray(), 4)
-        );
-        assertArrayEquals(
-                PNG_MAGIC,
-                Arrays.copyOf(given().when().get("/og/admin.png").then().statusCode(200).extract().asByteArray(), 4)
-        );
+        assertThat(Arrays.copyOf(given().when().get("/og.png").then().statusCode(200).extract().asByteArray(), 4))
+            .containsExactly(PNG_MAGIC);
+        assertThat(Arrays.copyOf(given()
+            .when()
+            .get("/og/admin.png")
+            .then()
+            .statusCode(200)
+            .extract()
+            .asByteArray(), 4))
+            .containsExactly(PNG_MAGIC);
     }
 
     @Test
@@ -152,12 +151,10 @@ class OgImageResourceTest {
             .statusCode(200)
             .extract()
             .header("ETag");
-        assertNotNull(etag);
-        assertEquals(
-                etag,
-                given().when().get("/og/admin/card-etag.png").then().extract().header("ETag"),
-                "same inputs must produce the same ETag"
-        );
+        assertThat(etag).isNotNull();
+        assertThat(given().when().get("/og/admin/card-etag.png").then().extract().header("ETag"))
+            .as("same inputs must produce the same ETag")
+            .isEqualTo(etag);
         given().header("If-None-Match", etag).when().get("/og/admin/card-etag.png").then().statusCode(304);
     }
 
@@ -171,7 +168,7 @@ class OgImageResourceTest {
             .statusCode(200)
             .extract()
             .header("ETag");
-        assertNotNull(before);
+        assertThat(before).isNotNull();
         // The whole no-invalidation design rests on the ETag being derived from the render
         // inputs (owner name, type name, allowed durations, location kind) rather than from the
         // URL or a stored version counter. Renaming the type must change nothing else about the
@@ -190,8 +187,10 @@ class OgImageResourceTest {
             .statusCode(200)
             .extract()
             .header("ETag");
-        assertNotNull(after);
-        assertNotEquals(before, after, "renaming the meeting type must change the ETag (no-invalidation design)");
+        assertThat(after)
+            .isNotNull()
+            .as("renaming the meeting type must change the ETag (no-invalidation design)")
+            .isNotEqualTo(before);
     }
 
     @Test
@@ -203,7 +202,7 @@ class OgImageResourceTest {
         // not render the real owner name via the /{user}.png card.
         byte[] ownerCard =
                 given().when().get("/og/disabled-og-owner.png").then().statusCode(200).extract().asByteArray();
-        assertArrayEquals(product, ownerCard, "a disabled owner's card must not reveal their name");
+        assertThat(ownerCard).as("a disabled owner's card must not reveal their name").containsExactly(product);
 
         byte[] typeCard =
                 given()
@@ -213,7 +212,9 @@ class OgImageResourceTest {
             .statusCode(200)
             .extract()
             .asByteArray();
-        assertArrayEquals(product, typeCard, "a disabled owner's meeting-type card must not reveal name/type/duration");
+        assertThat(typeCard)
+            .as("a disabled owner's meeting-type card must not reveal name/type/duration")
+            .containsExactly(product);
     }
 
     @Test
@@ -222,7 +223,7 @@ class OgImageResourceTest {
         byte[] inactive =
                 given().when().get("/og/admin/card-inactive.png").then().statusCode(200).extract().asByteArray();
         byte[] product = given().when().get("/og.png").then().extract().asByteArray();
-        assertArrayEquals(product, inactive, "an inactive type must not be named in its card");
+        assertThat(inactive).as("an inactive type must not be named in its card").containsExactly(product);
     }
 
     @Test
@@ -230,7 +231,7 @@ class OgImageResourceTest {
         seed("card-etag-axes", false);
         String before =
                 given().when().get("/og/admin/card-etag-axes.png").then().statusCode(200).extract().header("ETag");
-        assertNotNull(before);
+        assertThat(before).isNotNull();
 
         QuarkusTransaction.requiringNew().run(() -> {
             MeetingType t = MeetingType.findBySlug(1L, "card-etag-axes");
@@ -238,8 +239,9 @@ class OgImageResourceTest {
         });
         String afterDuration =
                 given().when().get("/og/admin/card-etag-axes.png").then().statusCode(200).extract().header("ETag");
-        assertNotNull(afterDuration);
-        assertNotEquals(before, afterDuration, "changing the allowed duration must change the ETag");
+        assertThat(afterDuration).isNotNull().as("changing the allowed duration must change the ETag").isNotEqualTo(
+                before
+        );
 
         QuarkusTransaction.requiringNew().run(() -> {
             MeetingType t = MeetingType.findBySlug(1L, "card-etag-axes");
@@ -247,8 +249,10 @@ class OgImageResourceTest {
         });
         String afterLocation =
                 given().when().get("/og/admin/card-etag-axes.png").then().statusCode(200).extract().header("ETag");
-        assertNotNull(afterLocation);
-        assertNotEquals(afterDuration, afterLocation, "changing the location kind must change the ETag");
+        assertThat(afterLocation)
+            .isNotNull()
+            .as("changing the location kind must change the ETag")
+            .isNotEqualTo(afterDuration);
     }
 
     @Test
@@ -262,7 +266,7 @@ class OgImageResourceTest {
             .extract()
             .asByteArray();
         byte[] product = given().when().get("/og.png").then().extract().asByteArray();
-        assertArrayEquals(product, secret, "a secret type must not be named in its card");
+        assertThat(secret).as("a secret type must not be named in its card").containsExactly(product);
     }
 
     @Test
@@ -275,7 +279,9 @@ class OgImageResourceTest {
         byte[] product = given().when().get("/og.png").then().extract().asByteArray();
         byte[] blank =
                 given().when().get("/og/admin/card-blank-name.png").then().statusCode(200).extract().asByteArray();
-        assertArrayEquals(product, blank, "a blank meeting-type name must degrade to the product card, not crash");
+        assertThat(blank).as("a blank meeting-type name must degrade to the product card, not crash").containsExactly(
+                product
+        );
     }
 
     @Test
@@ -311,11 +317,9 @@ class OgImageResourceTest {
             .statusCode(200)
             .extract()
             .asByteArray();
-        assertNotEquals(
-                Arrays.toString(product),
-                Arrays.toString(mixed),
-                "a mixed-script name must actually render, not silently fall back to the product card"
-        );
+        assertThat(Arrays.toString(mixed))
+            .as("a mixed-script name must actually render, not silently fall back to the product card")
+            .isNotEqualTo(Arrays.toString(product));
     }
 
     @Test
@@ -324,13 +328,13 @@ class OgImageResourceTest {
         // ever exercised before -- IN_PERSON and CUSTOM are real, reachable switch arms.
         MeetingType t = new MeetingType();
         t.locationType = LocationType.GOOGLE_MEET;
-        assertEquals("Google Meet", OgImageResource.location(t));
+        assertThat(OgImageResource.location(t)).isEqualTo("Google Meet");
         t.locationType = LocationType.PHONE;
-        assertEquals("Phone", OgImageResource.location(t));
+        assertThat(OgImageResource.location(t)).isEqualTo("Phone");
         t.locationType = LocationType.IN_PERSON;
-        assertEquals("In person", OgImageResource.location(t));
+        assertThat(OgImageResource.location(t)).isEqualTo("In person");
         t.locationType = LocationType.CUSTOM;
-        assertEquals("Online", OgImageResource.location(t));
+        assertThat(OgImageResource.location(t)).isEqualTo("Online");
     }
 
     @Test
@@ -348,11 +352,9 @@ class OgImageResourceTest {
             extra.durationMinutes = 60;
             extra.persist();
         });
-        assertEquals(
-                "30 · 60 min · Google Meet",
-                OgImageResource.meta(type),
-                "durations must be ascending with a separator"
-        );
+        assertThat(OgImageResource.meta(type))
+            .as("durations must be ascending with a separator")
+            .isEqualTo("30 · 60 min · Google Meet");
     }
 
     @Test
@@ -366,23 +368,17 @@ class OgImageResourceTest {
             type.locationType = LocationType.PHONE;
             type.persist();
         });
-        assertEquals(
-                "45 min · Phone",
-                OgImageResource.meta(type),
-                "a single allowed duration must not carry a separator"
-        );
+        assertThat(OgImageResource.meta(type))
+            .as("a single allowed duration must not carry a separator")
+            .isEqualTo("45 min · Phone");
     }
 
     @Test
     void unknownTargetsFallBackToTheProductCardNotA404() {
         byte[] product = given().when().get("/og.png").then().extract().asByteArray();
-        assertArrayEquals(
-                product,
-                given().when().get("/og/nosuchuser.png").then().statusCode(200).extract().asByteArray()
-        );
-        assertArrayEquals(
-                product,
-                given().when().get("/og/admin/nosuchslug.png").then().statusCode(200).extract().asByteArray()
-        );
+        assertThat(given().when().get("/og/nosuchuser.png").then().statusCode(200).extract().asByteArray())
+            .containsExactly(product);
+        assertThat(given().when().get("/og/admin/nosuchslug.png").then().statusCode(200).extract().asByteArray())
+            .containsExactly(product);
     }
 }

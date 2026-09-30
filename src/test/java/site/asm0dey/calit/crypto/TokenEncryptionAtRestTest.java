@@ -1,7 +1,7 @@
 package site.asm0dey.calit.crypto;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -32,12 +32,12 @@ class TokenEncryptionAtRestTest {
             .createNativeQuery("select refresh_token from google_credential where id = :id")
             .setParameter("id", c.id)
             .getSingleResult();
-        assertTrue(raw.toString().startsWith("enc:v1:"), "stored token must be encrypted");
-        assertFalse(raw.toString().contains("super-secret-refresh"), "plaintext must not be at rest");
+        assertThat(raw.toString()).as("stored token must be encrypted").startsWith("enc:v1:");
+        assertThat(raw.toString()).as("plaintext must not be at rest").doesNotContain("super-secret-refresh");
 
         GoogleCredential reloaded = GoogleCredential.findById(c.id);
-        assertEquals("1//super-secret-refresh", reloaded.refreshToken);
-        assertEquals("ya29.access-secret", reloaded.accessToken);
+        assertThat(reloaded.refreshToken).isEqualTo("1//super-secret-refresh");
+        assertThat(reloaded.accessToken).isEqualTo("ya29.access-secret");
     }
 
     @Test
@@ -56,6 +56,6 @@ class TokenEncryptionAtRestTest {
         Object raw = em
             .createNativeQuery("select refresh_token from google_credential where google_sub = 'sub-legacy'")
             .getSingleResult();
-        assertTrue(raw.toString().startsWith("enc:v1:"), "legacy row must be encrypted after backfill");
+        assertThat(raw.toString()).as("legacy row must be encrypted after backfill").startsWith("enc:v1:");
     }
 }

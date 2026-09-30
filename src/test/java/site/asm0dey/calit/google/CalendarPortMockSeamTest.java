@@ -1,7 +1,7 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -30,6 +30,6 @@ class CalendarPortMockSeamTest {
 
         long busyMinutes = service.busyMinutes(1L, from, to);
 
-        assertEquals(90, busyMinutes);
+        assertThat(busyMinutes).isEqualTo(90);
     }
 }

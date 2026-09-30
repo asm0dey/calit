@@ -1,6 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import io.quarkus.test.junit.QuarkusTest;
@@ -91,7 +92,7 @@ class AdminMeetGatingTest {
             // the unescaped tail of the message instead of fighting the entity encoding.
             .body(containsString("create Google Meet links"));
 
-        org.junit.jupiter.api.Assertions.assertNull(MeetingType.find("slug like ?1", "blocked-meet-%").firstResult());
+        assertThat(MeetingType.find("slug like ?1", "blocked-meet-%").<MeetingType>firstResult()).isNull();
     }
 
     @Test

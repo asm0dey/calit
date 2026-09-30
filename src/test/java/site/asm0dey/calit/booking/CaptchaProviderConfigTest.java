@@ -1,31 +1,32 @@
 package site.asm0dey.calit.booking;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
 
 class CaptchaProviderConfigTest {
     @Test
     void explicitProviderWins() {
-        assertEquals("altcha", CaptchaProviderConfig.resolve("altcha", true));
-        assertEquals("turnstile", CaptchaProviderConfig.resolve("turnstile", false));
-        assertEquals("none", CaptchaProviderConfig.resolve("none", true));
+        assertThat(CaptchaProviderConfig.resolve("altcha", true)).isEqualTo("altcha");
+        assertThat(CaptchaProviderConfig.resolve("turnstile", false)).isEqualTo("turnstile");
+        assertThat(CaptchaProviderConfig.resolve("none", true)).isEqualTo("none");
     }
 
     @Test
     void blankExplicitFallsBackToTurnstileFlag() {
-        assertEquals("turnstile", CaptchaProviderConfig.resolve("", true));
-        assertEquals("turnstile", CaptchaProviderConfig.resolve(null, true));
-        assertEquals("none", CaptchaProviderConfig.resolve(null, false));
+        assertThat(CaptchaProviderConfig.resolve("", true)).isEqualTo("turnstile");
+        assertThat(CaptchaProviderConfig.resolve(null, true)).isEqualTo("turnstile");
+        assertThat(CaptchaProviderConfig.resolve(null, false)).isEqualTo("none");
     }
 
     @Test
     void caseAndWhitespaceTolerant() {
-        assertEquals("altcha", CaptchaProviderConfig.resolve("  ALTCHA ", false));
+        assertThat(CaptchaProviderConfig.resolve("  ALTCHA ", false)).isEqualTo("altcha");
     }
 
     @Test
     void invalidProviderThrows() {
-        assertThrows(IllegalArgumentException.class, () -> CaptchaProviderConfig.resolve("recaptcha", false));
+        assertThatThrownBy(() -> CaptchaProviderConfig.resolve("recaptcha", false))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 }

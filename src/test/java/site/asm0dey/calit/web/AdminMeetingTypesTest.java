@@ -1,6 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
@@ -124,13 +125,13 @@ class AdminMeetingTypesTest {
             .body(containsString(slug));
         // Persisted with the new fields (resolves via findBySlug).
         MeetingType created = MeetingType.findBySlug(1L, slug);
-        org.junit.jupiter.api.Assertions.assertNotNull(created);
-        org.junit.jupiter.api.Assertions.assertEquals(120, created.minNoticeMinutes);
-        org.junit.jupiter.api.Assertions.assertEquals(30, created.horizonDays);
-        org.junit.jupiter.api.Assertions.assertEquals(LocationType.PHONE, created.locationType);
-        org.junit.jupiter.api.Assertions.assertEquals("Call +1-555-0100", created.locationDetail);
-        org.junit.jupiter.api.Assertions.assertEquals(Integer.valueOf(15), created.slotIntervalMinutes);
-        org.junit.jupiter.api.Assertions.assertTrue(created.requiresApproval);
+        assertThat(created).isNotNull();
+        assertThat(created.minNoticeMinutes).isEqualTo(120);
+        assertThat(created.horizonDays).isEqualTo(30);
+        assertThat(created.locationType).isEqualTo(LocationType.PHONE);
+        assertThat(created.locationDetail).isEqualTo("Call +1-555-0100");
+        assertThat(created.slotIntervalMinutes).isEqualTo(Integer.valueOf(15));
+        assertThat(created.requiresApproval).isTrue();
     }
 
     @Test
@@ -187,7 +188,7 @@ class AdminMeetingTypesTest {
             .statusCode(200);
 
         MeetingType created = MeetingType.findBySlug(1L, slug);
-        org.junit.jupiter.api.Assertions.assertNotNull(created);
-        org.junit.jupiter.api.Assertions.assertNull(created.slotIntervalMinutes);
+        assertThat(created).isNotNull();
+        assertThat(created.slotIntervalMinutes).isNull();
     }
 }

@@ -1,8 +1,7 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 class BusyIntervalsTest {
@@ -16,7 +15,7 @@ class BusyIntervalsTest {
 
     @Test
     void emptyInputProducesEmptyOutput() {
-        assertTrue(BusyIntervals.merge(List.of()).isEmpty());
+        assertThat(BusyIntervals.merge(List.of())).isEmpty();
     }
 
     @Test
@@ -26,9 +25,8 @@ class BusyIntervalsTest {
                 bi("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z")
         ));
 
-        assertEquals(2, merged.size());
-        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z"), merged.getFirst());
-        assertEquals(bi("2026-06-08T11:00:00Z", "2026-06-08T12:00:00Z"), merged.get(1));
+        assertThat(merged).hasSize(2).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T10:00:00Z"));
+        assertThat(merged.get(1)).isEqualTo(bi("2026-06-08T11:00:00Z", "2026-06-08T12:00:00Z"));
     }
 
     @Test
@@ -38,8 +36,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z")
         ));
 
-        assertEquals(1, merged.size());
-        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"), merged.getFirst());
+        assertThat(merged).hasSize(1).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"));
     }
 
     @Test
@@ -49,8 +46,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z")
         ));
 
-        assertEquals(1, merged.size());
-        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"), merged.getFirst());
+        assertThat(merged).hasSize(1).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"));
     }
 
     @Test
@@ -60,8 +56,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T10:00:00Z", "2026-06-08T11:00:00Z")
         ));
 
-        assertEquals(1, merged.size());
-        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T12:00:00Z"), merged.getFirst());
+        assertThat(merged).hasSize(1).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T12:00:00Z"));
     }
 
     @Test
@@ -73,8 +68,7 @@ class BusyIntervalsTest {
                 bi("2026-06-08T14:30:00Z", "2026-06-08T16:00:00Z")
         ));
 
-        assertEquals(2, merged.size());
-        assertEquals(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"), merged.getFirst());
-        assertEquals(bi("2026-06-08T14:00:00Z", "2026-06-08T16:00:00Z"), merged.get(1));
+        assertThat(merged).hasSize(2).first().isEqualTo(bi("2026-06-08T09:00:00Z", "2026-06-08T11:00:00Z"));
+        assertThat(merged.get(1)).isEqualTo(bi("2026-06-08T14:00:00Z", "2026-06-08T16:00:00Z"));
     }
 }

@@ -1,7 +1,8 @@
 package site.asm0dey.calit.email;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -42,17 +43,16 @@ class EmailMissingOwnerSettingsTest {
         var bookingId = seedBookingThenDropSettings();
         // The whole point: no NPE escapes. Before the guard this threw, and the scheduler's
         // catch-all turned it into a silently dropped reminder.
-        assertDoesNotThrow(() -> QuarkusTransaction
+        assertThatCode(() -> QuarkusTransaction
             .requiringNew()
-            .run(() -> emailService.enqueueReminder(bookingId)));
+            .run(() -> emailService.enqueueReminder(bookingId)))
+            .doesNotThrowAnyException();
 
         QuarkusTransaction
             .requiringNew()
-            .run(() -> assertEquals(
-                    0,
-                    EmailOutbox.count("recipient", INVITEE_EMAIL),
-                    "nothing is enqueued — there is no owner to address the copy to"
-            ));
+            .run(() -> assertThat(EmailOutbox.count("recipient", INVITEE_EMAIL))
+                .as("nothing is enqueued — there is no owner to address the copy to")
+                .isZero());
 
         cleanup(bookingId);
     }
@@ -65,17 +65,16 @@ class EmailMissingOwnerSettingsTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
         var bookingId = seedBooking("Not/AZone");
 
-        assertDoesNotThrow(() -> QuarkusTransaction
+        assertThatCode(() -> QuarkusTransaction
             .requiringNew()
-            .run(() -> emailService.enqueueReminder(bookingId)));
+            .run(() -> emailService.enqueueReminder(bookingId)))
+            .doesNotThrowAnyException();
 
         QuarkusTransaction
             .requiringNew()
-            .run(() -> assertEquals(
-                    1,
-                    EmailOutbox.count("recipient", INVITEE_EMAIL),
-                    "the reminder still goes out, coerced to UTC"
-            ));
+            .run(() -> assertThat(EmailOutbox.count("recipient", INVITEE_EMAIL))
+                .as("the reminder still goes out, coerced to UTC")
+                .isOne());
 
         cleanup(bookingId);
     }

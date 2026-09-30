@@ -1,7 +1,7 @@
 package site.asm0dey.calit.google;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -21,7 +21,7 @@ class GoogleSignInServiceTest {
         u.persistAndFlush();
 
         AppUser got = signIn.resolveOrProvision(new GoogleIdentity("sub-known", "known@x.com", true));
-        assertEquals(u.id, got.id, "existing sub returns its user, no new account");
+        assertThat(got.id).as("existing sub returns its user, no new account").isEqualTo(u.id);
     }
 
     @Test
@@ -37,9 +37,9 @@ class GoogleSignInServiceTest {
         s.persistAndFlush();
 
         AppUser got = signIn.resolveOrProvision(new GoogleIdentity("sub-new", "link@x.com", true));
-        assertEquals(u.id, got.id, "links to the existing account by verified email");
+        assertThat(got.id).as("links to the existing account by verified email").isEqualTo(u.id);
         AppUser bySubLookup = AppUser.findByGoogleSub("sub-new");
-        assertEquals(u.id, bySubLookup.id, "the sub is now linked to that same account");
+        assertThat(bySubLookup.id).as("the sub is now linked to that same account").isEqualTo(u.id);
     }
 
     @Test
@@ -55,15 +55,19 @@ class GoogleSignInServiceTest {
         s.persistAndFlush();
 
         var identity = new GoogleIdentity("sub-x", "unv@x.com", false);
-        GoogleSignInException ex = assertThrows(GoogleSignInException.class, () -> signIn.resolveOrProvision(identity));
-        assertEquals(GoogleSignInException.Reason.SIGNUP_DISABLED, ex.reason);
+        GoogleSignInException ex = assertThatExceptionOfType(GoogleSignInException.class)
+            .isThrownBy(() -> signIn.resolveOrProvision(identity))
+            .actual();
+        assertThat(ex.reason).isEqualTo(GoogleSignInException.Reason.SIGNUP_DISABLED);
     }
 
     @Test
     @TestTransaction
     void unknownIdentityRejectedWhenSignupDisabled() {
         var identity = new GoogleIdentity("sub-none", "new@x.com", true);
-        GoogleSignInException ex = assertThrows(GoogleSignInException.class, () -> signIn.resolveOrProvision(identity));
-        assertEquals(GoogleSignInException.Reason.SIGNUP_DISABLED, ex.reason);
+        GoogleSignInException ex = assertThatExceptionOfType(GoogleSignInException.class)
+            .isThrownBy(() -> signIn.resolveOrProvision(identity))
+            .actual();
+        assertThat(ex.reason).isEqualTo(GoogleSignInException.Reason.SIGNUP_DISABLED);
     }
 }

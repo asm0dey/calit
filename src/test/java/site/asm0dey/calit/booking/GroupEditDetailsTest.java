@@ -1,8 +1,8 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.*;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -105,7 +105,7 @@ class GroupEditDetailsTest {
                         List.of()
         );
         List<Booking> rows = Booking.group(lead.groupId);
-        assertEquals(2, rows.size());
+        assertThat(rows).hasSize(2);
         verify(calendarPort, times(1))
             .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
 
@@ -123,14 +123,16 @@ class GroupEditDetailsTest {
         bookingService.updateDetails(cohostRow.manageToken, "Roadmap sync", "Q3 planning", List.of("ana@x.com"), true);
         // title/description written to every group row, identically.
         Booking.<Booking>group(lead.groupId).forEach(r -> {
-            assertEquals("Roadmap sync", r.title);
-            assertEquals("Q3 planning", r.description);
+            assertThat(r.title).isEqualTo("Roadmap sync");
+            assertThat(r.description).isEqualTo("Q3 planning");
         });
         // Review fix 1: every group row's iTIP SEQUENCE bumps on a detail edit, exactly like
         // rescheduleGroup, so a resent guest .ics supersedes the prior one in calendar clients.
         Booking
             .<Booking>group(lead.groupId)
-            .forEach(r -> assertEquals(seqBefore.get(r.id) + 1, r.icsSequence, "icsSequence must bump on row " + r.id));
+            .forEach(r -> assertThat(r.icsSequence)
+                .as("icsSequence must bump on row " + r.id)
+                .isEqualTo(seqBefore.get(r.id) + 1));
         // the shared Google event is patched exactly once, via the organizer (creator, owner id 1),
         // addressed at the ref the event was actually created on.
         verify(calendarPort, times(1))
@@ -145,8 +147,8 @@ class GroupEditDetailsTest {
         // guests reconcile on the lead row only.
         Booking freshLead = Booking.leadOfGroup(lead.groupId, 1L);
         List<BookingGuest> leadGuests = BookingGuest.activeForBooking(freshLead.id);
-        assertEquals(1, leadGuests.size());
-        assertEquals("ana@x.com", leadGuests.getFirst().email);
+        assertThat(leadGuests).hasSize(1);
+        assertThat(leadGuests.getFirst().email).isEqualTo("ana@x.com");
 
         Booking cohostAfter =
                 Booking
@@ -155,9 +157,9 @@ class GroupEditDetailsTest {
             .filter(r -> !r.ownerId.equals(1L))
             .findFirst()
             .orElseThrow();
-        assertTrue(BookingGuest.activeForBooking(cohostAfter.id).isEmpty(), "guests never attach to a non-lead row");
+        assertThat(BookingGuest.activeForBooking(cohostAfter.id)).as("guests never attach to a non-lead row").isEmpty();
         // exactly one BookingDetailsChanged fired, keyed by the lead.
-        assertEquals(detailsChangedBefore + 1, DETAILS_CHANGED.get());
+        assertThat(DETAILS_CHANGED.get()).isEqualTo(detailsChangedBefore + 1);
     }
 
     // --- final-review fix: editing details on a group whose organizer has since disconnected
@@ -184,7 +186,7 @@ class GroupEditDetailsTest {
                         List.of()
         );
         List<Booking> rows = Booking.group(lead.groupId);
-        assertEquals(2, rows.size());
+        assertThat(rows).hasSize(2);
         verify(calendarPort, times(1))
             .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
         // The organizer (creator, owner id 1) disconnects Google after confirmation.
@@ -196,17 +198,18 @@ class GroupEditDetailsTest {
             .filter(r -> !r.ownerId.equals(1L))
             .findFirst()
             .orElseThrow();
-        assertDoesNotThrow(() -> bookingService.updateDetails(
+        assertThatCode(() -> bookingService.updateDetails(
                 cohostRow.manageToken,
                 "Roadmap sync",
                 "Q3 planning",
                 List.of("ana@x.com"),
                 true
-        ));
+        ))
+            .doesNotThrowAnyException();
 
         Booking.<Booking>group(lead.groupId).forEach(r -> {
-            assertEquals("Roadmap sync", r.title);
-            assertEquals("Q3 planning", r.description);
+            assertThat(r.title).isEqualTo("Roadmap sync");
+            assertThat(r.description).isEqualTo("Q3 planning");
         });
         verify(calendarPort, never()).updateEventDetails(
                 anyLong(),
@@ -216,7 +219,7 @@ class GroupEditDetailsTest {
                 anyString(),
                 anyList()
         );
-        assertEquals(detailsChangedBefore + 1, DETAILS_CHANGED.get());
+        assertThat(DETAILS_CHANGED.get()).isEqualTo(detailsChangedBefore + 1);
     }
 
     @Test
@@ -244,12 +247,12 @@ class GroupEditDetailsTest {
         // dropped guest, exactly like rescheduleGroup -- so they get a cancellation, not silence.
         bookingService.updateDetails(lead.manageToken, lead.title, lead.description, List.of("ana@x.com"), true);
 
-        assertEquals(guestRemovedBefore + 1, GUEST_REMOVED.get());
+        assertThat(GUEST_REMOVED.get()).isEqualTo(guestRemovedBefore + 1);
 
         Booking freshLead = Booking.leadOfGroup(lead.groupId, 1L);
         List<BookingGuest> activeGuests = BookingGuest.activeForBooking(freshLead.id);
-        assertEquals(1, activeGuests.size());
-        assertEquals("ana@x.com", activeGuests.getFirst().email);
+        assertThat(activeGuests).hasSize(1);
+        assertThat(activeGuests.getFirst().email).isEqualTo("ana@x.com");
     }
 
     @Test
@@ -277,19 +280,20 @@ class GroupEditDetailsTest {
         );
         Booking
             .<Booking>group(lead.groupId)
-            .forEach(r -> assertNull(r.googleEventId));
+            .forEach(r -> assertThat(r.googleEventId).isNull());
 
-        assertDoesNotThrow(() -> bookingService.updateDetails(
+        assertThatCode(() -> bookingService.updateDetails(
                 lead.manageToken,
                 "Roadmap sync",
                 "Q3 planning",
                 List.of("ana@x.com"),
                 true
-        ));
+        ))
+            .doesNotThrowAnyException();
 
         Booking.<Booking>group(lead.groupId).forEach(r -> {
-            assertEquals("Roadmap sync", r.title);
-            assertEquals("Q3 planning", r.description);
+            assertThat(r.title).isEqualTo("Roadmap sync");
+            assertThat(r.description).isEqualTo("Q3 planning");
         });
         verify(calendarPort, never()).updateEventDetails(
                 anyLong(),

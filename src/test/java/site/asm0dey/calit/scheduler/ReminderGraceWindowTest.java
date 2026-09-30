@@ -1,8 +1,7 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -29,8 +28,8 @@ class ReminderGraceWindowTest {
 
         scheduler.dispatchDueReminders();
 
-        assertNotNull(reloadSentAt(withinGrace), "reminder due within the grace window must be marked sent");
-        assertNull(reloadSentAt(beyondGrace), "reminder beyond the grace window must stay unsent");
+        assertThat(reloadSentAt(withinGrace)).as("reminder due within the grace window must be marked sent").isNotNull();
+        assertThat(reloadSentAt(beyondGrace)).as("reminder beyond the grace window must stay unsent").isNull();
     }
 
     private Long seedBooking() {

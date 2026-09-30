@@ -1,8 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -102,7 +101,7 @@ class ApprovalTokenTest {
                 "en",
                 java.util.List.of()
         );
-        assertNotNull(b.approvalToken, "approval-required booking must mint an approvalToken");
+        assertThat(b.approvalToken).as("approval-required booking must mint an approvalToken").isNotNull();
     }
 
     @Test
@@ -123,6 +122,6 @@ class ApprovalTokenTest {
                 "en",
                 java.util.List.of()
         );
-        assertNull(b.approvalToken, "auto-confirmed booking needs no approvalToken");
+        assertThat(b.approvalToken).as("auto-confirmed booking needs no approvalToken").isNull();
     }
 }

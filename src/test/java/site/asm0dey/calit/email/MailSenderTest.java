@@ -1,7 +1,6 @@
 package site.asm0dey.calit.email;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
@@ -28,9 +27,9 @@ class MailSenderTest {
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox r = EmailOutbox.find("recipient", "a@b.com").firstResult();
-            assertEquals("Subj", r.subject);
-            assertEquals("smtp down", r.lastError);
-            assertNull(r.sentAt);
+            assertThat(r.subject).isEqualTo("Subj");
+            assertThat(r.lastError).isEqualTo("smtp down");
+            assertThat(r.sentAt).isNull();
         });
     }
 
@@ -47,7 +46,7 @@ class MailSenderTest {
 
         QuarkusTransaction.requiringNew().run(() -> {
             EmailOutbox r = EmailOutbox.find("recipient", "d@b.com").firstResult();
-            assertEquals(deadline, r.notAfter, "reset mail carries its usefulness deadline into the outbox");
+            assertThat(r.notAfter).as("reset mail carries its usefulness deadline into the outbox").isEqualTo(deadline);
         });
     }
 
@@ -60,6 +59,6 @@ class MailSenderTest {
         long parked = QuarkusTransaction
             .requiringNew()
             .call(() -> EmailOutbox.count("recipient", "ok@b.com"));
-        assertEquals(0L, parked);
+        assertThat(parked).isZero();
     }
 }

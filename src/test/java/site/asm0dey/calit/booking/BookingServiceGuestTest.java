@@ -1,9 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
@@ -113,22 +111,25 @@ class BookingServiceGuestTest {
         );
 
         List<BookingGuest> guests = BookingGuest.activeForBooking(b.id);
-        assertEquals(BookingService.MAX_GUESTS_PER_BOOKING, guests.size(), "capped at the max");
-        assertTrue(guests
-            .stream()
-            .noneMatch(g -> g.email.equalsIgnoreCase("sam@example.com")), "invitee dropped");
-        assertTrue(guests
-            .stream()
-            .noneMatch(g -> g.email.equals("not-an-email")), "invalid dropped");
-        assertEquals(guests.size(), guests
+        assertThat(guests)
+            .as("capped at the max")
+            .hasSize(BookingService.MAX_GUESTS_PER_BOOKING)
+            .as("invitee dropped")
+            .noneMatch(g -> g.email.equalsIgnoreCase("sam@example.com"));
+        assertThat(guests)
+            .as("invalid dropped")
+            .extracting(g -> g.email)
+            .doesNotContain("not-an-email");
+        assertThat(guests
             .stream()
             .map(g -> g.email.toLowerCase())
             .distinct()
-            .count(), "deduped");
-        assertTrue(guests.stream().allMatch(g -> g.ownerId.equals(1L)), "owner-scoped");
-        assertTrue(guests
-            .stream()
-            .allMatch(g -> g.declineToken != null && !g.declineToken.isBlank()), "decline tokens");
+            .count()).as("deduped").isEqualTo(guests.size());
+        assertThat(guests)
+            .as("owner-scoped")
+            .allMatch(g -> g.ownerId.equals(1L))
+            .as("decline tokens")
+            .allMatch(g -> g.declineToken != null && !g.declineToken.isBlank());
     }
 
     @Test
@@ -147,22 +148,24 @@ class BookingServiceGuestTest {
                 List.of("ana@example.com", "bob@example.com")
         );
         // check in-memory; findById here would cache stale icsSequence in S_test
-        assertEquals(0, b.icsSequence);
+        assertThat(b.icsSequence).isZero();
         // Move to a different free slot, drop bob, keep ana, add cyd.
         var newStart = start.plusSeconds(3600);
         bookingService.reschedule(b.manageToken, newStart, List.of("ana@example.com", "cyd@example.com"));
 
         List<BookingGuest> active = BookingGuest.activeForBooking(b.id);
-        assertEquals(2, active.size());
-        assertTrue(active
-            .stream()
-            .anyMatch(g -> g.email.equals("ana@example.com")), "ana kept");
-        assertTrue(active
-            .stream()
-            .anyMatch(g -> g.email.equals("cyd@example.com")), "cyd added");
+        assertThat(active).hasSize(2);
+        assertThat(active)
+            .as("ana kept")
+            .extracting(g -> g.email)
+            .contains("ana@example.com");
+        assertThat(active)
+            .as("cyd added")
+            .extracting(g -> g.email)
+            .contains("cyd@example.com");
         BookingGuest bob = BookingGuest.findInBooking(b.id, "bob@example.com");
-        assertEquals(GuestStatus.REMOVED, bob.status, "bob removed");
-        assertEquals(1, Booking.<Booking>findById(b.id).icsSequence, "sequence bumped once");
+        assertThat(bob.status).as("bob removed").isEqualTo(GuestStatus.REMOVED);
+        assertThat(Booking.<Booking>findById(b.id).icsSequence).as("sequence bumped once").isOne();
     }
 
     @Test
@@ -183,7 +186,7 @@ class BookingServiceGuestTest {
         // 2-arg overload -> null guests
         bookingService.reschedule(b.manageToken, start.plusSeconds(3600));
 
-        assertEquals(1, BookingGuest.activeForBooking(b.id).size(), "guests preserved by the no-guest overload");
+        assertThat(BookingGuest.activeForBooking(b.id)).as("guests preserved by the no-guest overload").hasSize(1);
     }
 
     @Test
@@ -254,10 +257,10 @@ class BookingServiceGuestTest {
             .call(() -> BookingGuest.activeForBooking(b.id).getFirst());
 
         bookingService.declineGuest(ana.declineToken);
-        assertEquals(GuestStatus.DECLINED, BookingGuest.<BookingGuest>findById(ana.id).status);
+        assertThat(BookingGuest.<BookingGuest>findById(ana.id).status).isEqualTo(GuestStatus.DECLINED);
         // Second call is a no-op, not an error.
         bookingService.declineGuest(ana.declineToken);
-        assertEquals(GuestStatus.DECLINED, BookingGuest.<BookingGuest>findById(ana.id).status);
+        assertThat(BookingGuest.<BookingGuest>findById(ana.id).status).isEqualTo(GuestStatus.DECLINED);
     }
 
     @Test

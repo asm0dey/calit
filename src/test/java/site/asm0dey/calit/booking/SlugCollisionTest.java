@@ -1,6 +1,8 @@
 package site.asm0dey.calit.booking;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -23,16 +25,16 @@ class SlugCollisionTest {
         MultiHostFixtures.meetingType(v.id, "intro", 30);
         // Pasha's shared intro
         MeetingType shared = MultiHostFixtures.meetingType(1L, "intro", 30);
-        assertThrows(IllegalStateException.class, () -> meetingHosts.addCohost(shared, v));
+        assertThatThrownBy(() -> meetingHosts.addCohost(shared, v)).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     @TestTransaction
     void slugUsedByOwnerExcludesSelf() {
         MeetingType t = MultiHostFixtures.meetingType(1L, "intro", 30);
-        assertTrue(MeetingType.slugUsedByOwner(1L, "intro", null));
+        assertThat(MeetingType.slugUsedByOwner(1L, "intro", null)).isTrue();
         // exclude the type itself
-        assertFalse(MeetingType.slugUsedByOwner(1L, "intro", t.id));
+        assertThat(MeetingType.slugUsedByOwner(1L, "intro", t.id)).isFalse();
     }
 
     @Test
@@ -45,7 +47,9 @@ class SlugCollisionTest {
         MeetingTypeHost.of(typeA.id, v.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED).persist();
         // Pasha's new shared intro
         MeetingType typeB = MultiHostFixtures.meetingType(1L, "intro", 30);
-        assertThrows(IllegalStateException.class, () -> meetingHosts.assertSlugFreeForCohost(typeB, v));
+        assertThatThrownBy(() -> meetingHosts.assertSlugFreeForCohost(typeB, v)).isInstanceOf(
+                IllegalStateException.class
+        );
     }
 
     @Test
@@ -58,6 +62,6 @@ class SlugCollisionTest {
         MeetingTypeHost.of(typeA.id, v.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED).persist();
 
         MeetingType typeB = MultiHostFixtures.meetingType(1L, "intro", 30);
-        assertDoesNotThrow(() -> meetingHosts.assertSlugFreeForCohost(typeB, v));
+        assertThatCode(() -> meetingHosts.assertSlugFreeForCohost(typeB, v)).doesNotThrowAnyException();
     }
 }

@@ -1,6 +1,7 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -39,7 +40,7 @@ class AdminLockoutGuardTest {
     @Transactional
     void assertStillAdminAndEnabled() {
         AppUser admin = AppUser.findById(1L);
-        org.junit.jupiter.api.Assertions.assertTrue(admin.isAdmin, "admin role must be intact");
-        org.junit.jupiter.api.Assertions.assertTrue(admin.enabled, "account must stay enabled");
+        assertThat(admin.isAdmin).as("admin role must be intact").isTrue();
+        assertThat(admin.enabled).as("account must stay enabled").isTrue();
     }
 }

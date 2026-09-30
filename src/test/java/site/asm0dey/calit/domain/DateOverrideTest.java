@@ -1,7 +1,7 @@
 package site.asm0dey.calit.domain;
 
 import module java.base;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -13,7 +13,7 @@ class DateOverrideTest {
     @Test
     @TestTransaction
     void resolveReturnsNullWhenNoOverride() {
-        assertNull(DateOverride.resolve(1L, 123_456L, D));
+        assertThat(DateOverride.resolve(1L, 123_456L, D)).isNull();
     }
 
     @Test
@@ -36,9 +36,9 @@ class DateOverrideTest {
         window(typed, "13:00", "14:00");
 
         DateOverride resolved = DateOverride.resolve(1L, type.id, D);
-        assertEquals(typed.id, resolved.id);
-        assertEquals(1, resolved.windows.size());
-        assertEquals(LocalTime.of(13, 0), resolved.windows.getFirst().startTime);
+        assertThat(resolved.id).isEqualTo(typed.id);
+        assertThat(resolved.windows).hasSize(1);
+        assertThat(resolved.windows.getFirst().startTime).isEqualTo(LocalTime.of(13, 0));
     }
 
     @Test
@@ -49,8 +49,8 @@ class DateOverrideTest {
         window(global, "08:00", "09:00");
         // A meeting type with no per-type override falls through to the global one.
         DateOverride resolved = DateOverride.resolve(1L, 987_654L, D);
-        assertEquals(global.id, resolved.id);
-        assertEquals(LocalTime.of(8, 0), resolved.windows.getFirst().startTime);
+        assertThat(resolved.id).isEqualTo(global.id);
+        assertThat(resolved.windows.getFirst().startTime).isEqualTo(LocalTime.of(8, 0));
     }
 
     @Test
@@ -61,9 +61,9 @@ class DateOverrideTest {
         dayOff.persist();
 
         DateOverride resolved = DateOverride.resolve(1L, 555L, D);
-        assertEquals(dayOff.id, resolved.id);
+        assertThat(resolved.id).isEqualTo(dayOff.id);
         // empty = day off (caller blocks the day)
-        assertTrue(resolved.windows.isEmpty());
+        assertThat(resolved.windows).isEmpty();
     }
 
     @Test
@@ -76,9 +76,9 @@ class DateOverrideTest {
         window(o, "09:00", "10:00");
 
         DateOverride resolved = DateOverride.resolve(1L, 42L, D);
-        assertEquals(2, resolved.windows.size());
-        assertEquals(LocalTime.of(9, 0), resolved.windows.getFirst().startTime);
-        assertEquals(LocalTime.of(14, 0), resolved.windows.get(1).startTime);
+        assertThat(resolved.windows).hasSize(2);
+        assertThat(resolved.windows.getFirst().startTime).isEqualTo(LocalTime.of(9, 0));
+        assertThat(resolved.windows.get(1).startTime).isEqualTo(LocalTime.of(14, 0));
     }
 
     // --- helpers ---

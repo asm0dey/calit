@@ -1,8 +1,8 @@
 package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.*;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -58,16 +58,16 @@ class UsersResourceTest {
             .body(containsString("bob"));
 
         AppUser bob = reload(AppUser.findByUsername("bob").id);
-        assertNull(bob.passwordHash, "invited user starts password-less (dormant)");
-        assertFalse(bob.mustChangePassword);
-        assertFalse(bob.settingsComplete);
-        assertTrue(bob.enabled);
-        assertFalse(bob.isAdmin);
+        assertThat(bob.passwordHash).as("invited user starts password-less (dormant)").isNull();
+        assertThat(bob.mustChangePassword).isFalse();
+        assertThat(bob.settingsComplete).isFalse();
+        assertThat(bob.enabled).isTrue();
+        assertThat(bob.isAdmin).isFalse();
 
         OwnerSettings s = OwnerSettings.forOwner(bob.id);
-        assertNotNull(s, "settings row pre-created so the wizard can pre-fill the email");
-        assertEquals("bob@example.com", s.ownerEmail);
-        assertEquals(1, PasswordResetToken.count("userId", bob.id), "exactly one activation token minted");
+        assertThat(s).as("settings row pre-created so the wizard can pre-fill the email").isNotNull();
+        assertThat(s.ownerEmail).isEqualTo("bob@example.com");
+        assertThat(PasswordResetToken.count("userId", bob.id)).as("exactly one activation token minted").isOne();
     }
 
     @Test
@@ -81,7 +81,7 @@ class UsersResourceTest {
             .post("/me/users")
             .then()
             .statusCode(200);
-        assertNull(AppUser.findByUsername("carol"), "no user created on invalid email");
+        assertThat(AppUser.findByUsername("carol")).as("no user created on invalid email").isNull();
 
         given()
             .contentType("application/x-www-form-urlencoded")
@@ -91,7 +91,7 @@ class UsersResourceTest {
             .post("/me/users")
             .then()
             .statusCode(200);
-        assertNull(AppUser.findByUsername("nodot"), "no user created on malformed (no-dot) email");
+        assertThat(AppUser.findByUsername("nodot")).as("no user created on malformed (no-dot) email").isNull();
     }
 
     @Test
@@ -110,7 +110,7 @@ class UsersResourceTest {
             .then()
             .statusCode(200)
             .body(containsString("reserved"));
-        assertNull(AppUser.findByUsername("me"));
+        assertThat(AppUser.findByUsername("me")).isNull();
     }
 
     @Test
@@ -128,13 +128,13 @@ class UsersResourceTest {
 
         given().when().post("/me/users/" + carol.id + "/grant-admin").then().statusCode(200);
         AppUser afterGrant = reload(carol.id);
-        assertTrue(afterGrant.isAdmin);
-        assertEquals("user,admin", afterGrant.roles);
+        assertThat(afterGrant.isAdmin).isTrue();
+        assertThat(afterGrant.roles).isEqualTo("user,admin");
 
         given().when().post("/me/users/" + carol.id + "/revoke-admin").then().statusCode(200);
         AppUser afterRevoke = reload(carol.id);
-        assertFalse(afterRevoke.isAdmin);
-        assertEquals("user", afterRevoke.roles);
+        assertThat(afterRevoke.isAdmin).isFalse();
+        assertThat(afterRevoke.roles).isEqualTo("user");
     }
 
     @Test
@@ -151,10 +151,10 @@ class UsersResourceTest {
         AppUser dave = AppUser.findByUsername("dave");
 
         given().when().post("/me/users/" + dave.id + "/lock").then().statusCode(200);
-        assertFalse(reload(dave.id).enabled);
+        assertThat(reload(dave.id).enabled).isFalse();
 
         given().when().post("/me/users/" + dave.id + "/unlock").then().statusCode(200);
-        assertTrue(reload(dave.id).enabled);
+        assertThat(reload(dave.id).enabled).isTrue();
     }
 
     @Test
@@ -175,7 +175,7 @@ class UsersResourceTest {
             .then()
             .statusCode(200);
         Long id = AppUser.findByUsername("dave").id;
-        assertEquals(1, PasswordResetToken.count("userId", id));
+        assertThat(PasswordResetToken.count("userId", id)).isOne();
 
         given()
             .contentType("application/x-www-form-urlencoded")
@@ -183,7 +183,7 @@ class UsersResourceTest {
             .post("/me/users/" + id + "/resend-invite")
             .then()
             .statusCode(200);
-        assertEquals(2, PasswordResetToken.count("userId", id), "resend mints a second token");
+        assertThat(PasswordResetToken.count("userId", id)).as("resend mints a second token").isEqualTo(2);
     }
 
     @Test
@@ -198,7 +198,9 @@ class UsersResourceTest {
             .post("/me/users/" + adminId + "/resend-invite")
             .then()
             .statusCode(200);
-        assertEquals(before, PasswordResetToken.count("userId", adminId), "no token minted for an active user");
+        assertThat(PasswordResetToken.count("userId", adminId)).as("no token minted for an active user").isEqualTo(
+                before
+        );
     }
 
     @Test
@@ -220,7 +222,7 @@ class UsersResourceTest {
             .follow(false)
             .when()
             .post("/j_security_check");
-        assertEquals(302, ok.statusCode());
+        assertThat(ok.statusCode()).isEqualTo(302);
         // Lock the user.
         QuarkusTransaction.requiringNew().run(() -> {
             AppUser u = AppUser.findByUsername("erin");
@@ -235,10 +237,9 @@ class UsersResourceTest {
             .follow(false)
             .when()
             .post("/j_security_check");
-        assertEquals(302, denied.statusCode());
-        assertTrue(
-                denied.getHeader("Location").contains("error"),
-                "locked user login should redirect to the error page, got " + denied.getHeader("Location")
-        );
+        assertThat(denied.statusCode()).isEqualTo(302);
+        assertThat(denied.getHeader("Location"))
+            .as("locked user login should redirect to the error page, got " + denied.getHeader("Location"))
+            .contains("error");
     }
 }
