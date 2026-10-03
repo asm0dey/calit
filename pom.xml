@@ -24,7 +24,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
-    <quarkus.platform.version>3.39.5</quarkus.platform.version>
+    <quarkus.platform.version>3.40.1</quarkus.platform.version>
     <surefire-plugin.version>3.6.0</surefire-plugin.version>
     <sonar-maven-plugin.version>5.8.0.7211</sonar-maven-plugin.version>
     <assertj.version>3.27.7</assertj.version>
@@ -151,7 +151,7 @@
     <dependency>
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-calendar</artifactId>
-      <version>v3-rev20260708-2.0.0</version>
+      <version>v3-rev20260925-2.0.0</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -172,7 +172,7 @@
     <dependency>
         <groupId>org.altcha</groupId>
         <artifactId>altcha</artifactId>
-        <version>2.0.3</version>
+        <version>2.1.1</version>
     </dependency>
     <!-- ALTCHA widget JS (npm package, via WebJar on Maven Central — no external repo needed).
          Served version-less at /webjars/altcha/... by quarkus-web-dependency-locator. -->

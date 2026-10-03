@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 
 # --- CSS stage: compile Tailwind + daisyUI with Bun (no JS ships at runtime) ---
 FROM oven/bun:1@sha256:9114c058aeae42162ee16dd5084b95fe9473970bb6bcb5b232ab1630f0546895 AS css
@@ -63,7 +63,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken,--initialize-at-run-time=org.altcha.altcha.v1.Altcha,--initialize-at-build-time=java.awt.Color,--initialize-at-run-time=org.alexmond.notify4j.HttpClientConfig"
 
 # --- Runtime stage: Alpaquita musl base (~3.9MB) — no JDK, just the native binary ---
-FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:dde2475a31ade253db04659869d04e388101bf51d498da0a9dee898a263c658a AS runtime
+FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:9c31d60aa6d12a472039d9486c6f7123f7d49a80265bcce0140b4609b0020813 AS runtime
 WORKDIR /app
 # ca-certificates: outbound TLS to Google API + SMTP. zlib: the binary links libz.so.1.
 # freetype + fontconfig: required by quarkus-awt for native mode, per its own guide. The font

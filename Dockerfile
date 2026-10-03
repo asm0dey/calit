@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 
 # --- CSS stage: compile Tailwind + daisyUI with Bun (no JS ships at runtime) ---
 FROM oven/bun:1@sha256:9114c058aeae42162ee16dd5084b95fe9473970bb6bcb5b232ab1630f0546895 AS css
@@ -13,7 +13,7 @@ RUN bun run css:build
 # Output: /app/src/main/resources/META-INF/resources/calit.css
 
 # --- Build stage: BellSoft Liberica JDK 27 + the Maven wrapper (no Maven in the image) ---
-FROM bellsoft/liberica-runtime-container:jdk-27-musl@sha256:00e11f64cc32b08edd9f8535b63d510dfb095285457b87c347d64b2714127cff AS build
+FROM bellsoft/liberica-runtime-container:jdk-27-musl@sha256:fa04651b2137aaf71e83bc7b7418a552b066d6cb0d8ce99fe685cc6dbf0669be AS build
 WORKDIR /build
 
 # Warm the dependency cache on the POM first so source-only edits don't re-download everything.
@@ -35,7 +35,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 # freetype/fontconfig stack AWT card rendering needs must be COPYed in from an image that has
 # them. Reuses the jdk-27-musl image the build stage already pulls, so no new image enters the
 # build (already pinned above, already layer-cached).
-FROM bellsoft/liberica-runtime-container:jdk-27-musl@sha256:00e11f64cc32b08edd9f8535b63d510dfb095285457b87c347d64b2714127cff AS fontstack
+FROM bellsoft/liberica-runtime-container:jdk-27-musl@sha256:fa04651b2137aaf71e83bc7b7418a552b066d6cb0d8ce99fe685cc6dbf0669be AS fontstack
 # Package versions deliberately UNPINNED here. Pinning the base image above by digest does NOT
 # pin these apk packages -- apk add resolves against the live Alpaquita repo at build time
 # regardless. Left floating on purpose: freetype/fontconfig are CVE-rich C font parsers, so
@@ -54,7 +54,7 @@ RUN apk add --no-cache freetype fontconfig font-dejavu-core \
 # JRE 26 runs the JDK-25-compiled fast-jar fine (forward-compatible); pure-bytecode app, so the
 # musl libc is a non-issue. This base has no shell, no package manager, and no CVE-fixing distro
 # packages beyond what BellSoft ships -- it is the hardened/distroless target from calit-gabg.
-FROM bellsoft/hardened-liberica-runtime-container:jre-distroless-musl@sha256:e63d5ad548ef75a1a82e9230413f6cf860ac024c69cfcff6cda67bac1f48e4fe AS runtime
+FROM bellsoft/hardened-liberica-runtime-container:jre-distroless-musl@sha256:88a5f8fd9c37d559ffbabe18fd5059d56ea74fcf464fb8231e2619cd59bbc462 AS runtime
 WORKDIR /app
 
 # This base ships libfontmanager.so but not the libfreetype.so.6 it links against, and no font,
