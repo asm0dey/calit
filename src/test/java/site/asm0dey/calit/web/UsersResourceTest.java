@@ -3,6 +3,7 @@ package site.asm0dey.calit.web;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -201,6 +202,51 @@ class UsersResourceTest {
         assertThat(PasswordResetToken.count("userId", adminId)).as("no token minted for an active user").isEqualTo(
                 before
         );
+    }
+
+    /**
+     * An enabled OIDC-only account with an owner email, so resend-invite's only reason to refuse it
+     * is the pending check itself.
+     */
+    private Long persistOidcUserWithEmail() {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            AppUser u = AppUser.createOidcUser("sso-only", "oidc-sub-sso", false);
+            u.enabled = true;
+            u.persist();
+            OwnerSettings s = new OwnerSettings();
+            s.ownerId = u.id;
+            s.ownerName = "SSO Only";
+            s.ownerEmail = "sso-only@example.test";
+            s.timezone = "UTC";
+            s.persist();
+            return u.id;
+        });
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = {"user", "admin"})
+    void resendInviteRejectedForOidcUser() {
+        var id = persistOidcUserWithEmail();
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/users/" + id + "/resend-invite")
+            .then()
+            .statusCode(200);
+        assertThat(PasswordResetToken.count("userId", id)).as("no token minted for an SSO-only account").isZero();
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = {"user", "admin"})
+    void oidcUserListedWithoutResendInviteButton() {
+        var id = persistOidcUserWithEmail();
+        given()
+            .when()
+            .get("/me/users")
+            .then()
+            .statusCode(200)
+            .body(containsString("sso-only"))
+            .body(not(containsString("/me/users/" + id + "/resend-invite")));
     }
 
     @Test
