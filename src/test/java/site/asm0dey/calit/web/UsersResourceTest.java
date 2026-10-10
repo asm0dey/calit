@@ -246,7 +246,9 @@ class UsersResourceTest {
             .then()
             .statusCode(200)
             .body(containsString("sso-only"))
-            .body(not(containsString("/me/users/" + id + "/resend-invite")));
+            .body(not(containsString("/me/users/" + id + "/resend-invite")))
+            // users_status_pending; only the seeded admin (password user) shares the page
+            .body(not(containsString("Awaiting activation")));
     }
 
     @Test
