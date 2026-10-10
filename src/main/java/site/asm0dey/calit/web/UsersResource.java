@@ -301,7 +301,7 @@ public class UsersResource {
         var m = adminMsgs.forLocale(activeLocale.current());
         AppUser u = requireUser(id);
         OwnerSettings s = OwnerSettings.forOwner(u.id);
-        var pending = u.passwordHash == null && u.googleSub == null;
+        var pending = u.isPending();
         if (!pending || s == null || s.ownerEmail == null || s.ownerEmail.isBlank()) {
             return render(m.users_error_not_pending());
         }
