@@ -7,9 +7,10 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.27.1
 
-Merged but not yet in a tagged release.
+Images also publish to Docker Hub, server-side validation is tightened, and dependencies are
+refreshed, including Quarkus 3.40.1.
 
 - Images are also published to `docker.io/asm0dey/calit`, with the same tags and digests as
   `ghcr.io/asm0dey/calit`; releases sync the README to the Docker Hub page
@@ -27,6 +28,10 @@ Merged but not yet in a tagged release.
   horizon over 730 days. ([#245](https://github.com/asm0dey/calit/pull/245))
 - Too-long meeting names or descriptions on the manage page show a translated form error
   instead of a plain-text 422. ([#245](https://github.com/asm0dey/calit/pull/245))
+- Accounts created by OIDC sign-in no longer show as awaiting activation on `/me/users` and
+  cannot be sent an invite. ([#252](https://github.com/asm0dey/calit/pull/252))
+- Dependencies refreshed: Quarkus 3.40.1, Google Calendar API v3-rev20260925, altcha 3.3.0,
+  notify4j 1.2.0. ([#247](https://github.com/asm0dey/calit/pull/247), [#250](https://github.com/asm0dey/calit/pull/250))
 
 Upgrade: nothing to do; GHCR image references keep working. A meeting type whose stored horizon,
 notice or buffer is over the new limits must be lowered on its next edit.
