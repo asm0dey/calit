@@ -28,7 +28,7 @@
       <tr>
         <td>{u.username}</td>
         <td>{#if u.isAdmin}{adm:users_yes}{#else}{adm:users_no}{/if}</td>
-        <td>{#if u.passwordHash == null && u.googleSub == null}{adm:users_status_pending}{#else if u.enabled}{adm:users_active}{#else}{adm:users_locked}{/if}</td>
+        <td>{#if u.isPending}{adm:users_status_pending}{#else if u.enabled}{adm:users_active}{#else}{adm:users_locked}{/if}</td>
         <td class="flex flex-wrap gap-1">
           {#if u.isAdmin}
           <form method="post" action="/me/users/{u.id}/revoke-admin"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs">{adm:users_btn_revoke_admin}</button></form>
@@ -40,7 +40,7 @@
           {#else}
           <form method="post" action="/me/users/{u.id}/unlock"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs btn-success">{adm:users_btn_unlock}</button></form>
           {/if}
-          {#if u.passwordHash == null && u.googleSub == null}
+          {#if u.isPending}
           <form method="post" action="/me/users/{u.id}/resend-invite"><input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}"><button class="btn btn-xs">{adm:users_btn_resend_invite}</button></form>
           {/if}
           {#if u.id != currentUserId}

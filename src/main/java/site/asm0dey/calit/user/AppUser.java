@@ -132,6 +132,14 @@ public class AppUser extends PanacheEntityBase {
     }
 
     /**
+     * True when the account has no password and no linked SSO identity (Google or OIDC), meaning
+     * it was created by an admin invite but the user has never completed setup.
+     */
+    public boolean isPending() {
+        return this.passwordHash == null && this.googleSub == null && this.oidcSub == null;
+    }
+
+    /**
      * True when {@code username} is either already in use OR was permanently tombstoned by a
      * previously-deleted account ({@link DeletedUsername}, R16) — the combined "taken" predicate
      * every username-choosing path (signup, admin invite, first-run setup, OIDC/Google
