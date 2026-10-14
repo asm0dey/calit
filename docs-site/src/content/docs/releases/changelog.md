@@ -7,6 +7,15 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## 1.27.2
+
+Base images refreshed.
+
+- Container images rebuilt on refreshed Liberica JDK 27, hardened distroless JRE and Alpaquita
+  base-image digests. ([#254](https://github.com/asm0dey/calit/pull/254))
+
+Upgrade: nothing to do.
+
 ## 1.27.1
 
 Images also publish to Docker Hub, server-side validation is tightened, and dependencies are
