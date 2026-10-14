@@ -13,7 +13,7 @@ RUN bun run css:build
 # Output: /app/src/main/resources/META-INF/resources/calit.css
 
 # --- Build stage: BellSoft Liberica JDK 27 + the Maven wrapper (no Maven in the image) ---
-FROM bellsoft/liberica-runtime-container:jdk-27-musl@sha256:fa04651b2137aaf71e83bc7b7418a552b066d6cb0d8ce99fe685cc6dbf0669be AS build
+FROM bellsoft/liberica-runtime-container:jdk-27-musl@sha256:853e66b6050f893c28c8a7ad30a8a3168a2278b05f88e68fa2c86d548fbad0c4 AS build
 WORKDIR /build
 
 # Warm the dependency cache on the POM first so source-only edits don't re-download everything.
@@ -35,7 +35,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 # freetype/fontconfig stack AWT card rendering needs must be COPYed in from an image that has
 # them. Reuses the jdk-27-musl image the build stage already pulls, so no new image enters the
 # build (already pinned above, already layer-cached).
-FROM bellsoft/liberica-runtime-container:jdk-27-musl@sha256:fa04651b2137aaf71e83bc7b7418a552b066d6cb0d8ce99fe685cc6dbf0669be AS fontstack
+FROM bellsoft/liberica-runtime-container:jdk-27-musl@sha256:853e66b6050f893c28c8a7ad30a8a3168a2278b05f88e68fa2c86d548fbad0c4 AS fontstack
 # Package versions deliberately UNPINNED here. Pinning the base image above by digest does NOT
 # pin these apk packages -- apk add resolves against the live Alpaquita repo at build time
 # regardless. Left floating on purpose: freetype/fontconfig are CVE-rich C font parsers, so
@@ -54,7 +54,7 @@ RUN apk add --no-cache freetype fontconfig font-dejavu-core \
 # JRE 26 runs the JDK-25-compiled fast-jar fine (forward-compatible); pure-bytecode app, so the
 # musl libc is a non-issue. This base has no shell, no package manager, and no CVE-fixing distro
 # packages beyond what BellSoft ships -- it is the hardened/distroless target from calit-gabg.
-FROM bellsoft/hardened-liberica-runtime-container:jre-distroless-musl@sha256:88a5f8fd9c37d559ffbabe18fd5059d56ea74fcf464fb8231e2619cd59bbc462 AS runtime
+FROM bellsoft/hardened-liberica-runtime-container:jre-distroless-musl@sha256:19a2128bce4c4cff4fc15e6cd9dca8b61e1cbf9efb8d4db3a120a464b17c9825 AS runtime
 WORKDIR /app
 
 # This base ships libfontmanager.so but not the libfreetype.so.6 it links against, and no font,
