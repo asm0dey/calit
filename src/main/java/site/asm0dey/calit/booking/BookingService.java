@@ -505,24 +505,16 @@ public class BookingService {
      */
     private void createGroupGoogleEvent(MeetingType type, UUID groupId) {
         List<Long> hostIds = meetingHosts.hostOwnerIds(type);
-        Long organizer = meetingHosts.chooseOrganizer(type, hostIds);
+        Long organizer = meetingHosts.chooseOrganizer(type);
         if (organizer == null) {
-            // no host has Google -> calit-only booking
+            // the Creator has no Google -> calit-only booking
             return;
         }
         Booking lead = Booking.leadOfGroup(groupId, type.ownerId);
-        Booking organizerRow = organizer.equals(type.ownerId)
-                ? lead
-                : Booking
-            .<Booking>group(groupId)
-            .stream()
-            .filter(r -> r.ownerId.equals(organizer))
-            .findFirst()
-            .orElseThrow();
         List<String> attendees = groupAttendeeEmails(type, groupId, hostIds);
         CreatedEvent created = calendarPort.createEvent(
                 organizer,
-                writeTargets.resolve(organizer, type),
+                writeTargets.resolve(type.ownerId, type),
                 googleSummary(type, lead),
                 googleDescription(type, lead),
                 lead.startUtc,
@@ -531,11 +523,7 @@ public class BookingService {
                 type.locationType == LocationType.GOOGLE_MEET,
                 type.locationDetail
         );
-        stampCreatedEvent(organizerRow, created);
-        // propagate the meet link to the lead row too so invitee-facing views show it
-        if (lead.meetLink == null) {
-            lead.meetLink = created.meetLink();
-        }
+        stampCreatedEvent(lead, created);
     }
 
     /**

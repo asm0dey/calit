@@ -274,7 +274,10 @@ public class SharedMeetingsResource {
         // this Co-host's meeting_type_host row — never another host's row. saveBuffers() below must
         // route its WRITE the same way, or a Creator's save lands on a row this read never looks at.
         var override = writeTargets.writeOverride(currentOwner.id(), type);
-        var writeCalendars = GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id());
+        // Only the Creator has a write-calendar override (ADR 0007): an empty list hides the picker for Co-hosts.
+        var writeCalendars = currentOwner.id().equals(type.ownerId)
+                ? GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id())
+                : List.<GoogleCalendar>of();
         var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
         var writeCalendarValue = WriteTargetResolver.writeCalendarValue(override, writeCalendarDangling);
         // Routing override view model, scoped to THIS co-host: only their own channels are offered,
@@ -483,21 +486,15 @@ public class SharedMeetingsResource {
         if (type == null) {
             throw new NotFoundException("No meeting type " + typeId);
         }
-        // The override lives in the type's own columns for the Creator -- an accepted CREATOR host
-        // row can reach this page too -- otherwise on this Co-host's own meeting_type_host row.
-        var creator = Objects.equals(currentOwner.id(), type.ownerId);
-        var before = creator
-                ? new CalendarRef(type.googleCredentialId, type.googleCalendarId)
-                : new CalendarRef(h.googleCredentialId, h.googleCalendarId);
+        // Only the Creator has an override (ADR 0007); an accepted CREATOR host row reaches this page too.
+        if (!Objects.equals(currentOwner.id(), type.ownerId)) {
+            return 0L;
+        }
+        var before = new CalendarRef(type.googleCredentialId, type.googleCalendarId);
         var after =
                 new CalendarRef(ref == null ? null : ref.credentialId(), ref == null ? null : ref.googleCalendarId());
-        if (creator) {
-            type.googleCredentialId = after.credentialId();
-            type.googleCalendarId = after.googleCalendarId();
-        } else {
-            h.googleCredentialId = after.credentialId();
-            h.googleCalendarId = after.googleCalendarId();
-        }
+        type.googleCredentialId = after.credentialId();
+        type.googleCalendarId = after.googleCalendarId();
         if (before.equals(after)) {
             // no-op save -- nothing moved, so nothing "stays behind" (calit-jk8y)
             return 0L;

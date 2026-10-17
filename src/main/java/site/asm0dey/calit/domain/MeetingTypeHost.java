@@ -28,16 +28,6 @@ public class MeetingTypeHost extends PanacheEntityBase {
     public Integer bufferBeforeMinutes;
     @Column(name = "buffer_after_minutes")
     public Integer bufferAfterMinutes;
-    /**
-     * This host's own write-calendar override for this shared type (Google's calendar id); null = their default.
-     */
-    @Column(name = "google_calendar_id", columnDefinition = "text")
-    public String googleCalendarId;
-    /**
-     * The connected account {@link #googleCalendarId} belongs to; nulled when that account is disconnected.
-     */
-    @Column(name = "google_credential_id")
-    public Long googleCredentialId;
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
     @Column(name = "responded_at")

@@ -9,7 +9,7 @@ import site.asm0dey.calit.google.GoogleCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 
 /**
- * The per-(type, host) write-calendar override columns round-trip, and default to "unset".
+ * The meeting type write-calendar override columns round-trip, and default to "unset".
  */
 @QuarkusTest
 class WriteTargetOverrideColumnsTest {
@@ -36,22 +36,6 @@ class WriteTargetOverrideColumnsTest {
         MeetingType loaded = MeetingType.findById(t.id);
         assertThat(loaded.googleCredentialId).isNull();
         assertThat(loaded.googleCalendarId).isNull();
-    }
-
-    @Test
-    @TestTransaction
-    void hostRowStoresItsOwnOverride() {
-        GoogleCredential cred = seedCredential("sub-override-host");
-        MeetingType t = seedType();
-        t.persistAndFlush();
-        MeetingTypeHost h = MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED);
-        h.googleCredentialId = cred.id;
-        h.googleCalendarId = "cohost@example.com";
-        h.persistAndFlush();
-
-        MeetingTypeHost loaded = MeetingTypeHost.findById(h.id);
-        assertThat(loaded.googleCredentialId).isEqualTo(cred.id);
-        assertThat(loaded.googleCalendarId).isEqualTo("cohost@example.com");
     }
 
     @Test

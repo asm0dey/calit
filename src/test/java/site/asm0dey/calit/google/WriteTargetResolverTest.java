@@ -57,7 +57,7 @@ class WriteTargetResolverTest {
 
     @Test
     @TestTransaction
-    void cohostOverrideIsReadFromTheirOwnHostRow() {
+    void aCohostHasNoOverrideAndWritesOnTheirOwnDefault() {
         var creatorCred = seedCredential("sub-res-creator-2");
         seedCalendar(1L, creatorCred, "creator@example.com", true, true);
         AppUser cohost = AppUser.create("cohost-resolver", "x", false);
@@ -69,12 +69,11 @@ class WriteTargetResolverTest {
         MeetingType t = seedType(1L);
         t.persistAndFlush();
         MeetingTypeHost h = MeetingTypeHost.of(t.id, cohost.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED);
-        h.googleCredentialId = cohostCred;
-        h.googleCalendarId = "cohost-work@example.com";
         h.persistAndFlush();
-        // The creator still writes on their own default; the co-host writes on their own override.
+        // The creator writes on their own default; a co-host has no override (ADR 0007).
+        assertThat(resolver.writeOverride(cohost.id, t)).isNull();
         assertThat(resolver.resolve(1L, t)).isEqualTo(new CalendarRef(creatorCred, "creator@example.com"));
-        assertThat(resolver.resolve(cohost.id, t)).isEqualTo(new CalendarRef(cohostCred, "cohost-work@example.com"));
+        assertThat(resolver.resolve(cohost.id, t)).isEqualTo(new CalendarRef(cohostCred, "cohost-default@example.com"));
     }
 
     @Test

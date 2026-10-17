@@ -3,15 +3,13 @@ package site.asm0dey.calit.google;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.jboss.logging.Logger;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.MeetingTypeHost;
 
 /**
  * Which Google calendar a given host writes a given meeting type's events on:
  *
  * <ol>
- *   <li>the (type, host) override — {@code meeting_type} columns for the creator, that host's
- *       {@code meeting_type_host} row for a co-host — when it still names one of that owner's
- *       selected calendars;
+ *   <li>the Creator's override on the {@code meeting_type} columns, when it still names one of
+ *       their selected calendars (a Co-host has none; ADR 0007);
  *   <li>otherwise the owner's write target ({@code google_calendar.write_target});
  *   <li>otherwise nothing, and {@link CalendarPort} raises its existing "no write target"
  *       error.
@@ -43,11 +41,7 @@ public class WriteTargetResolver {
         if (ownerId == null || type == null) {
             return null;
         }
-        if (ownerId.equals(type.ownerId)) {
-            return ref(type.googleCredentialId, type.googleCalendarId);
-        }
-        MeetingTypeHost host = type.id == null ? null : MeetingTypeHost.find(type.id, ownerId);
-        return host == null ? null : ref(host.googleCredentialId, host.googleCalendarId);
+        return ownerId.equals(type.ownerId) ? ref(type.googleCredentialId, type.googleCalendarId) : null;
     }
 
     /**

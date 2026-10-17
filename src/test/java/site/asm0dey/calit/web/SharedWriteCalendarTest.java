@@ -19,8 +19,8 @@ import site.asm0dey.calit.google.WriteTargetResolver;
 import site.asm0dey.calit.user.AppUser;
 
 /**
- * A co-host picks their OWN write calendar for a shared type: it lands on their meeting_type_host
- * row, and a calendar belonging to someone else is refused.
+ * Only the Creator has a write-calendar override on a shared type (ADR 0007): a Co-host gets no
+ * picker and a posted value changes nothing; a calendar belonging to someone else is refused.
  */
 @QuarkusTest
 class SharedWriteCalendarTest {
@@ -34,58 +34,90 @@ class SharedWriteCalendarTest {
         GoogleCredential.deleteAll();
         AppUser.delete("username", "shared-cal-creator");
         AppUser.delete("username", "shared-cal-cohost2");
+        AppUser.delete("username", "shared-cal-foreign");
     }
 
     @Test
-    void cohostSavesTheirOwnCalendar() {
+    void cohostSeesNoWritePicker() {
+        var credId = seedOwnerCalendars();
+        var typeId = seedSharedType();
+
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared/" + typeId + "/availability")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("name=\"writeCalendar\"")));
+        assertThat(credId).isNotNull();
+    }
+
+    @Test
+    void cohostPostingAWriteCalendarChangesNothing() {
         var credId = seedOwnerCalendars();
         var typeId = seedSharedType();
 
         saveBuffers(typeId, credId + ":work@example.com").statusCode(200);
 
-        MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertThat(h.googleCredentialId).isEqualTo(credId);
-        assertThat(h.googleCalendarId).isEqualTo("work@example.com");
+        MeetingType t = MeetingType.findById(typeId);
+        assertThat(t.googleCredentialId).isNull();
+        assertThat(t.googleCalendarId).isNull();
+        assertThat(MeetingTypeHost.<MeetingTypeHost>forType(typeId)).hasSize(2);
+    }
+
+    @Test
+    void creatorStillSeesWriteCalendarPicker() {
+        // A Creator reaches this page through their own accepted CREATOR host row.
+        var credId = seedOwnerCalendars();
+        var typeId = seedOwnTypeWithCohost();
+
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/shared/" + typeId + "/availability")
+            .then()
+            .statusCode(200)
+            .body(containsString("name=\"writeCalendar\""));
+
+        saveBuffers(typeId, credId + ":work@example.com").statusCode(200);
+
+        MeetingType t = MeetingType.findById(typeId);
+        assertThat(t.googleCredentialId).isEqualTo(credId);
+        assertThat(t.googleCalendarId).isEqualTo("work@example.com");
     }
 
     @Test
     void aCalendarThatIsNotTheirsIsRejected() {
         seedOwnerCalendars();
-        var typeId = seedSharedType();
-        var foreignCredId = foreignCredentialId(typeId);
+        var typeId = seedOwnTypeWithCohost();
+        var foreignCredId = foreignCredentialId();
 
         saveBuffers(typeId, foreignCredId + ":creator@example.com").statusCode(200);
 
-        MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertThat(h.googleCredentialId).isNull();
-        assertThat(h.googleCalendarId).isNull();
+        MeetingType t = MeetingType.findById(typeId);
+        assertThat(t.googleCredentialId).isNull();
+        assertThat(t.googleCalendarId).isNull();
     }
 
     @Test
     void savingBuffersKeepsADanglingOverride() {
-        // A Co-host editing only their buffers must not lose a write override whose calendar they
-        // happen to have unticked: the dangling option posts "keep".
         var credId = seedOwnerCalendars();
-        var typeId = seedSharedType();
-        setHostOverride(typeId, credId, "unticked@example.com");
+        var typeId = seedOwnTypeWithCohost();
+        setCreatorOverride(typeId, credId, "unticked@example.com");
 
         saveBuffers(typeId, "keep").statusCode(200);
 
-        MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertThat(h.googleCredentialId).isEqualTo(credId);
-        assertThat(h.googleCalendarId).isEqualTo("unticked@example.com");
+        MeetingType t = MeetingType.findById(typeId);
+        assertThat(t.googleCredentialId).isEqualTo(credId);
+        assertThat(t.googleCalendarId).isEqualTo("unticked@example.com");
     }
 
     @Test
     void anUnrelatedSaveWithNoWriteCalendarFieldKeepsADanglingOverrideOnADisconnectedAccount() {
-        // Zero selected calendars means sharedAvailability.html never renders the
-        // <select name="writeCalendar"> at all (it's gated behind writeCalendars.size > 0), so an
-        // ordinary buffers save by a Co-host whose Google account is fully disconnected posts NO
-        // writeCalendar field at all -- not "keep" and not "". That must not be read as "clear the
-        // override": it's exactly the Co-host who most needs the dangling override to survive so
-        // they can fix it once they reconnect.
-        var typeId = seedSharedType();
-        setHostOverride(typeId, null, "was-on-a-disconnected-account@example.com");
+        // Zero selected calendars means the <select name="writeCalendar"> is never rendered, so an
+        // ordinary buffers save posts NO writeCalendar field -- that must not clear the override.
+        var typeId = seedOwnTypeWithCohost();
+        setCreatorOverride(typeId, null, "was-on-a-disconnected-account@example.com");
 
         given()
             .cookie("quarkus-credential", FormAuth.login())
@@ -98,64 +130,16 @@ class SharedWriteCalendarTest {
             .then()
             .statusCode(200);
 
-        MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertThat(h.googleCredentialId).isNull();
-        assertThat(h.googleCalendarId).isEqualTo("was-on-a-disconnected-account@example.com");
-    }
-
-    @Test
-    void savingTheCohostsCalendarLeavesTheCreatorsOverrideAndTheOtherCohostsRowUntouched() {
-        // The structural guarantee (requireAcceptedHost keys off currentOwner.id(), so this save can
-        // never reach MeetingType's own columns or another host's row) is pinned here rather than
-        // left implicit in WriteTargetResolver.writeOverride: a reader of this test file should see
-        // the multi-tenancy boundary without having to trace the resolver to be convinced of it.
-        var credId = seedOwnerCalendars();
-        var typeId = seedSharedType();
-        setCreatorOverride(typeId, "creator-own-override@example.com");
-        var otherCohostId = addSecondCohostWithOverride(typeId, "other-cohost-override@example.com");
-
-        saveBuffers(typeId, credId + ":work@example.com").statusCode(200);
-
-        MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertThat(h.googleCredentialId).isEqualTo(credId);
-        assertThat(h.googleCalendarId).isEqualTo("work@example.com");
-
         MeetingType t = MeetingType.findById(typeId);
         assertThat(t.googleCredentialId).isNull();
-        assertThat(t.googleCalendarId).isEqualTo("creator-own-override@example.com");
-
-        MeetingTypeHost other = MeetingTypeHost.find(typeId, otherCohostId);
-        assertThat(other.googleCredentialId).isNull();
-        assertThat(other.googleCalendarId).isEqualTo("other-cohost-override@example.com");
-    }
-
-    @Test
-    void creatorHittingTheSharedUrlDirectlyWritesTheOverrideOntoTheMeetingTypeNotTheHostRow() {
-        // shared.html never links a Creator here (it sends CREATOR rows to
-        // /me/meeting-types/{id}), but nothing stops a Creator from hitting this URL directly --
-        // their accepted CREATOR host row passes requireAcceptedHost just fine.
-        // writeOverride() (the READ, in availabilityInstance()) resolves the override from
-        // MeetingType's own columns for the Creator; saveBuffers (the WRITE) must land on that
-        // same storage or the picker's choice would revert on the next render.
-        var credId = seedOwnerCalendars();
-        var typeId = seedOwnTypeWithCohost();
-
-        saveBuffers(typeId, credId + ":work@example.com").statusCode(200);
-
-        MeetingType t = MeetingType.findById(typeId);
-        assertThat(t.googleCredentialId).isEqualTo(credId);
-        assertThat(t.googleCalendarId).isEqualTo("work@example.com");
-        // Never on the Creator's own host row either.
-        MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        assertThat(h.googleCredentialId).isNull();
-        assertThat(h.googleCalendarId).isNull();
+        assertThat(t.googleCalendarId).isEqualTo("was-on-a-disconnected-account@example.com");
     }
 
     @Test
     void aDanglingOverrideIsWarnedAboutOnTheForm() {
         var credId = seedOwnerCalendars();
-        var typeId = seedSharedType();
-        setHostOverride(typeId, credId, "unticked@example.com");
+        var typeId = seedOwnTypeWithCohost();
+        setCreatorOverride(typeId, credId, "unticked@example.com");
 
         given()
             .cookie("quarkus-credential", FormAuth.login())
@@ -164,18 +148,14 @@ class SharedWriteCalendarTest {
             .then()
             .statusCode(200)
             .body(containsString("data-write-calendar-dangling"))
-            // this render, can't silently diverge on the sentinel string).
             .body(containsString("value=\"" + WriteTargetResolver.KEEP + "\""));
     }
 
     @Test
     void aLiveOverrideRendersAsTheSelectedOption() {
-        // Regression pin for the picker's selected-option binding (sharedAvailability.html:48):
-        // if writeCalendarValue stopped matching cal.optionValue, the FIRST option would render
-        // selected instead, and the next unrelated save would silently clear this live override.
         var credId = seedOwnerCalendars();
-        var typeId = seedSharedType();
-        setHostOverride(typeId, credId, "work@example.com");
+        var typeId = seedOwnTypeWithCohost();
+        setCreatorOverride(typeId, credId, "work@example.com");
 
         given()
             .cookie("quarkus-credential", FormAuth.login())
@@ -188,10 +168,10 @@ class SharedWriteCalendarTest {
     }
 
     @Test
-    void movingTheCohostsCalendarSaysUpcomingBookingsStayBehind() {
+    void movingTheCalendarSaysUpcomingBookingsStayBehind() {
         var credId = seedOwnerCalendars();
-        var typeId = seedSharedType();
-        setHostOverride(typeId, credId, "default@example.com");
+        var typeId = seedOwnTypeWithCohost();
+        setCreatorOverride(typeId, credId, "default@example.com");
         seedUpcomingBooking(typeId, credId, "default@example.com");
 
         saveBuffers(typeId, credId + ":work@example.com")
@@ -201,16 +181,11 @@ class SharedWriteCalendarTest {
 
     @Test
     void resavingTheSameCalendarDoesNotClaimBookingsStayedBehind() {
-        // A booking created on a calendar that is neither the current override nor the one it will
-        // be moved to still sits elsewhere, so the count is non-zero -- but this save did not move
-        // anything, and saying "they stay behind" implies it did. (Deliberately NOT "work@..." --
-        // that's the positive control's move target, and a booking already sitting exactly there
-        // would not be "staying behind" relative to that target, undermining the positive control.)
-        // This exercises the co-host branch: setHostOverride writes to owner 1's OWN
-        // meeting_type_host row, and owner 1 is logged in here as a COHOST (not the type's creator).
+        // A booking on a calendar that is neither the current override nor the move target still sits
+        // elsewhere, but a no-op save moved nothing, so it must not say "they stay behind".
         var credId = seedOwnerCalendars();
-        var typeId = seedSharedType();
-        setHostOverride(typeId, credId, "default@example.com");
+        var typeId = seedOwnTypeWithCohost();
+        setCreatorOverride(typeId, credId, "default@example.com");
         seedUpcomingBooking(typeId, credId, "elsewhere@example.com");
 
         saveBuffers(typeId, credId + ":default@example.com")
@@ -223,34 +198,14 @@ class SharedWriteCalendarTest {
     }
 
     /**
-     * Sets the type creator's OWN write override directly on {@code MeetingType} -- never touched by a co-host save.
+     * Sets the Creator's write override directly on {@code MeetingType}.
      */
     @Transactional
-    void setCreatorOverride(Long typeId, String calendarId) {
+    void setCreatorOverride(Long typeId, Long credId, String calendarId) {
         MeetingType t = MeetingType.findById(typeId);
+        t.googleCredentialId = credId;
         t.googleCalendarId = calendarId;
         t.persist();
-    }
-
-    /**
-     * A second, distinct co-host on the same type, with their own pre-existing override. Returns their owner id.
-     */
-    @Transactional
-    Long addSecondCohostWithOverride(Long typeId, String calendarId) {
-        AppUser other = AppUser.create("shared-cal-cohost2", "x", false);
-        other.persist();
-        MeetingTypeHost h = MeetingTypeHost.of(typeId, other.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED);
-        h.googleCalendarId = calendarId;
-        h.persist();
-        return other.id;
-    }
-
-    @Transactional
-    void setHostOverride(Long typeId, Long credId, String calendarId) {
-        MeetingTypeHost h = MeetingTypeHost.find(typeId, 1L);
-        h.googleCredentialId = credId;
-        h.googleCalendarId = calendarId;
-        h.persist();
     }
 
     private io.restassured.response.ValidatableResponse saveBuffers(Long typeId, String writeCalendar) {
@@ -343,17 +298,18 @@ class SharedWriteCalendarTest {
     }
 
     /**
-     * A connected calendar owned by the type's creator, not by owner 1.
+     * A connected calendar owned by another user, not by owner 1.
      */
     @Transactional
-    Long foreignCredentialId(Long typeId) {
-        MeetingType t = MeetingType.findById(typeId);
+    Long foreignCredentialId() {
+        AppUser other = AppUser.create("shared-cal-foreign", "x", false);
+        other.persist();
         GoogleCredential c = new GoogleCredential();
-        c.ownerId = t.ownerId;
+        c.ownerId = other.id;
         c.refreshToken = "rt";
         c.googleSub = "sub-shared-cal-creator-" + UUID.randomUUID();
         c.persist();
-        persistCalendar(t.ownerId, c.id, "creator@example.com", true);
+        persistCalendar(other.id, c.id, "creator@example.com", true);
         return c.id;
     }
 

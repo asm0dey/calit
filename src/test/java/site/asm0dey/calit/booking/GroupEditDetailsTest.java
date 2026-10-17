@@ -304,47 +304,4 @@ class GroupEditDetailsTest {
                 anyList()
         );
     }
-
-    @Test
-    @io.quarkus.test.TestTransaction
-    void groupEditByCohostOrganizerPatchesEventViaCohostOwnerId() {
-        // Creator NOT connected to Google, co-host IS -> co-host is the organizer of the shared event.
-        MultiHostFixtures.settings(1L, "pasha");
-        AppUser v = MultiHostFixtures.enabledUser("volodya");
-        MultiHostFixtures.settings(v.id, "volodya");
-        MultiHostFixtures.rule(1L, DayOfWeek.MONDAY, 9, 17);
-        MultiHostFixtures.rule(v.id, DayOfWeek.MONDAY, 9, 17);
-        MultiHostFixtures.acceptedTwoHostType(1L, v.id, "intro", 60, false);
-
-        when(calendarPort.isConnected(1L)).thenReturn(false);
-        when(calendarPort.isConnected(v.id)).thenReturn(true);
-        when(calendarPort.createEvent(eq(v.id), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-            .thenReturn(new CreatedEvent("grp-evt-cohost", "meet", "cal", null));
-
-        Booking lead =
-                bookingService.book(
-                        1L,
-                        "intro",
-                        nextMonday(10),
-                        "Sam",
-                        "sam@x.com",
-                        Map.of(),
-                        "tok",
-                        "",
-                        "en",
-                        List.of()
-        );
-
-        bookingService.updateDetails(lead.manageToken, "Cohost organized", "desc", List.of(), true);
-
-        verify(calendarPort, times(1))
-            .updateEventDetails(
-                    eq(v.id),
-                    any(),
-                    eq("grp-evt-cohost"),
-                    eq("Cohost organized with Sam"),
-                    eq("desc"),
-                    anyList()
-            );
-    }
 }

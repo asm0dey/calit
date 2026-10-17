@@ -1,6 +1,7 @@
 package site.asm0dey.calit.booking;
 
 import module java.base;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -16,7 +17,6 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.google.CalendarPort;
 import site.asm0dey.calit.google.CalendarRef;
@@ -121,14 +121,12 @@ class BookingWriteTargetOverrideTest {
     }
 
     /**
-     * Group path, per-Host scoping: the organizer is a CO-HOST (not the creator), and the two
-     * hosts carry DIFFERENT overrides. The event must land on the organizer's (cohost's) own
-     * override, never the creator's -- this is the property that guards against writing one
-     * user's meeting into another user's calendar.
+     * Group path (ADR 0007): the Creator is disconnected and a Co-host is connected. The Co-host
+     * is never promoted to organizer, so no Google event is created and the booking is CONFIRMED.
      */
     @Test
     @TestTransaction
-    void groupOrganizerUsesTheCohostsOwnOverrideNotTheCreators() {
+    void groupBookingWithDisconnectedCreatorCreatesNoEventEvenWhenACohostIsConnected() {
         var creatorCredId = seedCredential(1L, "sub-group-creator");
         seedCalendar(1L, creatorCredId, "creator-default@example.com", true);
         seedCalendar(1L, creatorCredId, "creator-override@example.com", false);
@@ -150,15 +148,7 @@ class BookingWriteTargetOverrideTest {
         t.googleCredentialId = creatorCredId;
         t.googleCalendarId = "creator-override@example.com";
         t.persist();
-        // Cohost's own override -- lives on their MeetingTypeHost row, not on MeetingType.
-        MeetingTypeHost cohostRow = MeetingTypeHost.find(t.id, cohostId);
-        cohostRow.googleCredentialId = cohostCredId;
-        cohostRow.googleCalendarId = "cohost-override@example.com";
-        cohostRow.persist();
-        // Only the cohost is Google-connected. MeetingHosts.chooseOrganizer picks the creator ONLY
-        // when the creator is connected, else the lowest-id connected host -- with the creator
-        // disconnected here, the cohost is the sole connected candidate, so it is unambiguously the
-        // organizer. Not a coin flip between hosts.
+        // Only the cohost is Google-connected; the Creator is the only possible organizer.
         when(calendarPort.isConnected(1L)).thenReturn(false);
         when(calendarPort.isConnected(cohostId)).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
@@ -175,20 +165,12 @@ class BookingWriteTargetOverrideTest {
         ))
             .thenReturn(new CreatedEvent("evt-1", null, null, null));
 
-        bookingService.book(1L, t.slug, SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        var booking =
+                bookingService.book(1L, t.slug, SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
 
-        verify(calendarPort)
-            .createEvent(
-                    eq(cohostId),
-                    eq(new CalendarRef(cohostCredId, "cohost-override@example.com")),
-                    anyString(),
-                    anyString(),
-                    any(),
-                    any(),
-                    any(),
-                    anyBoolean(),
-                    any()
-            );
+        assertThat(booking.status).isEqualTo(BookingStatus.CONFIRMED);
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
 
     private void stubGoogle() {

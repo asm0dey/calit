@@ -97,7 +97,7 @@ class GroupBookingWriteTest {
 
     @Test
     @TestTransaction
-    void autoConfirmCohostOrganizerPutsEventOnCohostAndMirrorsLinkToLead() {
+    void autoConfirmWithDisconnectedCreatorCreatesNoEventEvenWhenCohostIsConnected() {
         MeetingType t = type(false);
         long cohostId = meetingHosts
             .hostOwnerIds(t)
@@ -107,18 +107,6 @@ class GroupBookingWriteTest {
             .orElseThrow();
         when(calendarPort.isConnected(1L)).thenReturn(false);
         when(calendarPort.isConnected(cohostId)).thenReturn(true);
-        when(calendarPort.createEvent(
-                anyLong(),
-                any(),
-                anyString(),
-                anyString(),
-                any(),
-                any(),
-                anyList(),
-                anyBoolean(),
-                any()
-        ))
-            .thenReturn(new CreatedEvent("evt-1", "https://meet/x", "https://cal/x", null));
 
         Booking lead =
                 bookingService.book(
@@ -133,20 +121,13 @@ class GroupBookingWriteTest {
                         "en",
                         List.of()
         );
-        // event created on the co-host (organizer), not on the creator
-        verify(calendarPort, times(1))
-            .createEvent(eq(cohostId), any(), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any());
-        Booking cohostRow =
-                Booking
-            .<Booking>group(lead.groupId)
-            .stream()
-            .filter(r -> r.ownerId == cohostId)
-            .findFirst()
-            .orElseThrow();
-        assertThat(cohostRow.googleEventId).isEqualTo("evt-1");
-        Booking leadRow = Booking.leadOfGroup(lead.groupId, 1L);
-        assertThat(leadRow.meetLink).isEqualTo("https://meet/x");
-        assertThat(leadRow.googleEventId).isNull();
+        // ADR 0007: a Co-host is never promoted to organizer; the group books in degraded mode
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any());
+        Booking.group(lead.groupId).forEach(r -> {
+            assertThat(r.status).isEqualTo(BookingStatus.CONFIRMED);
+            assertThat(r.googleEventId).isNull();
+        });
     }
 
     @Test
