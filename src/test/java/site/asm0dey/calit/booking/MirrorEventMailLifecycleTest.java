@@ -125,6 +125,47 @@ class MirrorEventMailLifecycleTest {
         assertNoIcs(GUEST_EMAIL);
     }
 
+    @Test
+    void approveWithNoWriteCalendarAfterReapprovalOfAGoogleEventSendsCalitInvites() {
+        Long account = tx(MirrorEventMailLifecycleTest::googleAccount);
+        tx(() -> calendar(account, "owner@example.com", true));
+        when(google.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+            .thenReturn(new CreatedEvent("evt-g", null, null, new CalendarRef(account, "owner@example.com")));
+
+        approveAfterReapprovalWithoutWriteCalendar(seedType(true, null));
+
+        assertThat(ics(INVITEE_EMAIL)).contains("METHOD:REQUEST");
+        assertThat(ics(OWNER_EMAIL)).contains("METHOD:REQUEST");
+    }
+
+    @Test
+    void approveWithNoWriteCalendarAfterReapprovalOfACaldavEventSendsTheCreatorAnIcs() {
+        Long account = tx(MirrorEventMailLifecycleTest::caldavAccount);
+        tx(() -> calendar(account, "/cal/work/", true));
+        when(caldav.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+            .thenReturn(new CreatedEvent("/cal/work/evt.ics", null, null, new CalendarRef(account, "/cal/work/")));
+
+        approveAfterReapprovalWithoutWriteCalendar(seedType(true, null));
+
+        assertThat(ics(OWNER_EMAIL)).contains("METHOD:REQUEST");
+    }
+
+    /**
+     * Book, approve (Mirror event created), invitee reschedules (event removed), the owner deselects their write
+     * calendar, then approves again: no Mirror event this time.
+     */
+    private void approveAfterReapprovalWithoutWriteCalendar(String slug) {
+        Booking b = book(slug);
+        bookingService.approve(b.id);
+        bookingService.reschedule(b.manageToken, T11);
+        tx(() -> SelectedCalendar.update("writeTarget = false where ownerId = ?1", 1L));
+        mailbox.clear();
+
+        bookingService.approve(b.id);
+
+        assertThat(tx(() -> Booking.<Booking>findById(b.id).eventId)).isNull();
+    }
+
     /**
      * Book, approve (Mirror event created), invitee reschedules (back to PENDING, event removed), owner declines.
      */

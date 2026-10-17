@@ -505,6 +505,10 @@ public class BookingService {
      * One Google event on the Creator's account (lead row), all other hosts + invitee + guests invited.
      */
     private void createGroupGoogleEvent(MeetingType type, UUID groupId) {
+        // the removed event may sit on another row (written before ADR 0007); the group is re-stamped as a whole
+        Booking
+            .<Booking>group(groupId)
+            .forEach(r -> r.removedMirrorProvider = null);
         List<Long> hostIds = meetingHosts.hostOwnerIds(type);
         Long organizer = meetingHosts.chooseOrganizer(type);
         if (organizer == null) {
@@ -529,12 +533,6 @@ public class BookingService {
     }
 
     /**
-     * Stamps a created Google event onto its booking row: the event id, the meet link, and the
-     * calendar it actually landed on. Extracted so the invariant "the event id and the address it
-     * lives on are written together" has ONE home -- a row carrying an event id but no address
-     * cannot be cleaned up on the right calendar later (calit-vi8n).
-     */
-    /**
      * Records which provider held the row's Mirror event before its address is cleared: the mail that follows (this
      * cancel, a later decline) must know whether that provider or calit invited the attendees.
      */
@@ -542,7 +540,15 @@ public class BookingService {
         row.removedMirrorProvider = MirrorProvider.of(row.ownerId, row.calendarRef());
     }
 
+    /**
+     * Stamps a created Google event onto its booking row: the event id, the meet link, and the
+     * calendar it actually landed on. Extracted so the invariant "the event id and the address it
+     * lives on are written together" has ONE home -- a row carrying an event id but no address
+     * cannot be cleaned up on the right calendar later (calit-vi8n).
+     */
     private static void stampCreatedEvent(Booking row, CreatedEvent created) {
+        // a re-stamped row is past any event removed earlier, with or without a new one
+        row.removedMirrorProvider = null;
         if (created == null) {
             // no write calendar: no Mirror event, the row keeps no address
             return;
