@@ -134,6 +134,8 @@ User-facing strings are type-safe `@Message` keys: UI bundle `AppMessages` (`{ms
 
 Flyway migrations in `src/main/resources/db/migration/`, applied at boot (`quarkus.flyway.migrate-at-start=true`). Hibernate **validate-only** (`schema-management.strategy=validate`) — never creates schema; migrations own it. **Never edit applied migration** (Flyway checksum validation fails — even comment changes break it). Add new `V*.sql` for every change.
 
+**The previous release must run on the new schema** (N replicas, rolling deploys: old and new code share one database for a while). Migrate expand/contract: add, backfill, keep both shapes working, drop the old shape one release later. Never rename or drop anything the previous release reads. A table rename goes through a compatibility view under the old name — single-table and filtered (e.g. `WHERE provider = 'GOOGLE'`), so Postgres keeps it auto-updatable — and a column rename adds the new column next to the old one with a trigger keeping the pair equal. Drop the views, old columns and triggers in the next release. `V37MigrationTest` shows how to pin the previous release's contract (its Flyway validates, the old columns and types exist, its native SQL still runs).
+
 ## Config
 
 12-factor: all prod config via env vars (see `.env.example`, full reference in `README.md`). Key ones: `DB_*`, `APP_BASE_URL`, `SESSION_ENCRYPTION_KEY` (≥16 chars, identical on every replica), `MAIL_*`, optional `GOOGLE_OAUTH_*` + `GOOGLE_OAUTH_STATE_SECRET`, `TURNSTILE_*`, `SIGNUP_ENABLED`. Profiles: `%dev`/`%test` mock mailer; `%prod` requires real SMTP and secure cookies.

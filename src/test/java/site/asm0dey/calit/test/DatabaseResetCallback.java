@@ -32,7 +32,7 @@ public class DatabaseResetCallback implements QuarkusTestBeforeEachCallback {
     private static final String TRUNCATE_ALL =
             "TRUNCATE TABLE "
             + "reminder, booking, date_override_window, date_override, availability_rule, "
-            + "booking_field, meeting_type, owner_settings, google_calendar, google_credential, "
+            + "booking_field, meeting_type, owner_settings, calendar, calendar_account, "
             + "deleted_username, app_user RESTART IDENTITY CASCADE";
 
     @Override

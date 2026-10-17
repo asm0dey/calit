@@ -35,8 +35,8 @@ class V8MigrationTest {
                 "owner_settings",
                 "meeting_type",
                 "booking",
-                "google_credential",
-                "google_calendar",
+                "calendar_account",
+                "calendar",
                 "booking_field"
         }) {
             assertThat(hasOwnerIdColumn(t)).as("owner_id missing on " + t).isTrue();
@@ -76,8 +76,8 @@ class V8MigrationTest {
                 "booking_field",
                 "availability_rule",
                 "date_override",
-                "google_credential",
-                "google_calendar"
+                "calendar_account",
+                "calendar"
         }) {
             var nullable = (String) em
                 .createNativeQuery(
