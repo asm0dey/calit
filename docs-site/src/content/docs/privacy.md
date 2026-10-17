@@ -59,8 +59,9 @@ is stored by the host's calendar provider — Google, or the CalDAV server the
 host connected. It carries:
 
 - the title "_meeting title_ with _invitee name_" and the booking's description;
-- the start and end time, and the meeting location;
-- the email addresses of the invitee, the host and any active guests. On Google
+- the start and end time, and the meeting location (or a generated Google Meet
+  link);
+- the email addresses of the invitee, the host(s) and any active guests. On Google
   they are added as event attendees, so Google stores them and emails them
   invitations. On a CalDAV server they are written into the event description,
   and the server stores them.
@@ -69,9 +70,10 @@ If you book a meeting, your name, email address and these booking details are
 therefore stored by the host's calendar provider as well as by calit. If you
 are a host, this is the copy on your own calendar. That copy is held under the
 provider's own privacy policy and retention. calit deletes the event when the
-booking is cancelled, when the booking is erased, and when the host's account
-is deleted, but it cannot remove copies the provider keeps in its trash or
-backups. No such event is created when the host has no connected calendar or
+booking is cancelled or erased, but it cannot remove copies the provider keeps
+in its trash or backups. When a host deletes their account, calit cancels their
+upcoming bookings first, which deletes those events; events of past bookings
+remain on the provider's calendar until the host removes them. No such event is created when the host has no connected calendar or
 no write calendar selected.
 
 ## How CalDAV data is used

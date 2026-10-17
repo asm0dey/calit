@@ -121,7 +121,8 @@ own account from `/me/users`.
   account's own meeting types is cancelled through the normal cancel path before anything is
   deleted, including every host's copy of a multi-host booking. Invitees, guests and co-hosts get
   the usual cancellation email, and the calendar event is deleted where the calendar provider is reachable; a calendar provider
-  failure does not stop the deletion. Invitee erasure and account deletion remove Mirror events for both Google and CalDAV.
+  failure does not stop the deletion. Invitee erasure and account deletion remove Mirror events for both Google and CalDAV;
+  account deletion reaches only upcoming bookings, so events of past bookings stay on the host's calendar.
 - **Queued cancellation emails survive.** If a cancellation email could not be sent and is waiting
   in `email_outbox`, the copies for invitees, guests and co-hosts are kept for retry; their booking
   link is dropped, so the 30-day age purge clears them. The deleted user's own copy is deleted with
