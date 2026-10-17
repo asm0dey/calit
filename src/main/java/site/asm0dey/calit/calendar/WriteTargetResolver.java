@@ -133,6 +133,18 @@ public class WriteTargetResolver {
         return target != null && provider(ownerId, target) != CalendarProvider.GOOGLE;
     }
 
+    /**
+     * True when a booking of {@code type} really gets a Google Meet link: it asks for Meet and this host writes it on
+     * a Meet-capable Google calendar. No write calendar means no Mirror event, so no link either.
+     */
+    public boolean mintsMeet(Long ownerId, MeetingType type) {
+        if (type == null || type.locationType != MeetingType.LocationType.GOOGLE_MEET) {
+            return false;
+        }
+        SelectedCalendar target = resolveCalendar(ownerId, type);
+        return target != null && target.supportsMeet && provider(ownerId, target) == CalendarProvider.GOOGLE;
+    }
+
     private static CalendarProvider provider(Long ownerId, SelectedCalendar calendar) {
         CalendarAccount account = CalendarAccount.findOwned(ownerId, calendar.accountId);
         return account == null ? CalendarProvider.GOOGLE : account.provider();

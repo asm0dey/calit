@@ -52,7 +52,7 @@
 
   <h2 class="text-xl font-semibold mt-6">Retention and deletion</h2>
   <ul class="list-disc ps-6 mt-2">
-    {#if inject:privacy.googleConfigured}<li>Disconnecting a Google account in <a class="link" href="/me/google">Settings → Google</a> deletes that account's stored tokens and calendar selections from this site. It does not withdraw the grant at Google — revoke calit's access in your Google account to do that.</li>{/if}
+    {#if inject:privacy.googleConfigured}<li>Disconnecting a Google account in <a class="link" href="/me/calendars">Settings → Google</a> deletes that account's stored tokens and calendar selections from this site. It does not withdraw the grant at Google — revoke calit's access in your Google account to do that.</li>{/if}
     <li>Deleting your account at <a class="link" href="/me/settings/delete">Settings → Delete my account</a> removes your account, settings, meeting types, availability, bookings, connected Google accounts and notification channels.</li>
     <li>A hash of a deleted account's username is kept permanently, so that name can never be re-registered and used to take over a stale login.</li>
     {#if inject:privacy.inviteeErasureEnabled}

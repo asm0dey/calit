@@ -22,6 +22,7 @@ import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailService;
 import site.asm0dey.calit.email.MailHealth;
 import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.WriteTargetResolver;
 import site.asm0dey.calit.calendar.CalendarUnavailableException;
 import site.asm0dey.calit.calendar.CalendarProvider;
 import site.asm0dey.calit.calendar.MirrorProvider;
@@ -61,7 +62,7 @@ public class PublicResource {
                 String error,
                 Chrome chrome,
                 Captcha captcha,
-                boolean googleConnected,
+                boolean meetLink,
                 String ownerName,
                 String initialGuests,
                 OgCard og
@@ -167,6 +168,7 @@ public class PublicResource {
     final PrivacyService privacy;
     final PrivacyConfig privacyConfig;
     final SiteInfo siteInfo;
+    final WriteTargetResolver writeTargets;
 
     @Inject
     public PublicResource(
@@ -183,8 +185,10 @@ public class PublicResource {
             EmailService emailService,
             PrivacyService privacy,
             PrivacyConfig privacyConfig,
-            SiteInfo siteInfo
+            SiteInfo siteInfo,
+            WriteTargetResolver writeTargets
     ) {
+        this.writeTargets = writeTargets;
         this.bookingService = bookingService;
         this.meetingHosts = meetingHosts;
         this.currentOwner = currentOwner;
@@ -401,7 +405,7 @@ public class PublicResource {
                 null,
                 new Chrome(Layout.tzBar(m), Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT),
                 new Captcha(captchaProviderConfig.provider(), turnstileSiteKey()),
-                calendarPort.isConnected(type.ownerId),
+                writeTargets.mintsMeet(type.ownerId, type),
                 settings.ownerName,
                 "",
                 ogCards.meetingType(user, type, settings.ownerName)
@@ -597,7 +601,7 @@ public class PublicResource {
                     be.getMessage(),
                     new Chrome(Layout.tzBar(m), Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT),
                     new Captcha(captchaProviderConfig.provider(), turnstileSiteKey()),
-                    calendarPort.isConnected(type.ownerId),
+                    writeTargets.mintsMeet(type.ownerId, type),
                     settings.ownerName,
                     "",
                     ogCards.meetingType(user, type, settings.ownerName)

@@ -38,7 +38,7 @@ class GoogleDisconnectedEmailTest {
 
         assertThat(to.getValue()).isEqualTo("owner@example.com");
         assertThat(subject.getValue().toLowerCase()).contains("reconnect");
-        assertThat(body.getValue()).as("body must link to the Google settings page").contains("/me/google");
+        assertThat(body.getValue()).as("body must link to the calendars settings page").contains("/me/calendars");
         assertThat(body.getValue()).as("body names the affected account").contains("work@gmail.com");
     }
 

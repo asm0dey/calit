@@ -19,6 +19,7 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
@@ -131,6 +132,8 @@ class BookPageTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         seed();
+        // a Meet-capable Google write calendar, so the Meet location line shows
+        seedBobWriteTarget(false);
 
         given()
             .when()
@@ -273,6 +276,58 @@ class BookPageTest {
             .then()
             .statusCode(200)
             .body(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("link sent after booking")));
+    }
+
+    @Test
+    void bookPageShowsMeetHintWhenTheWriteCalendarMintsMeet() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+        seedBobWriteTarget(false);
+        given().when().get("/bob/book-page").then().statusCode(200).body(containsString("link sent after booking"));
+    }
+
+    @Test
+    void bookPageHidesMeetHintWhenTheWriteCalendarIsCaldav() {
+        // connected, so the old isConnected flag showed the hint although no link is ever made
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+        seedBobWriteTarget(true);
+        given().when().get("/bob/book-page").then().statusCode(200).body(not(containsString("link sent after booking")));
+    }
+
+    @Transactional
+    void seedBobWriteTarget(boolean caldav) {
+        Long ownerId = AppUser.findByUsername("bob").id;
+        SelectedCalendar.delete("ownerId", ownerId);
+        site.asm0dey.calit.calendar.CalendarAccount.delete("ownerId", ownerId);
+        site.asm0dey.calit.calendar.CalendarAccount account;
+        if (caldav) {
+            var a = new site.asm0dey.calit.calendar.CaldavAccount();
+            a.serverUrl = "https://dav.example.com/";
+            a.username = "bob";
+            a.password = "x";
+            a.principalUrl = "https://dav.example.com/p/bob/";
+            a.homeUrl = "https://dav.example.com/cal/bob/";
+            account = a;
+        } else {
+            var g = new site.asm0dey.calit.google.GoogleCredential();
+            g.refreshToken = "rt";
+            g.googleSub = "sub-bob";
+            account = g;
+        }
+        account.ownerId = ownerId;
+        account.persist();
+        var c = new SelectedCalendar();
+        c.ownerId = ownerId;
+        c.accountId = account.id;
+        c.remoteId = caldav ? "https://dav.example.com/cal/bob/work/" : "bob@example.com";
+        c.summary = "Work";
+        c.readForBusy = true;
+        c.writeTarget = true;
+        c.supportsMeet = !caldav;
+        c.persist();
     }
 
     @Test

@@ -4,14 +4,14 @@ import module java.base;
 import com.google.api.services.calendar.model.CalendarListEntry;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import site.asm0dey.calit.calendar.CalendarListPort;
+import site.asm0dey.calit.calendar.CalendarListPort.RemoteCalendar;
 import site.asm0dey.calit.user.CurrentOwner;
 
 /**
- * Real CalendarListPort backed by Google's calendarList.list. @ApplicationScoped, mockable downstream.
+ * Google's calendarList.list; {@code AccountCalendarListPort} dispatches Google accounts here. Mockable downstream.
  */
 @ApplicationScoped
-public class GoogleCalendarListPort implements CalendarListPort {
+public class GoogleCalendarListPort {
     private final GoogleTokenService tokens;
     private final GoogleCalendarClientFactory clientFactory;
     private final CurrentOwner currentOwner;
@@ -27,7 +27,6 @@ public class GoogleCalendarListPort implements CalendarListPort {
         this.currentOwner = currentOwner;
     }
 
-    @Override
     public List<RemoteCalendar> listCalendars(GoogleCredential credential) {
         try {
             var client = clientFactory.build(tokens.validAccessToken(credential, Instant.now()));
@@ -57,7 +56,6 @@ public class GoogleCalendarListPort implements CalendarListPort {
         }
     }
 
-    @Override
     public List<RemoteCalendar> listCalendars() {
         GoogleCredential c = GoogleCredential.forOwner(currentOwner.id());
         return c == null ? List.of() : listCalendars(c);

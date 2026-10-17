@@ -13,7 +13,7 @@ import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 
 @QuarkusTest
-class GooglePageResourceTest {
+class CalendarsPageResourceTest {
     @io.quarkus.test.InjectMock
     CalendarListPort calendarListPort;
 
@@ -23,7 +23,7 @@ class GooglePageResourceTest {
         given()
             .cookie("quarkus-credential", FormAuth.login())
             .when()
-            .post("/me/google/accounts/" + credId + "/delete")
+            .post("/me/calendars/accounts/" + credId + "/delete")
             .then()
             .statusCode(409);
     }
@@ -36,7 +36,7 @@ class GooglePageResourceTest {
             .redirects()
             .follow(false)
             .when()
-            .post("/me/google/accounts/" + credId + "/delete")
+            .post("/me/calendars/accounts/" + credId + "/delete")
             .then()
             .statusCode(303);
     }
@@ -46,7 +46,7 @@ class GooglePageResourceTest {
         given()
             .cookie("quarkus-credential", FormAuth.login())
             .when()
-            .get("/me/google")
+            .get("/me/calendars")
             .then()
             .statusCode(200)
             .body(org.hamcrest.Matchers.containsString("Connect a Google account"));
@@ -69,7 +69,7 @@ class GooglePageResourceTest {
             .formParam("read", credId + ":c2")
             .formParam("writeTarget", credId + ":c1")
             .when()
-            .post("/me/google/calendars")
+            .post("/me/calendars/calendars")
             .then()
             .statusCode(303);
 
@@ -92,7 +92,7 @@ class GooglePageResourceTest {
             .formParam("read", credId + ":c1")
             .formParam("read", credId + ":c2")
             .when()
-            .post("/me/google/calendars")
+            .post("/me/calendars/calendars")
             .then()
             .statusCode(400);
     }
@@ -112,7 +112,7 @@ class GooglePageResourceTest {
             .formParam("read", xId + ":x1")
             .formParam("writeTarget", xId + ":x1")
             .when()
-            .post("/me/google/calendars")
+            .post("/me/calendars/calendars")
             .then()
             .statusCode(303);
         // Regression: flagged account Y's saved read calendar must still exist.
@@ -137,11 +137,11 @@ class GooglePageResourceTest {
         given()
             .cookie("quarkus-credential", FormAuth.login())
             .when()
-            .get("/me/google")
+            .get("/me/calendars")
             .then()
             .statusCode(200)
             // The error banner is rendered...
-            .body(org.hamcrest.Matchers.containsString("reach Google for one or more accounts"))
+            .body(org.hamcrest.Matchers.containsString("reach the calendar server for one or more accounts"))
             // ...and the saved calendar for the healthy account is still listed, not wiped.
             .body(org.hamcrest.Matchers.containsString("X1"));
 
@@ -168,7 +168,7 @@ class GooglePageResourceTest {
             .follow(false)
             .contentType("application/x-www-form-urlencoded")
             .when()
-            .post("/me/google/calendars")
+            .post("/me/calendars/calendars")
             .then()
             .statusCode(303);
 

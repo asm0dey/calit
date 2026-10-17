@@ -3,14 +3,16 @@ package site.asm0dey.calit.google;
 import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
+import site.asm0dey.calit.calendar.CalendarAccount;
 import site.asm0dey.calit.calendar.SelectedCalendar;
 
 /**
- * Validates and persists an owner's calendar selection, replacing any prior selection. Shared by the
- * JSON REST endpoint and the server-rendered page so the rules live in exactly one place:
- *  - at most one write target;
+ * Validates and persists an owner's calendar selection for a set of their Connected accounts, replacing
+ * those accounts' prior selection and leaving every other account's alone. Shared by the JSON REST
+ * endpoint and the server-rendered page so the rules live in exactly one place:
+ *  - at most one write target per owner (one saved here demotes any other account's);
  *  - the write target is always read-for-busy (else calit could double-book its own events);
- *  - every selection names a real credential owned by this owner.
+ *  - every selection names one of the covered accounts, all owned by this owner.
  */
 @ApplicationScoped
 public class CalendarSelectionService {
@@ -40,19 +42,31 @@ public class CalendarSelectionService {
     }
 
     @Transactional
-    public void save(Long ownerId, List<Selection> selections) {
+    public void save(Long ownerId, Set<Long> accountIds, List<Selection> selections) {
         var writeTargets = selections.stream().filter(Selection::writeTarget).count();
         if (writeTargets > 1) {
             throw new IllegalArgumentException("At most one write-target calendar is allowed");
         }
-        SelectedCalendar.deleteForOwner(ownerId);
-        for (Selection sel : selections) {
-            GoogleCredential cred = GoogleCredential.findById(sel.googleCredentialId());
-            if (cred == null || !ownerId.equals(cred.ownerId)) {
-                throw new IllegalArgumentException("Unknown credential "
-                        + sel.googleCredentialId()
-                        + " for this owner");
+        for (Long accountId : accountIds) {
+            if (CalendarAccount.findOwned(ownerId, accountId) == null) {
+                throw new IllegalArgumentException("Unknown account " + accountId + " for this owner");
             }
+        }
+        for (Selection sel : selections) {
+            if (!accountIds.contains(sel.googleCredentialId())) {
+                throw new IllegalArgumentException(
+                        "Selection names account " + sel.googleCredentialId() + " outside the saved accounts"
+                );
+            }
+        }
+        if (accountIds.isEmpty()) {
+            return;
+        }
+        SelectedCalendar.delete("ownerId = ?1 and accountId in ?2", ownerId, accountIds);
+        if (writeTargets > 0) {
+            SelectedCalendar.update("writeTarget = false where ownerId = ?1 and writeTarget = true", ownerId);
+        }
+        for (Selection sel : selections) {
             SelectedCalendar c = new SelectedCalendar();
             c.ownerId = ownerId;
             c.accountId = sel.googleCredentialId();

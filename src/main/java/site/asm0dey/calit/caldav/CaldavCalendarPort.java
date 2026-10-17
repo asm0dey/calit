@@ -252,6 +252,18 @@ public class CaldavCalendarPort implements ProviderCalendarPort {
     }
 
     /**
+     * Whether events on this calendar get storable ids: {@link #eventUrl} with a booking's uid (a UUID) fits.
+     */
+    public static boolean fitsEventIds(String calendarHref) {
+        try {
+            eventUrl(calendarHref, UUID.randomUUID().toString());
+            return true;
+        } catch (CaldavException | IllegalArgumentException _) {
+            return false;
+        }
+    }
+
+    /**
      * The stored event id is a server-relative path; the account's home supplies scheme and host.
      */
     private static URI resolve(CaldavAccount account, String eventId) {

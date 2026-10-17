@@ -7,7 +7,7 @@
 {@java.lang.String error}
 {@site.asm0dey.calit.web.PublicResource$Chrome chrome}
 {@site.asm0dey.calit.web.PublicResource$Captcha captcha}
-{@java.lang.Boolean googleConnected}
+{@java.lang.Boolean meetLink}
 {@java.lang.String ownerName}
 {@java.lang.String initialGuests}
 {@site.asm0dey.calit.web.OgCard og}
@@ -38,7 +38,7 @@
           </p>
           {#if type.description}<p class="text-sm text-base-content/70 mb-3">{type.description}</p>{/if}
           {#if type.locationType.name == 'GOOGLE_MEET'}
-            {#if googleConnected}<p class="text-sm mb-2"><strong>{msg:pub_book_location_label}</strong> {msg:pub_book_meet_hint}</p>{/if}
+            {#if meetLink}<p class="text-sm mb-2"><strong>{msg:pub_book_location_label}</strong> {msg:pub_book_meet_hint}</p>{/if}
           {#else}
             <p class="text-sm mb-2"><strong>{msg:pub_book_location_label}</strong> {type.locationDetail}</p>
           {/if}

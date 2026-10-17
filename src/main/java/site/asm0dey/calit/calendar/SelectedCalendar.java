@@ -90,13 +90,6 @@ public class SelectedCalendar extends PanacheEntityBase {
     }
 
     /**
-     * Remove all of this owner's calendar selections (used before re-saving).
-     */
-    public static long deleteForOwner(Long ownerId) {
-        return delete("ownerId", ownerId);
-    }
-
-    /**
      * This owner's read-for-busy calendars grouped by the Connected account they belong to.
      */
     public static Map<Long, List<SelectedCalendar>> readForBusyByAccount(Long ownerId, CalendarProvider provider) {

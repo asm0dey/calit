@@ -465,7 +465,7 @@ public class PrivacyService {
      * choosable again — otherwise a stale cookie from this account would silently authenticate as
      * whoever re-registers the name.
      *
-     * <p>No Google revoke: {@code GooglePageResource.disconnect} never called Google's revoke
+     * <p>No Google revoke: {@code CalendarsPageResource.disconnect} never called Google's revoke
      * endpoint either, so deleting the credential rows removes calit's copy of the tokens without
      * withdrawing the grant at Google. The privacy copy and the operator guide both say so.
      *

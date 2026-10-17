@@ -116,7 +116,7 @@ public class EmailService {
      * parked copy so deleting that account also clears it.
      */
     public void sendGoogleDisconnected(Long ownerId, String toEmail, String accountEmail, Locale locale) {
-        var reconnectUrl = baseUrl + "/me/google";
+        var reconnectUrl = baseUrl + "/me/calendars";
         String body = Templates
             .googleDisconnected(
                     locale.getLanguage(),
