@@ -1,6 +1,6 @@
 ---
 title: Privacy Policy
-description: How calit handles your data, including Google user data.
+description: How calit handles your data, including Google and CalDAV calendar data.
 ---
 
 <!-- REFERENCE copy, not a mirror. The app page at ${APP_BASE_URL}/privacy
@@ -27,7 +27,7 @@ policy, naming you through `OPERATOR_NAME` and `PRIVACY_CONTACT_EMAIL`; see the
 against your own legal requirements before relying on it.
 :::
 
-_Last updated: 2026-09-16_
+_Last updated: 2026-10-17_
 
 ## What calit is
 
@@ -47,6 +47,17 @@ deployment's database.
   Google account's email and stable subject identifier (from the OpenID
   id_token), and the OAuth access and refresh tokens. **Tokens are encrypted at
   rest** in the deployment's database.
+- **CalDAV account data** — when you connect a CalDAV calendar (optional): the
+  server URL, your username, and the app password, which is encrypted at rest
+  like Google tokens.
+
+## How CalDAV data is used
+
+When you connect a CalDAV account, calit fetches the full event objects from
+the CalDAV calendars you select, within the booking window. It uses only their
+times to compute busy intervals and discards the rest: event content is never
+stored. When bookings are made, rescheduled, or cancelled, calit creates,
+updates, and deletes the event on the calendar you chose as write target.
 
 ## How Google user data is used (when Google is configured)
 
@@ -77,6 +88,8 @@ calit does not sell or share your data. A deployment sends data only to the
 services its operator has configured, and its own `/privacy` page lists exactly
 which ones:
 
+- **The CalDAV server you connect**, if you connect one, for the calendar
+  operations above.
 - **Google** (when configured), for the calendar operations above.
 - **A single sign-on identity provider** (when configured), when you sign in with it.
 - **The SMTP server** the operator configures, which delivers booking and
@@ -89,13 +102,13 @@ which ones:
 
 ## Retention and deletion
 
-- Disconnecting a Google account in **Settings → Google** (when Google is
-  configured) deletes that account's stored tokens and calendar selections. It
-  does not withdraw the grant at Google — revoke calit's access in your Google
-  account to do that.
+- Disconnecting a calendar account in **Settings → Calendars** (`/me/calendars`)
+  deletes its stored credentials and calendar selections from the site. For
+  Google this does not withdraw the grant at Google — revoke calit's access in
+  your Google account to do that.
 - Deleting your account at **Settings → Delete my account** (`/me/settings/delete`)
   removes your account, settings, meeting types, availability, bookings,
-  connected Google accounts and notification channels. It does **not** revoke
+  connected calendar accounts and notification channels. It does **not** revoke
   the grant at Google either.
 - A hash of a deleted account's username is kept permanently, so that name can
   never be re-registered and used to take over a stale login.
@@ -113,7 +126,7 @@ which ones:
 
 ## Security
 
-Passwords are hashed with argon2id; Google OAuth tokens are encrypted at rest.
+Passwords are hashed with argon2id; Google OAuth tokens and CalDAV app passwords are encrypted at rest.
 Production deployments run behind TLS with secure cookies. The operator is
 responsible for securing the host and database.
 

@@ -17,7 +17,7 @@ _[operator]_ is yours to fill in. Nothing here is an example to copy.
 | Controller name and contact | _[operator]_ (the same as `OPERATOR_NAME` / `PRIVACY_CONTACT_EMAIL`) |
 | Representative in the EU, if required | _[operator]_ |
 | Data protection officer, if appointed | _[operator]_ |
-| Security measures (Art. 32) | Passwords hashed with argon2id; Google OAuth tokens and notification-channel URLs encrypted at rest; TLS and secure cookies in production. Host, database and backup security: _[operator]_ |
+| Security measures (Art. 32) | Passwords hashed with argon2id; Google OAuth tokens, CalDAV app passwords and notification-channel URLs encrypted at rest; TLS and secure cookies in production. Host, database and backup security: _[operator]_ |
 
 ## Invitees
 
@@ -29,7 +29,7 @@ People who book a meeting through a public booking page.
 | Where it is held | `booking` (`invitee_name`, `invitee_email`, `answers`, `meet_link`, `title`, `description`); `email_outbox` (`recipient`, `subject`, `html_body`, `ics_bytes`) |
 | Purpose | Scheduling the meeting and sending confirmations, reminders and changes |
 | Lawful basis | _[operator]_ |
-| Recipients | The host; Google Calendar when the host connected Google; the SMTP provider; any notification channel the host configured; Cloudflare Turnstile when enabled. See [sub-processors](/calit/compliance/sub-processors/) |
+| Recipients | The host; Google Calendar when the host connected Google; the host's CalDAV server when they connected one; the SMTP provider; any notification channel the host configured; Cloudflare Turnstile when enabled. See [sub-processors](/calit/compliance/sub-processors/) |
 | Retention | `BOOKING_RETENTION_DAYS` or the host's own window, measured from the meeting's end: _[operator: your window, or "kept until removed"]_. Queued email: about 30 days after it is sent, or after it was queued if never sent |
 | Erasure route | Self-service from the manage link: the `booking` row is anonymised in place, its queued email deleted. Email queued before migration `V34` is cleared only by the 30-day purge. See the [operator guide](/calit/compliance/operator-guide/#where-erasure-stops) |
 
@@ -53,11 +53,11 @@ Users with an account on the deployment.
 
 | Field | Value |
 |---|---|
-| Categories of data | Username, password hash, Google and SSO subject identifiers, display name, email address, timezone, the text of their meeting types (name, description, location) and booking-field labels, connected Google account email, calendar ids and names, OAuth tokens, notification-channel URLs and labels, password-reset and sign-in tokens |
-| Where it is held | `app_user`, `owner_settings`, `meeting_type`, `booking_field`, `google_credential`, `google_calendar`, `notification_channel`, `password_reset_token`, `login_ticket`, `deleted_username` |
+| Categories of data | Username, password hash, Google and SSO subject identifiers, display name, email address, timezone, the text of their meeting types (name, description, location) and booking-field labels, connected Google account email, CalDAV server URL and username, calendar ids and names, OAuth tokens and CalDAV app passwords (encrypted), notification-channel URLs and labels, password-reset and sign-in tokens |
+| Where it is held | `app_user`, `owner_settings`, `meeting_type`, `booking_field`, `calendar_account`, `calendar`, `notification_channel`, `password_reset_token`, `login_ticket`, `deleted_username` |
 | Purpose | Running the host's scheduling page and signing them in |
 | Lawful basis | _[operator]_ |
-| Recipients | Google when connected; the SSO identity provider when `OIDC_ENABLED` is on; the SMTP provider; the host's own notification channels |
+| Recipients | Google or the host's CalDAV server when connected; the SSO identity provider when `OIDC_ENABLED` is on; the SMTP provider; the host's own notification channels |
 | Retention | For the life of the account. Password-reset, invitation and sign-in tokens: about a day after they expire. `deleted_username`: permanently |
 | Erasure route | Account deletion (`/me/settings/delete`, or `/me/users` for a site admin) deletes `app_user`, and every other table cascades away with it. `deleted_username` keeps a SHA-256 hash of the username permanently, so the name can never be re-registered. `email_outbox` rows queued before migration `V34` have no owner link, so they survive deletion until the age purge |
 

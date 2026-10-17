@@ -17,7 +17,7 @@ Google Calendar sync is **optional**. Leaving the keys blank runs calit in degra
 4. Set the application type to **Web application**.
 
 :::caution
-Step 2 is easy to miss. Signing in works without it, but every calendar read then fails with HTTP 403 and `/me/google` shows *"couldn't load — try reload"*.
+Step 2 is easy to miss. Signing in works without it, but every calendar read then fails with HTTP 403 and the Calendars page (`/me/calendars`, formerly `/me/google`) shows *"couldn't load — try reload"*.
 :::
 
 ### 2. Register the redirect URIs
@@ -65,7 +65,9 @@ Each user connects their **own** Google account from the owner console (`/me`). 
 
 ## Choosing calendars
 
-Once an account is connected, `/me/google` lists its calendars with two independent choices per row:
+CalDAV calendars appear on the same page; see [CalDAV calendar setup](/calit/installation/caldav/).
+
+Once an account is connected, **Settings → Calendars** (`/me/calendars`) lists its calendars with two independent choices per row:
 
 - **Read busy** — block your availability against that calendar's existing events. Tick as many calendars as you like, across every connected account.
 - **Write events here** — the one calendar, across all your connected accounts, that new bookings are created on by default. Only one calendar can hold it at a time.
@@ -74,13 +76,13 @@ Every meeting type writes to that calendar — its **write target** — unless t
 
 ### Sending one meeting type to a different calendar
 
-A meeting type can write its own events to a different calendar than your write target. Open **Meeting types**, pick the type, and under **Basics** choose a calendar under **Calendar for new events** — the same picker also appears on the **Location** step when you first create a meeting type. The blank option, **My write target**, is the default — leave it alone and that type keeps writing to your write target, exactly as before. Only calendars you've selected on `/me/google` appear in the list.
+A meeting type can write its own events to a different calendar than your write target. Open **Meeting types**, pick the type, and under **Basics** choose a calendar under **Calendar for new events** — the same picker also appears on the **Location** step when you first create a meeting type. The blank option, **My write target**, is the default — leave it alone and that type keeps writing to your write target, exactly as before. Only calendars you've selected on the Calendars page appear in the list.
 
-On a shared meeting type, each host picks their own: the creator sets it on the meeting-type page above, and every co-host sets theirs from **Shared**, under that type, next to their buffers. Whichever host's calendar a given booking's event actually lands on is the one whose choice took effect.
+On a shared meeting type, only the creator's write target (or the creator's choice on the meeting-type page above) is used: the booking's event is written on the creator's account only, and co-hosts have no write-calendar picker.
 
-If the calendar a meeting type points at is later unticked on `/me/google`, or the connected account it belongs to is disconnected, bookings keep working — they fall back to your write target, and the meeting-type page shows a warning that the choice is no longer in effect. Your pick is not erased: saving other fields on that page leaves it exactly as it was, so re-ticking the calendar (or making it the write target again) on `/me/google` puts it straight back to work. Reconnecting a *disconnected* account doesn't heal it on its own — reconnecting creates a new connection, so you'll need to pick the calendar again there.
+If the calendar a meeting type points at is later unticked on the Calendars page, or the connected account it belongs to is disconnected, bookings keep working — they fall back to your write target, and the meeting-type page shows a warning that the choice is no longer in effect. Your pick is not erased: saving other fields on that page leaves it exactly as it was, so re-ticking the calendar (or making it the write target again) there puts it straight back to work. Reconnecting a *disconnected* account doesn't heal it on its own — reconnecting creates a new connection, so you'll need to pick the calendar again there.
 
-Choosing **Google Meet** as a location depends on whether the calendar a type actually writes to can generate Meet links, not on your write target. If a meeting type is pointed at a calendar that can't, Google Meet is not offered as a location for it. On a shared meeting type this check always follows the creator's own calendar — a co-host's calendar choice doesn't change whether Google Meet is offered.
+Choosing **Google Meet** as a location depends on whether the calendar a type actually writes to can generate Meet links, not on your write target. If a meeting type is pointed at a calendar that can't, Google Meet is not offered as a location for it. On a shared meeting type this check follows the creator's own calendar. Google Meet is Google-only: on a [CalDAV](/calit/installation/caldav/) calendar, a Meet-type booking falls back to the meeting type's location detail.
 
 Changing a meeting type's calendar only affects bookings made after the change — events already created keep the calendar they were created on. When you save a new calendar, calit tells you how many upcoming bookings that leaves behind.
 
@@ -101,7 +103,7 @@ calit only requests **sensitive** Calendar scopes, not **restricted** scopes, so
 
 A Google connection can break without warning — access is revoked, the account password is changed, or the refresh token simply expires. calit detects this and **fails closed**: while an owner's Google account is disconnected, their public booking page shows *"Scheduling temporarily unavailable"* instead of offering every slot as free. This prevents bookings landing on top of calendar events calit can no longer see.
 
-Each connected account is probed on a schedule (every `GOOGLE_PROBE_INTERVAL`, default `1h`) for a still-valid connection; the probe also keeps the refresh token warm. When a disconnect is found, the owner is emailed once per outage with a link to reconnect on the `/me/google` settings page.
+Each connected account is probed on a schedule (every `GOOGLE_PROBE_INTERVAL`, default `1h`) for a still-valid connection; the probe also keeps the refresh token warm. When a disconnect is found, the owner is emailed once per outage with a link to reconnect on the **Settings → Calendars** page.
 
 :::tip[Avoid recurring disconnects]
 The most common cause of repeated disconnects is leaving your Google OAuth app in **"Testing"** publishing status. Google expires refresh tokens for testing apps after **7 days**, so calit loses access roughly once a week no matter what.
@@ -136,7 +138,7 @@ Connecting an account logs:
 Google account connected for owner 1 (credential 3), refreshToken=stored
 ```
 
-`refreshToken=MISSING` means Google returned no offline refresh token, so every later refresh will fail — disconnect the account on `/me/google` and connect again.
+`refreshToken=MISSING` means Google returned no offline refresh token, so every later refresh will fail — disconnect the account on the Calendars page and connect again.
 
 For extra detail (including transient probe failures), raise the log level:
 
@@ -158,7 +160,7 @@ Common causes, in the order they turn up:
 
 | What the log says | Cause | Fix |
 | --- | --- | --- |
-| `HTTP 403 … has not been used in project … or it is disabled` | The Calendar API was never enabled | Enable **Google Calendar API** (step 1 above), then reload `/me/google` |
+| `HTTP 403 … has not been used in project … or it is disabled` | The Calendar API was never enabled | Enable **Google Calendar API** (step 1 above), then reload `/me/calendars` |
 | `HTTP 403 … insufficient authentication scopes` | The account was connected before the calendar scope was granted | Disconnect and reconnect the account |
 | `error=invalid_client` | Wrong `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | Re-copy both from the Credentials page |
 | Google shows `redirect_uri_mismatch` in the browser before returning | Registered URI ≠ the `redirectUri` in the boot log | Register the exact URIs from the boot log |

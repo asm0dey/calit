@@ -134,6 +134,14 @@ Leave `GOOGLE_OAUTH_CLIENT_ID` blank to run calit in degraded mode without Googl
 
 Register **both** derived redirect URIs in your Google OAuth client even if you do not override them.
 
+## CalDAV (optional)
+
+CalDAV needs no operator setup; see [CalDAV calendar setup](/calit/installation/caldav/).
+
+| Variable | Description | Default |
+|---|---|---|
+| `CALDAV_ALLOW_PRIVATE_HOSTS` | Allow CalDAV servers that resolve to private, loopback or link-local addresses (checked on every request and redirect). Enable only on a single-user or trusted instance, e.g. Nextcloud on the LAN. | `false` |
+
 ## Public site & legal pages (optional)
 
 These let a hosted instance pass Google OAuth verification. calit serves a privacy policy at `/privacy` and terms at `/terms`; each deployment is its own data controller, so the operator details are configurable. All three are optional and the feature is off/safe when unset. To replace the page bodies entirely, see `PRIVACY_POLICY_PATH` and `TERMS_PATH` under [Privacy](#privacy).

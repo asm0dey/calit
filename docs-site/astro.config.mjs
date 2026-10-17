@@ -56,6 +56,7 @@ export default defineConfig({
               ],
             },
             { label: 'Google OAuth setup', slug: 'installation/google-oauth' },
+            { label: 'CalDAV setup', slug: 'installation/caldav' },
             { label: 'Cloudflare Turnstile setup', slug: 'installation/turnstile' },
             { label: 'ALTCHA setup', slug: 'installation/altcha' },
             { label: 'OIDC / SSO setup', slug: 'installation/oidc-sso' },

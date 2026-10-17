@@ -7,6 +7,31 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- CalDAV calendars (Nextcloud, Fastmail, iCloud, mailbox.org, Radicale) work alongside Google for the
+  busy-time check and Mirror event writes. Settings → Google is now Settings → Calendars at
+  `/me/calendars`; the old path redirects. ([#TBD](https://github.com/asm0dey/calit/pulls))
+- `CALDAV_ALLOW_PRIVATE_HOSTS` (default `false`): CalDAV servers on private or loopback addresses are
+  refused unless it is set. ([#TBD](https://github.com/asm0dey/calit/pulls))
+- With no write calendar selected, bookings succeed without a Mirror event and calit emails the `.ics`
+  to everyone, the Creator included; this was a booking error. ([#TBD](https://github.com/asm0dey/calit/pulls))
+- The `.ics` for cancelled and declined bookings now carries `METHOD:CANCEL` and the booking's
+  `SEQUENCE` (calit-bgxr). ([#TBD](https://github.com/asm0dey/calit/pulls))
+- Mirror events are written on the Creator's account only and the co-hosts' write-calendar picker is
+  removed; a Meet-type booking without a minted link falls back to the meeting type's location detail
+  (calit-5fw0). ([#TBD](https://github.com/asm0dey/calit/pulls))
+- The owner data export lists CalDAV accounts (server URL, username; never the password). ([#TBD](https://github.com/asm0dey/calit/pulls))
+- Migration V37 adds `calendar_account` and `calendar` with compatibility views and paired-column
+  triggers; V38 adds `booking.removed_mirror_provider`. The previous release keeps working on this
+  schema during a rolling deploy. ([#TBD](https://github.com/asm0dey/calit/pulls))
+
+Upgrade: rolling deploys are safe, as the previous release runs on the V37/V38 schema; the compatibility
+views and old columns are dropped in a later release. Nothing to configure unless CalDAV servers sit on
+private addresses (`CALDAV_ALLOW_PRIVATE_HOSTS`).
+
 ## 1.27.2
 
 Base images refreshed.

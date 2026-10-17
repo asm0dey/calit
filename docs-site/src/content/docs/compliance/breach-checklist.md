@@ -39,8 +39,8 @@ Which tables hold what, from calit's personal-data inventory (see
 | `email_outbox` | Invitees, guests, hosts | Recipient, subject, full HTML body and `.ics` invite of mail that went through the outbox (mail queued for transactional dispatch, and direct sends that failed and were parked for retry) in roughly the last 30 days. Mail delivered directly on the first try is not stored |
 | `app_user` | Hosts | Username, argon2id password hash, Google and SSO subject ids |
 | `owner_settings` | Hosts | Display name, email, timezone |
-| `google_credential` | Hosts | Google account email, subject id, encrypted OAuth tokens |
-| `google_calendar` | Hosts | Calendar ids and names |
+| `calendar_account` | Hosts | Google account email, subject id, encrypted OAuth tokens; CalDAV server URL, username, encrypted app password |
+| `calendar` | Hosts | Calendar ids and names |
 | `notification_channel` | Hosts | Encrypted channel URLs (these often embed a bot token or webhook secret), labels |
 | `password_reset_token` | Hosts | Hashes of password-reset tokens (valid 30 minutes) and invitation tokens (valid 48 hours); deleted about a day after they expire |
 | `login_ticket` | Hosts | Hashes of sign-in tickets (valid 2 minutes); deleted about a day after they expire |
