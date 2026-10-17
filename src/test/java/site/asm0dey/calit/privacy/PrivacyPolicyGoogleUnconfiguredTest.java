@@ -41,19 +41,19 @@ class PrivacyPolicyGoogleUnconfiguredTest {
     }
 
     /**
-     * With Google unconfigured, mail mocked (default {@code %test}), no notification-channel rows,
-     * OIDC off ({@code %test} default) and Turnstile off (default), NOTHING sends invitee data to a
-     * third party — the fallback sentence must render instead of an empty {@code <ul>}.
+     * CalDAV is always available, so the recipients list is never empty: the CalDAV server is listed even
+     * with Google, OIDC, Turnstile and channels all off.
      */
     @Test
-    void dataSharingFallsBackToTheNoThirdPartySentenceWhenNothingIsConfigured() {
+    void dataSharingAlwaysListsTheCaldavServer() {
         given()
             .when()
             .get("/privacy")
             .then()
             .statusCode(200)
-            .body(containsString("does not send your data to any third party"))
-            .body(not(containsString("This deployment sends data to:")));
+            .body(containsString("This deployment sends data to:"))
+            .body(containsString("The CalDAV server you connect"))
+            .body(not(containsString("does not send your data to any third party")));
     }
 
     public static class BlankGoogleClientId implements QuarkusTestProfile {

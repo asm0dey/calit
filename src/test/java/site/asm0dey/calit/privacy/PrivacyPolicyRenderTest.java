@@ -93,4 +93,16 @@ class PrivacyPolicyRenderTest {
             .body(containsString("This deployment sends data to:"))
             .body(not(containsString("does not send your data to any third party")));
     }
+
+    @Test
+    void caldavParagraphsRender() {
+        given()
+            .when()
+            .get("/privacy")
+            .then()
+            .statusCode(200)
+            .body(containsString("How CalDAV data is used"))
+            .body(containsString("CalDAV account data"))
+            .body(containsString("Settings → Calendars"));
+    }
 }
