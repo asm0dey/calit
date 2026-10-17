@@ -409,6 +409,7 @@ public class EmailService {
                     .render(),
                 // Actionable: an opted-out host must still be able to approve/decline their row, or
                 // the group deadlocks. (Single-host behavior is unaffected -- see the send core.)
+                IcsMethod.REQUEST,
                 true
         );
     }
@@ -465,6 +466,7 @@ public class EmailService {
                     )
                     .setLocale(locale)
                     .render(),
+                IcsMethod.REQUEST,
                 false
         );
         sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_confirmed_subject(label(l)));
@@ -510,6 +512,7 @@ public class EmailService {
                     .setLocale(locale)
                     .render(),
                 sink,
+                IcsMethod.CANCEL,
                 false
         );
     }
@@ -558,6 +561,7 @@ public class EmailService {
                     )
                     .setLocale(locale)
                     .render(),
+                IcsMethod.REQUEST,
                 false
         );
         sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_rescheduled_subject(label(l)));
@@ -597,6 +601,7 @@ public class EmailService {
                     )
                     .setLocale(locale)
                     .render(),
+                IcsMethod.REQUEST,
                 false
         );
         // Re-send the (bumped-sequence) REQUEST .ics to every active guest so their calendar updates too.
@@ -630,6 +635,7 @@ public class EmailService {
                     )
                     .setLocale(locale)
                     .render(),
+                IcsMethod.CANCEL,
                 false
         );
         sendGuestCancels(l, messages.forLocale(inviteeLocale).email_cancelled_subject(label(l)));
@@ -677,6 +683,7 @@ public class EmailService {
                     .setLocale(locale)
                     .render(),
                 sink,
+                IcsMethod.REQUEST,
                 false
         );
     }
@@ -930,9 +937,18 @@ public class EmailService {
             String icsLocation,
             Function<Locale, String> subjectForLocale,
             RecipientBodyRenderer bodyForRecipient,
+            IcsMethod icsMethod,
             boolean actionable
     ) {
-        sendForKindLocaleAware(l, icsLocation, subjectForLocale, bodyForRecipient, mailSender::send, actionable);
+        sendForKindLocaleAware(
+                l,
+                icsLocation,
+                subjectForLocale,
+                bodyForRecipient,
+                mailSender::send,
+                icsMethod,
+                actionable
+        );
     }
 
     /**
@@ -953,10 +969,11 @@ public class EmailService {
             Function<Locale, String> subjectForLocale,
             RecipientBodyRenderer bodyForRecipient,
             MailSink sink,
+            IcsMethod icsMethod,
             boolean actionable
     ) {
         boolean googleNotifies = calendarPort.isConnected(l.owner().ownerId);
-        var ics = googleNotifies ? null : inviteeIcsBytes(l, icsLocation);
+        var ics = googleNotifies ? null : inviteeIcsBytes(l, icsLocation, icsMethod);
         var from = fromName(l);
 
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
@@ -1082,14 +1099,14 @@ public class EmailService {
         if (l == null) {
             return Optional.empty();
         }
-        return Optional.of(inviteeIcsBytes(l, resolveLocation(l)));
+        return Optional.of(inviteeIcsBytes(l, resolveLocation(l), IcsMethod.REQUEST));
     }
 
     /**
-     * The invitee's REQUEST .ics for one loaded booking. Shared by the mail attachment and the
+     * The invitee's .ics (REQUEST or CANCEL, at the booking's current SEQUENCE) for one loaded booking. Shared by the mail attachment and the
      * guest download so the two can never drift into two different RFC-5545 events.
      */
-    private byte[] inviteeIcsBytes(BookingSnapshot l, String location) {
+    private byte[] inviteeIcsBytes(BookingSnapshot l, String location, IcsMethod method) {
         return IcsBuilder
             .build(IcsEvent
                 .builder()
@@ -1101,6 +1118,8 @@ public class EmailService {
                 .attendee(new IcsBuilder.Party(l.booking().inviteeName, l.booking().inviteeEmail))
                 .start(l.booking().startUtc)
                 .end(l.booking().endUtc)
+                .method(method)
+                .sequence(l.booking().icsSequence)
                 .build()
             )
             .getBytes(StandardCharsets.UTF_8);
