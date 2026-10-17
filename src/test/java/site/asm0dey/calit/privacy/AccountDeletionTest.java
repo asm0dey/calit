@@ -3,11 +3,22 @@ package site.asm0dey.calit.privacy;
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.caldav.CaldavCalendarPort;
+import site.asm0dey.calit.calendar.CaldavAccount;
+import site.asm0dey.calit.calendar.CalendarProvider;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.email.EmailOutbox;
@@ -22,6 +33,14 @@ class AccountDeletionTest {
     PrivacyService privacy;
     @Inject
     EntityManager em;
+    @InjectMock
+    CaldavCalendarPort caldav;
+
+    @BeforeEach
+    void stubCaldav() {
+        when(caldav.provider()).thenReturn(CalendarProvider.CALDAV);
+        when(caldav.isConnected(anyLong())).thenReturn(true);
+    }
 
     /**
      * A second, non-admin account with a settings row, so deleting it is legal.
@@ -148,5 +167,45 @@ class AccountDeletionTest {
                 .as("the deleted co-host's own host row is gone")
                 .isZero();
         });
+    }
+
+    @Test
+    void deletionRemovesCaldavAccountAndDeletesItsMirrorEventThroughTheRouter() {
+        var id = seedSecondUser();
+        QuarkusTransaction.requiringNew().run(() -> {
+            var a = new CaldavAccount();
+            a.ownerId = id;
+            a.serverUrl = "https://dav.example.com/";
+            a.username = "alice";
+            a.password = "secret";
+            a.persist();
+            var t = new MeetingType();
+            t.ownerId = id;
+            t.name = "Dav type";
+            t.slug = "dav-type-" + UUID.randomUUID();
+            t.durationMinutes = 30;
+            t.persist();
+            var b = new Booking();
+            b.ownerId = id;
+            b.meetingTypeId = t.id;
+            b.inviteeName = "Dana";
+            b.inviteeEmail = "dana@example.com";
+            b.startUtc = Instant.now().plus(10, ChronoUnit.DAYS);
+            b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
+            b.status = BookingStatus.CONFIRMED;
+            b.createdAt = Instant.now();
+            b.manageToken = UUID.randomUUID().toString();
+            b.eventId = "evt-dav";
+            b.calendarAccountId = a.id;
+            b.calendarRemoteId = "/cal/work/";
+            b.persist();
+        });
+
+        privacy.deleteAccount(id);
+
+        verify(caldav).deleteEvent(eq(id), org.mockito.ArgumentMatchers.any(), eq("evt-dav"));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> assertThat(rowsFor("calendar_account", "owner_id", id)).isZero());
     }
 }

@@ -52,7 +52,7 @@ class PrivacyPolicyGoogleUnconfiguredTest {
             .then()
             .statusCode(200)
             .body(containsString("This deployment sends data to:"))
-            .body(containsString("The CalDAV server you connect"))
+            .body(containsString("The CalDAV server you connect, if you connect one"))
             .body(not(containsString("does not send your data to any third party")));
     }
 

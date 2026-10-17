@@ -407,8 +407,8 @@ public class PrivacyService {
                             ), '[]'::json),
                             'caldavAccounts', coalesce((
                                 SELECT json_agg(json_build_object(
-                                    'caldav_server_url', coalesce(g.caldav_server_url, ''),
-                                    'caldav_username', coalesce(g.caldav_username, '')
+                                    'serverUrl', coalesce(g.caldav_server_url, ''),
+                                    'username', coalesce(g.caldav_username, '')
                                 ) ORDER BY g.id)
                                 FROM calendar_account g WHERE g.provider = 'CALDAV' AND g.owner_id = :ownerId
                             ), '[]'::json)
