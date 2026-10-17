@@ -3,6 +3,7 @@ package site.asm0dey.calit.caldav;
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import net.fortuna.ical4j.model.TimeZoneUpdater;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.calendar.BusyInterval;
 
@@ -149,5 +150,11 @@ class BusyExtractorTest {
     @Test
     void zeroLengthEventIsDropped() {
         assertThat(busy(cal(event("UID:0", "DTSTART:20261103T100000Z", "DTEND:20261103T100000Z")))).isEmpty();
+    }
+
+    @Test
+    void timezoneDefinitionsAreNeverFetchedOverTheNetwork() {
+        // ical4j.properties pins this; enabled, loading a zone could make an outbound TZURL request
+        assertThat(new TimeZoneUpdater().isEnabled()).isFalse();
     }
 }

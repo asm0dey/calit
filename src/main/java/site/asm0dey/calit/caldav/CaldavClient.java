@@ -284,7 +284,13 @@ public class CaldavClient {
                 .findFirst()
                 .flatMap(h -> resolve(base, h.getTextContent()));
             if (href.isEmpty()) {
-                continue;
+                // fail closed: skipping it would silently drop that response's calendar-data (busy time)
+                throw new CaldavException(
+                        CaldavException.Reason.HTTP_ERROR,
+                        207,
+                        "CalDAV response without a usable href",
+                        null
+                );
             }
             var propstats = children(response, DAV, "propstat");
             var props = propstats

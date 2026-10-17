@@ -19,7 +19,8 @@ class CaldavClientTest {
     CaldavClient client;
     @Inject
     CaldavHttp http;
-    @ConfigProperty(name = "caldav.test.url")
+    // default: test classes are validated on every boot, including ones without RadicaleResource
+    @ConfigProperty(name = "caldav.test.url", defaultValue = "unset")
     String baseUrl;
 
     CaldavAccount account() {

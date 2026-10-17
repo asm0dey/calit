@@ -191,4 +191,17 @@ class IcsBuilderTest {
         );
         assertThat(ics).doesNotContain("DESCRIPTION:");
     }
+
+    @Test
+    void resourceHasNoMethodOrParties() {
+        String ics = IcsBuilder.buildResource(IcsEvent
+            .builder()
+            .uid("tok-res")
+            .summary("Stored")
+            .start(Instant.parse("2026-06-08T09:00:00Z"))
+            .end(Instant.parse("2026-06-08T09:30:00Z"))
+            .build()
+        );
+        assertThat(ics).contains("BEGIN:VEVENT", "UID:tok-res").doesNotContain("METHOD:", "ORGANIZER", "ATTENDEE");
+    }
 }

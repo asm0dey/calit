@@ -41,6 +41,14 @@ class CaldavClientMultistatusTest {
                 <D:response><D:href>/cal/</D:href>
                 <D:status>HTTP/1.1 507 Insufficient Storage</D:status></D:response>"""
         );
+        serve(
+                "/bad-href",
+                OK_OBJECT
+                + """
+                <D:response><D:href>http://[bad</D:href><D:propstat>
+                <D:prop><C:calendar-data>BEGIN:VCALENDAR</C:calendar-data></D:prop>
+                <D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>"""
+        );
         server.start();
         client = new CaldavClient(new CaldavHttp(CaldavHttpTest.config(true)));
         account = new CaldavAccount();
@@ -86,5 +94,10 @@ class CaldavClientMultistatusTest {
     void truncatedResultFailsClosed() {
         assertThatThrownBy(() -> query("/truncated"))
             .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.status()).isEqualTo(507));
+    }
+
+    @Test
+    void unresolvableHrefFailsClosed() {
+        assertThatThrownBy(() -> query("/bad-href")).isInstanceOf(CaldavException.class);
     }
 }
