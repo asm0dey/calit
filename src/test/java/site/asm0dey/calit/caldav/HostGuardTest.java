@@ -30,24 +30,24 @@ class HostGuardTest {
             "http://[64:ff9b::7f00:1]/"
     })
     void refusesPrivateAddresses(String url) {
-        assertThatThrownBy(() -> HostGuard.check(URI.create(url), false))
+        assertThatThrownBy(() -> HostGuard.checked(URI.create(url), false))
             .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
                 .isEqualTo(CaldavException.Reason.PRIVATE_HOST));
     }
 
     @Test
     void allowsPrivateWhenConfigured() {
-        assertThatCode(() -> HostGuard.check(URI.create("http://192.168.1.10/"), true)).doesNotThrowAnyException();
+        assertThatCode(() -> HostGuard.checked(URI.create("http://192.168.1.10/"), true)).doesNotThrowAnyException();
     }
 
     @Test
     void allowsPublicAddress() {
-        assertThatCode(() -> HostGuard.check(URI.create("https://93.184.216.34/"), false)).doesNotThrowAnyException();
+        assertThatCode(() -> HostGuard.checked(URI.create("https://93.184.216.34/"), false)).doesNotThrowAnyException();
     }
 
     @Test
     void refusesNonHttpScheme() {
-        assertThatThrownBy(() -> HostGuard.check(URI.create("file:///etc/passwd"), true))
+        assertThatThrownBy(() -> HostGuard.checked(URI.create("file:///etc/passwd"), true))
             .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
                 .isEqualTo(CaldavException.Reason.NOT_CALDAV));
     }

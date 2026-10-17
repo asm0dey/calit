@@ -9,7 +9,10 @@ final class HostGuard {
     private HostGuard() {
     }
 
-    static void check(URI uri, boolean allowPrivate) {
+    /**
+     * Returns {@code uri} once verified; callers must use the returned value (CodeQL models it as an SSRF barrier).
+     */
+    static URI checked(URI uri, boolean allowPrivate) {
         var scheme = uri.getScheme();
         if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
             throw new CaldavException(CaldavException.Reason.NOT_CALDAV, "Only http and https URLs are allowed");
@@ -19,7 +22,7 @@ final class HostGuard {
             throw new CaldavException(CaldavException.Reason.UNREACHABLE, "URL has no host");
         }
         if (allowPrivate) {
-            return;
+            return uri;
         }
         InetAddress[] addresses;
         try {
@@ -33,6 +36,7 @@ final class HostGuard {
                 throw new CaldavException(CaldavException.Reason.PRIVATE_HOST, "Host resolves to a non-public address");
             }
         }
+        return uri;
     }
 
     private static boolean isNonPublic(InetAddress a) {

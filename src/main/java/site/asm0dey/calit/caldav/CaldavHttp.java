@@ -36,7 +36,7 @@ public class CaldavHttp {
         for (int hop = 0; ; hop++) {
             // shortcut: DNS rebinding between check and connect is not prevented, pin the resolved IP via a custom
             // resolver if this instance is multi-tenant and hostile
-            HostGuard.check(uri, config.allowPrivateHosts());
+            uri = HostGuard.checked(uri, config.allowPrivateHosts());
             HttpRequest request;
             try {
                 var req = HttpRequest
