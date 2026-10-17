@@ -21,8 +21,8 @@ Merged but not yet in a tagged release.
 - The `.ics` for cancelled and declined bookings now carries `METHOD:CANCEL` and the booking's
   `SEQUENCE`. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - Mirror events are written on the Creator's account only and the co-hosts' write-calendar picker is
-  removed; a Meet-type booking without a minted link falls back to the meeting type's location detail
- . ([#TBD](https://github.com/asm0dey/calit/pulls))
+  removed; a Meet-type booking without a minted link falls back to the meeting type's location detail.
+  ([#TBD](https://github.com/asm0dey/calit/pulls))
 - Owner erasure and account deletion also delete CalDAV Mirror events. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - A CalDAV account whose password is rejected is marked for reconnect; if its calendars count for busy
   time, no slots are offered until it is fixed, as for Google. ([#TBD](https://github.com/asm0dey/calit/pulls))
