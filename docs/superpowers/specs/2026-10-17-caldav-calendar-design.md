@@ -48,6 +48,11 @@ There is no specific user asking for this; the bar is "what Cal.com's CalDAV int
   single-user / trusted instances. The check applies to the resolved IP on every request (including
   redirects), not just the URL string.
 
+- **No write calendar selected** (decided with the user): a booking succeeds without a Mirror event
+  (both providers; today's Google 500 goes away). calit's own `.ics` then goes to everyone, the
+  Creator included, so they can add it wherever they like. The calendars page shows a notice that no
+  writable calendar is selected and that each booking arrives as an `.ics` instead.
+
 ## Calls made by the designer (not discussed — review these)
 
 1. **One generalised model, not parallel tables — migrated backward-compatibly** (decided with the
