@@ -26,6 +26,7 @@
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.version>3.40.1</quarkus.platform.version>
     <surefire-plugin.version>3.6.0</surefire-plugin.version>
+    <test-order-plugin.version>0.1.0</test-order-plugin.version>
     <sonar-maven-plugin.version>5.8.0.7211</sonar-maven-plugin.version>
     <assertj.version>3.27.7</assertj.version>
 
@@ -223,6 +224,22 @@
               <goal>build</goal>
               <goal>generate-code</goal>
               <goal>generate-code-tests</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <!-- Selective test runs: `./mvnw test-order:affected test` runs only the tests the
+             uncommitted change can reach, from an index learned on the first plain `./mvnw test`
+             (stored in the git-ignored .test-order/). <extensions> is required for its agent. -->
+        <groupId>me.bechberger</groupId>
+        <artifactId>test-order-maven-plugin</artifactId>
+        <version>${test-order-plugin.version}</version>
+        <extensions>true</extensions>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare</goal>
             </goals>
           </execution>
         </executions>

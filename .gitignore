@@ -31,3 +31,5 @@ docs-site/
 # written by the quarkus-agent MCP.
 .claude/skills/
 .agents/skills/
+
+.test-order/
