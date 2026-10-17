@@ -53,6 +53,8 @@ mvn test -Dtest=BookingServiceTest                    # one class
 mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 ```
 
+- Affected-only runs: `./mvnw -Paffected test-order:affected test` (index learned on the first `./mvnw -Paffected test`, stored in git-ignored `.test-order/`). CI and image builds don't load the plugin.
+
 - Surefire runs **`reuseForks=true`**: ONE reused JVM fork + ONE Dev Services Postgres shared across all same-profile `@QuarkusTest` classes (cold-boot per class took minutes). `@TestProfile` classes trigger in-JVM Quarkus restart. Heap pinned `-Xms512m -Xmx6g`.
 - Dev Services Postgres is **reused between runs** (`quarkus.datasource.devservices.reuse=true` in
   `src/test/resources/application.properties`) and the reuse hash knows nothing about your branch or
