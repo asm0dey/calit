@@ -31,12 +31,26 @@ public final class IcsBuilder {
      * @param e the event descriptor; method defaults to "REQUEST", sequence to 0, attendeeRsvp to true
      */
     public static String build(IcsEvent e) {
+        return render(e, false);
+    }
+
+    /**
+     * The same event as a stored CalDAV resource (RFC 4791): no METHOD, ORGANIZER or ATTENDEE, so a server
+     * doing implicit scheduling (RFC 6638) has nobody to invite. Organizer and attendee are ignored.
+     */
+    public static String buildResource(IcsEvent e) {
+        return render(e, true);
+    }
+
+    private static String render(IcsEvent e, boolean resource) {
         var cancel = e.method() == IcsMethod.CANCEL;
         var sb = new StringBuilder();
         sb.append("BEGIN:VCALENDAR\r\n");
         sb.append("VERSION:2.0\r\n");
         sb.append("PRODID:-//calit//EN\r\n");
-        sb.append("METHOD:").append(e.method().name()).append("\r\n");
+        if (!resource) {
+            sb.append("METHOD:").append(e.method().name()).append("\r\n");
+        }
         sb.append("BEGIN:VEVENT\r\n");
         sb.append("UID:").append(escape(e.uid())).append("\r\n");
         sb.append("SEQUENCE:").append(e.sequence()).append("\r\n");
@@ -50,6 +64,9 @@ public final class IcsBuilder {
         }
         if (e.location() != null && !e.location().isBlank()) {
             sb.append("LOCATION:").append(escape(e.location())).append("\r\n");
+        }
+        if (resource) {
+            return sb.append("END:VEVENT\r\nEND:VCALENDAR\r\n").toString();
         }
         sb
             .append("ORGANIZER;CN=")

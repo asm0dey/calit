@@ -1,6 +1,6 @@
 # A disconnected account's calendar id is not re-resolved to another credential
 
-Disconnecting a connected account nulls `booking.google_credential_id` (`ON DELETE SET NULL`) and
+Disconnecting a connected account (any provider; the legacy-schema columns keep their `google_*` names) nulls `booking.google_credential_id` (`ON DELETE SET NULL`) and
 leaves `booking.google_calendar_id` populated. `GoogleCalendarPort.writeAddress` requires both, so
 that surviving calendar id is discarded and the write falls back to the Host's write target. calit
 does **not** try to recover the address by looking the calendar id up under a different credential.

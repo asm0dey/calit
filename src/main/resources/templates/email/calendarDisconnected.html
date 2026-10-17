@@ -1,0 +1,16 @@
+{@java.lang.String lang}
+{@java.lang.String accountLabel}
+{@java.lang.String reconnectUrl}
+{@boolean caldav}
+<!DOCTYPE html>
+<html lang="{lang}" dir="{#if lang == 'he'}rtl{#else}ltr{/if}">
+<head><title>{#if caldav}{msg:email_caldav_disconnected_title}{#else}{msg:email_google_disconnected_title}{/if}</title></head>
+<body>
+<p>{msg:email_google_disconnected_greeting}</p>
+<p>{#if caldav}{msg:email_caldav_disconnected_body(accountLabel)}{#else}{msg:email_google_disconnected_body(accountLabel)}{/if}</p>
+<p>{msg:email_google_disconnected_paused}</p>
+<p><a href="{reconnectUrl}">{#if caldav}{msg:email_caldav_disconnected_btn}{#else}{msg:email_google_disconnected_btn}{/if}</a></p>
+<p>{msg:email_paste_link_hint}<br>{reconnectUrl}</p>
+<p>{#if caldav}{msg:email_caldav_disconnected_why}{#else}{msg:email_google_disconnected_why}{/if}</p>
+</body>
+</html>

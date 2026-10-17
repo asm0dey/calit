@@ -13,8 +13,8 @@ import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeHost;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CalendarUnavailableException;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarUnavailableException;
 import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest

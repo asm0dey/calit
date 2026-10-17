@@ -5,9 +5,10 @@
 {@java.util.List<site.asm0dey.calit.domain.DateOverride> overrides}
 {@java.util.List<site.asm0dey.calit.web.AdminResource$HostRow> hosts}
 {@java.util.List<site.asm0dey.calit.web.AdminResource$DurationRow> durations}
-{@java.util.List<site.asm0dey.calit.google.GoogleCalendar> writeCalendars}
+{@java.util.List<site.asm0dey.calit.calendar.SelectedCalendar> writeCalendars}
 {@java.lang.String writeCalendarValue}
 {@java.lang.Boolean writeCalendarDangling}
+{@java.lang.Boolean meetUnavailable}
 {@site.asm0dey.calit.domain.MeetingType.LocationType[] locationTypes}
 {@site.asm0dey.calit.domain.BookingField.FieldType[] fieldTypes}
 {@java.time.DayOfWeek[] daysOfWeek}
@@ -29,6 +30,9 @@
   {/if}
   {#if notice}
   <div class="alert alert-info mb-4 max-w-2xl"><span>{notice}</span></div>
+  {/if}
+  {#if meetUnavailable}
+  <div class="alert alert-warning mb-4 max-w-2xl" data-meet-unavailable><span>{adm:adm_detail_meet_unavailable}</span></div>
   {/if}
   {#if writeCalendarDangling}
   <div class="alert alert-warning mb-4 max-w-2xl" data-write-calendar-dangling><span>{adm:adm_detail_write_calendar_dangling}</span></div>

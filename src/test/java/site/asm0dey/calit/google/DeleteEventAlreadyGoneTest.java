@@ -15,6 +15,7 @@ import com.google.api.services.calendar.Calendar;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 
 /**
  * Deleting an event that Google already deleted is idempotent from our side: the desired end state
@@ -61,10 +62,10 @@ class DeleteEventAlreadyGoneTest {
         c.refreshToken = "rt";
         c.googleSub = sub;
         c.persist();
-        GoogleCalendar wt = new GoogleCalendar();
+        SelectedCalendar wt = new SelectedCalendar();
         wt.ownerId = 1L;
-        wt.googleCredentialId = c.id;
-        wt.googleCalendarId = "wt@example.com";
+        wt.accountId = c.id;
+        wt.remoteId = "wt@example.com";
         wt.summary = "WT";
         wt.writeTarget = true;
         wt.persist();

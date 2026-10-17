@@ -15,7 +15,7 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailOutbox;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 
 /**
  * The dispatch tick claims due reminders and, in the SAME transaction, enqueues the reminder email

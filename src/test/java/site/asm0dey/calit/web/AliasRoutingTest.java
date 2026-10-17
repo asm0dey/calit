@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeHost;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
 

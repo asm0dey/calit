@@ -9,7 +9,7 @@ import site.asm0dey.calit.booking.events.HostConsentRequested;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.MeetingTypeHost;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.user.AppUser;
 
 /**
@@ -109,19 +109,10 @@ public class MeetingHosts {
     }
 
     /**
-     * Creator if connected, else the lowest-id connected host, else null (no Google event).
+     * The Creator if connected, else null (no Mirror event; ADR 0007).
      */
-    public Long chooseOrganizer(MeetingType type, List<Long> hostOwnerIds) {
-        if (calendarPort.isConnected(type.ownerId)) {
-            return type.ownerId;
-        }
-        Long chosen = null;
-        for (Long id : hostOwnerIds) {
-            if (calendarPort.isConnected(id) && (chosen == null || id < chosen)) {
-                chosen = id;
-            }
-        }
-        return chosen;
+    public Long chooseOrganizer(MeetingType type) {
+        return calendarPort.isConnected(type.ownerId) ? type.ownerId : null;
     }
 
     public int effectiveBufferBefore(MeetingType type, Long hostOwnerId, int durationMinutes) {

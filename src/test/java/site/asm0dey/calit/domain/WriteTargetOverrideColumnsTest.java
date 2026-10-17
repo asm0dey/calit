@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.google.GoogleCalendar;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 
 /**
- * The per-(type, host) write-calendar override columns round-trip, and default to "unset".
+ * The meeting type write-calendar override columns round-trip, and default to "unset".
  */
 @QuarkusTest
 class WriteTargetOverrideColumnsTest {
@@ -18,13 +18,13 @@ class WriteTargetOverrideColumnsTest {
     void meetingTypeStoresTheOverride() {
         GoogleCredential cred = seedCredential("sub-override-type");
         MeetingType t = seedType();
-        t.googleCredentialId = cred.id;
-        t.googleCalendarId = "work@example.com";
+        t.overrideAccountId = cred.id;
+        t.overrideRemoteCalendarId = "work@example.com";
         t.persistAndFlush();
 
         MeetingType loaded = MeetingType.findById(t.id);
-        assertThat(loaded.googleCredentialId).isEqualTo(cred.id);
-        assertThat(loaded.googleCalendarId).isEqualTo("work@example.com");
+        assertThat(loaded.overrideAccountId).isEqualTo(cred.id);
+        assertThat(loaded.overrideRemoteCalendarId).isEqualTo("work@example.com");
     }
 
     @Test
@@ -34,41 +34,25 @@ class WriteTargetOverrideColumnsTest {
         t.persistAndFlush();
 
         MeetingType loaded = MeetingType.findById(t.id);
-        assertThat(loaded.googleCredentialId).isNull();
-        assertThat(loaded.googleCalendarId).isNull();
-    }
-
-    @Test
-    @TestTransaction
-    void hostRowStoresItsOwnOverride() {
-        GoogleCredential cred = seedCredential("sub-override-host");
-        MeetingType t = seedType();
-        t.persistAndFlush();
-        MeetingTypeHost h = MeetingTypeHost.of(t.id, 1L, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED);
-        h.googleCredentialId = cred.id;
-        h.googleCalendarId = "cohost@example.com";
-        h.persistAndFlush();
-
-        MeetingTypeHost loaded = MeetingTypeHost.findById(h.id);
-        assertThat(loaded.googleCredentialId).isEqualTo(cred.id);
-        assertThat(loaded.googleCalendarId).isEqualTo("cohost@example.com");
+        assertThat(loaded.overrideAccountId).isNull();
+        assertThat(loaded.overrideRemoteCalendarId).isNull();
     }
 
     @Test
     @TestTransaction
     void findOwnedMatchesOnlyThisOwnersSelectedCalendar() {
         GoogleCredential cred = seedCredential("sub-find-owned");
-        GoogleCalendar c = new GoogleCalendar();
+        SelectedCalendar c = new SelectedCalendar();
         c.ownerId = 1L;
-        c.googleCredentialId = cred.id;
-        c.googleCalendarId = "work@example.com";
+        c.accountId = cred.id;
+        c.remoteId = "work@example.com";
         c.summary = "Work";
         c.persistAndFlush();
 
-        assertThat(GoogleCalendar.findOwned(1L, cred.id, "work@example.com").id).isEqualTo(c.id);
-        assertThat(GoogleCalendar.findOwned(1L, cred.id, "other@example.com")).isNull();
-        assertThat(GoogleCalendar.findOwned(2L, cred.id, "work@example.com")).isNull();
-        assertThat(GoogleCalendar.findOwned(1L, 999_999L, "work@example.com")).isNull();
+        assertThat(SelectedCalendar.findOwned(1L, cred.id, "work@example.com").id).isEqualTo(c.id);
+        assertThat(SelectedCalendar.findOwned(1L, cred.id, "other@example.com")).isNull();
+        assertThat(SelectedCalendar.findOwned(2L, cred.id, "work@example.com")).isNull();
+        assertThat(SelectedCalendar.findOwned(1L, 999_999L, "work@example.com")).isNull();
     }
 
     private static GoogleCredential seedCredential(String sub) {

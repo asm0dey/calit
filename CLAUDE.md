@@ -53,6 +53,8 @@ mvn test -Dtest=BookingServiceTest                    # one class
 mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 ```
 
+- Affected-only runs: `./mvnw -Paffected test-order:affected test` (index learned on the first `./mvnw -Paffected test`, stored in git-ignored `.test-order/`). CI and image builds don't load the plugin.
+
 - Surefire runs **`reuseForks=true`**: ONE reused JVM fork + ONE Dev Services Postgres shared across all same-profile `@QuarkusTest` classes (cold-boot per class took minutes). `@TestProfile` classes trigger in-JVM Quarkus restart. Heap pinned `-Xms512m -Xmx6g`.
 - Dev Services Postgres is **reused between runs** (`quarkus.datasource.devservices.reuse=true` in
   `src/test/resources/application.properties`) and the reuse hash knows nothing about your branch or
@@ -65,7 +67,7 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
   — `DatabaseResetCallback`'s `TRUNCATE … RESTART IDENTITY CASCADE` already made concurrent runs unusable
   — but this failure mode is more confusing, so it's worth naming.)
 - `DatabaseResetCallback` (registered via `src/test/resources/META-INF/services/`) truncates + reseeds DB per test. Admin user **always id 1**. Write owner-scoped tests against that invariant.
-- `quarkus-jacoco` only instruments code reached through a booted `@QuarkusTest`. Plain-JUnit tests that construct objects directly (e.g. `new CardRenderer(new CardFonts())`) contribute nothing to coverage — running only those produces no `target/jacoco-report/` at all. A low coverage number on this repo can mean "the wrong kind of test", not "no test"; raising a Sonar coverage figure may require a `@QuarkusTest` even when a plain unit test is the better-designed test.
+- Coverage: `quarkus-jacoco` instruments code reached through a booted `@QuarkusTest`; plain-JUnit tests are measured by the `jacoco-maven-plugin` agent, which appends to the same `target/jacoco-quarkus.exec`, so the one `target/jacoco-report/jacoco.xml` (what Sonar reads) covers both. The report is only written when at least one `@QuarkusTest` runs.
 - `*IT` classes (e.g. `OgImageResourceIT`) run under **`mvn verify`** via `maven-failsafe-plugin`, not under `mvn test` — `verify` therefore packages the app and boots it for real. Plain `mvn test` is unaffected and stays fast.
 - Mailer mocked in `%dev`/`%test`; Google + Turnstile disabled by default. Full booking flow runs zero external accounts.
 - RestAssured can't execute JS — tests assert on stable marker comments (e.g. `CALIT_TZ_REFORMAT`) instead of running scripts.
@@ -133,6 +135,8 @@ User-facing strings are type-safe `@Message` keys: UI bundle `AppMessages` (`{ms
 ## Database / migrations
 
 Flyway migrations in `src/main/resources/db/migration/`, applied at boot (`quarkus.flyway.migrate-at-start=true`). Hibernate **validate-only** (`schema-management.strategy=validate`) — never creates schema; migrations own it. **Never edit applied migration** (Flyway checksum validation fails — even comment changes break it). Add new `V*.sql` for every change.
+
+**The previous release must run on the new schema** (N replicas, rolling deploys: old and new code share one database for a while). Migrate expand/contract: add, backfill, keep both shapes working, drop the old shape one release later. Never rename or drop anything the previous release reads. A table rename goes through a compatibility view under the old name — single-table and filtered (e.g. `WHERE provider = 'GOOGLE'`), so Postgres keeps it auto-updatable — and a column rename adds the new column next to the old one with a trigger keeping the pair equal. Drop the views, old columns and triggers in the next release. `V37MigrationTest` shows how to pin the previous release's contract (its Flyway validates, the old columns and types exist, its native SQL still runs).
 
 ## Config
 

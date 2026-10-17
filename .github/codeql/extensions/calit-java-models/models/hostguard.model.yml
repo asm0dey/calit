@@ -1,0 +1,7 @@
+# HostGuard.checked returns the URI only after refusing non-http(s) schemes and non-public addresses.
+extensions:
+  - addsTo:
+      pack: codeql/java-all
+      extensible: barrierModel
+    data:
+      - ["site.asm0dey.calit.caldav", "HostGuard", False, "checked", "(URI,boolean)", "", "ReturnValue", "request-forgery", "manual"]

@@ -6,7 +6,8 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.google.CalendarRef;
+import site.asm0dey.calit.calendar.CalendarProvider;
+import site.asm0dey.calit.calendar.CalendarRef;
 
 @Entity
 @Table(name = "booking")
@@ -26,18 +27,24 @@ public class Booking extends PanacheEntityBase {
     public Instant startUtc;
     @Column(name = "end_utc", nullable = false)
     public Instant endUtc;
-    @Column(name = "google_event_id")
-    public String googleEventId;
+    @Column(name = "event_id")
+    public String eventId;
     /**
-     * Google's calendar id for {@link #googleEventId}; null on rows created before V26.
+     * The remote id of the calendar holding {@link #eventId}; null on rows created before V26.
      */
-    @Column(name = "google_calendar_id", columnDefinition = "text")
-    public String googleCalendarId;
+    @Column(name = "calendar_remote_id", columnDefinition = "text")
+    public String calendarRemoteId;
     /**
      * The connected account the event was created with; nulled when that account is disconnected.
      */
-    @Column(name = "google_credential_id")
-    public Long googleCredentialId;
+    @Column(name = "calendar_account_id")
+    public Long calendarAccountId;
+    /**
+     * The provider of the Mirror event calit last removed from this row (V38); null when none was removed.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "removed_mirror_provider", columnDefinition = "text")
+    public CalendarProvider removedMirrorProvider;
     @Column(name = "meet_link", length = 512)
     public String meetLink;
     @Enumerated(EnumType.STRING)
@@ -76,13 +83,13 @@ public class Booking extends PanacheEntityBase {
     /**
      * Per-booking override of the meeting's displayed name. NULL (or blank) means "no override" —
      * {@link #effectiveTitle} falls back to the meeting type's name. Editable post-booking by both the
-     * host and the invitee; changes propagate to email, the Google event summary, and the .ics SUMMARY.
+     * host and the invitee; changes propagate to email, the Mirror event summary, and the .ics SUMMARY.
      */
     @Column(columnDefinition = "text")
     public String title;
     /**
      * Per-booking override of the meeting description. NULL (or blank) falls back to the meeting type's
-     * description (which may itself be null). Propagates to the .ics DESCRIPTION and Google event description.
+     * description (which may itself be null). Propagates to the .ics DESCRIPTION and Mirror event description.
      */
     @Column(columnDefinition = "text")
     public String description;
@@ -177,10 +184,10 @@ public class Booking extends PanacheEntityBase {
     }
 
     /**
-     * This row's Google event address, or null when unknown (pre-V26 rows) — see {@link CalendarRef}.
+     * This row's Mirror event address, or null when unknown (pre-V26 rows) — see {@link CalendarRef}.
      */
     public CalendarRef calendarRef() {
-        return googleCalendarId == null ? null : new CalendarRef(googleCredentialId, googleCalendarId);
+        return calendarRemoteId == null ? null : new CalendarRef(calendarAccountId, calendarRemoteId);
     }
 
     /**

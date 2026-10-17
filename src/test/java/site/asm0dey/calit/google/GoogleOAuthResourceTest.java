@@ -53,7 +53,7 @@ class GoogleOAuthResourceTest {
             .get("/api/google/callback?code=the-code&state=good-state")
             .then()
             .statusCode(302)
-            .header("Location", containsString("/me/google"));
+            .header("Location", containsString("/me/calendars"));
         // The owner came from the trusted state (7L), not from CurrentOwner.
         verify(tokenService).exchangeCode(eq(7L), eq("the-code"), any(Instant.class));
     }

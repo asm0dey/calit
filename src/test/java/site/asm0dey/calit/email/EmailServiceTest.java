@@ -20,7 +20,7 @@ import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
 
@@ -46,6 +46,8 @@ class EmailServiceTest {
         QuarkusTransaction
             .requiringNew()
             .run(() -> Booking.deleteAll());
+        // the "Google connected" tests mean the Mirror event is on Google; inert while not connected
+        MultiHostFixtures.googleWriteTarget(1L);
     }
 
     // ---- Confirmed + Google NOT connected: invitee + owner BOTH get mail ----
@@ -81,6 +83,34 @@ class EmailServiceTest {
         assertThat(m.getSubject().toLowerCase()).contains("confirmed");
         // .ics attachment present on an app-sent mail
         assertHasIcsAttachment(m);
+    }
+
+    @Test
+    void meetTypeWithoutMintedLinkMailsLocationDetail() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> {
+            b.status = BookingStatus.CONFIRMED;
+            b.meetLink = null;
+        }, true, LocationType.GOOGLE_MEET, "https://meet.example/abc");
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getHtml()).contains("https://meet.example/abc");
+    }
+
+    @Test
+    void mintedLinkWinsOverLocationDetailInMail() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> {
+            b.status = BookingStatus.CONFIRMED;
+            b.meetLink = "https://meet.google.com/minted";
+        }, true, LocationType.GOOGLE_MEET, "https://meet.example/abc");
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getHtml())
+            .contains("https://meet.google.com/minted")
+            .doesNotContain("https://meet.example/abc");
     }
 
     // ---- Confirmed + Google connected: invitee + owner both get link email, but NO .ics ----
@@ -148,6 +178,26 @@ class EmailServiceTest {
         Mail m = mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst();
         assertThat(m.getSubject().toLowerCase()).contains("declin");
         assertThat(m.getAttachments()).as("no .ics when Google connected (no calendar event was ever created)").isEmpty();
+    }
+
+    @Test
+    void neverApprovedRequestOfAConnectedOwnerCarriesNoIcsOnRequestOrDecline() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        long bookingId = seed(b -> {
+            b.status = BookingStatus.PENDING;
+            // no Mirror event until approval
+            b.eventId = null;
+        }, true, LocationType.PHONE, null);
+
+        emailService.handleRequested(new BookingRequested(bookingId));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> Booking.<Booking>findById(bookingId).status = BookingStatus.DECLINED);
+        emailService.handleDeclined(new BookingDeclined(bookingId));
+
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL))
+            .hasSize(2)
+            .allSatisfy(m -> assertThat(m.getAttachments()).isEmpty());
     }
 
     // ---- ownerNotificationsEnabled = false: owner gets nothing; invitee per rules ----
@@ -581,7 +631,7 @@ class EmailServiceTest {
                 b.inviteeEmail = INVITEE_EMAIL;
                 b.startUtc = startUtc;
                 b.endUtc = startUtc.plus(30, ChronoUnit.MINUTES);
-                b.googleEventId = "evt-" + System.nanoTime();
+                b.eventId = "evt-" + System.nanoTime();
                 b.meetLink = null;
                 b.status = BookingStatus.CONFIRMED;
                 b.answers = Map.of();

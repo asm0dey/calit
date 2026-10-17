@@ -8,6 +8,8 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import site.asm0dey.calit.calendar.CalendarUnavailableException;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 
 /**
  * freeBusy is fail-CLOSED: a broken busy-feeding account must make the whole call throw
@@ -69,10 +71,10 @@ class FreeBusyLiveFailureTest {
 
     private void seedReadCalendarForCred(Long credId) {
         QuarkusTransaction.requiringNew().run(() -> {
-            GoogleCalendar g = new GoogleCalendar();
+            SelectedCalendar g = new SelectedCalendar();
             g.ownerId = 1L;
-            g.googleCredentialId = credId;
-            g.googleCalendarId = "g-" + credId;
+            g.accountId = credId;
+            g.remoteId = "g-" + credId;
             g.summary = "cal";
             g.readForBusy = true;
             g.persist();

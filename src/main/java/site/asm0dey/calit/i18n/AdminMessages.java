@@ -9,7 +9,7 @@ import io.quarkus.qute.i18n.MessageBundle;
  * key falls back to the English default automatically. Template namespace: {adm:key}.
  *
  * Split from AppMessages to avoid JVM method-size limits on the generated bundle resolver.
- * Keys: adm_*, google_*, users_*, mesetup_*.
+ * Keys: adm_*, google_*, calendars_*, users_*, mesetup_*.
  */
 @MessageBundle("adm")
 // S100: snake_case method names are intentional — Qute maps each @Message method name to its .properties key.
@@ -44,7 +44,7 @@ public interface AdminMessages {
     @Message("Settings")
     String adm_nav_settings();
 
-    @Message("Google")
+    @Message("Calendars")
     String adm_nav_google();
 
     @Message("Users")
@@ -90,7 +90,7 @@ public interface AdminMessages {
     @Message("Admin — Pending approvals")
     String adm_pending_title();
 
-    @Message("Admin — Google")
+    @Message("Admin — Calendars")
     String adm_google_title();
 
     @Message("Admin — Users")
@@ -458,6 +458,10 @@ public interface AdminMessages {
     @Message("The calendar this meeting type writes on is no longer available, so new bookings use your "
             + "write target. Pick a calendar to fix it.")
     String adm_detail_write_calendar_dangling();
+
+    @Message("This meeting type uses Google Meet, but it writes to a calendar that isn't Google, so its "
+            + "bookings get no Meet link. Add a link yourself, or pick a Google calendar.")
+    String adm_detail_meet_unavailable();
 
     @Message("Upcoming bookings that stay on the calendar they were created on: {count}. Only new "
             + "bookings use the new calendar.")
@@ -948,7 +952,7 @@ public interface AdminMessages {
     String adm_delete_account_title();
 
     @Message("This permanently removes your account, your meeting types and availability, every booking "
-            + "on your calendar, your connected Google accounts and your notification channels. "
+            + "on your calendar, your connected calendar accounts and your notification channels. "
             + "It can't be undone.")
     String adm_delete_account_desc();
 
@@ -1006,21 +1010,22 @@ public interface AdminMessages {
     @Message("none — every channel is off by default")
     String adm_detail_notifications_none_default();
 
-    // ---- Google Calendar ----
-    @Message("Google Calendar")
+    // ---- Calendars page (Google + CalDAV) ----
+    @Message("Calendars")
     String google_h1();
 
-    @Message("Connect Google accounts so calit can read your busy times and create events. Pick which "
-            + "calendars block availability, and one calendar to create booking events on.")
+    @Message("Connect Google or CalDAV accounts so calit can read your busy times and create events. Pick "
+            + "which calendars block availability, and one calendar to create booking events on.")
     String google_hint();
 
     @Message("Connect a Google account")
     String google_btn_connect();
 
-    @Message("Couldn't reach Google for one or more accounts. Reconnect the flagged account, then reload.")
+    @Message("Couldn't reach the calendar server for one or more accounts. Reconnect the flagged account, then "
+            + "reload.")
     String google_load_error();
 
-    @Message("No Google accounts connected yet.")
+    @Message("No calendar accounts connected yet.")
     String google_no_accounts();
 
     @Message("needs reconnect")
@@ -1047,11 +1052,71 @@ public interface AdminMessages {
     @Message("Save calendar selection")
     String google_btn_save_selection();
 
-    @Message("Disconnect this Google account? Its calendar selections are removed.")
+    @Message("Disconnect this account? Its calendar selections are removed.")
     String google_disconnect_confirm();
 
-    @Message("Pick a new write target on another account first")
-    String google_disabled_title();
+    @Message("No calendar — send an .ics instead")
+    String calendars_write_none();
+
+    @Message("Unnamed account")
+    String calendars_account_unnamed();
+
+    @Message("Google")
+    String calendars_badge_google();
+
+    @Message("CalDAV")
+    String calendars_badge_caldav();
+
+    @Message("No calendar is selected for writing. Bookings are not added to any calendar; each booking "
+            + "arrives by email as an .ics file you can add to whichever calendar you like.")
+    String calendars_no_write_target();
+
+    @Message("That calendar's address is too long to store its events. Pick another calendar to write "
+            + "events on.")
+    String calendars_error_write_href_too_long();
+
+    @Message("Connect a CalDAV calendar")
+    String calendars_caldav_h2();
+
+    @Message("Nextcloud, Fastmail, iCloud, Radicale and other CalDAV servers. Use an app password where "
+            + "your provider offers one.")
+    String calendars_caldav_hint();
+
+    @Message("Server URL")
+    String calendars_caldav_label_url();
+
+    @Message("Username")
+    String calendars_caldav_label_username();
+
+    @Message("Password")
+    String calendars_caldav_label_password();
+
+    @Message("Connect a CalDAV account")
+    String calendars_btn_connect_caldav();
+
+    @Message("New password")
+    String calendars_caldav_label_new_password();
+
+    @Message("Update password")
+    String calendars_caldav_btn_update_password();
+
+    @Message("Fill in the server URL, username and password.")
+    String calendars_caldav_error_missing();
+
+    @Message("That server is on a private network address, which this site does not connect to.")
+    String calendars_caldav_error_private_host();
+
+    @Message("The server rejected that username or password.")
+    String calendars_caldav_error_unauthorized();
+
+    @Message("No CalDAV calendars found at that URL. Check the server address.")
+    String calendars_caldav_error_not_caldav();
+
+    @Message("Couldn't reach that server. Check the URL and try again.")
+    String calendars_caldav_error_unreachable();
+
+    @Message("The server answered with an error. Try again later.")
+    String calendars_caldav_error_http();
 
     // ---- Users ----
     @Message("Users")
@@ -1133,7 +1198,7 @@ public interface AdminMessages {
     String adm_users_delete_title();
 
     @Message("This permanently removes the account {username}: its meeting types and availability, every "
-            + "booking on its calendar, its connected Google accounts and its notification channels. "
+            + "booking on its calendar, its connected calendar accounts and its notification channels. "
             + "It can't be undone.")
     String adm_users_delete_desc(String username);
 

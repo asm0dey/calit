@@ -12,6 +12,8 @@ import com.google.api.services.calendar.Calendar;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.CalendarRef;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.user.AppUser;
 
 /**
@@ -223,10 +225,10 @@ class StoredCalendarAddressTest {
         c.refreshToken = "rt";
         c.googleSub = sub;
         c.persist();
-        GoogleCalendar wt = new GoogleCalendar();
+        SelectedCalendar wt = new SelectedCalendar();
         wt.ownerId = 1L;
-        wt.googleCredentialId = c.id;
-        wt.googleCalendarId = calendarId;
+        wt.accountId = c.id;
+        wt.remoteId = calendarId;
         wt.summary = "Default";
         wt.writeTarget = true;
         wt.persist();

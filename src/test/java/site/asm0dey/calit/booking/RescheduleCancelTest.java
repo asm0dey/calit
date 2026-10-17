@@ -13,8 +13,8 @@ import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 
 @QuarkusTest
 class RescheduleCancelTest {
@@ -38,6 +38,7 @@ class RescheduleCancelTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),
@@ -94,6 +95,7 @@ class RescheduleCancelTest {
         when(calendarPort.createEvent(
                 anyLong(),
                 any(),
+                any(),
                 anyString(),
                 anyString(),
                 any(),
@@ -122,7 +124,7 @@ class RescheduleCancelTest {
         Booking loaded = Booking.findById(b.id);
         assertThat(loaded.status).as("approval type re-enters PENDING on reschedule").isEqualTo(BookingStatus.PENDING);
         assertThat(loaded.startUtc).isEqualTo(SLOT_10);
-        assertThat(loaded.googleEventId).as("the prior event is deleted on re-request").isNull();
+        assertThat(loaded.eventId).as("the prior event is deleted on re-request").isNull();
         assertThat(loaded.meetLink).isNull();
         verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), eq("evt-ra"));
         verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any(), any());
@@ -137,6 +139,7 @@ class RescheduleCancelTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),
@@ -180,6 +183,7 @@ class RescheduleCancelTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),
@@ -229,6 +233,7 @@ class RescheduleCancelTest {
         when(calendarPort.createEvent(
                 anyLong(),
                 any(),
+                any(),
                 anyString(),
                 anyString(),
                 any(),
@@ -258,10 +263,10 @@ class RescheduleCancelTest {
         assertThat(loaded.status).isEqualTo(BookingStatus.CANCELLED);
         // Same post-state the group path leaves behind (deleteGroupGoogleEvent): a cancelled row
         // must not keep pointing at an event that no longer exists on Google.
-        assertThat(loaded.googleEventId).isNull();
+        assertThat(loaded.eventId).isNull();
         assertThat(loaded.meetLink).isNull();
-        assertThat(loaded.googleCalendarId).isNull();
-        assertThat(loaded.googleCredentialId).isNull();
+        assertThat(loaded.calendarRemoteId).isNull();
+        assertThat(loaded.calendarAccountId).isNull();
     }
 
     @Test
@@ -273,6 +278,7 @@ class RescheduleCancelTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),
@@ -303,7 +309,7 @@ class RescheduleCancelTest {
 
         Booking loaded = Booking.findById(b.id);
         verify(calendarPort, never()).deleteEvent(anyLong(), any(), eq("evt-off"));
-        assertThat(loaded.googleEventId).isNull();
+        assertThat(loaded.eventId).isNull();
         assertThat(loaded.meetLink).isNull();
     }
 
@@ -316,6 +322,7 @@ class RescheduleCancelTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),

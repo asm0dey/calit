@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.calendar.CaldavAccount;
 import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.PasswordHasher;
@@ -136,5 +137,22 @@ class OwnerExportTest {
             b.manageToken = UUID.randomUUID().toString();
             b.persist();
         });
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "user")
+    void ownerExportListsCaldavAccountWithoutPassword() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            var a = new CaldavAccount();
+            a.ownerId = 1L;
+            a.serverUrl = "https://dav.example.com/";
+            a.username = "dav-export-user";
+            a.password = "KNOWN-CALDAV-APP-PASSWORD";
+            a.persist();
+        });
+        String body = given().when().get("/me/export").then().statusCode(200).extract().asString();
+        assertThat(body)
+            .contains("\"username\"", "dav-export-user", "https://dav.example.com/")
+            .doesNotContain("caldav_password", "KNOWN-CALDAV-APP-PASSWORD");
     }
 }

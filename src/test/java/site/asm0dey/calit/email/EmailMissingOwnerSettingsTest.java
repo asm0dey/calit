@@ -14,7 +14,7 @@ import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 
 /**
  * A booking whose owner has no {@code owner_settings} row must not blow up the mail path.

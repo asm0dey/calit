@@ -41,19 +41,38 @@ class PrivacyPolicyGoogleUnconfiguredTest {
     }
 
     /**
-     * With Google unconfigured, mail mocked (default {@code %test}), no notification-channel rows,
-     * OIDC off ({@code %test} default) and Turnstile off (default), NOTHING sends invitee data to a
-     * third party — the fallback sentence must render instead of an empty {@code <ul>}.
+     * CalDAV is always available, so the recipients list is never empty: the CalDAV server is listed even
+     * with Google, OIDC, Turnstile and channels all off.
      */
     @Test
-    void dataSharingFallsBackToTheNoThirdPartySentenceWhenNothingIsConfigured() {
+    void dataSharingAlwaysListsTheCaldavServer() {
         given()
             .when()
             .get("/privacy")
             .then()
             .statusCode(200)
-            .body(containsString("does not send your data to any third party"))
-            .body(not(containsString("This deployment sends data to:")));
+            .body(containsString("This deployment sends data to:"))
+            .body(containsString("The CalDAV server you connect, if you connect one"))
+            .body(not(containsString("does not send your data to any third party")));
+    }
+
+    /**
+     * The Mirror event disclosure is CalDAV-only here, never dropped: CalDAV write calendars exist without
+     * Google.
+     */
+    @Test
+    void mirrorEventDisclosureRendersForCaldavAlone() {
+        given()
+            .when()
+            .get("/privacy")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_MIRROR_EVENT"))
+            .body(containsString("host's calendar provider — the CalDAV server the host connected"))
+            .body(containsString("On a CalDAV server they are written into the event description"))
+            .body(containsString("the email addresses of the invitee, the host(s) and any active guests"))
+            .body(not(containsString("On Google they are added as event attendees")))
+            .body(not(containsString("Google Meet link")));
     }
 
     public static class BlankGoogleClientId implements QuarkusTestProfile {

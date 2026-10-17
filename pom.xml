@@ -26,8 +26,11 @@
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.version>3.40.1</quarkus.platform.version>
     <surefire-plugin.version>3.6.0</surefire-plugin.version>
+    <jacoco-plugin.version>0.8.15</jacoco-plugin.version>
+    <test-order-plugin.version>0.1.0</test-order-plugin.version>
     <sonar-maven-plugin.version>5.8.0.7211</sonar-maven-plugin.version>
     <assertj.version>3.27.7</assertj.version>
+    <ical4j.version>4.4.0</ical4j.version>
 
     <!-- SonarQube Cloud analysis (CI-based, via sonar-maven-plugin). The Maven scanner does
          NOT read sonar-project.properties; all analysis parameters live here. -->
@@ -72,6 +75,14 @@
         <artifactId>jackson-core</artifactId>
         <version>2.22.3</version>
       </dependency>
+      <!-- Pin ahead of quarkus-bom 3.40.1 (byte-buddy 1.18.8, Java <= 26): on JDK 27 that version reads Hibernate's
+           shared enhancer advice via the non-thread-safe Class-File API and augmentation fails at random.
+           1.18.10+ knows Java 27 and stays on ASM. Guarded by EntityEnhancerReaderTest; drop once the BOM catches up. -->
+      <dependency>
+        <groupId>net.bytebuddy</groupId>
+        <artifactId>byte-buddy</artifactId>
+        <version>1.18.11</version>
+      </dependency>
       <dependency>
         <groupId>${quarkus.platform.group-id}</groupId>
         <artifactId>${quarkus.platform.artifact-id}</artifactId>
@@ -95,6 +106,12 @@
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-qute</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-rest-qute</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-reactive-routes</artifactId></dependency>
+    <!-- CalDAV: parse iCalendar data and expand recurrences client-side. -->
+    <dependency>
+      <groupId>org.mnode.ical4j</groupId>
+      <artifactId>ical4j</artifactId>
+      <version>${ical4j.version}</version>
+    </dependency>
     <!-- java.awt in the native image: renders the social-preview card. Needs runtime .so files and
          a font on disk in the container - see Dockerfile.native. -->
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-awt</artifactId></dependency>
@@ -114,17 +131,20 @@
 
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-junit5</artifactId><scope>test</scope></dependency>
     <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>${assertj.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- Code coverage: Quarkus-native JaCoCo (test-time instrumentation; writes target/jacoco-report/jacoco.xml
-         consumed by SonarQube). Uses Quarkus's own agent wiring, so the reuseForks argLine is untouched.
-         Only instruments code reached through a booted @QuarkusTest; plain-JUnit tests that construct
-         objects directly contribute nothing to the report, no matter how thorough their assertions are
-         (verified: a run of only plain-JUnit tests produces no target/jacoco-report/ at all). A low
-         coverage number here can mean "the wrong kind of test", not "no test". -->
+    <!-- Code coverage: quarkus-jacoco writes target/jacoco-report/jacoco.xml (consumed by SonarQube) at the end of
+         the @QuarkusTest run. It only instruments code loaded by the QuarkusClassLoader; plain-JUnit tests are
+         covered by the jacoco-maven-plugin agent below, which writes to the same jacoco-quarkus.exec so the one
+         report merges both (Quarkus "Coverage for tests not using @QuarkusTest"). -->
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-jacoco</artifactId><scope>test</scope></dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -238,6 +258,9 @@
                metaspace — Quarkus augmentation is metaspace-heavy) absorbs the few extra classloaders.
                The exit timeout is raised so a slow Vert.x/Quarkus shutdown isn't misreported. -->
           <reuseForks>true</reuseForks>
+          <!-- *IT classes need the packaged app and run under failsafe only; this keeps them out when
+               a test-order run (or -Dtest) hands surefire an IT class by name. -->
+          <excludedGroups>integration</excludedGroups>
           <argLine>@{argLine} -Xms512m -Xmx6g</argLine>
           <forkedProcessExitTimeoutInSeconds>120</forkedProcessExitTimeoutInSeconds>
           <systemPropertyVariables>
@@ -247,6 +270,26 @@
             <quarkus.jacoco.reuse-data-file>true</quarkus.jacoco.reuse-data-file>
           </systemPropertyVariables>
         </configuration>
+      </plugin>
+      <plugin>
+        <!-- JaCoCo agent for plain-JUnit tests (sets @{argLine}); skips QuarkusClassLoader classes, which
+             quarkus-jacoco instruments, and appends to its data file so its report includes these tests. -->
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>default-prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+            <configuration>
+              <exclClassLoaders>*QuarkusClassLoader</exclClassLoaders>
+              <destFile>${project.build.directory}/jacoco-quarkus.exec</destFile>
+              <append>true</append>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <!-- Runs @QuarkusIntegrationTest classes: Quarkus packages the app (quarkus:build already
@@ -375,4 +418,32 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>affected</id>
+      <build>
+        <plugins>
+          <plugin>
+            <!-- Selective test runs: opt-in with -Paffected: `./mvnw -Paffected test-order:affected test` runs only the
+                 tests the uncommitted change can reach, from an index learned on the first
+                 `./mvnw -Paffected test` (stored in the git-ignored .test-order/). <extensions> is required
+                 for its agent. Kept out of the default build: in learn mode its prepare goal leaves a
+                 non-String system property that breaks a later quarkus:build (NPE in Narayana's
+                 applySystemProperties), so CI and image builds must not load it. -->
+            <groupId>me.bechberger</groupId>
+            <artifactId>test-order-maven-plugin</artifactId>
+            <version>${test-order-plugin.version}</version>
+            <extensions>true</extensions>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>prepare</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

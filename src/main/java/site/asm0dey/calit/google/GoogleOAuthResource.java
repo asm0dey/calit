@@ -68,6 +68,6 @@ public class GoogleOAuthResource {
             return Response.status(Response.Status.BAD_REQUEST).entity("Missing authorization code").build();
         }
         tokenService.exchangeCode(ownerId, code, now);
-        return Response.status(Response.Status.FOUND).location(URI.create("/me/google")).build();
+        return Response.status(Response.Status.FOUND).location(URI.create("/me/calendars")).build();
     }
 }

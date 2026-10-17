@@ -19,6 +19,6 @@ class CreateEventRoutingTest {
         var end = Instant.now().plusSeconds(1800);
         var attendeeEmails = List.of("a@example.com");
         assertThatExceptionOfType(IllegalStateException.class)
-            .isThrownBy(() -> port.createEvent(1L, null, "s", "d", start, end, attendeeEmails, true, null));
+            .isThrownBy(() -> port.createEvent(1L, null, null, "s", "d", start, end, attendeeEmails, true, null));
     }
 }

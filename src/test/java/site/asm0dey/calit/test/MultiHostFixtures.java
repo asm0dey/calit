@@ -107,4 +107,27 @@ public final class MultiHostFixtures {
             .persist();
         return t;
     }
+
+    /**
+     * A Google account for {@code ownerId} with a write-target calendar, so a connected owner's Mirror event is on
+     * Google (Google invites the attendees). Commits its own transaction.
+     */
+    public static void googleWriteTarget(long ownerId) {
+        io.quarkus.narayana.jta.QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                var g = new site.asm0dey.calit.google.GoogleCredential();
+                g.ownerId = ownerId;
+                g.refreshToken = "rt";
+                g.googleSub = "sub-write-" + ownerId + "-" + System.nanoTime();
+                g.persist();
+                var c = new site.asm0dey.calit.calendar.SelectedCalendar();
+                c.ownerId = ownerId;
+                c.accountId = g.id;
+                c.remoteId = "write-" + ownerId + "@example.com";
+                c.summary = c.remoteId;
+                c.writeTarget = true;
+                c.persist();
+            });
+    }
 }

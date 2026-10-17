@@ -9,7 +9,7 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.google.GoogleCalendar;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 
 /**
@@ -23,7 +23,7 @@ class AdminMeetGatingTest {
     @AfterEach
     @Transactional
     void cleanup() {
-        GoogleCalendar.deleteAll();
+        SelectedCalendar.deleteAll();
         GoogleCredential.deleteAll();
     }
 
@@ -36,10 +36,10 @@ class AdminMeetGatingTest {
         c.refreshToken = "rt";
         c.googleSub = "sub-gate";
         c.persist();
-        GoogleCalendar wt = new GoogleCalendar();
+        SelectedCalendar wt = new SelectedCalendar();
         wt.ownerId = ownerId;
-        wt.googleCredentialId = c.id;
-        wt.googleCalendarId = "wt@example.com";
+        wt.accountId = c.id;
+        wt.remoteId = "wt@example.com";
         wt.summary = "WT";
         wt.readForBusy = true;
         wt.writeTarget = true;

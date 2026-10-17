@@ -2,6 +2,7 @@ package site.asm0dey.calit.email;
 
 import module java.base;
 import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.calendar.CalendarProvider;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
 
@@ -17,5 +18,7 @@ public record BookingSnapshot(
         OwnerSettings owner,
         ZoneId zone,
         List<EmailService.AnswerLine> answers,
-        List<HostDelivery> hostDeliveries
+        List<HostDelivery> hostDeliveries,
+        // provider of the Mirror event the booking has, or last had before calit removed it; null when it never had one
+        CalendarProvider mirror
 ) {}

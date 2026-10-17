@@ -7,14 +7,19 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import site.asm0dey.calit.caldav.CaldavCalendarPort;
+import site.asm0dey.calit.caldav.CaldavClient;
+import site.asm0dey.calit.caldav.CaldavException;
+import site.asm0dey.calit.calendar.CaldavAccount;
+import site.asm0dey.calit.calendar.CalendarAccount;
+import site.asm0dey.calit.calendar.CalendarProvider;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailService;
-import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.google.GoogleTokenService;
 import site.asm0dey.calit.i18n.AppLocales;
 
 /**
- * Feature: Google disconnect detection. Runs on EVERY replica every probe-interval. Multi-node-safe
+ * Feature: Google and CalDAV disconnect detection. Runs on EVERY replica every probe-interval. Multi-node-safe
  * with NO leader: each phase claims rows with SELECT ... FOR UPDATE SKIP LOCKED, so a concurrent
  * replica's identical query skips rows this one already locked.
  */
@@ -24,17 +29,20 @@ public class GoogleConnectionScheduler {
     final EntityManager em;
     final GoogleTokenService tokens;
     final EmailService emailService;
+    final CaldavClient caldav;
 
     @Inject
     public GoogleConnectionScheduler(
             EntityManager em,
             GoogleTokenService tokens,
             EmailService emailService,
+            CaldavClient caldav,
             @ConfigProperty(name = "calit.google.probe-interval") Duration probeInterval
     ) {
         this.em = em;
         this.tokens = tokens;
         this.emailService = emailService;
+        this.caldav = caldav;
         this.probeInterval = probeInterval;
     }
 
@@ -55,9 +63,53 @@ public class GoogleConnectionScheduler {
         List<Long> ids = claimDueForProbe();
         var now = Instant.now();
         for (Long id : ids) {
-            // own @Transactional; sets/clears needs_reconnect
-            tokens.probe(id, now);
+            CalendarProvider provider = providerOf(id);
+            if (provider == null) {
+                // disconnected since the claim
+                continue;
+            }
+            if (provider == CalendarProvider.CALDAV) {
+                probeCaldav(id);
+            } else {
+                // own @Transactional; sets/clears needs_reconnect
+                tokens.probe(id, now);
+            }
         }
+    }
+
+    private CalendarProvider providerOf(Long id) {
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> CalendarAccount.findById(id) instanceof CalendarAccount a ? a.provider() : null);
+    }
+
+    /**
+     * Only UNAUTHORIZED flags the account: like the Google probe's TRANSIENT, a server blip (unreachable,
+     * 5xx) leaves state untouched and is retried next cycle, since it says nothing about the password.
+     */
+    private void probeCaldav(Long id) {
+        CaldavAccount a = QuarkusTransaction
+            .requiringNew()
+            .call(() -> CaldavAccount.findById(id));
+        if (a == null) {
+            return;
+        }
+        try {
+            caldav.probe(a);
+        } catch (CaldavException ex) {
+            CaldavCalendarPort.flagIfUnauthorized(a, ex);
+            return;
+        }
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                CaldavAccount fresh = CaldavAccount.findById(id);
+                if (fresh != null) {
+                    fresh.needsReconnect = false;
+                    // INVARIANT: clearing needsReconnect resets the notify gate
+                    fresh.reconnectNotifiedAt = null;
+                }
+            });
     }
 
     List<Long> claimDueForProbe() {
@@ -68,9 +120,9 @@ public class GoogleConnectionScheduler {
                 @SuppressWarnings("unchecked")
                 List<Number> ids = em
                     .createNativeQuery(
-                            "SELECT id FROM google_credential "
-                            + "WHERE last_probed_at IS NULL "
-                            + "   OR last_probed_at <= now() - make_interval(secs => :secs) "
+                            "SELECT id FROM calendar_account WHERE provider IN ('GOOGLE', 'CALDAV') "
+                            + "AND (last_probed_at IS NULL "
+                            + "   OR last_probed_at <= now() - make_interval(secs => :secs)) "
                             + "ORDER BY last_probed_at NULLS FIRST "
                             + "FOR UPDATE SKIP LOCKED "
                             + "LIMIT 50"
@@ -81,7 +133,7 @@ public class GoogleConnectionScheduler {
                 var now = Instant.now();
                 for (Number n : ids) {
                     Long id = n.longValue();
-                    GoogleCredential c = GoogleCredential.findById(id);
+                    CalendarAccount c = CalendarAccount.findById(id);
                     // stamped in the lock-holding transaction
                     c.lastProbedAt = now;
                     claimed.add(id);
@@ -98,11 +150,23 @@ public class GoogleConnectionScheduler {
     public void notifyPendingDisconnects() {
         List<Pending> pending = claimUnnotifiedDisconnects();
         for (Pending p : pending) {
-            emailService.sendGoogleDisconnected(p.ownerId(), p.ownerEmail(), p.accountEmail(), p.locale());
+            emailService.sendCalendarDisconnected(
+                    p.ownerId(),
+                    p.ownerEmail(),
+                    p.accountLabel(),
+                    p.provider(),
+                    p.locale()
+            );
         }
     }
 
-    private record Pending(Long ownerId, String ownerEmail, String accountEmail, Locale locale) {}
+    private record Pending(
+            Long ownerId,
+            String ownerEmail,
+            String accountLabel,
+            CalendarProvider provider,
+            Locale locale
+    ) {}
 
     List<Pending> claimUnnotifiedDisconnects() {
         return QuarkusTransaction
@@ -111,8 +175,8 @@ public class GoogleConnectionScheduler {
                 @SuppressWarnings("unchecked")
                 List<Number> ids = em
                     .createNativeQuery(
-                            "SELECT id FROM google_credential "
-                            + "WHERE needs_reconnect = true AND reconnect_notified_at IS NULL "
+                            "SELECT id FROM calendar_account WHERE provider IN ('GOOGLE', 'CALDAV') "
+                            + "AND needs_reconnect = true AND reconnect_notified_at IS NULL "
                             + "FOR UPDATE SKIP LOCKED "
                             + "LIMIT 50"
                     )
@@ -120,12 +184,14 @@ public class GoogleConnectionScheduler {
                 List<Pending> out = new ArrayList<>();
                 var now = Instant.now();
                 for (Number n : ids) {
-                    GoogleCredential c = GoogleCredential.findById(n.longValue());
+                    CalendarAccount c = CalendarAccount.findById(n.longValue());
                     // claim: prevents any replica re-sending
                     c.reconnectNotifiedAt = now;
                     OwnerSettings s = OwnerSettings.forOwner(c.ownerId);
                     if (s != null) {
-                        out.add(new Pending(c.ownerId, s.ownerEmail, c.accountEmail, AppLocales.pick(s.locale)));
+                        out.add(
+                                new Pending(c.ownerId, s.ownerEmail, c.label(), c.provider(), AppLocales.pick(s.locale))
+                        );
                     }
                 }
                 return out;

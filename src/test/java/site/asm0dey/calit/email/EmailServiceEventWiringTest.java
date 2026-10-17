@@ -18,7 +18,7 @@ import site.asm0dey.calit.booking.events.BookingConfirmed;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 
 @QuarkusTest
 class EmailServiceEventWiringTest {
@@ -73,7 +73,7 @@ class EmailServiceEventWiringTest {
             b.inviteeEmail = INVITEE_EMAIL;
             b.startUtc = Instant.parse("2026-06-08T09:00:00Z");
             b.endUtc = b.startUtc.plus(45, ChronoUnit.MINUTES);
-            b.googleEventId = "evt-" + System.nanoTime();
+            b.eventId = "evt-" + System.nanoTime();
             b.meetLink = "https://meet.google.com/wire-test";
             b.status = BookingStatus.CONFIRMED;
             b.manageToken = "tok-" + System.nanoTime();

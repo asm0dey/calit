@@ -6,6 +6,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.user.TestOwners;
 
 @QuarkusTest
@@ -49,27 +50,27 @@ class GoogleEntitiesOwnerScopeTest {
         credB.refreshToken = "rb-cal";
         credB.googleSub = "sub-cal-3002";
         credB.persist();
-        GoogleCalendar a = new GoogleCalendar();
+        SelectedCalendar a = new SelectedCalendar();
         a.ownerId = 3001L;
-        a.googleCalendarId = "cal-a";
+        a.remoteId = "cal-a";
         a.summary = "A";
         a.readForBusy = true;
         a.writeTarget = true;
-        a.googleCredentialId = credA.id;
+        a.accountId = credA.id;
         a.persist();
-        GoogleCalendar b = new GoogleCalendar();
+        SelectedCalendar b = new SelectedCalendar();
         b.ownerId = 3002L;
-        b.googleCalendarId = "cal-b";
+        b.remoteId = "cal-b";
         b.summary = "B";
         b.readForBusy = true;
         b.writeTarget = true;
-        b.googleCredentialId = credB.id;
+        b.accountId = credB.id;
         b.persist();
 
-        assertThat(GoogleCalendar.readForBusy(3001L)).hasSize(1);
-        assertThat(GoogleCalendar.writeTarget(3001L).googleCalendarId).isEqualTo("cal-a");
-        assertThat(GoogleCalendar.writeTarget(3002L).googleCalendarId).isEqualTo("cal-b");
-        assertThat(GoogleCalendar.findByGoogleId(3001L, "cal-a").googleCalendarId).isEqualTo("cal-a");
-        assertThat(GoogleCalendar.findByGoogleId(3001L, "cal-b")).as("other owner's calendar id -> null").isNull();
+        assertThat(SelectedCalendar.busyCalendars(3001L)).hasSize(1);
+        assertThat(SelectedCalendar.writeTargetOf(3001L).remoteId).isEqualTo("cal-a");
+        assertThat(SelectedCalendar.writeTargetOf(3002L).remoteId).isEqualTo("cal-b");
+        assertThat(SelectedCalendar.findByRemoteId(3001L, "cal-a").remoteId).isEqualTo("cal-a");
+        assertThat(SelectedCalendar.findByRemoteId(3001L, "cal-b")).as("other owner's calendar id -> null").isNull();
     }
 }

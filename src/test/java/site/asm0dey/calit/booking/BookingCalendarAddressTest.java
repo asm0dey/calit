@@ -18,9 +18,9 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CalendarRef;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarRef;
+import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.google.GoogleCredential;
 
 /**
@@ -44,14 +44,14 @@ class BookingCalendarAddressTest {
         GoogleCredential cred = seedCredential("sub-address-test");
 
         Booking b = seed();
-        b.googleEventId = "evt-1";
-        b.googleCalendarId = "work@example.com";
-        b.googleCredentialId = cred.id;
+        b.eventId = "evt-1";
+        b.calendarRemoteId = "work@example.com";
+        b.calendarAccountId = cred.id;
         b.persistAndFlush();
 
         Booking loaded = Booking.findById(b.id);
-        assertThat(loaded.calendarRef().googleCalendarId()).isEqualTo("work@example.com");
-        assertThat(loaded.calendarRef().credentialId()).isEqualTo(cred.id);
+        assertThat(loaded.calendarRef().remoteCalendarId()).isEqualTo("work@example.com");
+        assertThat(loaded.calendarRef().accountId()).isEqualTo(cred.id);
     }
 
     @Test
@@ -73,8 +73,8 @@ class BookingCalendarAddressTest {
         Booking booked = bookAnySlot("addr-created");
 
         Booking loaded = Booking.findById(booked.id);
-        assertThat(loaded.googleCalendarId).isEqualTo("work@example.com");
-        assertThat(loaded.googleCredentialId).isEqualTo(cred.id);
+        assertThat(loaded.calendarRemoteId).isEqualTo("work@example.com");
+        assertThat(loaded.calendarAccountId).isEqualTo(cred.id);
     }
 
     @Test
@@ -122,9 +122,9 @@ class BookingCalendarAddressTest {
 
         Booking loaded = Booking.findById(booked.id);
         assertThat(loaded.status).isEqualTo(BookingStatus.PENDING);
-        assertThat(loaded.googleEventId).isNull();
-        assertThat(loaded.googleCalendarId).isNull();
-        assertThat(loaded.googleCredentialId).isNull();
+        assertThat(loaded.eventId).isNull();
+        assertThat(loaded.calendarRemoteId).isNull();
+        assertThat(loaded.calendarAccountId).isNull();
     }
 
     @Test
@@ -165,6 +165,7 @@ class BookingCalendarAddressTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),

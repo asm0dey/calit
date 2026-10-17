@@ -5,6 +5,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import site.asm0dey.calit.calendar.CalendarListPort;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.user.CurrentOwner;
 
 @Path("/api/google/calendars")
@@ -47,7 +49,7 @@ public class GoogleCalendarResource {
     @POST
     public Response save(SaveSelectionRequest req) {
         // Legacy single-account JSON endpoint: all rows go to the owner's (single) credential.
-        // The multi-account page (/me/google) passes explicit per-account credential ids instead.
+        // The multi-account page (/me/calendars) passes explicit per-account credential ids instead.
         GoogleCredential cred = GoogleCredential.forOwner(currentOwner.id());
         if (cred == null) {
             return Response.status(Response.Status.BAD_REQUEST).entity("Connect a Google account first").build();
@@ -55,14 +57,15 @@ public class GoogleCalendarResource {
         java.util.Map<String, Boolean> meetByCalendar = calendarListPort
             .listCalendars(cred)
             .stream()
-            .collect(java.util.stream.Collectors.toMap(CalendarListPort.RemoteCalendar::googleCalendarId, CalendarListPort.RemoteCalendar::meetSupported, (
-                                                                                                                                                                  a,
-                                                                                                                                                                  _
-                                                                                                                                                          ) -> a)
+            .collect(java.util.stream.Collectors.toMap(CalendarListPort.RemoteCalendar::remoteId, CalendarListPort.RemoteCalendar::meetSupported, (
+                                                                                                                                                          a,
+                                                                                                                                                          _
+                                                                                                                                                  ) -> a)
             );
         try {
             selectionService.save(
                     currentOwner.id(),
+                    Set.of(cred.id),
                     req
                         .calendars()
                         .stream()
@@ -87,8 +90,8 @@ public class GoogleCalendarResource {
      */
     @GET
     @Path("/write-target")
-    public GoogleCalendar writeTarget() {
-        GoogleCalendar target = GoogleCalendar.writeTarget(currentOwner.id());
+    public SelectedCalendar writeTarget() {
+        SelectedCalendar target = SelectedCalendar.writeTargetOf(currentOwner.id());
         if (target == null) {
             throw new NotFoundException("No write-target calendar selected");
         }

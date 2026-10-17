@@ -1,22 +1,18 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
+import site.asm0dey.calit.calendar.CalendarAccount;
+import site.asm0dey.calit.calendar.CalendarProvider;
 import site.asm0dey.calit.crypto.EncryptedStringConverter;
 
 @Entity
-@Table(name = "google_credential")
-public class GoogleCredential extends PanacheEntityBase {
+@DiscriminatorValue("GOOGLE")
+public class GoogleCredential extends CalendarAccount {
     /**
      * Refresh the access token this long before its real expiry to avoid edge-of-expiry failures.
      */
     public static final Duration SAFETY_MARGIN = Duration.ofMinutes(1);
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public Long id;
-    @Column(name = "owner_id", nullable = false)
-    public Long ownerId;
     /**
      * Long-lived offline refresh token. Obtained once during the consent flow.
      */
@@ -44,23 +40,16 @@ public class GoogleCredential extends PanacheEntityBase {
      */
     @Column(name = "account_email")
     public String accountEmail;
-    /**
-     * Set true when a token refresh fails (revoked/expired); cleared on a successful reconnect.
-     */
-    @Column(name = "needs_reconnect", nullable = false)
-    public boolean needsReconnect = false;
-    /**
-     * When the owner was last emailed about this account being disconnected. NULL = not yet
-     * notified for the current outage. INVARIANT: reset to NULL whenever {@code needsReconnect}
-     * is cleared (recovery), so the next outage re-notifies. See GoogleTokenService.
-     */
-    @Column(name = "reconnect_notified_at")
-    public Instant reconnectNotifiedAt;
-    /**
-     * When the hourly connection probe last attempted a refresh on this account. NULL = never.
-     */
-    @Column(name = "last_probed_at")
-    public Instant lastProbedAt;
+
+    @Override
+    public CalendarProvider provider() {
+        return CalendarProvider.GOOGLE;
+    }
+
+    @Override
+    public String label() {
+        return accountEmail;
+    }
 
     /**
      * This owner's credential row, or null if Google is not yet connected for them.

@@ -12,9 +12,9 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.events.BookingDetailsChanged;
 import site.asm0dey.calit.booking.events.GuestRemoved;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CalendarRef;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarRef;
+import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
@@ -61,7 +61,18 @@ class GroupEditDetailsTest {
     private void stubOrganizerOnCreator() {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyList(),
+                anyBoolean(),
+                any()
+        ))
             .thenReturn(new CreatedEvent("grp-evt", "meet", "cal", null));
     }
 
@@ -86,7 +97,18 @@ class GroupEditDetailsTest {
         // to address it specifically rather than "whatever ref, if any".
         GoogleCredential cred = seedCredential("sub-group-details");
         CalendarRef ref = new CalendarRef(cred.id, "grp-cal@example.com");
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyList(),
+                anyBoolean(),
+                any()
+        ))
             .thenReturn(new CreatedEvent("grp-evt", "meet", "cal", ref));
         // auto-confirm -> event created immediately
         groupType();
@@ -107,7 +129,7 @@ class GroupEditDetailsTest {
         List<Booking> rows = Booking.group(lead.groupId);
         assertThat(rows).hasSize(2);
         verify(calendarPort, times(1))
-            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
 
         var detailsChangedBefore = DETAILS_CHANGED.get();
         Map<Long, Integer> seqBefore = new java.util.HashMap<>();
@@ -188,7 +210,7 @@ class GroupEditDetailsTest {
         List<Booking> rows = Booking.group(lead.groupId);
         assertThat(rows).hasSize(2);
         verify(calendarPort, times(1))
-            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
         // The organizer (creator, owner id 1) disconnects Google after confirmation.
         when(calendarPort.isConnected(1L)).thenReturn(false);
 
@@ -280,7 +302,7 @@ class GroupEditDetailsTest {
         );
         Booking
             .<Booking>group(lead.groupId)
-            .forEach(r -> assertThat(r.googleEventId).isNull());
+            .forEach(r -> assertThat(r.eventId).isNull());
 
         assertThatCode(() -> bookingService.updateDetails(
                 lead.manageToken,
@@ -305,22 +327,13 @@ class GroupEditDetailsTest {
         );
     }
 
-    @Test
-    @io.quarkus.test.TestTransaction
-    void groupEditByCohostOrganizerPatchesEventViaCohostOwnerId() {
-        // Creator NOT connected to Google, co-host IS -> co-host is the organizer of the shared event.
-        MultiHostFixtures.settings(1L, "pasha");
-        AppUser v = MultiHostFixtures.enabledUser("volodya");
-        MultiHostFixtures.settings(v.id, "volodya");
-        MultiHostFixtures.rule(1L, DayOfWeek.MONDAY, 9, 17);
-        MultiHostFixtures.rule(v.id, DayOfWeek.MONDAY, 9, 17);
-        MultiHostFixtures.acceptedTwoHostType(1L, v.id, "intro", 60, false);
-
-        when(calendarPort.isConnected(1L)).thenReturn(false);
-        when(calendarPort.isConnected(v.id)).thenReturn(true);
-        when(calendarPort.createEvent(eq(v.id), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
-            .thenReturn(new CreatedEvent("grp-evt-cohost", "meet", "cal", null));
-
+    /**
+     * Seeds a group booked in degraded mode, then stamps the shared event on the CO-HOST row (and the
+     * Meet link on the lead), exactly as a release before ADR 0007 wrote a Co-host-organized group.
+     */
+    private Booking legacyCohostEventGroup(Long[] cohostId, CalendarRef ref) {
+        groupType();
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
         Booking lead =
                 bookingService.book(
                         1L,
@@ -334,17 +347,55 @@ class GroupEditDetailsTest {
                         "en",
                         List.of()
         );
+        Booking cohost =
+                Booking
+            .<Booking>group(lead.groupId)
+            .stream()
+            .filter(r -> !r.ownerId.equals(1L))
+            .findFirst()
+            .orElseThrow();
+        cohostId[0] = cohost.ownerId;
+        cohost.eventId = "legacy-evt";
+        cohost.calendarAccountId = ref.accountId();
+        cohost.calendarRemoteId = ref.remoteCalendarId();
+        cohost.meetLink = "https://meet/legacy";
+        lead.meetLink = "https://meet/legacy";
+        when(calendarPort.isConnected(cohost.ownerId)).thenReturn(true);
+        return cohost;
+    }
 
-        bookingService.updateDetails(lead.manageToken, "Cohost organized", "desc", List.of(), true);
+    @Test
+    @io.quarkus.test.TestTransaction
+    void legacyCohostEventRowIsPatchedViaTheCohostOwnerId() {
+        var ref = new CalendarRef(null, "legacy@example.com");
+        var cohostId = new Long[1];
+        Booking cohost = legacyCohostEventGroup(cohostId, ref);
 
-        verify(calendarPort, times(1))
-            .updateEventDetails(
-                    eq(v.id),
-                    any(),
-                    eq("grp-evt-cohost"),
-                    eq("Cohost organized with Sam"),
-                    eq("desc"),
-                    anyList()
-            );
+        bookingService.updateDetails(cohost.manageToken, "Legacy edit", "desc", List.of(), true);
+
+        verify(calendarPort).updateEventDetails(
+                eq(cohostId[0]),
+                eq(ref),
+                eq("legacy-evt"),
+                anyString(),
+                any(),
+                anyList()
+        );
+    }
+
+    @Test
+    @io.quarkus.test.TestTransaction
+    void cancellingALegacyCohostEventGroupDeletesViaTheCohostOwnerIdAndClearsEveryMeetLink() {
+        var ref = new CalendarRef(null, "legacy@example.com");
+        var cohostId = new Long[1];
+        Booking cohost = legacyCohostEventGroup(cohostId, ref);
+
+        bookingService.cancel(cohost.manageToken, true);
+
+        verify(calendarPort).deleteEvent(cohostId[0], ref, "legacy-evt");
+        Booking.<Booking>group(cohost.groupId).forEach(r -> {
+            assertThat(r.eventId).isNull();
+            assertThat(r.meetLink).as("no dead Meet link survives on any row").isNull();
+        });
     }
 }

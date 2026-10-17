@@ -19,8 +19,8 @@ import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 
 @QuarkusTest
 class AdminPendingTest {
@@ -84,7 +84,7 @@ class AdminPendingTest {
     void pendingQueueListsPendingBookingWithApproveDeclineForms() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(new CreatedEvent("evt-p", "https://meet.google.com/pending", "h", null));
         var id = seedPendingBooking();
 
@@ -108,7 +108,7 @@ class AdminPendingTest {
     void approveConfirmsTheBooking() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(new CreatedEvent("evt-a", "https://meet.google.com/approved", "h", null));
         var id = seedPendingBooking();
 

@@ -150,7 +150,13 @@ class AccountDeletionNotifiesTest {
                 expiry,
                 Locale.ENGLISH
         );
-        emailService.sendGoogleDisconnected(id, "parked@example.com", "work@gmail.com", Locale.ENGLISH);
+        emailService.sendCalendarDisconnected(
+                id,
+                "parked@example.com",
+                "work@gmail.com",
+                site.asm0dey.calit.calendar.CalendarProvider.GOOGLE,
+                Locale.ENGLISH
+        );
         assertThat(QuarkusTransaction
             .requiringNew()
             .call(() -> EmailOutbox.count("ownerId", id)))

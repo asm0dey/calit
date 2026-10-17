@@ -9,8 +9,8 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
 
@@ -49,6 +49,7 @@ class GroupBookingWriteTest {
         when(calendarPort.createEvent(
                 anyLong(),
                 any(),
+                any(),
                 anyString(),
                 anyString(),
                 any(),
@@ -79,10 +80,12 @@ class GroupBookingWriteTest {
         assertThat(rows).hasSize(2);
         rows.forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.CONFIRMED));
         // exactly one Google event, on the creator (organizer), with both hosts + invitee as attendees
+        Booking organizerRow = Booking.leadOfGroup(lead.groupId, 1L);
         verify(calendarPort, times(1))
             .createEvent(
                     eq(1L),
                     any(),
+                    eq(organizerRow.manageToken),
                     anyString(),
                     anyString(),
                     any(),
@@ -91,13 +94,12 @@ class GroupBookingWriteTest {
                     eq(true),
                     any()
             );
-        Booking organizerRow = Booking.leadOfGroup(lead.groupId, 1L);
-        assertThat(organizerRow.googleEventId).isEqualTo("evt-1");
+        assertThat(organizerRow.eventId).isEqualTo("evt-1");
     }
 
     @Test
     @TestTransaction
-    void autoConfirmCohostOrganizerPutsEventOnCohostAndMirrorsLinkToLead() {
+    void autoConfirmWithDisconnectedCreatorCreatesNoEventEvenWhenCohostIsConnected() {
         MeetingType t = type(false);
         long cohostId = meetingHosts
             .hostOwnerIds(t)
@@ -107,18 +109,6 @@ class GroupBookingWriteTest {
             .orElseThrow();
         when(calendarPort.isConnected(1L)).thenReturn(false);
         when(calendarPort.isConnected(cohostId)).thenReturn(true);
-        when(calendarPort.createEvent(
-                anyLong(),
-                any(),
-                anyString(),
-                anyString(),
-                any(),
-                any(),
-                anyList(),
-                anyBoolean(),
-                any()
-        ))
-            .thenReturn(new CreatedEvent("evt-1", "https://meet/x", "https://cal/x", null));
 
         Booking lead =
                 bookingService.book(
@@ -133,20 +123,24 @@ class GroupBookingWriteTest {
                         "en",
                         List.of()
         );
-        // event created on the co-host (organizer), not on the creator
-        verify(calendarPort, times(1))
-            .createEvent(eq(cohostId), any(), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any());
-        Booking cohostRow =
-                Booking
-            .<Booking>group(lead.groupId)
-            .stream()
-            .filter(r -> r.ownerId == cohostId)
-            .findFirst()
-            .orElseThrow();
-        assertThat(cohostRow.googleEventId).isEqualTo("evt-1");
-        Booking leadRow = Booking.leadOfGroup(lead.groupId, 1L);
-        assertThat(leadRow.meetLink).isEqualTo("https://meet/x");
-        assertThat(leadRow.googleEventId).isNull();
+        // ADR 0007: a Co-host is never promoted to organizer; the group books in degraded mode
+        verify(calendarPort, never())
+            .createEvent(
+                    anyLong(),
+                    any(),
+                    any(),
+                    anyString(),
+                    anyString(),
+                    any(),
+                    any(),
+                    anyList(),
+                    anyBoolean(),
+                    any()
+            );
+        Booking.group(lead.groupId).forEach(r -> {
+            assertThat(r.status).isEqualTo(BookingStatus.CONFIRMED);
+            assertThat(r.eventId).isNull();
+        });
     }
 
     @Test
@@ -173,16 +167,7 @@ class GroupBookingWriteTest {
             assertThat(r.status).isEqualTo(BookingStatus.PENDING);
             assertThat(r.approvalToken).isNotNull();
         });
-        verify(calendarPort, never()).createEvent(
-                anyLong(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                anyList(),
-                anyBoolean(),
-                any()
-        );
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 }

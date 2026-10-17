@@ -12,9 +12,9 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.google.GoogleCalendar;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
-import site.asm0dey.calit.google.WriteTargetResolver;
+import site.asm0dey.calit.calendar.WriteTargetResolver;
 import site.asm0dey.calit.user.AppUser;
 
 /**
@@ -29,7 +29,7 @@ class AdminWriteCalendarTest {
     void cleanup() {
         Booking.delete("meetingTypeId in (select t.id from MeetingType t where t.slug like ?1)", "write-cal-%");
         MeetingType.delete("slug like ?1", "write-cal-%");
-        GoogleCalendar.deleteAll();
+        SelectedCalendar.deleteAll();
         GoogleCredential.deleteAll();
         AppUser.delete("username", "write-cal-other");
     }
@@ -42,8 +42,8 @@ class AdminWriteCalendarTest {
         edit(typeId, credId + ":work@example.com").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertThat(t.googleCredentialId).isEqualTo(credId);
-        assertThat(t.googleCalendarId).isEqualTo("work@example.com");
+        assertThat(t.overrideAccountId).isEqualTo(credId);
+        assertThat(t.overrideRemoteCalendarId).isEqualTo("work@example.com");
     }
 
     @Test
@@ -54,8 +54,8 @@ class AdminWriteCalendarTest {
         edit(typeId, "").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertThat(t.googleCredentialId).isNull();
-        assertThat(t.googleCalendarId).isNull();
+        assertThat(t.overrideAccountId).isNull();
+        assertThat(t.overrideRemoteCalendarId).isNull();
     }
 
     @Test
@@ -67,8 +67,8 @@ class AdminWriteCalendarTest {
         edit(typeId, foreignCredId + ":foreign@example.com").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertThat(t.googleCredentialId).isNull();
-        assertThat(t.googleCalendarId).isNull();
+        assertThat(t.overrideAccountId).isNull();
+        assertThat(t.overrideRemoteCalendarId).isNull();
     }
 
     @Test
@@ -130,8 +130,8 @@ class AdminWriteCalendarTest {
         edit(typeId, "keep").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertThat(t.googleCredentialId).isEqualTo(credId);
-        assertThat(t.googleCalendarId).isEqualTo("unticked@example.com");
+        assertThat(t.overrideAccountId).isEqualTo(credId);
+        assertThat(t.overrideRemoteCalendarId).isEqualTo("unticked@example.com");
     }
 
     @Test
@@ -162,8 +162,8 @@ class AdminWriteCalendarTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertThat(t.googleCredentialId).isNull();
-        assertThat(t.googleCalendarId).isEqualTo("was-on-a-disconnected-account@example.com");
+        assertThat(t.overrideAccountId).isNull();
+        assertThat(t.overrideRemoteCalendarId).isEqualTo("was-on-a-disconnected-account@example.com");
     }
 
     @Test
@@ -230,8 +230,8 @@ class AdminWriteCalendarTest {
         create(slug, credId + ":work@example.com").statusCode(200);
 
         MeetingType t = MeetingType.find("slug", slug).firstResult();
-        assertThat(t.googleCredentialId).isEqualTo(credId);
-        assertThat(t.googleCalendarId).isEqualTo("work@example.com");
+        assertThat(t.overrideAccountId).isEqualTo(credId);
+        assertThat(t.overrideRemoteCalendarId).isEqualTo("work@example.com");
     }
 
     @Test
@@ -320,8 +320,8 @@ class AdminWriteCalendarTest {
         t.slug = "write-cal-" + UUID.randomUUID();
         t.durationMinutes = 30;
         t.locationType = MeetingType.LocationType.PHONE;
-        t.googleCredentialId = credId;
-        t.googleCalendarId = calendarId;
+        t.overrideAccountId = credId;
+        t.overrideRemoteCalendarId = calendarId;
         t.persist();
         return t.id;
     }
@@ -341,17 +341,17 @@ class AdminWriteCalendarTest {
         b.status = BookingStatus.CONFIRMED;
         b.createdAt = Instant.now();
         b.manageToken = UUID.randomUUID().toString();
-        b.googleEventId = "evt-staying";
-        b.googleCredentialId = credId;
-        b.googleCalendarId = calendarId;
+        b.eventId = "evt-staying";
+        b.calendarAccountId = credId;
+        b.calendarRemoteId = calendarId;
         b.persist();
     }
 
     private static void persistCalendar(Long ownerId, Long credId, String calId, boolean writeTarget) {
-        GoogleCalendar g = new GoogleCalendar();
+        SelectedCalendar g = new SelectedCalendar();
         g.ownerId = ownerId;
-        g.googleCredentialId = credId;
-        g.googleCalendarId = calId;
+        g.accountId = credId;
+        g.remoteId = calId;
         g.summary = calId;
         g.readForBusy = writeTarget;
         g.writeTarget = writeTarget;

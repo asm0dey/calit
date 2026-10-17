@@ -93,10 +93,13 @@ public final class PersonalData {
                         Set.of(
                                 "answers",
                                 "approval_token",
+                                "calendar_account_id",
+                                "calendar_remote_id",
                                 "created_at",
                                 "description",
                                 "end_utc",
                                 "erased_at",
+                                "event_id",
                                 "google_calendar_id",
                                 "google_credential_id",
                                 "google_event_id",
@@ -110,6 +113,7 @@ public final class PersonalData {
                                 "meet_link",
                                 "meeting_type_id",
                                 "owner_id",
+                                "removed_mirror_provider",
                                 "start_utc",
                                 "status",
                                 "title"
@@ -204,36 +208,50 @@ public final class PersonalData {
                         EraseRoute.CASCADES
                 ),
                 new Classified(
-                        "google_credential",
+                        "calendar_account",
                         Set.of(
                                 "access_token",
                                 "access_token_expiry",
                                 "account_email",
+                                "caldav_home_url",
+                                "caldav_password",
+                                "caldav_principal_url",
+                                "caldav_server_url",
+                                "caldav_username",
                                 "google_sub",
                                 "id",
                                 "last_probed_at",
                                 "needs_reconnect",
                                 "owner_id",
+                                "provider",
                                 "reconnect_notified_at",
                                 "refresh_token"
                         ),
-                        Set.of("account_email", "google_sub", "access_token", "refresh_token"),
+                        Set.of(
+                                "account_email",
+                                "google_sub",
+                                "access_token",
+                                "refresh_token",
+                                "caldav_server_url",
+                                "caldav_username",
+                                "caldav_password"
+                        ),
                         Subject.OWNER,
                         EraseRoute.CASCADES
                 ),
                 new Classified(
-                        "google_calendar",
+                        "calendar",
                         Set.of(
-                                "google_calendar_id",
-                                "google_credential_id",
+                                "account_id",
                                 "id",
                                 "owner_id",
                                 "read_for_busy",
+                                "remote_id",
                                 "summary",
                                 "supports_meet",
                                 "write_target"
                         ),
-                        Set.of("google_calendar_id", "summary"),
+                        Set.of("remote_id", "summary"),
                         Subject.OWNER,
                         EraseRoute.CASCADES
                 ),
@@ -289,6 +307,8 @@ public final class PersonalData {
                                 "min_notice_minutes",
                                 "name",
                                 "name_mode",
+                                "override_account_id",
+                                "override_remote_calendar_id",
                                 "owner_id",
                                 "requires_approval",
                                 "secret",
@@ -385,10 +405,13 @@ public final class PersonalData {
      */
     public static final List<Destination> OUTBOUND = List.of(
             new Destination(
-                    "Google Calendar event",
-                    "the owner has Google connected",
-                    // Reachable via the API -- but Google keeps the event in trash for roughly 30
-                    // days, and the call cannot run at all if the grant was since disconnected.
+                    // The Mirror event: title "<meeting title> with <invitee name>", description, start/end,
+                    // location, and the invitee/owner/active-guest emails (Google attendees; CalDAV description).
+                    "Calendar event at the owner's calendar provider (Google or CalDAV): title with invitee name, "
+                    + "description, time, location, invitee, owner and guest emails",
+                    "the owner has a write calendar selected",
+                    // Reachable via the API -- but the provider may keep the event in trash or backups (Google:
+                    // roughly 30 days), and the call cannot run at all if the account was since disconnected.
                     true
             ),
             new Destination("Notification channel message", "the owner configured a channel", false),

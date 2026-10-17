@@ -1,0 +1,280 @@
+package site.asm0dey.calit.web;
+
+import module java.base;
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.CalendarListPort;
+import site.asm0dey.calit.calendar.SelectedCalendar;
+import site.asm0dey.calit.google.GoogleCredential;
+
+@QuarkusTest
+class CalendarsPageResourceTest {
+    @io.quarkus.test.InjectMock
+    CalendarListPort calendarListPort;
+
+    @Test
+    void disconnectAllowedWhenItHoldsWriteTargetAndOtherAccountsRemain() {
+        var credId = seedTwoAccountsWriteOnFirst();
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .when()
+            .post("/me/calendars/accounts/" + credId + "/delete")
+            .then()
+            .statusCode(303);
+    }
+
+    @Test
+    void disconnectAllowedForLastAccount() {
+        var credId = seedSingleAccount();
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .when()
+            .post("/me/calendars/accounts/" + credId + "/delete")
+            .then()
+            .statusCode(303);
+    }
+
+    @Test
+    void getRendersConnectButtonWhenNoAccounts() {
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/calendars")
+            .then()
+            .statusCode(200)
+            .body(org.hamcrest.Matchers.containsString("Connect a Google account"));
+    }
+
+    @Test
+    void savePersistsSelectedReadAndWriteTarget() {
+        var credId = seedSingleAccount();
+        when(calendarListPort.listCalendars(any()))
+            .thenReturn(List.of(
+                    new CalendarListPort.RemoteCalendar("c1", "C1"),
+                    new CalendarListPort.RemoteCalendar("c2", "C2")
+            ));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("read", credId + ":c1")
+            .formParam("read", credId + ":c2")
+            .formParam("writeTarget", credId + ":c1")
+            .when()
+            .post("/me/calendars/calendars")
+            .then()
+            .statusCode(303);
+
+        assertWriteTarget(credId, "c1");
+        assertReadForBusy(credId, "c1", true);
+        assertReadForBusy(credId, "c2", true);
+    }
+
+    @Test
+    void saveWithoutWriteTargetSavesNone() {
+        var credId = seedSingleAccount();
+        when(calendarListPort.listCalendars(any()))
+            .thenReturn(List.of(
+                    new CalendarListPort.RemoteCalendar("c1", "C1"),
+                    new CalendarListPort.RemoteCalendar("c2", "C2")
+            ));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("read", credId + ":c1")
+            .formParam("read", credId + ":c2")
+            .when()
+            .post("/me/calendars/calendars")
+            .then()
+            .statusCode(303);
+
+        assertReadForBusy(credId, "c1", true);
+        assertNoWriteTarget();
+    }
+
+    @Transactional
+    void assertNoWriteTarget() {
+        assertThat(SelectedCalendar.count("writeTarget = true")).isZero();
+    }
+
+    @Test
+    void saveDoesNotWipeFlaggedAccountCalendars() {
+        var ids = seedHealthyXAndFlaggedY();
+        var xId = ids[0];
+        var yId = ids[1];
+        // Only X is ever listed (Y is needsReconnect, so production code never lists it).
+        when(calendarListPort.listCalendars(any())).thenReturn(List.of(new CalendarListPort.RemoteCalendar("x1", "X1")));
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("read", xId + ":x1")
+            .formParam("writeTarget", xId + ":x1")
+            .when()
+            .post("/me/calendars/calendars")
+            .then()
+            .statusCode(303);
+        // Regression: flagged account Y's saved read calendar must still exist.
+        assertCalendarExists(yId, "y1");
+        // And X's chosen write target persisted.
+        assertWriteTarget(xId, "x1");
+    }
+
+    @Test
+    void getShowsBannerAndKeepsSavedRowsWhenGoogleUnreachable() {
+        var ids = seedHealthyXAndFlaggedY();
+        var xId = ids[0];
+        // The live listing blows up the way a 403 SERVICE_DISABLED does in production.
+        when(calendarListPort.listCalendars(any()))
+            .thenThrow(
+                    new java.io.UncheckedIOException(
+                            "calendarList.list failed: HTTP 403 — Google Calendar API has not been used in project 1",
+                            new java.io.IOException("403")
+                    )
+            );
+
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/calendars")
+            .then()
+            .statusCode(200)
+            // The error banner is rendered...
+            .body(org.hamcrest.Matchers.containsString("reach the calendar server for one or more accounts"))
+            // ...and the saved calendar for the healthy account is still listed, not wiped.
+            .body(org.hamcrest.Matchers.containsString("X1"));
+
+        assertCalendarExists(xId, "x1");
+    }
+
+    @Test
+    void savePreservesSelectionWhenGoogleUnreachableMidSave() {
+        var ids = seedHealthyXAndFlaggedY();
+        var xId = ids[0];
+        var yId = ids[1];
+        // Google dies between page render and save: every listing attempt throws.
+        when(calendarListPort.listCalendars(any()))
+            .thenThrow(
+                    new java.io.UncheckedIOException(
+                            "calendarList.list failed: HTTP 403",
+                            new java.io.IOException("403")
+                    )
+            );
+        // The form carries nothing usable, so the write target must be preserved from the DB.
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/calendars/calendars")
+            .then()
+            .statusCode(303);
+
+        assertWriteTarget(xId, "x1");
+        assertCalendarExists(yId, "y1");
+    }
+
+    @Transactional
+    void assertWriteTarget(long credId, String googleCalId) {
+        long n = SelectedCalendar.count("accountId = ?1 and remoteId = ?2 and writeTarget = true", credId, googleCalId);
+        assertThat(n).as("expected " + googleCalId + " to be the write target").isOne();
+    }
+
+    @Transactional
+    void assertReadForBusy(long credId, String googleCalId, boolean expected) {
+        long n = SelectedCalendar.count(
+                "accountId = ?1 and remoteId = ?2 and readForBusy = ?3",
+                credId,
+                googleCalId,
+                expected
+        );
+        assertThat(n).as("expected readForBusy=" + expected + " for " + googleCalId).isOne();
+    }
+
+    @Transactional
+    void assertCalendarExists(long credId, String googleCalId) {
+        long n = SelectedCalendar.count("accountId = ?1 and remoteId = ?2", credId, googleCalId);
+        assertThat(n).as("expected calendar " + googleCalId + " to still exist for credential " + credId).isOne();
+    }
+
+    @Transactional
+    long[] seedHealthyXAndFlaggedY() {
+        long ownerId =
+                site.asm0dey.calit.user.AppUser.<site.asm0dey.calit.user.AppUser>find("username", "admin").firstResult().id;
+        GoogleCredential x = cred(ownerId, "sub-X");
+        x.persist();
+        GoogleCredential y = cred(ownerId, "sub-Y");
+        y.needsReconnect = true;
+        y.persist();
+        // X currently holds the write target.
+        SelectedCalendar xw = new SelectedCalendar();
+        xw.ownerId = ownerId;
+        xw.accountId = x.id;
+        xw.remoteId = "x1";
+        xw.summary = "X1";
+        xw.readForBusy = true;
+        xw.writeTarget = true;
+        xw.persist();
+        // Y (flagged) has a saved read calendar that must survive a save.
+        SelectedCalendar yr = new SelectedCalendar();
+        yr.ownerId = ownerId;
+        yr.accountId = y.id;
+        yr.remoteId = "y1";
+        yr.summary = "Y1";
+        yr.readForBusy = true;
+        yr.writeTarget = false;
+        yr.persist();
+        return new long[] {x.id, y.id};
+    }
+
+    @Transactional
+    long seedTwoAccountsWriteOnFirst() {
+        long ownerId =
+                site.asm0dey.calit.user.AppUser.<site.asm0dey.calit.user.AppUser>find("username", "admin").firstResult().id;
+        GoogleCredential a = cred(ownerId, "sub-A");
+        a.persist();
+        GoogleCredential b = cred(ownerId, "sub-B");
+        b.persist();
+        SelectedCalendar w = new SelectedCalendar();
+        w.ownerId = ownerId;
+        w.accountId = a.id;
+        w.remoteId = "w";
+        w.summary = "W";
+        w.readForBusy = true;
+        w.writeTarget = true;
+        w.persist();
+        return a.id;
+    }
+
+    @Transactional
+    long seedSingleAccount() {
+        long ownerId =
+                site.asm0dey.calit.user.AppUser.<site.asm0dey.calit.user.AppUser>find("username", "admin").firstResult().id;
+        GoogleCredential a = cred(ownerId, "sub-A");
+        a.persist();
+        return a.id;
+    }
+
+    private static GoogleCredential cred(long owner, String sub) {
+        GoogleCredential c = new GoogleCredential();
+        c.ownerId = owner;
+        c.refreshToken = "rt";
+        c.googleSub = sub;
+        c.accountEmail = sub + "@x";
+        return c;
+    }
+}

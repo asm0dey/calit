@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.availability.SlotService;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
@@ -29,7 +30,7 @@ class CrossOwnerIsolationTest {
     // GoogleCalendarPort.isConnected() would touch the @RequestScoped CurrentOwner. Mock the port
     // to the degraded (not-connected) path so the busy-set is just the owner's HELD bookings.
     @io.quarkus.test.InjectMock
-    site.asm0dey.calit.google.CalendarPort calendarPort;
+    CalendarPort calendarPort;
 
     /**
      * Seeds owner B (a second AppUser) with a meeting type, a rule, a pending booking, and settings.

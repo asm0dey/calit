@@ -5,6 +5,7 @@ import module java.desktop;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
  * {@code @QuarkusTest} classpath.
  */
 @QuarkusIntegrationTest
+@Tag("integration")
 class OgImageResourceIT {
     static final byte[] PNG_MAGIC = {(byte) 0x89, 'P', 'N', 'G'};
 

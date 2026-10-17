@@ -11,7 +11,7 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.google.GoogleCalendar;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 
 /**
@@ -28,7 +28,7 @@ class AdminMeetGatingOverrideTest {
     @Transactional
     void cleanup() {
         MeetingType.delete("slug like ?1", "meet-override-%");
-        GoogleCalendar.deleteAll();
+        SelectedCalendar.deleteAll();
         GoogleCredential.deleteAll();
     }
 
@@ -88,7 +88,7 @@ class AdminMeetGatingOverrideTest {
             .body(containsString("create Google Meet links"));
 
         MeetingType t = reload(typeId);
-        assertThat(t.googleCalendarId)
+        assertThat(t.overrideRemoteCalendarId)
             .as("the write-calendar move must roll back with the save that was refused")
             .isEqualTo("override@example.com");
         assertThat(t.locationType).isEqualTo(MeetingType.LocationType.PHONE);
@@ -180,17 +180,17 @@ class AdminMeetGatingOverrideTest {
         t.slug = "meet-override-" + UUID.randomUUID();
         t.durationMinutes = 30;
         t.locationType = MeetingType.LocationType.PHONE;
-        t.googleCredentialId = c.id;
-        t.googleCalendarId = "override@example.com";
+        t.overrideAccountId = c.id;
+        t.overrideRemoteCalendarId = "override@example.com";
         t.persist();
         return t.id;
     }
 
     private static void persistCalendar(Long credId, String calId, boolean writeTarget, boolean meet) {
-        GoogleCalendar g = new GoogleCalendar();
+        SelectedCalendar g = new SelectedCalendar();
         g.ownerId = 1L;
-        g.googleCredentialId = credId;
-        g.googleCalendarId = calId;
+        g.accountId = credId;
+        g.remoteId = calId;
         g.summary = calId;
         g.readForBusy = writeTarget;
         g.writeTarget = writeTarget;

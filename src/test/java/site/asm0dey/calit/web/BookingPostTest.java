@@ -19,8 +19,8 @@ import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
@@ -150,7 +150,7 @@ class BookingPostTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         // createEvent returns a known Meet link that BookingService stores on Booking.meetLink.
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(
                     new CreatedEvent(
                             "evt-1",
@@ -192,6 +192,61 @@ class BookingPostTest {
             .body(containsString("id=\"tz-picker\""))
             .body(containsString("CALIT_TZ_REFORMAT"))
             .body(containsString("Times shown in:"));
+    }
+
+    @Transactional
+    void setConfirmTypeLocationDetail(String detail) {
+        MeetingType.update("locationDetail = ?1 where slug = 'confirm-type'", detail);
+    }
+
+    @Test
+    void meetTypeWithoutMintedLinkShowsLocationDetailOnConfirmationPage() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+        setConfirmTypeLocationDetail("https://meet.example/abc");
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", firstSlot("confirm-type"))
+            .formParam("inviteeName", "Sam Invitee")
+            .formParam("inviteeEmail", "sam@example.com")
+            .formParam("answers.company", "Acme Corp")
+            .formParam("website", "")
+            .when()
+            .post("/bob/confirm-type")
+            .then()
+            .statusCode(200)
+            .body(containsString("https://meet.example/abc"));
+    }
+
+    @Test
+    void mintedLinkWinsOverLocationDetailOnConfirmationPage() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+            .thenReturn(
+                    new CreatedEvent(
+                            "evt-2",
+                            "https://meet.google.com/minted",
+                            "https://calendar.google.com/evt-2",
+                            null
+                    )
+            );
+        seed();
+        setConfirmTypeLocationDetail("https://meet.example/abc");
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", firstSlot("confirm-type"))
+            .formParam("inviteeName", "Sam Invitee")
+            .formParam("inviteeEmail", "sam@example.com")
+            .formParam("answers.company", "Acme Corp")
+            .formParam("website", "")
+            .when()
+            .post("/bob/confirm-type")
+            .then()
+            .statusCode(200)
+            .body(containsString("https://meet.google.com/minted"))
+            .body(not(containsString("https://meet.example/abc")));
     }
 
     @Test
@@ -273,7 +328,7 @@ class BookingPostTest {
     void postSetsBookingOwnerIdFromResolvedUser() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(
                     new CreatedEvent(
                             "evt-owner",

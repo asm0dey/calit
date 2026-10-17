@@ -6,6 +6,10 @@ import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.CaldavAccount;
+import site.asm0dey.calit.calendar.CalendarRef;
+import site.asm0dey.calit.calendar.SelectedCalendar;
+import site.asm0dey.calit.calendar.WriteTargetResolver;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.user.AppUser;
@@ -24,8 +28,8 @@ class WriteTargetResolverTest {
     @TestTransaction
     void aNullOwnerHasNoOverrideRatherThanThrowing() {
         MeetingType t = seedType(1L);
-        t.googleCredentialId = 1L;
-        t.googleCalendarId = "work@example.com";
+        t.overrideAccountId = 1L;
+        t.overrideRemoteCalendarId = "work@example.com";
         // No owner means no override to read — never a NullPointerException.
         assertThat(resolver.writeOverride(null, t)).isNull();
     }
@@ -48,8 +52,8 @@ class WriteTargetResolverTest {
         seedCalendar(1L, credId, "default@example.com", true, true);
         seedCalendar(1L, credId, "work@example.com", false, true);
         MeetingType t = seedType(1L);
-        t.googleCredentialId = credId;
-        t.googleCalendarId = "work@example.com";
+        t.overrideAccountId = credId;
+        t.overrideRemoteCalendarId = "work@example.com";
         t.persistAndFlush();
 
         assertThat(resolver.resolve(1L, t)).isEqualTo(new CalendarRef(credId, "work@example.com"));
@@ -57,7 +61,7 @@ class WriteTargetResolverTest {
 
     @Test
     @TestTransaction
-    void cohostOverrideIsReadFromTheirOwnHostRow() {
+    void aCohostHasNoOverrideAndWritesOnTheirOwnDefault() {
         var creatorCred = seedCredential("sub-res-creator-2");
         seedCalendar(1L, creatorCred, "creator@example.com", true, true);
         AppUser cohost = AppUser.create("cohost-resolver", "x", false);
@@ -69,12 +73,11 @@ class WriteTargetResolverTest {
         MeetingType t = seedType(1L);
         t.persistAndFlush();
         MeetingTypeHost h = MeetingTypeHost.of(t.id, cohost.id, MeetingTypeHost.COHOST, MeetingTypeHost.ACCEPTED);
-        h.googleCredentialId = cohostCred;
-        h.googleCalendarId = "cohost-work@example.com";
         h.persistAndFlush();
-        // The creator still writes on their own default; the co-host writes on their own override.
+        // The creator writes on their own default; a co-host has no override (ADR 0007).
+        assertThat(resolver.writeOverride(cohost.id, t)).isNull();
         assertThat(resolver.resolve(1L, t)).isEqualTo(new CalendarRef(creatorCred, "creator@example.com"));
-        assertThat(resolver.resolve(cohost.id, t)).isEqualTo(new CalendarRef(cohostCred, "cohost-work@example.com"));
+        assertThat(resolver.resolve(cohost.id, t)).isEqualTo(new CalendarRef(cohostCred, "cohost-default@example.com"));
     }
 
     @Test
@@ -83,9 +86,9 @@ class WriteTargetResolverTest {
         var credId = seedCredential("sub-res-dangling");
         seedCalendar(1L, credId, "default@example.com", true, true);
         MeetingType t = seedType(1L);
-        t.googleCredentialId = credId;
+        t.overrideAccountId = credId;
         // no GoogleCalendar row: unticked since
-        t.googleCalendarId = "unticked@example.com";
+        t.overrideRemoteCalendarId = "unticked@example.com";
         t.persistAndFlush();
 
         assertThat(resolver.resolve(1L, t)).isEqualTo(new CalendarRef(credId, "default@example.com"));
@@ -100,13 +103,13 @@ class WriteTargetResolverTest {
         var credId = seedCredential("sub-res-disconnected");
         seedCalendar(1L, credId, "default@example.com", true, true);
         MeetingType t = seedType(1L);
-        t.googleCredentialId = null;
-        t.googleCalendarId = "was-on-a-disconnected-account@example.com";
+        t.overrideAccountId = null;
+        t.overrideRemoteCalendarId = "was-on-a-disconnected-account@example.com";
         t.persistAndFlush();
 
         CalendarRef override = resolver.writeOverride(1L, t);
-        assertThat(override.googleCalendarId()).isEqualTo("was-on-a-disconnected-account@example.com");
-        assertThat(override.credentialId()).isNull();
+        assertThat(override.remoteCalendarId()).isEqualTo("was-on-a-disconnected-account@example.com");
+        assertThat(override.accountId()).isNull();
         assertThat(resolver.owns(1L, override)).isFalse();
         assertThat(resolver.resolve(1L, t)).isEqualTo(new CalendarRef(credId, "default@example.com"));
     }
@@ -128,13 +131,42 @@ class WriteTargetResolverTest {
         // override can
         seedCalendar(1L, credId, "meet@example.com", false, true);
         MeetingType t = seedType(1L);
-        t.googleCredentialId = credId;
-        t.googleCalendarId = "meet@example.com";
+        t.overrideAccountId = credId;
+        t.overrideRemoteCalendarId = "meet@example.com";
         t.persistAndFlush();
 
         assertThat(resolver.blocksMeet(1L, t)).isFalse();
         // a type with no override sees the default
         assertThat(resolver.blocksMeet(1L, seedType(1L))).isTrue();
+    }
+
+    @Test
+    @TestTransaction
+    void meetAllowedOnCaldavButBlockedOnMeetlessGoogle() {
+        var googleCred = seedCredential("sub-res-meetless");
+        seedCalendar(1L, googleCred, "meetless@example.com", false, false);
+        var dav = new CaldavAccount();
+        dav.ownerId = 1L;
+        dav.serverUrl = "https://dav.example.com/";
+        dav.username = "alice";
+        dav.password = "secret";
+        dav.principalUrl = "https://dav.example.com/p/alice/";
+        dav.homeUrl = "https://dav.example.com/cal/";
+        dav.persist();
+        // a CalDAV calendar never mints Meet links; supportsMeet keeps its default
+        seedCalendar(1L, dav.id, "/cal/work/", true, true);
+        MeetingType onCaldav = seedType(1L);
+        onCaldav.locationType = MeetingType.LocationType.GOOGLE_MEET;
+        MeetingType onGoogle = seedType(1L);
+        onGoogle.locationType = MeetingType.LocationType.GOOGLE_MEET;
+        onGoogle.overrideAccountId = googleCred;
+        onGoogle.overrideRemoteCalendarId = "meetless@example.com";
+        onGoogle.persistAndFlush();
+
+        assertThat(resolver.blocksMeet(1L, onCaldav)).isFalse();
+        assertThat(resolver.meetUnavailable(1L, onCaldav)).isTrue();
+        assertThat(resolver.blocksMeet(1L, onGoogle)).isTrue();
+        assertThat(resolver.meetUnavailable(1L, onGoogle)).isFalse();
     }
 
     @Test
@@ -160,10 +192,10 @@ class WriteTargetResolverTest {
     }
 
     private static void seedCalendar(Long ownerId, Long credId, String calId, boolean writeTarget, boolean meet) {
-        GoogleCalendar c = new GoogleCalendar();
+        SelectedCalendar c = new SelectedCalendar();
         c.ownerId = ownerId;
-        c.googleCredentialId = credId;
-        c.googleCalendarId = calId;
+        c.accountId = credId;
+        c.remoteId = calId;
         c.summary = calId;
         c.readForBusy = writeTarget;
         c.writeTarget = writeTarget;

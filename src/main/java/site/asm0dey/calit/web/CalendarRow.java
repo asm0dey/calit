@@ -1,12 +1,6 @@
 package site.asm0dey.calit.web;
 
 /**
- * One calendar row rendered in an account section on the /me/google page.
+ * One calendar row rendered in an account section on the /me/calendars page.
  */
-public record CalendarRow(
-        Long credentialId,
-        String googleCalendarId,
-        String summary,
-        boolean readForBusy,
-        boolean writeTarget
-) {}
+public record CalendarRow(Long accountId, String remoteId, String summary, boolean readForBusy, boolean writeTarget) {}

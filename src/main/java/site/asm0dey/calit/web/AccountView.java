@@ -3,13 +3,13 @@ package site.asm0dey.calit.web;
 import module java.base;
 
 /**
- * One connected Google account section on the /me/google page.
+ * One Connected account section on the /me/calendars page; {@code provider} is the {@code CalendarProvider} name.
  */
 public record AccountView(
-        Long credentialId,
-        String accountEmail,
+        Long accountId,
+        String label,
+        String provider,
         boolean needsReconnect,
         boolean loadFailed,
-        List<CalendarRow> calendars,
-        boolean holdsWriteTarget
+        List<CalendarRow> calendars
 ) {}

@@ -12,8 +12,9 @@ import static org.mockito.Mockito.when;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
+import site.asm0dey.calit.test.MultiHostFixtures;
 
 // #195: IcsBuilder output only ever left the app as a mail attachment, so a failed send took the
 // guest's calendar entry with it. The confirmation page now serves it directly -- but only where
@@ -45,9 +46,12 @@ class GuestIcsDownloadTest {
     @Test
     void confirmationPageHidesTheIcsDownloadWhenGoogleIsConnected() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        // connected means the Mirror event is on Google
+        MultiHostFixtures.googleWriteTarget(1L);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),
@@ -66,6 +70,20 @@ class GuestIcsDownloadTest {
             .statusCode(200)
             .body(not(containsString("/invite.ics")))
             .body(not(containsString("Add to your calendar")));
+    }
+
+    @Test
+    void confirmationPageOffersTheIcsWhenNoMirrorEventWasWritten() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        // a write target exists, but this booking got no Mirror event (createEvent answered none)
+        MultiHostFixtures.googleWriteTarget(1L);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+
+        GuestBookingFixture
+            .book(this.getClass().getSimpleName() + "-no-mirror")
+            .then()
+            .statusCode(200)
+            .body(containsString("/invite.ics"));
     }
 
     @Test

@@ -2,7 +2,6 @@ package site.asm0dey.calit.booking;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.when;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
@@ -12,7 +11,7 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeHost;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
 
@@ -52,10 +51,9 @@ class MeetingHostsTest {
 
     @Test
     @TestTransaction
-    void organizerPrefersCreatorThenLowestConnectedThenNull() {
+    void creatorConnectedIsOrganizerButCreatorDisconnectedMeansNoOrganizer() {
         MeetingType t = multiHostType();
-        // Accept the co-host row so hostOwnerIds(t) returns both hosts, exercising the
-        // fallback loop (with only the PENDING row, hostOwnerIds would return just [1]).
+        // Accept the co-host row so a connected Co-host exists to NOT be promoted.
         MeetingTypeHost
             .forType(t.id)
             .forEach(h -> h.status = MeetingTypeHost.ACCEPTED);
@@ -70,14 +68,11 @@ class MeetingHostsTest {
 
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(cohostId)).thenReturn(false);
-        assertThat(meetingHosts.chooseOrganizer(t, hosts)).isOne();
-
+        assertThat(meetingHosts.chooseOrganizer(t)).isOne();
+        // Creator disconnected: a connected Co-host is never promoted.
         when(calendarPort.isConnected(1L)).thenReturn(false);
         when(calendarPort.isConnected(cohostId)).thenReturn(true);
-        assertThat(meetingHosts.chooseOrganizer(t, hosts)).isEqualTo(cohostId);
-
-        when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        assertThat(meetingHosts.chooseOrganizer(t, hosts)).isNull();
+        assertThat(meetingHosts.chooseOrganizer(t)).isNull();
     }
 
     @Test

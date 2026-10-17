@@ -16,7 +16,8 @@ import site.asm0dey.calit.booking.events.*;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarProvider;
 import site.asm0dey.calit.i18n.AppLocales;
 import site.asm0dey.calit.i18n.AppMessageResolver;
 
@@ -108,26 +109,35 @@ public class EmailService {
     }
 
     /**
-     * Critical operational alert: the owner's Google account is disconnected and their booking page
+     * Critical operational alert: the owner's Google or CalDAV account is disconnected and their booking page
      * is paused. Sent regardless of {@code ownerNotificationsEnabled} (that flag governs only routine
-     * booking notifications). Links to the Google settings page so the owner can reconnect.
+     * booking notifications). Links to the calendars page so the owner can reconnect.
      * {@code locale} drives any {msg:} keys rendered in the template body. {@code ownerId} tags a
      * parked copy so deleting that account also clears it.
      */
-    public void sendGoogleDisconnected(Long ownerId, String toEmail, String accountEmail, Locale locale) {
-        var reconnectUrl = baseUrl + "/me/google";
+    public void sendCalendarDisconnected(
+            Long ownerId,
+            String toEmail,
+            String accountLabel,
+            CalendarProvider provider,
+            Locale locale
+    ) {
+        var reconnectUrl = baseUrl + "/me/calendars";
+        boolean caldav = provider == CalendarProvider.CALDAV;
         String body = Templates
-            .googleDisconnected(
+            .calendarDisconnected(
                     locale.getLanguage(),
-                    accountEmail == null ? "your account" : accountEmail,
-                    reconnectUrl
+                    accountLabel == null ? "your account" : accountLabel,
+                    reconnectUrl,
+                    caldav
             )
             .setLocale(locale)
             .render();
+        var m = messages.forLocale(locale);
         mailSender.send(
                 null,
                 toEmail,
-                messages.forLocale(locale).email_google_disconnected_subject(),
+                caldav ? m.email_caldav_disconnected_subject() : m.email_google_disconnected_subject(),
                 body,
                 null,
                 MailTag.forOwner(ownerId)
@@ -300,7 +310,12 @@ public class EmailService {
 
         static native TemplateInstance invite(String lang, String activationUrl, String inviter, String host);
 
-        static native TemplateInstance googleDisconnected(String lang, String accountEmail, String reconnectUrl);
+        static native TemplateInstance calendarDisconnected(
+                String lang,
+                String accountLabel,
+                String reconnectUrl,
+                boolean caldav
+        );
 
         static native TemplateInstance hostConsent(
                 String lang,
@@ -409,6 +424,7 @@ public class EmailService {
                     .render(),
                 // Actionable: an opted-out host must still be able to approve/decline their row, or
                 // the group deadlocks. (Single-host behavior is unaffected -- see the send core.)
+                awaitingFirstInvite(l) ? null : IcsMethod.REQUEST,
                 true
         );
     }
@@ -465,6 +481,7 @@ public class EmailService {
                     )
                     .setLocale(locale)
                     .render(),
+                IcsMethod.REQUEST,
                 false
         );
         sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_confirmed_subject(label(l)));
@@ -491,7 +508,7 @@ public class EmailService {
      * Renders + delivers the declined email through the given sink (direct or outbox).
      */
     private void deliverDeclined(BookingSnapshot l, MailSink sink) {
-        // No Google event ever existed -> always notify the invitee. No answers, no location link.
+        // No Mirror event ever existed -> always notify the invitee. No answers, no location link.
         sendForKindLocaleAware(
                 l,
                 resolveLocation(l),
@@ -510,6 +527,7 @@ public class EmailService {
                     .setLocale(locale)
                     .render(),
                 sink,
+                awaitingFirstInvite(l) ? null : IcsMethod.CANCEL,
                 false
         );
     }
@@ -558,6 +576,7 @@ public class EmailService {
                     )
                     .setLocale(locale)
                     .render(),
+                IcsMethod.REQUEST,
                 false
         );
         sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_rescheduled_subject(label(l)));
@@ -597,6 +616,7 @@ public class EmailService {
                     )
                     .setLocale(locale)
                     .render(),
+                IcsMethod.REQUEST,
                 false
         );
         // Re-send the (bumped-sequence) REQUEST .ics to every active guest so their calendar updates too.
@@ -609,7 +629,7 @@ public class EmailService {
             return;
         }
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
-        // No location/meet link in the cancellation body; .ics attached when Google is not connected.
+        // No location/meet link in the cancellation body; .ics attached unless the Mirror event is on Google.
         sendForKindLocaleAware(
                 l,
                 resolveLocation(l),
@@ -630,6 +650,7 @@ public class EmailService {
                     )
                     .setLocale(locale)
                     .render(),
+                IcsMethod.CANCEL,
                 false
         );
         sendGuestCancels(l, messages.forLocale(inviteeLocale).email_cancelled_subject(label(l)));
@@ -677,6 +698,7 @@ public class EmailService {
                     .setLocale(locale)
                     .render(),
                 sink,
+                IcsMethod.REQUEST,
                 false
         );
     }
@@ -692,8 +714,8 @@ public class EmailService {
         deliverReminder(l, EmailService::enqueueToOutbox);
     }
 
-    // --- guest fan-out: guests always get a calit mail; .ics is attached only when Google is NOT
-    //     connected (when connected, guests are Google event attendees and Google sends the invite). ---
+    // --- guest fan-out: guests always get a calit mail; .ics is attached unless the Mirror event is on Google
+    //     (then guests are its attendees and Google sends the invite). ---
     /**
      * REQUEST .ics + invite body to every active guest, in the booking (invitee's) locale.
      */
@@ -708,8 +730,7 @@ public class EmailService {
         Locale locale = AppLocales.pick(l.booking().locale);
         String start = format(l.booking().startUtc, l.zone(), locale);
         for (BookingGuest g : guests) {
-            byte[] ics =
-                    calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, g, location, IcsMethod.REQUEST);
+            byte[] ics = providerNotifies(l) ? null : guestIcs(l, g, location, IcsMethod.REQUEST);
             String body = Templates
                 .guestInvite(
                         locale.getLanguage(),
@@ -847,7 +868,7 @@ public class EmailService {
      * CANCEL mail to a single guest: cancel body + CANCEL .ics attachment, the same at all three
      * call sites ({@link #sendGuestCancels}, {@link #handleGuestRemoved}, {@link
      * #handleGuestDeclined}). The .ics is omitted when Google notifies the guest natively (the
-     * guest is already a Google event attendee); each caller supplies its own subject.
+     * guest is already an attendee of a Google Mirror event); each caller supplies its own subject.
      */
     private void sendGuestCancelMail(BookingSnapshot l, BookingGuest g, String subject, Locale locale) {
         mailSender.send(
@@ -855,7 +876,7 @@ public class EmailService {
                 g.email,
                 subject,
                 guestCancelBody(l, g, locale),
-                calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, g, null, IcsMethod.CANCEL),
+                providerNotifies(l) ? null : guestIcs(l, g, null, IcsMethod.CANCEL),
                 MailTag.forBooking(l.booking().id, l.booking().ownerId)
         );
     }
@@ -930,9 +951,18 @@ public class EmailService {
             String icsLocation,
             Function<Locale, String> subjectForLocale,
             RecipientBodyRenderer bodyForRecipient,
+            IcsMethod icsMethod,
             boolean actionable
     ) {
-        sendForKindLocaleAware(l, icsLocation, subjectForLocale, bodyForRecipient, mailSender::send, actionable);
+        sendForKindLocaleAware(
+                l,
+                icsLocation,
+                subjectForLocale,
+                bodyForRecipient,
+                mailSender::send,
+                icsMethod,
+                actionable
+        );
     }
 
     /**
@@ -943,9 +973,10 @@ public class EmailService {
      * pre-multi-host behavior). For a GROUP booking, EACH host gets their own personalized copy
      * (their own locale/name/booking-row tokens); {@code actionable} kinds (approval-needed) ignore
      * that host's {@code ownerNotificationsEnabled} -- an opted-out host must still be able to
-     * approve/decline their row, or the whole group deadlocks. When Google is connected it natively
-     * notifies invitee + owner(s) (they are event attendees), so calit attaches NO .ics. When NOT
-     * connected, calit's .ics is the only calendar source.
+     * approve/decline their row, or the whole group deadlocks. When the Mirror event is on Google it natively
+     * notifies invitee + owner(s) (they are event attendees), so calit attaches NO .ics. On CalDAV everyone but
+     * the Creator (whose calendar holds the event) gets calit's .ics; in degraded mode, or with no Mirror event, everyone does.
+     * A null {@code icsMethod} attaches nothing.
      */
     private void sendForKindLocaleAware(
             BookingSnapshot l,
@@ -953,10 +984,16 @@ public class EmailService {
             Function<Locale, String> subjectForLocale,
             RecipientBodyRenderer bodyForRecipient,
             MailSink sink,
+            IcsMethod icsMethod,
             boolean actionable
     ) {
-        boolean googleNotifies = calendarPort.isConnected(l.owner().ownerId);
-        var ics = googleNotifies ? null : inviteeIcsBytes(l, icsLocation);
+        CalendarProvider mirror = mirror(l);
+        var ics =
+                mirror == CalendarProvider.GOOGLE || icsMethod == null
+                ? null
+                : inviteeIcsBytes(l, icsLocation, icsMethod);
+        // a CalDAV Mirror event already sits on the Creator's calendar; a calit copy would duplicate it
+        var creatorIcs = mirror == CalendarProvider.CALDAV ? null : ics;
         var from = fromName(l);
 
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
@@ -995,7 +1032,7 @@ public class EmailService {
                                 hd.booking(),
                                 hd.settings().timeFormat
                         ),
-                        ics,
+                        hd.settings().ownerId.equals(l.meetingType().ownerId) ? creatorIcs : ics,
                         MailTag.forBooking(hd.booking().id, hd.settings().ownerId)
                 );
             }
@@ -1013,10 +1050,35 @@ public class EmailService {
                             l.booking(),
                             l.owner().timeFormat
                     ),
-                    ics,
+                    creatorIcs,
                     MailTag.forBooking(l.booking().id, l.owner().ownerId)
             );
         }
+    }
+
+    /**
+     * True when the provider holding this booking's Mirror event invites the attendees itself (Google), so calit
+     * attaches no .ics; false in degraded mode and for a CalDAV Mirror event, which carries no attendees.
+     */
+    private boolean providerNotifies(BookingSnapshot l) {
+        return mirror(l) == CalendarProvider.GOOGLE;
+    }
+
+    /**
+     * A never-approved request of a connected owner: the first invite comes with the approval (a Mirror event, or
+     * calit's .ics when none can be written), so the request and decline mails attach no .ics that a later Google
+     * invite would duplicate. In degraded mode calit's .ics is the only invite, so it is attached from the request on.
+     */
+    private boolean awaitingFirstInvite(BookingSnapshot l) {
+        return l.mirror() == null && l.booking().icsSequence == 0 && calendarPort.isConnected(l.owner().ownerId);
+    }
+
+    /**
+     * The provider of this booking's Mirror event (live, or last removed by calit); null in degraded mode or when it
+     * never had one.
+     */
+    private CalendarProvider mirror(BookingSnapshot l) {
+        return calendarPort.isConnected(l.owner().ownerId) ? l.mirror() : null;
     }
 
     /**
@@ -1072,24 +1134,24 @@ public class EmailService {
      * Public because a failed send used to take the calendar entry with it: the .ics existed only as
      * a mail attachment, so a guest with a confirmed booking had no way to get it. Opens its own
      * transaction via {@link BookingSnapshotLoader#load}, so it is safe to call from a plain GET. Unlike {@link
-     * #sendForKindLocaleAware}, this is built REGARDLESS of whether Google is connected: the route
+     * #sendForKindLocaleAware}, this is built REGARDLESS of where the Mirror event is: the route
      * is reached only by following a link, and refusing to serve a file a guest deliberately asked
-     * for buys nothing. The confirmation page, which merely OFFERS the link, does hide it when
-     * Google is connected -- an imported copy Google can never update is worse than no copy.
+     * for buys nothing. The confirmation page, which merely OFFERS the link, does hide it when the
+     * Mirror event is on Google -- an imported copy Google can never update is worse than no copy.
      */
     public Optional<byte[]> inviteeIcs(Long bookingId) {
         var l = snapshots.load(bookingId);
         if (l == null) {
             return Optional.empty();
         }
-        return Optional.of(inviteeIcsBytes(l, resolveLocation(l)));
+        return Optional.of(inviteeIcsBytes(l, resolveLocation(l), IcsMethod.REQUEST));
     }
 
     /**
-     * The invitee's REQUEST .ics for one loaded booking. Shared by the mail attachment and the
+     * The invitee's .ics (REQUEST or CANCEL, at the booking's current SEQUENCE) for one loaded booking. Shared by the mail attachment and the
      * guest download so the two can never drift into two different RFC-5545 events.
      */
-    private byte[] inviteeIcsBytes(BookingSnapshot l, String location) {
+    private byte[] inviteeIcsBytes(BookingSnapshot l, String location, IcsMethod method) {
         return IcsBuilder
             .build(IcsEvent
                 .builder()
@@ -1101,20 +1163,19 @@ public class EmailService {
                 .attendee(new IcsBuilder.Party(l.booking().inviteeName, l.booking().inviteeEmail))
                 .start(l.booking().startUtc)
                 .end(l.booking().endUtc)
+                .method(method)
+                .sequence(l.booking().icsSequence)
                 .build()
             )
             .getBytes(StandardCharsets.UTF_8);
     }
 
     /**
-     * Meet link for GOOGLE_MEET types, else the type's locationDetail (phone/address/custom).
+     * The minted Meet link when the booking has one, else the type's locationDetail (phone/address/custom, or the
+     * fallback for a GOOGLE_MEET type whose Creator is disconnected).
      */
     private static String resolveLocation(BookingSnapshot l) {
-        if (l.meetingType().locationType == LocationType.GOOGLE_MEET) {
-            // may be null when Google is disconnected
-            return l.booking().meetLink;
-        }
-        return l.meetingType().locationDetail;
+        return l.booking().meetLink != null ? l.booking().meetLink : l.meetingType().locationDetail;
     }
 
     private static boolean isMeet(BookingSnapshot l) {
