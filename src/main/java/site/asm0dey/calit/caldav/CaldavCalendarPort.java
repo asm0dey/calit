@@ -16,6 +16,7 @@ import net.fortuna.ical4j.model.property.DtStart;
 import net.fortuna.ical4j.model.property.Sequence;
 import net.fortuna.ical4j.model.property.Summary;
 import org.jboss.logging.Logger;
+import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.calendar.*;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.IcsBuilder;
@@ -98,9 +99,10 @@ public class CaldavCalendarPort implements CalendarPort {
             .location(locationText)
             .start(start)
             .end(end)
+            .sequence(inviteSequence("manageToken = ?1 and ownerId = ?2", uid, ownerId).orElse(0))
             .build()
         );
-        call(addr.account(), () -> client.put(addr.account(), url, ics, null));
+        call(addr.account(), () -> client.create(addr.account(), url, ics));
         // a Mirror event has no video link: createMeetLink is ignored (design call 11)
         return new CreatedEvent(url.getRawPath(), null, null, new CalendarRef(addr.account().id, addr.calendarHref()));
     }
@@ -155,7 +157,8 @@ public class CaldavCalendarPort implements CalendarPort {
     }
 
     /**
-     * GET, edit the first VEVENT, bump SEQUENCE, PUT back under the fetched ETag.
+     * GET, edit the first VEVENT, bump SEQUENCE, PUT back under the fetched ETag (unconditionally when the
+     * server gave none).
      */
     private void modify(Long ownerId, CalendarRef ref, String eventId, Consumer<VEvent> edit) {
         var addr = writeAddress(ownerId, ref);
@@ -178,11 +181,28 @@ public class CaldavCalendarPort implements CalendarPort {
                 .<VEvent>getComponent(Component.VEVENT)
                 .orElseThrow(() -> new CaldavException(CaldavException.Reason.HTTP_ERROR, "CalDAV event has no VEVENT"));
             edit.accept(event);
-            int seq = event.<Sequence>getProperty(Property.SEQUENCE).map(Sequence::getSequenceNo).orElse(0);
-            event.replace(new Sequence(seq + 1));
-            client.put(account, url, cal.toString(), fetched.etag());
+            // a client may have overwritten the resource with calit's invite: parties would re-enable implicit
+            // scheduling (design call 6)
+            cal.removeAll(Property.METHOD);
+            event.removeAll(Property.ORGANIZER, Property.ATTENDEE);
+            int seq = event.<Sequence>getProperty(Property.SEQUENCE).map(Sequence::getSequenceNo).orElse(0) + 1;
+            // same UID as the invitee's .ics (design call 12): never fall behind its SEQUENCE
+            var invite = inviteSequence("eventId = ?1 and ownerId = ?2", eventId, ownerId);
+            event.replace(new Sequence(Math.max(seq, invite.orElse(0))));
+            client.update(account, url, cal.toString(), fetched.etag());
             return null;
         });
+    }
+
+    /**
+     * The highest invite SEQUENCE among this owner's bookings matching {@code where}; empty when none does.
+     */
+    private static OptionalInt inviteSequence(String where, Object... params) {
+        return Booking
+            .<Booking>list(where, params)
+            .stream()
+            .mapToInt(b -> b.icsSequence)
+            .max();
     }
 
     /**

@@ -15,6 +15,8 @@ import org.mockito.AdditionalAnswers;
 import org.mockito.Mockito;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingService;
+import site.asm0dey.calit.booking.BookingStatus;
+import com.sun.net.httpserver.HttpServer;
 import site.asm0dey.calit.calendar.BusyInterval;
 import site.asm0dey.calit.calendar.CaldavAccount;
 import site.asm0dey.calit.calendar.CalendarPort;
@@ -237,6 +239,166 @@ class CaldavCalendarPortTest {
             .hasSizeLessThanOrEqualTo(255);
         assertThatThrownBy(() -> CaldavCalendarPort.eventUrl("https://h/" + "x".repeat(250) + "/", uid))
             .isInstanceOf(CaldavException.class);
+    }
+
+    /**
+     * A CONFIRMED owner-1 booking with the given manage token and invite SEQUENCE; returns its id.
+     */
+    Long seedBooking(String uid, int icsSequence) {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            var t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "Seq";
+            t.slug = "seq-" + UUID.randomUUID();
+            t.durationMinutes = 30;
+            t.locationType = MeetingType.LocationType.PHONE;
+            t.persist();
+            var b = new Booking();
+            b.ownerId = 1L;
+            b.meetingTypeId = t.id;
+            b.inviteeName = "Sam";
+            b.inviteeEmail = "sam@example.com";
+            b.startUtc = T10;
+            b.endUtc = T1030;
+            b.createdAt = Instant.now();
+            b.manageToken = uid;
+            b.status = BookingStatus.CONFIRMED;
+            b.icsSequence = icsSequence;
+            b.persist();
+            return b.id;
+        });
+    }
+
+    void setBooking(Long id, String eventId, int icsSequence) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            Booking b = Booking.findById(id);
+            b.eventId = eventId;
+            b.icsSequence = icsSequence;
+        });
+    }
+
+    @Test
+    void createStartsAtTheInvitesSequence() {
+        var uid = UUID.randomUUID().toString();
+        seedBooking(uid, 2);
+
+        assertThat(fetch(create(uid, T10, T1030))).contains("SEQUENCE:2");
+    }
+
+    @Test
+    void updateBumpsPastTheResourceSequence() {
+        var uid = UUID.randomUUID().toString();
+        var id = seedBooking(uid, 5);
+        var eventId = create(uid, T10, T1030);
+        setBooking(id, eventId, 3);
+
+        port.updateEvent(1L, null, eventId, T11, T1130, null);
+
+        assertThat(fetch(eventId)).contains("SEQUENCE:6");
+    }
+
+    @Test
+    void updateCatchesUpWithTheInvitesSequence() {
+        var uid = UUID.randomUUID().toString();
+        var id = seedBooking(uid, 1);
+        var eventId = create(uid, T10, T1030);
+        setBooking(id, eventId, 4);
+
+        port.updateEventDetails(1L, null, eventId, "Renamed", "", null);
+
+        assertThat(fetch(eventId)).contains("SEQUENCE:4");
+    }
+
+    /**
+     * A canned CalDAV server holding one event that a client overwrote with calit's invite (METHOD, ORGANIZER,
+     * ATTENDEE); records the PUT it receives.
+     */
+    record Canned(HttpServer server, CalendarRef ref, List<String> putBody, List<Map<String, List<String>>> putHeaders) {}
+
+    Canned canned(String etag) throws IOException {
+        var server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        var body = List.<String>of(String.join(
+                "\r\n",
+                "BEGIN:VCALENDAR",
+                "VERSION:2.0",
+                "PRODID:-//calit//EN",
+                "METHOD:REQUEST",
+                "BEGIN:VEVENT",
+                "UID:canned",
+                "SEQUENCE:0",
+                "DTSTAMP:20261001T000000Z",
+                "DTSTART:20261103T100000Z",
+                "DTEND:20261103T103000Z",
+                "SUMMARY:Old",
+                "ORGANIZER;CN=Owner:mailto:owner@example.com",
+                "ATTENDEE;CN=Sam:mailto:sam@example.com",
+                "END:VEVENT",
+                "END:VCALENDAR",
+                ""
+        ));
+        var puts = new ArrayList<String>();
+        var headers = new ArrayList<Map<String, List<String>>>();
+        server.createContext("/cal/", x -> {
+            if (x.getRequestMethod().equals("GET")) {
+                var bytes = body.getFirst().getBytes(StandardCharsets.UTF_8);
+                if (etag != null) {
+                    x.getResponseHeaders().add("ETag", etag);
+                }
+                x.sendResponseHeaders(200, bytes.length);
+                x.getResponseBody().write(bytes);
+            } else {
+                puts.add(new String(x.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                headers.add(Map.copyOf(x.getRequestHeaders()));
+                x.sendResponseHeaders(204, -1);
+            }
+            x.close();
+        });
+        server.start();
+        var home = "http://127.0.0.1:" + server.getAddress().getPort() + "/";
+        Long id = QuarkusTransaction.requiringNew().call(() -> {
+            var a = new CaldavAccount();
+            a.ownerId = 1L;
+            a.serverUrl = home;
+            a.username = "u";
+            a.password = "p";
+            a.principalUrl = home;
+            a.homeUrl = home;
+            a.persist();
+            return a.id;
+        });
+        return new Canned(server, new CalendarRef(id, home + "cal/"), puts, headers);
+    }
+
+    @Test
+    void updateStripsSchedulingParties() throws IOException {
+        var c = canned("\"e1\"");
+        try {
+            port.updateEventDetails(1L, c.ref(), "/cal/canned.ics", "New", "", null);
+        } finally {
+            c.server().stop(0);
+        }
+
+        assertThat(c.putBody())
+            .singleElement()
+            .asString()
+            .contains("SUMMARY:New")
+            .doesNotContain("METHOD", "ORGANIZER", "ATTENDEE");
+    }
+
+    @Test
+    void updateWithoutAnEtagSendsNoPrecondition() throws IOException {
+        var c = canned(null);
+        try {
+            port.updateEvent(1L, c.ref(), "/cal/canned.ics", T11, T1130, null);
+        } finally {
+            c.server().stop(0);
+        }
+
+        assertThat(c.putHeaders())
+            .singleElement()
+            .satisfies(h -> assertThat(h.keySet())
+                .map(k -> k.toLowerCase(Locale.ROOT))
+                .doesNotContain("if-none-match", "if-match"));
     }
 
     static String uid(String ics) {

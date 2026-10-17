@@ -152,15 +152,25 @@ public class CaldavClient {
     }
 
     /**
-     * Creates ({@code ifMatch == null}, refusing to overwrite) or updates the event; returns the new ETag or null.
+     * Creates the event, refusing to overwrite one that exists; returns the new ETag or null.
      */
-    public String put(CaldavAccount a, URI eventUrl, String ics, String ifMatch) {
+    public String create(CaldavAccount a, URI eventUrl, String ics) {
+        return put(a, eventUrl, ics, "If-None-Match", "*");
+    }
+
+    /**
+     * Overwrites the event, guarded by {@code etag} when the server gave one (none: unconditional); returns the new
+     * ETag or null.
+     */
+    public String update(CaldavAccount a, URI eventUrl, String ics, String etag) {
+        return put(a, eventUrl, ics, etag == null ? null : "If-Match", etag);
+    }
+
+    private String put(CaldavAccount a, URI eventUrl, String ics, String precondition, String value) {
         var headers = new HashMap<String, String>();
         headers.put("Content-Type", "text/calendar; charset=utf-8");
-        if (ifMatch == null) {
-            headers.put("If-None-Match", "*");
-        } else {
-            headers.put("If-Match", ifMatch);
+        if (precondition != null) {
+            headers.put(precondition, value);
         }
         var res = http.send(a, "PUT", eventUrl, headers, ics);
         if (res.status() / 100 != 2) {

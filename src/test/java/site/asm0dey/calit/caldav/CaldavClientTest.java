@@ -114,7 +114,7 @@ class CaldavClientTest {
                 END:VCALENDAR\r
                 """;
 
-        client.put(a, eventUrl, ics, null);
+        client.create(a, eventUrl, ics);
 
         var found = client.queryEvents(
                 a,
@@ -135,8 +135,8 @@ class CaldavClientTest {
         assertThat(fetched.ics()).contains("SUMMARY:Round trip");
         assertThat(fetched.etag()).isNotBlank();
         // If-None-Match: * refuses to clobber; If-Match with the current ETag updates
-        assertThatThrownBy(() -> client.put(a, eventUrl, ics, null)).isInstanceOf(CaldavException.class);
-        var newEtag = client.put(a, eventUrl, ics.replace("Round trip", "Updated"), fetched.etag());
+        assertThatThrownBy(() -> client.create(a, eventUrl, ics)).isInstanceOf(CaldavException.class);
+        var newEtag = client.update(a, eventUrl, ics.replace("Round trip", "Updated"), fetched.etag());
         assertThat(client.get(a, eventUrl).ics()).contains("SUMMARY:Updated");
         if (newEtag != null) {
             assertThat(newEtag).isNotEqualTo(fetched.etag());
