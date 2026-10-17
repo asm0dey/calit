@@ -139,9 +139,41 @@ class RoutingCalendarPortTest {
     }
 
     @Test
-    void unknownRefAndNoWriteTargetDefaultToGoogle() {
+    void unknownRefAndNoWriteTargetRouteToGoogleButNotifyNobody() {
         assertThat(MirrorProvider.of(1L, new CalendarRef(999L, "nope"))).isEqualTo(CalendarProvider.GOOGLE);
-        assertThat(MirrorProvider.providerNotifiesAttendees(1L, null)).isTrue();
+        assertThat(MirrorProvider.holder(1L, null)).isNull();
+        assertThat(MirrorProvider.providerNotifiesAttendees(1L, null)).isFalse();
+    }
+
+    @Test
+    void createWithNoWriteCalendarMakesNoMirrorEvent() {
+        QuarkusTransaction.requiringNew().run(RoutingCalendarPortTest::caldavAccount);
+
+        assertThat(router.createEvent(1L, null, "uid-2", "S", "D", FROM, TO, List.of(), false, null)).isNull();
+        verify(caldav, never()).createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        );
+        verify(google, never()).createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        );
     }
 
     private static BusyInterval busy(int fromHour, int toHour) {

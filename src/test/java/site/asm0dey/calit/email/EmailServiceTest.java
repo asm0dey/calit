@@ -46,6 +46,8 @@ class EmailServiceTest {
         QuarkusTransaction
             .requiringNew()
             .run(() -> Booking.deleteAll());
+        // the "Google connected" tests mean the Mirror event is on Google; inert while not connected
+        MultiHostFixtures.googleWriteTarget(1L);
     }
 
     // ---- Confirmed + Google NOT connected: invitee + owner BOTH get mail ----

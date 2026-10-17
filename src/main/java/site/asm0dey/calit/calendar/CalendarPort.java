@@ -33,6 +33,8 @@ public interface CalendarPort {
      *                       when false, no conference is created and {@code locationText} is set as the
      *                       event location instead, and the returned meetLink is null
      * @param locationText   per-type location text used when {@code createMeetLink} is false (may be null)
+     * @return the created event, or null when the owner has no write calendar to put it on (no Mirror event; the
+     *     booking still goes ahead)
      */
     CreatedEvent createEvent(
             Long ownerId,

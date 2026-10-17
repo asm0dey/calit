@@ -17,6 +17,7 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarProvider;
 import site.asm0dey.calit.calendar.MirrorProvider;
 import site.asm0dey.calit.i18n.AppLocales;
 import site.asm0dey.calit.i18n.AppMessageResolver;
@@ -963,7 +964,7 @@ public class EmailService {
      * that host's {@code ownerNotificationsEnabled} -- an opted-out host must still be able to
      * approve/decline their row, or the whole group deadlocks. When the Mirror event is on Google it natively
      * notifies invitee + owner(s) (they are event attendees), so calit attaches NO .ics. On CalDAV everyone but
-     * the Creator (whose calendar holds the event) gets calit's .ics; in degraded mode everyone does.
+     * the Creator (whose calendar holds the event) gets calit's .ics; in degraded mode, or with no Mirror event, everyone does.
      */
     private void sendForKindLocaleAware(
             BookingSnapshot l,
@@ -974,10 +975,10 @@ public class EmailService {
             IcsMethod icsMethod,
             boolean actionable
     ) {
-        boolean connected = calendarPort.isConnected(l.owner().ownerId);
-        var ics = providerNotifies(l, connected) ? null : inviteeIcsBytes(l, icsLocation, icsMethod);
-        // a connected Creator's calendar already holds the Mirror event; a calit copy would duplicate it
-        var creatorIcs = connected ? null : ics;
+        CalendarProvider mirror = mirror(l);
+        var ics = mirror == CalendarProvider.GOOGLE ? null : inviteeIcsBytes(l, icsLocation, icsMethod);
+        // a CalDAV Mirror event already sits on the Creator's calendar; a calit copy would duplicate it
+        var creatorIcs = mirror == CalendarProvider.CALDAV ? null : ics;
         var from = fromName(l);
 
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
@@ -1045,11 +1046,16 @@ public class EmailService {
      * attaches no .ics; false in degraded mode and for a CalDAV Mirror event, which carries no attendees.
      */
     private boolean providerNotifies(BookingSnapshot l) {
-        return providerNotifies(l, calendarPort.isConnected(l.owner().ownerId));
+        return mirror(l) == CalendarProvider.GOOGLE;
     }
 
-    private static boolean providerNotifies(BookingSnapshot l, boolean connected) {
-        return connected && MirrorProvider.providerNotifiesAttendees(l.owner().ownerId, l.mirrorRef());
+    /**
+     * The provider holding this booking's Mirror event; null in degraded mode or when there is none.
+     */
+    private CalendarProvider mirror(BookingSnapshot l) {
+        return calendarPort.isConnected(l.owner().ownerId)
+                ? MirrorProvider.holder(l.owner().ownerId, l.mirrorRef())
+                : null;
     }
 
     /**

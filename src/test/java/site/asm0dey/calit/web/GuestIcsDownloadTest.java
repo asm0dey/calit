@@ -14,6 +14,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.calendar.CreatedEvent;
+import site.asm0dey.calit.test.MultiHostFixtures;
 
 // #195: IcsBuilder output only ever left the app as a mail attachment, so a failed send took the
 // guest's calendar entry with it. The confirmation page now serves it directly -- but only where
@@ -45,6 +46,8 @@ class GuestIcsDownloadTest {
     @Test
     void confirmationPageHidesTheIcsDownloadWhenGoogleIsConnected() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        // connected means the Mirror event is on Google
+        MultiHostFixtures.googleWriteTarget(1L);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),

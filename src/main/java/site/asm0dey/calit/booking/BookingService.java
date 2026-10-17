@@ -534,6 +534,10 @@ public class BookingService {
      * cannot be cleaned up on the right calendar later (calit-vi8n).
      */
     private static void stampCreatedEvent(Booking row, CreatedEvent created) {
+        if (created == null) {
+            // no write calendar: no Mirror event, the row keeps no address
+            return;
+        }
         row.eventId = created.eventId();
         row.meetLink = created.meetLink();
         row.calendarRemoteId = created.calendar() == null ? null : created.calendar().remoteCalendarId();

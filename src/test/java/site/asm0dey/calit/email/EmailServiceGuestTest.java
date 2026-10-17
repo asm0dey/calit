@@ -21,6 +21,7 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.test.MultiHostFixtures;
 
 @QuarkusTest
 class EmailServiceGuestTest {
@@ -39,6 +40,8 @@ class EmailServiceGuestTest {
         mailbox.clear();
         // Google connected: invitee/owner suppression must NOT affect guests (they always get calit mail).
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        // connected means the Mirror event is on Google
+        MultiHostFixtures.googleWriteTarget(1L);
         QuarkusTransaction.requiringNew().run(() -> {
             BookingGuest.deleteAll();
             Booking.deleteAll();

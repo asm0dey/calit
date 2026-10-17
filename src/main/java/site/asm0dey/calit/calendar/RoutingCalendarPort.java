@@ -70,7 +70,13 @@ public class RoutingCalendarPort implements CalendarPort {
             boolean createMeetLink,
             String locationText
     ) {
-        return port(ownerId, target)
+        CalendarProvider holder = MirrorProvider.holder(ownerId, target);
+        if (holder == null) {
+            // no write calendar selected: the booking goes ahead without a Mirror event
+            return null;
+        }
+        return ports
+            .get(holder)
             .createEvent(
                     ownerId,
                     target,
