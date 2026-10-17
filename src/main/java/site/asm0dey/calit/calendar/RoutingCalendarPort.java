@@ -1,9 +1,8 @@
 package site.asm0dey.calit.calendar;
 
 import module java.base;
+import io.quarkus.arc.All;
 import jakarta.enterprise.context.ApplicationScoped;
-import site.asm0dey.calit.caldav.CaldavCalendarPort;
-import site.asm0dey.calit.google.GoogleCalendarPort;
 
 /**
  * The {@link CalendarPort} everything injects: busy time from every connected provider, each Mirror event write on
@@ -11,24 +10,37 @@ import site.asm0dey.calit.google.GoogleCalendarPort;
  */
 @ApplicationScoped
 public class RoutingCalendarPort implements CalendarPort {
-    private final GoogleCalendarPort google;
-    private final CaldavCalendarPort caldav;
+    private final Map<CalendarProvider, ProviderCalendarPort> ports = new EnumMap<>(CalendarProvider.class);
 
-    public RoutingCalendarPort(GoogleCalendarPort google, CaldavCalendarPort caldav) {
-        this.google = google;
-        this.caldav = caldav;
+    public RoutingCalendarPort(@All List<ProviderCalendarPort> ports) {
+        for (ProviderCalendarPort p : ports) {
+            CalendarProvider provider = p.provider();
+            if (provider == null) {
+                throw new IllegalStateException(p + " claims no CalendarProvider");
+            }
+            if (this.ports.putIfAbsent(provider, p) != null) {
+                throw new IllegalStateException("Two calendar ports claim " + provider);
+            }
+        }
+    }
+
+    /**
+     * The providers this router can reach.
+     */
+    Set<CalendarProvider> providers() {
+        return ports.keySet();
     }
 
     private CalendarPort port(Long ownerId, CalendarRef ref) {
-        return switch (MirrorProvider.of(ownerId, ref)) {
-            case GOOGLE -> google;
-            case CALDAV -> caldav;
-        };
+        return ports.get(MirrorProvider.of(ownerId, ref));
     }
 
     @Override
     public boolean isConnected(Long ownerId) {
-        return google.isConnected(ownerId) || caldav.isConnected(ownerId);
+        return ports
+            .values()
+            .stream()
+            .anyMatch(p -> p.isConnected(ownerId));
     }
 
     /**
@@ -37,7 +49,7 @@ public class RoutingCalendarPort implements CalendarPort {
     @Override
     public List<BusyInterval> freeBusy(Long ownerId, Instant from, Instant to) {
         var all = new ArrayList<BusyInterval>();
-        for (CalendarPort p : List.<CalendarPort>of(google, caldav)) {
+        for (CalendarPort p : ports.values()) {
             if (p.isConnected(ownerId)) {
                 all.addAll(p.freeBusy(ownerId, from, to));
             }

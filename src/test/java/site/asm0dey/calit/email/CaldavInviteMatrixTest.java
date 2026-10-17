@@ -21,6 +21,7 @@ import site.asm0dey.calit.booking.GuestStatus;
 import site.asm0dey.calit.booking.events.BookingConfirmed;
 import site.asm0dey.calit.caldav.CaldavCalendarPort;
 import site.asm0dey.calit.calendar.CaldavAccount;
+import site.asm0dey.calit.calendar.CalendarProvider;
 import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
@@ -54,6 +55,8 @@ class CaldavInviteMatrixTest {
     @BeforeEach
     void clear() {
         mailbox.clear();
+        when(google.provider()).thenReturn(CalendarProvider.GOOGLE);
+        when(caldav.provider()).thenReturn(CalendarProvider.CALDAV);
         when(google.isConnected(anyLong())).thenReturn(true);
         when(caldav.isConnected(anyLong())).thenReturn(true);
     }

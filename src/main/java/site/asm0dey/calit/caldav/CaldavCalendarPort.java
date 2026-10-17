@@ -28,8 +28,8 @@ import site.asm0dey.calit.email.IcsEvent;
  * {@code CalendarPort} injection until a router picks a provider.
  */
 @ApplicationScoped
-@Typed(CaldavCalendarPort.class)
-public class CaldavCalendarPort implements CalendarPort {
+@Typed({CaldavCalendarPort.class, ProviderCalendarPort.class})
+public class CaldavCalendarPort implements ProviderCalendarPort {
     private static final Logger LOG = Logger.getLogger(CaldavCalendarPort.class);
     // booking.event_id is mirrored into the pre-V37 google_event_id VARCHAR(255)
     private static final int MAX_EVENT_ID = 255;
@@ -38,6 +38,11 @@ public class CaldavCalendarPort implements CalendarPort {
 
     public CaldavCalendarPort(CaldavClient client) {
         this.client = client;
+    }
+
+    @Override
+    public CalendarProvider provider() {
+        return CalendarProvider.CALDAV;
     }
 
     @Override

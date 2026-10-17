@@ -4,13 +4,16 @@ import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import io.quarkus.arc.All;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.caldav.CaldavCalendarPort;
 import site.asm0dey.calit.google.GoogleCalendarPort;
@@ -26,6 +29,35 @@ class RoutingCalendarPortTest {
     GoogleCalendarPort google;
     @InjectMock
     CaldavCalendarPort caldav;
+    @Inject
+    @All
+    List<ProviderCalendarPort> providerPorts;
+
+    @BeforeEach
+    void providers() {
+        // a mock answers null; the router keys its map on this
+        when(google.provider()).thenReturn(CalendarProvider.GOOGLE);
+        when(caldav.provider()).thenReturn(CalendarProvider.CALDAV);
+    }
+
+    @Test
+    void duplicateProviderFailsFast() {
+        var a = mock(ProviderCalendarPort.class);
+        var b = mock(ProviderCalendarPort.class);
+        when(a.provider()).thenReturn(CalendarProvider.GOOGLE);
+        when(b.provider()).thenReturn(CalendarProvider.GOOGLE);
+
+        assertThatThrownBy(() -> new RoutingCalendarPort(List.of(a, b))).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void routerReachesEveryProviderPortBean() {
+        var router = new RoutingCalendarPort(providerPorts);
+
+        assertThat(router.providers())
+            .containsExactlyInAnyOrderElementsOf(providerPorts.stream().map(ProviderCalendarPort::provider).toList())
+            .containsExactlyInAnyOrder(CalendarProvider.values());
+    }
 
     @Test
     void mergesBusyFromBothProviders() {

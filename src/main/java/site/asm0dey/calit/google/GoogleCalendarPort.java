@@ -17,8 +17,8 @@ import site.asm0dey.calit.domain.OwnerSettings;
  * injection: {@link RoutingCalendarPort} picks it per Mirror event.
  */
 @ApplicationScoped
-@Typed(GoogleCalendarPort.class)
-public class GoogleCalendarPort implements CalendarPort {
+@Typed({GoogleCalendarPort.class, ProviderCalendarPort.class})
+public class GoogleCalendarPort implements ProviderCalendarPort {
     private final GoogleTokenService tokens;
     private final GoogleCalendarClientFactory clientFactory;
 
@@ -30,6 +30,11 @@ public class GoogleCalendarPort implements CalendarPort {
 
     private Calendar client(GoogleCredential cred) {
         return clientFactory.build(tokens.validAccessToken(cred, Instant.now()));
+    }
+
+    @Override
+    public CalendarProvider provider() {
+        return CalendarProvider.GOOGLE;
     }
 
     @Override
