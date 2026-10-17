@@ -1,11 +1,11 @@
 ---
 # calit-5fw0
 title: 'The Creator is always the Organizer: remove the Co-host write override'
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-08-23T16:52:30Z
-updated_at: 2026-10-17T10:38:57Z
+updated_at: 2026-10-17T11:49:55Z
 ---
 
 Implements `docs/adr/0007-the-creator-is-always-the-organizer.md` and the
@@ -57,12 +57,16 @@ a `## Unreleased` changelog bullet on the `docs-site` branch.
 
 ## Todo
 
-- [ ] chooseOrganizer: Creator-if-connected, else null
-- [ ] createGroupGoogleEvent: organizer row is always the lead row
-- [ ] Remove the Co-host branch of applyWriteCalendar (keep the Creator branch)
-- [ ] Remove the Co-host write-calendar picker from sharedAvailability.html
-- [ ] Stop mapping the two meeting_type_host columns (drop deferred to a next-release bean)
-- [ ] Location fallback in EmailService.resolveLocation + PublicResource
-- [ ] Update MeetingHostsTest and BookingWriteTargetOverrideTest
-- [ ] Full `mvn test` green
+- [x] chooseOrganizer: Creator-if-connected, else null
+- [x] createGroupGoogleEvent: organizer row is always the lead row
+- [x] Remove the Co-host branch of applyWriteCalendar (keep the Creator branch)
+- [x] Remove the Co-host write-calendar picker from sharedAvailability.html
+- [x] Stop mapping the two meeting_type_host columns (drop deferred to a next-release bean)
+- [x] Location fallback in EmailService.resolveLocation + PublicResource
+- [x] Update MeetingHostsTest and BookingWriteTargetOverrideTest
+- [x] Full `mvn test` green
 - [ ] Changelog bullet under `## Unreleased` on docs-site
+
+## Progress
+
+Code done on feat/caldav (e20a87d3, ca2cd6e3, 5d68de43, d1d068f7); mvn verify green (1308). Legacy pre-ADR-0007 co-host event rows guarded by GroupEditDetailsTest. Open: changelog + docs-site google-oauth.md co-host text — written in CalDAV plan Task 10.
