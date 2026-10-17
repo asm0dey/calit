@@ -63,6 +63,23 @@ class SharedWriteCalendarTest {
         assertThat(t.googleCredentialId).isNull();
         assertThat(t.googleCalendarId).isNull();
         assertThat(MeetingTypeHost.<MeetingTypeHost>forType(typeId)).hasSize(2);
+        // The columns are unmapped now, so only SQL can prove no row received the value.
+        assertThat(hostRowGoogleColumns(typeId)).isEmpty();
+    }
+
+    /**
+     * meeting_type_host rows of the type with a non-null google_* column (the columns stay in the DB).
+     */
+    @Transactional
+    List<?> hostRowGoogleColumns(Long typeId) {
+        return MeetingTypeHost
+            .getEntityManager()
+            .createNativeQuery(
+                    "select id from meeting_type_host where meeting_type_id = ?1 "
+                    + "and (google_calendar_id is not null or google_credential_id is not null)"
+            )
+            .setParameter(1, typeId)
+            .getResultList();
     }
 
     @Test
