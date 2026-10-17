@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.restassured.response.Response;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
  * {@code /setup} (empty DB) or {@code /signup} (DB left over from the surefire phase).
  */
 @QuarkusIntegrationTest
+@Tag("integration")
 @QuarkusTestResource(value = CaldavFlowIT.Radicale.class, restrictToAnnotatedClass = true)
 class CaldavFlowIT {
     private static final ZoneId BERLIN = ZoneId.of("Europe/Berlin");

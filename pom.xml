@@ -267,6 +267,9 @@
                metaspace — Quarkus augmentation is metaspace-heavy) absorbs the few extra classloaders.
                The exit timeout is raised so a slow Vert.x/Quarkus shutdown isn't misreported. -->
           <reuseForks>true</reuseForks>
+          <!-- *IT classes need the packaged app and run under failsafe only; this keeps them out when
+               test-order:affected (or -Dtest) hands surefire an IT class by name. -->
+          <excludedGroups>integration</excludedGroups>
           <argLine>@{argLine} -Xms512m -Xmx6g</argLine>
           <forkedProcessExitTimeoutInSeconds>120</forkedProcessExitTimeoutInSeconds>
           <systemPropertyVariables>
