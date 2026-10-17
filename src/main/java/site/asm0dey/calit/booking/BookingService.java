@@ -440,7 +440,7 @@ public class BookingService {
      * single flush so a cross-node overlap on ANY host's row rolls back the whole group (same 409 the
      * single-host path uses). Guests attach to the lead (creator's) row only. Approval types insert N
      * PENDING rows (each with its own approvalToken) and fire one {@code BookingRequested(leadId)}; auto
-     * types insert N CONFIRMED rows and create exactly one Google event on the chosen organizer.
+     * types insert N CONFIRMED rows and create exactly one Google event on the Creator's lead row.
      */
     private Booking bookGroup(
             MeetingType type,
@@ -501,7 +501,7 @@ public class BookingService {
     }
 
     /**
-     * One Google event on the chosen organizer, all other hosts + invitee + guests invited.
+     * One Google event on the Creator's account (lead row), all other hosts + invitee + guests invited.
      */
     private void createGroupGoogleEvent(MeetingType type, UUID groupId) {
         List<Long> hostIds = meetingHosts.hostOwnerIds(type);
@@ -1172,8 +1172,8 @@ public class BookingService {
      * group (kept identical across hosts), each row's iTIP SEQUENCE bumps (same as {@link
      * #rescheduleGroup}) so a resent guest .ics supersedes the prior one, guests reconcile on the lead
      * row only with {@link GuestRemoved} fired per dropped guest, and — if the group has a shared
-     * Google event and the organizer is still connected — it is patched exactly once via the
-     * organizer's row (a disconnected organizer skips the remote patch, mirroring {@link
+     * Google event and its row's owner is still connected — it is patched exactly once via that
+     * row (the lead row; a Co-host row for pre-ADR-0007 bookings; a disconnected owner skips the remote patch, mirroring {@link
      * #updateDetails}'s {@code isConnected} guard, but local rows still update). Fires a single
      * {@link BookingDetailsChanged} keyed by the lead. No no-op short-circuit here; unlike the
      * single-host path, group edits always propagate to keep every row's title/description in
@@ -1222,8 +1222,8 @@ public class BookingService {
     }
 
     /**
-     * The group row carrying the shared Google event (the organizer's — see
-     * {@link #createGroupGoogleEvent}), or null when the group never had one.
+     * The group row carrying the shared Google event (the lead row; a Co-host row for
+     * bookings written before ADR 0007 — see {@link #createGroupGoogleEvent}), or null when the group never had one.
      */
     private Booking groupEventRow(UUID groupId) {
         for (Booking r : Booking.<Booking>group(groupId)) {
@@ -1376,10 +1376,10 @@ public class BookingService {
     }
 
     /**
-     * Deletes the one Google event shared by a group (only the organizer's row carries it — see
-     * {@link #createGroupGoogleEvent}) and clears it from that row. A no-op when the group never had a
-     * Google event (degraded mode, or no host was connected at confirm time). If the organizer has
-     * since disconnected Google, the remote delete is skipped but the local event refs are still
+     * Deletes the one Google event shared by a group (only one row carries it: the lead row, or a
+     * Co-host row for bookings written before ADR 0007 — see {@link #createGroupGoogleEvent}) and clears
+     * it from that row. A no-op when the group never had a Google event (degraded mode, or the Creator
+     * was not connected at confirm time). If that row's owner has since disconnected Google, the remote delete is skipped but the local event refs are still
      * cleared — the calit-side state must not be left dangling just because the remote call can't be
      * made. {@link #cancelSingle} follows the same rule.
      */
@@ -1393,10 +1393,11 @@ public class BookingService {
             if (r.googleEventId != null) {
                 deleted |= deleteRemoteEvent(r, tolerateGoogleFailure);
                 r.googleEventId = null;
-                r.meetLink = null;
                 r.googleCalendarId = null;
                 r.googleCredentialId = null;
             }
+            // Every row: a group written before ADR 0007 has the link copied onto the lead as well.
+            r.meetLink = null;
         }
         return deleted;
     }

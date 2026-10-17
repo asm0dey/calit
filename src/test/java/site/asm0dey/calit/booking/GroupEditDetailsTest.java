@@ -304,4 +304,76 @@ class GroupEditDetailsTest {
                 anyList()
         );
     }
+
+    /**
+     * Seeds a group booked in degraded mode, then stamps the shared event on the CO-HOST row (and the
+     * Meet link on the lead), exactly as a release before ADR 0007 wrote a Co-host-organized group.
+     */
+    private Booking legacyCohostEventGroup(Long[] cohostId, CalendarRef ref) {
+        groupType();
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday(10),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
+        Booking cohost =
+                Booking
+            .<Booking>group(lead.groupId)
+            .stream()
+            .filter(r -> !r.ownerId.equals(1L))
+            .findFirst()
+            .orElseThrow();
+        cohostId[0] = cohost.ownerId;
+        cohost.googleEventId = "legacy-evt";
+        cohost.googleCredentialId = ref.credentialId();
+        cohost.googleCalendarId = ref.googleCalendarId();
+        cohost.meetLink = "https://meet/legacy";
+        lead.meetLink = "https://meet/legacy";
+        when(calendarPort.isConnected(cohost.ownerId)).thenReturn(true);
+        return cohost;
+    }
+
+    @Test
+    @io.quarkus.test.TestTransaction
+    void legacyCohostEventRowIsPatchedViaTheCohostOwnerId() {
+        var ref = new CalendarRef(null, "legacy@example.com");
+        var cohostId = new Long[1];
+        Booking cohost = legacyCohostEventGroup(cohostId, ref);
+
+        bookingService.updateDetails(cohost.manageToken, "Legacy edit", "desc", List.of(), true);
+
+        verify(calendarPort).updateEventDetails(
+                eq(cohostId[0]),
+                eq(ref),
+                eq("legacy-evt"),
+                anyString(),
+                any(),
+                anyList()
+        );
+    }
+
+    @Test
+    @io.quarkus.test.TestTransaction
+    void cancellingALegacyCohostEventGroupDeletesViaTheCohostOwnerIdAndClearsEveryMeetLink() {
+        var ref = new CalendarRef(null, "legacy@example.com");
+        var cohostId = new Long[1];
+        Booking cohost = legacyCohostEventGroup(cohostId, ref);
+
+        bookingService.cancel(cohost.manageToken, true);
+
+        verify(calendarPort).deleteEvent(cohostId[0], ref, "legacy-evt");
+        Booking.<Booking>group(cohost.groupId).forEach(r -> {
+            assertThat(r.googleEventId).isNull();
+            assertThat(r.meetLink).as("no dead Meet link survives on any row").isNull();
+        });
+    }
 }

@@ -268,11 +268,8 @@ public class SharedMeetingsResource {
                 ? AvailabilityRule.list("ownerId = ?1 and meetingTypeId is null order by dayOfWeek", currentOwner.id())
                 : rules;
         List<DateOverride> overrides = ownTypeOverrides(typeId);
-        // currentOwner's own write-calendar override for this type. WriteTargetResolver.writeOverride
-        // picks the right storage for this READ: the type's own MeetingType columns when currentOwner
-        // IS the creator (a creator can reach this page too, via their own CREATOR host row), otherwise
-        // this Co-host's meeting_type_host row — never another host's row. saveBuffers() below must
-        // route its WRITE the same way, or a Creator's save lands on a row this read never looks at.
+        // The write-calendar override for this type: only the Creator has one, stored on the type's own
+        // MeetingType columns (a creator reaches this page via their CREATOR host row); null for a Co-host.
         var override = writeTargets.writeOverride(currentOwner.id(), type);
         // Only the Creator has a write-calendar override (ADR 0007): an empty list hides the picker for Co-hosts.
         var writeCalendars = currentOwner.id().equals(type.ownerId)
@@ -450,9 +447,9 @@ public class SharedMeetingsResource {
     ) {
         // The host row is loaded + dirty-mutated INSIDE the tx so its changes flush on commit, which
         // happens before the render (#75). A write calendar that is not this owner's is refused and
-        // nothing is saved; "keep" -- and the field's OUTRIGHT ABSENCE (a Host whose account is
+        // nothing is saved; "keep" -- and the field's OUTRIGHT ABSENCE (a Creator whose account is
         // disconnected never gets the <select> rendered at all, so their ordinary saves carry no
-        // writeCalendar field) -- both leave a dangling override exactly as it is. Absence must never
+        // writeCalendar field; a Co-host never gets it) -- both leave a dangling override exactly as it is. Absence must never
         // be read as "clear": only an explicit "" clears the override, and only a real
         // "credentialId:calendarId" value changes it.
         var keep = writeCalendar == null || WriteTargetResolver.KEEP.equals(writeCalendar);
@@ -465,7 +462,7 @@ public class SharedMeetingsResource {
             MeetingTypeHost h = requireAcceptedHost(typeId);
             h.bufferBeforeMinutes = parseNonNegativeIntOrNull(bufferBeforeMinutes);
             h.bufferAfterMinutes = parseNonNegativeIntOrNull(bufferAfterMinutes);
-            staying.set(applyWriteCalendar(h, typeId, keep, ref));
+            staying.set(applyWriteCalendar(typeId, keep, ref));
         });
         return staying.get() > 0
                 ? availabilityInstance(typeId, null, m().adm_detail_write_calendar_moved(staying.get()))
@@ -473,12 +470,12 @@ public class SharedMeetingsResource {
     }
 
     /**
-     * Applies the resolved write-calendar choice to whichever storage {@link
-     * WriteTargetResolver#writeOverride} reads it from (called INSIDE {@code saveBuffers}'s tx, on
-     * the already-loaded host row) and returns how many upcoming bookings stay behind on their old
-     * calendar as a result. Returns {@code 0} when {@code keep} is true -- nothing is changed.
+     * Applies the resolved write-calendar choice to the type's own columns (called INSIDE {@code
+     * saveBuffers}'s tx) and returns how many upcoming bookings stay behind on their old calendar as a
+     * result. Returns {@code 0} when {@code keep} is true or the caller is not the Creator -- nothing
+     * is changed.
      */
-    private long applyWriteCalendar(MeetingTypeHost h, Long typeId, boolean keep, CalendarRef ref) {
+    private long applyWriteCalendar(Long typeId, boolean keep, CalendarRef ref) {
         if (keep) {
             return 0L;
         }
@@ -499,10 +496,9 @@ public class SharedMeetingsResource {
             // no-op save -- nothing moved, so nothing "stays behind" (calit-jk8y)
             return 0L;
         }
-        // Clearing falls back to this Host's write target -- compare against that, not null.
-        // The count is for the whole shared type, not just this Co-host's own rows: a group
-        // booking has one Google event, on the organizer's calendar, so "bookings that stay
-        // behind" is a property of the type, not of the Host reading this page.
+        // Clearing falls back to the Creator's write target -- compare against that, not null.
+        // The count is for the whole shared type: a group booking has one Google event, on the
+        // Creator's calendar, so "bookings that stay behind" is a property of the type.
         return AdminResource.bookingsStayingBehind(
                 type,
                 ref != null ? ref : writeTargets.writeTargetRef(currentOwner.id())

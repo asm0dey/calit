@@ -170,8 +170,8 @@ public class PrivacyService {
                 ? List.of(live)
                 : QuarkusTransaction.requiringNew().call(() -> Booking.group(live.groupId));
         List<Long> ids = rows.stream().map(r -> r.id).toList();
-        // The shared Google event lives on whichever row created it (the group's chosen organizer --
-        // BookingService.createGroupGoogleEvent), not necessarily this row: look across the group.
+        // The shared Google event lives on the lead row (a Co-host row for bookings written before
+        // ADR 0007 -- BookingService.createGroupGoogleEvent), not necessarily this row: look across the group.
         Booking eventRow = rows
             .stream()
             .filter(r -> r.googleEventId != null)

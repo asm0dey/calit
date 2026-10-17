@@ -39,7 +39,7 @@ class SharedWriteCalendarTest {
 
     @Test
     void cohostSeesNoWritePicker() {
-        var credId = seedOwnerCalendars();
+        seedOwnerCalendars();
         var typeId = seedSharedType();
 
         given()
@@ -49,7 +49,6 @@ class SharedWriteCalendarTest {
             .then()
             .statusCode(200)
             .body(not(containsString("name=\"writeCalendar\"")));
-        assertThat(credId).isNotNull();
     }
 
     @Test

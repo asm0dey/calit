@@ -32,7 +32,7 @@ public class WriteTargetResolver {
     public static final String KEEP = "keep";
 
     /**
-     * The stored write override for this (type, host), or null when unset. A row whose credential
+     * The Creator's stored write override for the type, or null when unset (a Co-host has none). A row whose credential
      * was nulled by disconnecting the account keeps its calendar id, and that half-row IS an
      * override — a dangling one. Reading it as "unset" would hide the very case the Host needs to
      * be told about.
