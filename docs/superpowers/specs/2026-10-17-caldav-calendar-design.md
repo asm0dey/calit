@@ -72,6 +72,9 @@ There is no specific user asking for this; the bar is "what Cal.com's CalDAV int
      validates (V37 is a future migration), the views keep the old column names and types (Hibernate
      7.4.9 `validate` accepts views — verified in its source), and the previous release's native SQL
      still runs against the new schema.
+   - **Single-table, not per-provider tables** (decided with the user): `calendar_account` stays one
+     table (JPA `SINGLE_TABLE`, `provider` discriminator). Splitting into `JOINED` per-provider tables
+     is deferred to the Microsoft 365 bean `calit-qj4b`, after the V37 views are dropped.
    New Flyway migration(s) only; never edit applied ones.
 2. **Ports stay, implementations split by provider.** `CalendarPort` / `CalendarListPort` become
    provider-neutral (`CalendarRef(accountId, remoteCalendarId)`, `CreatedEvent(eventId, meetLink,
