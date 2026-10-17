@@ -3,13 +3,14 @@ package site.asm0dey.calit.scheduler;
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
+import io.quarkus.test.junit.mockito.InjectSpy;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import site.asm0dey.calit.caldav.CaldavClient;
@@ -21,7 +22,7 @@ import site.asm0dey.calit.email.EmailService;
 
 @QuarkusTest
 class CaldavProbeTest {
-    @Inject
+    @InjectSpy
     GoogleConnectionScheduler scheduler;
     @InjectMock
     CaldavClient client;
@@ -57,6 +58,16 @@ class CaldavProbeTest {
         return QuarkusTransaction
             .requiringNew()
             .call(() -> CaldavAccount.findById(id));
+    }
+
+    @Test
+    void accountDeletedAfterTheClaimIsSkipped() {
+        var id = seed(false, null);
+        doReturn(List.of(Long.MAX_VALUE, id)).when(scheduler).claimDueForProbe();
+
+        scheduler.probeDueCredentials();
+
+        verify(client, times(1)).probe(any());
     }
 
     @Test

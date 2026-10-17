@@ -63,7 +63,12 @@ public class GoogleConnectionScheduler {
         List<Long> ids = claimDueForProbe();
         var now = Instant.now();
         for (Long id : ids) {
-            if (providerOf(id) == CalendarProvider.CALDAV) {
+            CalendarProvider provider = providerOf(id);
+            if (provider == null) {
+                // disconnected since the claim
+                continue;
+            }
+            if (provider == CalendarProvider.CALDAV) {
                 probeCaldav(id);
             } else {
                 // own @Transactional; sets/clears needs_reconnect
@@ -75,7 +80,7 @@ public class GoogleConnectionScheduler {
     private CalendarProvider providerOf(Long id) {
         return QuarkusTransaction
             .requiringNew()
-            .call(() -> ((CalendarAccount) CalendarAccount.findById(id)).provider());
+            .call(() -> CalendarAccount.findById(id) instanceof CalendarAccount a ? a.provider() : null);
     }
 
     /**
