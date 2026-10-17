@@ -28,12 +28,22 @@
     <li><strong>CalDAV account data</strong> — when you connect a CalDAV calendar (optional): the server URL, your username, and the app password, which is encrypted at rest like Google tokens.</li>
   </ul>
 
+  <h2 class="text-xl font-semibold mt-6">Booking details on the host's calendar</h2>
+  <!-- CALIT_MIRROR_EVENT -->
+  <p class="mt-2">When a host has connected a calendar account and selected a calendar to write bookings to, calit copies each booking to that calendar as an event. The event is stored by the host's calendar provider — {#if inject:privacy.googleConfigured}Google, or {/if}the CalDAV server the host connected. It carries:</p>
+  <ul class="list-disc ps-6 mt-2">
+    <li>the title "<em>meeting title</em> with <em>invitee name</em>" and the booking's description;</li>
+    <li>the start and end time, and the meeting location;</li>
+    <li>the email addresses of the invitee, the host and any active guests. {#if inject:privacy.googleConfigured}On Google they are added as event attendees, so Google stores them and emails them invitations. {/if}On a CalDAV server they are written into the event description, and the server stores them.</li>
+  </ul>
+  <p class="mt-2">If you book a meeting, your name, email address and these booking details are therefore stored by the host's calendar provider as well as by calit. If you are a host, this is the copy on your own calendar. That copy is held under the provider's own privacy policy and retention. calit deletes the event when the booking is cancelled, when the booking is erased, and when the host's account is deleted, but it cannot remove copies the provider keeps in its trash or backups. No such event is created when the host has no connected calendar or no write calendar selected.</p>
+
   <h2 class="text-xl font-semibold mt-6">How CalDAV data is used</h2>
-  <p class="mt-2">When you connect a CalDAV account, calit fetches the full event objects from the CalDAV calendars you select, within the booking window. It uses only their times to compute busy intervals and discards the rest: event content is never stored. When bookings are made, rescheduled, or cancelled, calit creates, updates, and deletes the event on the calendar you chose as write target.</p>
+  <p class="mt-2">When you connect a CalDAV account, calit fetches the full event objects from the CalDAV calendars you select, within the booking window. It uses only their times to compute busy intervals and discards the rest: the content of events calit reads is never stored. When bookings are made, rescheduled, or cancelled, calit creates, updates, and deletes the event on the calendar you chose as write target; that event carries the booking details listed above.</p>
 
   {#if inject:privacy.googleConfigured}
   <h2 class="text-xl font-semibold mt-6">How Google user data is used</h2>
-  <p class="mt-2">When you connect a Google account, calit requests the Google Calendar scope and uses it only to provide scheduling: it reads free/busy information from the calendars you select to compute available slots, and creates, updates, and deletes events on the write-target calendar you choose when bookings are made, rescheduled, or cancelled. calit reads only free/busy information from Google, never the content of your calendar events, and does not use Google data for advertising, profiling, or any purpose other than the scheduling features you initiated.</p>
+  <p class="mt-2">When you connect a Google account, calit requests the Google Calendar scope and uses it only to provide scheduling: it reads free/busy information from the calendars you select to compute available slots, and creates, updates, and deletes events on the write-target calendar you choose when bookings are made, rescheduled, or cancelled. calit reads only free/busy information from Google, never the content of your calendar events (the events calit writes for bookings carry the booking details listed above), and does not use Google data for advertising, profiling, or any purpose other than the scheduling features you initiated.</p>
 
   <h3 class="text-lg font-semibold mt-4">Limited Use disclosure</h3>
   <p class="mt-2">calit's use and transfer of information received from Google APIs adheres to the <a class="link" href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener" target="_blank">Google API Services User Data Policy</a>, including the Limited Use requirements. Google user data is not sold, not transferred to third parties except as needed to provide the scheduling features, not used for advertising, and not read by humans except where required for security, to comply with law, or with your explicit consent.</p>
@@ -43,8 +53,8 @@
   <p class="mt-2">calit does not sell or share your data.</p>
   <p class="mt-2">This deployment sends data to:</p>
   <ul class="list-disc ps-6 mt-2">
-    <li>The CalDAV server you connect, if you connect one, for the calendar operations above.</li>
-    {#if inject:privacy.googleConfigured}<li>Google, for the calendar operations above.</li>{/if}
+    <li>The CalDAV server you connect, if you connect one, for the calendar operations above, including the booking details copied to your calendar.</li>
+    {#if inject:privacy.googleConfigured}<li>Google, for the calendar operations above, including the booking details copied to your calendar.</li>{/if}
     {#if inject:privacy.oidcConfigured}<li>The single sign-on identity provider configured by the operator, when you sign in with it.</li>{/if}
     {#if inject:privacy.smtpHost}<li>The SMTP server <code>{inject:privacy.smtpHost}</code>, which delivers booking and notification emails.</li>{/if}
     {#if anyChannelConfigured}<li>The chat or push services hosts have configured as notification channels (for example Telegram, Slack, Discord or ntfy). Messages already delivered there cannot be recalled.</li>{/if}

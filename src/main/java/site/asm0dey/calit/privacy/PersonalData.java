@@ -405,10 +405,13 @@ public final class PersonalData {
      */
     public static final List<Destination> OUTBOUND = List.of(
             new Destination(
-                    "Google Calendar event",
-                    "the owner has Google connected",
-                    // Reachable via the API -- but Google keeps the event in trash for roughly 30
-                    // days, and the call cannot run at all if the grant was since disconnected.
+                    // The Mirror event: title "<meeting title> with <invitee name>", description, start/end,
+                    // location, and the invitee/owner/active-guest emails (Google attendees; CalDAV description).
+                    "Calendar event at the owner's calendar provider (Google or CalDAV): title with invitee name, "
+                    + "description, time, location, invitee, owner and guest emails",
+                    "the owner has a write calendar selected",
+                    // Reachable via the API -- but the provider may keep the event in trash or backups (Google:
+                    // roughly 30 days), and the call cannot run at all if the account was since disconnected.
                     true
             ),
             new Destination("Notification channel message", "the owner configured a channel", false),

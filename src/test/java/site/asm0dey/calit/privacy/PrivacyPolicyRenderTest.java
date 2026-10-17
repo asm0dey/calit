@@ -105,4 +105,19 @@ class PrivacyPolicyRenderTest {
             .body(containsString("CalDAV account data"))
             .body(containsString("Settings → Calendars"));
     }
+
+    @Test
+    void mirrorEventDisclosureNamesBothProvidersWhenGoogleIsConfigured() {
+        given()
+            .when()
+            .get("/privacy")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_MIRROR_EVENT"))
+            .body(containsString("Google, or the CalDAV server the host connected"))
+            .body(containsString("the email addresses of the invitee, the host and any active guests"))
+            .body(containsString("On Google they are added as event attendees"))
+            .body(containsString("On a CalDAV server they are written into the event description"))
+            .body(containsString("held under the provider's own privacy policy and retention"));
+    }
 }

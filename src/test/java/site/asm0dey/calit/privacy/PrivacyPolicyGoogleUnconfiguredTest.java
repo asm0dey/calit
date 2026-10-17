@@ -56,6 +56,23 @@ class PrivacyPolicyGoogleUnconfiguredTest {
             .body(not(containsString("does not send your data to any third party")));
     }
 
+    /**
+     * The Mirror event disclosure is CalDAV-only here, never dropped: CalDAV write calendars exist without
+     * Google.
+     */
+    @Test
+    void mirrorEventDisclosureRendersForCaldavAlone() {
+        given()
+            .when()
+            .get("/privacy")
+            .then()
+            .statusCode(200)
+            .body(containsString("CALIT_MIRROR_EVENT"))
+            .body(containsString("host's calendar provider — the CalDAV server the host connected"))
+            .body(containsString("On a CalDAV server they are written into the event description"))
+            .body(not(containsString("On Google they are added as event attendees")));
+    }
+
     public static class BlankGoogleClientId implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {
