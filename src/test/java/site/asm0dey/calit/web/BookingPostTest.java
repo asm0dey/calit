@@ -194,6 +194,61 @@ class BookingPostTest {
             .body(containsString("Times shown in:"));
     }
 
+    @Transactional
+    void setConfirmTypeLocationDetail(String detail) {
+        MeetingType.update("locationDetail = ?1 where slug = 'confirm-type'", detail);
+    }
+
+    @Test
+    void meetTypeWithoutMintedLinkShowsLocationDetailOnConfirmationPage() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        seed();
+        setConfirmTypeLocationDetail("https://meet.example/abc");
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", firstSlot("confirm-type"))
+            .formParam("inviteeName", "Sam Invitee")
+            .formParam("inviteeEmail", "sam@example.com")
+            .formParam("answers.company", "Acme Corp")
+            .formParam("website", "")
+            .when()
+            .post("/bob/confirm-type")
+            .then()
+            .statusCode(200)
+            .body(containsString("https://meet.example/abc"));
+    }
+
+    @Test
+    void mintedLinkWinsOverLocationDetailOnConfirmationPage() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+            .thenReturn(
+                    new CreatedEvent(
+                            "evt-2",
+                            "https://meet.google.com/minted",
+                            "https://calendar.google.com/evt-2",
+                            null
+                    )
+            );
+        seed();
+        setConfirmTypeLocationDetail("https://meet.example/abc");
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("startUtc", firstSlot("confirm-type"))
+            .formParam("inviteeName", "Sam Invitee")
+            .formParam("inviteeEmail", "sam@example.com")
+            .formParam("answers.company", "Acme Corp")
+            .formParam("website", "")
+            .when()
+            .post("/bob/confirm-type")
+            .then()
+            .statusCode(200)
+            .body(containsString("https://meet.google.com/minted"))
+            .body(not(containsString("https://meet.example/abc")));
+    }
+
     @Test
     void postForApprovalTypeShowsPendingWordingNotConfirmation() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);

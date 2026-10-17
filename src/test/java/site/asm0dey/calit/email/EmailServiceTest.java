@@ -83,6 +83,34 @@ class EmailServiceTest {
         assertHasIcsAttachment(m);
     }
 
+    @Test
+    void meetTypeWithoutMintedLinkMailsLocationDetail() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> {
+            b.status = BookingStatus.CONFIRMED;
+            b.meetLink = null;
+        }, true, LocationType.GOOGLE_MEET, "https://meet.example/abc");
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getHtml()).contains("https://meet.example/abc");
+    }
+
+    @Test
+    void mintedLinkWinsOverLocationDetailInMail() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        long bookingId = seed(b -> {
+            b.status = BookingStatus.CONFIRMED;
+            b.meetLink = "https://meet.google.com/minted";
+        }, true, LocationType.GOOGLE_MEET, "https://meet.example/abc");
+
+        emailService.handleConfirmed(new BookingConfirmed(bookingId));
+
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL).getFirst().getHtml())
+            .contains("https://meet.google.com/minted")
+            .doesNotContain("https://meet.example/abc");
+    }
+
     // ---- Confirmed + Google connected: invitee + owner both get link email, but NO .ics ----
     @Test
     void confirmedWhenGoogleConnectedSendsLinkEmailToInviteeAndOwnerWithoutIcs() {

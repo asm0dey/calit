@@ -620,8 +620,7 @@ public class PublicResource {
         // come back CONFIRMED → location/Meet confirmation.
         var pending = booking.status == BookingStatus.PENDING;
         String title = pending ? m.pub_conf_title_pending() : m.pub_conf_title_confirmed();
-        String location =
-                (type.locationType == MeetingType.LocationType.GOOGLE_MEET) ? booking.meetLink : type.locationDetail;
+        String location = booking.meetLink != null ? booking.meetLink : type.locationDetail;
         String meetingName = booking.effectiveTitle(type);
         // #195: the mail observers are AFTER_SUCCESS -- synchronous, on the thread that committed
         // bookingService.book(). So by the time we render, either the mail went out or MailSender

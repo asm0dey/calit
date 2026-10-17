@@ -1126,14 +1126,11 @@ public class EmailService {
     }
 
     /**
-     * Meet link for GOOGLE_MEET types, else the type's locationDetail (phone/address/custom).
+     * The minted Meet link when the booking has one, else the type's locationDetail (phone/address/custom, or the
+     * fallback for a GOOGLE_MEET type whose Creator is disconnected).
      */
     private static String resolveLocation(BookingSnapshot l) {
-        if (l.meetingType().locationType == LocationType.GOOGLE_MEET) {
-            // may be null when Google is disconnected
-            return l.booking().meetLink;
-        }
-        return l.meetingType().locationDetail;
+        return l.booking().meetLink != null ? l.booking().meetLink : l.meetingType().locationDetail;
     }
 
     private static boolean isMeet(BookingSnapshot l) {
