@@ -23,6 +23,7 @@ import site.asm0dey.calit.email.EmailService;
 import site.asm0dey.calit.email.MailHealth;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.calendar.CalendarUnavailableException;
+import site.asm0dey.calit.calendar.MirrorProvider;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AppMessageResolver;
 import site.asm0dey.calit.i18n.AppMessages;
@@ -626,12 +627,14 @@ public class PublicResource {
         // bookingService.book(). So by the time we render, either the mail went out or MailSender
         // parked it. No polling needed; the page can just tell the truth.
         boolean mailUndelivered = mailHealth.undeliveredFor(booking.inviteeEmail);
-        // #195: whether to OFFER the .ics, not whether to serve it. When Google is connected it
+        // #195: whether to OFFER the .ics, not whether to serve it. When the Mirror event is on Google it
         // invites the guest natively and owns the event; an imported second copy has a different
         // UID, so a later reschedule or cancel updates Google's copy and strands the imported one
-        // showing the old time. The endpoint itself stays unconditional -- a guest who deliberately
+        // showing the old time. A CalDAV Mirror event invites nobody, so the .ics is offered as in
+        // degraded mode. The endpoint itself stays unconditional -- a guest who deliberately
         // goes for the file still gets it.
-        boolean googleConnected = calendarPort.isConnected(type.ownerId);
+        boolean googleConnected = calendarPort.isConnected(type.ownerId)
+                && MirrorProvider.providerNotifiesAttendees(type.ownerId, booking.calendarRef());
         return Templates.confirmation(
                 title,
                 booking,

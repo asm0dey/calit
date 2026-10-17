@@ -3,23 +3,21 @@ package site.asm0dey.calit.caldav;
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.smallrye.mutiny.Multi;
 import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.AdditionalAnswers;
-import org.mockito.Mockito;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
 import com.sun.net.httpserver.HttpServer;
 import site.asm0dey.calit.calendar.BusyInterval;
 import site.asm0dey.calit.calendar.CaldavAccount;
-import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.CalendarUnavailableException;
 import site.asm0dey.calit.calendar.SelectedCalendar;
@@ -27,7 +25,6 @@ import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailService;
-import site.asm0dey.calit.google.GoogleCalendarPort;
 
 @QuarkusTest
 @QuarkusTestResource(value = RadicaleResource.class, restrictToAnnotatedClass = true)
@@ -50,6 +47,8 @@ class CaldavCalendarPortTest {
     BookingService bookingService;
     @Inject
     EmailService emailService;
+    @Inject
+    MockMailbox mailbox;
     // default: test classes are validated on every boot, including ones without RadicaleResource
     @ConfigProperty(name = "caldav.test.url", defaultValue = "unset")
     String baseUrl;
@@ -179,11 +178,7 @@ class CaldavCalendarPortTest {
 
     @Test
     void createdEventUidMatchesInviteeIcs() {
-        // the routing port is Task 6; until then BookingService reaches CalDAV through this stand-in
-        QuarkusMock.installMockForType(
-                Mockito.mock(GoogleCalendarPort.class, AdditionalAnswers.delegatesTo(port)),
-                CalendarPort.class
-        );
+        mailbox.clear();
         var slug = "caldav-" + UUID.randomUUID();
         QuarkusTransaction.requiringNew().run(() -> {
             var t = new MeetingType();
@@ -207,6 +202,8 @@ class CaldavCalendarPortTest {
 
         var inviteeIcs = new String(emailService.inviteeIcs(b.id).orElseThrow(), StandardCharsets.UTF_8);
         assertThat(uid(fetch(b.eventId))).isEqualTo(uid(inviteeIcs)).isEqualTo(b.manageToken);
+        // and the .ics actually attached to the invitee's confirmation, not only the download
+        assertThat(uid(attachedIcs("sam@example.com"))).isEqualTo(b.manageToken);
     }
 
     @Test
@@ -399,6 +396,23 @@ class CaldavCalendarPortTest {
             .satisfies(h -> assertThat(h.keySet())
                 .map(k -> k.toLowerCase(Locale.ROOT))
                 .doesNotContain("if-none-match", "if-match"));
+    }
+
+    String attachedIcs(String to) {
+        var mail = mailbox.getMailsSentTo(to).getFirst();
+        assertThat(mail.getAttachments()).hasSize(1);
+        var data = Multi
+            .createFrom()
+            .publisher(mail.getAttachments().getFirst().getData())
+            .collect()
+            .asList()
+            .await()
+            .indefinitely();
+        var bytes = new byte[data.size()];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = data.get(i);
+        }
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 
     static String uid(String ics) {

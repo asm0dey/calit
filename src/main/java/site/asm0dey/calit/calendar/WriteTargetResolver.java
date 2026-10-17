@@ -111,13 +111,31 @@ public class WriteTargetResolver {
     }
 
     /**
-     * True when the calendar this host would write {@code type} on cannot mint Google Meet links, so
-     * GOOGLE_MEET must be refused. False when there is no calendar yet — don't over-block, the owner
-     * may pick a Meet-capable one later.
+     * True when the Google calendar this host would write {@code type} on cannot mint Google Meet links,
+     * so GOOGLE_MEET must be refused. False when there is no calendar yet — don't over-block, the owner
+     * may pick a Meet-capable one later — and false on a non-Google calendar, which is
+     * {@link #meetUnavailable} (warn and allow) instead.
      */
     public boolean blocksMeet(Long ownerId, MeetingType type) {
         SelectedCalendar target = resolveCalendar(ownerId, type);
-        return target != null && !target.supportsMeet;
+        return target != null && provider(ownerId, target) == CalendarProvider.GOOGLE && !target.supportsMeet;
+    }
+
+    /**
+     * True when {@code type} asks for Google Meet but this host writes it on a non-Google calendar, so its
+     * Mirror events get no link; the meeting type page warns, booking still works.
+     */
+    public boolean meetUnavailable(Long ownerId, MeetingType type) {
+        if (type == null || type.locationType != MeetingType.LocationType.GOOGLE_MEET) {
+            return false;
+        }
+        SelectedCalendar target = resolveCalendar(ownerId, type);
+        return target != null && provider(ownerId, target) != CalendarProvider.GOOGLE;
+    }
+
+    private static CalendarProvider provider(Long ownerId, SelectedCalendar calendar) {
+        CalendarAccount account = CalendarAccount.findOwned(ownerId, calendar.accountId);
+        return account == null ? CalendarProvider.GOOGLE : account.provider();
     }
 
     /**

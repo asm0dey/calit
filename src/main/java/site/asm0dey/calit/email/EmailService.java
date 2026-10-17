@@ -17,6 +17,7 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.MirrorProvider;
 import site.asm0dey.calit.i18n.AppLocales;
 import site.asm0dey.calit.i18n.AppMessageResolver;
 
@@ -699,8 +700,8 @@ public class EmailService {
         deliverReminder(l, EmailService::enqueueToOutbox);
     }
 
-    // --- guest fan-out: guests always get a calit mail; .ics is attached only when Google is NOT
-    //     connected (when connected, guests are Google event attendees and Google sends the invite). ---
+    // --- guest fan-out: guests always get a calit mail; .ics is attached unless the Mirror event is on Google
+    //     (then guests are its attendees and Google sends the invite). ---
     /**
      * REQUEST .ics + invite body to every active guest, in the booking (invitee's) locale.
      */
@@ -715,8 +716,7 @@ public class EmailService {
         Locale locale = AppLocales.pick(l.booking().locale);
         String start = format(l.booking().startUtc, l.zone(), locale);
         for (BookingGuest g : guests) {
-            byte[] ics =
-                    calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, g, location, IcsMethod.REQUEST);
+            byte[] ics = providerNotifies(l) ? null : guestIcs(l, g, location, IcsMethod.REQUEST);
             String body = Templates
                 .guestInvite(
                         locale.getLanguage(),
@@ -854,7 +854,7 @@ public class EmailService {
      * CANCEL mail to a single guest: cancel body + CANCEL .ics attachment, the same at all three
      * call sites ({@link #sendGuestCancels}, {@link #handleGuestRemoved}, {@link
      * #handleGuestDeclined}). The .ics is omitted when Google notifies the guest natively (the
-     * guest is already a Google event attendee); each caller supplies its own subject.
+     * guest is already an attendee of a Google Mirror event); each caller supplies its own subject.
      */
     private void sendGuestCancelMail(BookingSnapshot l, BookingGuest g, String subject, Locale locale) {
         mailSender.send(
@@ -862,7 +862,7 @@ public class EmailService {
                 g.email,
                 subject,
                 guestCancelBody(l, g, locale),
-                calendarPort.isConnected(l.owner().ownerId) ? null : guestIcs(l, g, null, IcsMethod.CANCEL),
+                providerNotifies(l) ? null : guestIcs(l, g, null, IcsMethod.CANCEL),
                 MailTag.forBooking(l.booking().id, l.booking().ownerId)
         );
     }
@@ -959,9 +959,9 @@ public class EmailService {
      * pre-multi-host behavior). For a GROUP booking, EACH host gets their own personalized copy
      * (their own locale/name/booking-row tokens); {@code actionable} kinds (approval-needed) ignore
      * that host's {@code ownerNotificationsEnabled} -- an opted-out host must still be able to
-     * approve/decline their row, or the whole group deadlocks. When Google is connected it natively
-     * notifies invitee + owner(s) (they are event attendees), so calit attaches NO .ics. When NOT
-     * connected, calit's .ics is the only calendar source.
+     * approve/decline their row, or the whole group deadlocks. When the Mirror event is on Google it natively
+     * notifies invitee + owner(s) (they are event attendees), so calit attaches NO .ics. On CalDAV everyone but
+     * the Creator (whose calendar holds the event) gets calit's .ics; in degraded mode everyone does.
      */
     private void sendForKindLocaleAware(
             BookingSnapshot l,
@@ -972,8 +972,10 @@ public class EmailService {
             IcsMethod icsMethod,
             boolean actionable
     ) {
-        boolean googleNotifies = calendarPort.isConnected(l.owner().ownerId);
-        var ics = googleNotifies ? null : inviteeIcsBytes(l, icsLocation, icsMethod);
+        boolean connected = calendarPort.isConnected(l.owner().ownerId);
+        var ics = providerNotifies(l, connected) ? null : inviteeIcsBytes(l, icsLocation, icsMethod);
+        // a connected Creator's calendar already holds the Mirror event; a calit copy would duplicate it
+        var creatorIcs = connected ? null : ics;
         var from = fromName(l);
 
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
@@ -1012,7 +1014,7 @@ public class EmailService {
                                 hd.booking(),
                                 hd.settings().timeFormat
                         ),
-                        ics,
+                        hd.settings().ownerId.equals(l.meetingType().ownerId) ? creatorIcs : ics,
                         MailTag.forBooking(hd.booking().id, hd.settings().ownerId)
                 );
             }
@@ -1030,10 +1032,22 @@ public class EmailService {
                             l.booking(),
                             l.owner().timeFormat
                     ),
-                    ics,
+                    creatorIcs,
                     MailTag.forBooking(l.booking().id, l.owner().ownerId)
             );
         }
+    }
+
+    /**
+     * True when the provider holding this booking's Mirror event invites the attendees itself (Google), so calit
+     * attaches no .ics; false in degraded mode and for a CalDAV Mirror event, which carries no attendees.
+     */
+    private boolean providerNotifies(BookingSnapshot l) {
+        return providerNotifies(l, calendarPort.isConnected(l.owner().ownerId));
+    }
+
+    private static boolean providerNotifies(BookingSnapshot l, boolean connected) {
+        return connected && MirrorProvider.providerNotifiesAttendees(l.owner().ownerId, l.booking().calendarRef());
     }
 
     /**

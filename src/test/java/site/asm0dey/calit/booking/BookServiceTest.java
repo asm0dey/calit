@@ -96,7 +96,7 @@ class BookServiceTest {
             .createEvent(
                     anyLong(),
                     any(),
-                    any(),
+                    eq(b.manageToken),
                     anyString(),
                     anyString(),
                     eq(SLOT_09),

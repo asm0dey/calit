@@ -6,6 +6,7 @@ import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.CaldavAccount;
 import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.calendar.WriteTargetResolver;
@@ -137,6 +138,35 @@ class WriteTargetResolverTest {
         assertThat(resolver.blocksMeet(1L, t)).isFalse();
         // a type with no override sees the default
         assertThat(resolver.blocksMeet(1L, seedType(1L))).isTrue();
+    }
+
+    @Test
+    @TestTransaction
+    void meetAllowedOnCaldavButBlockedOnMeetlessGoogle() {
+        var googleCred = seedCredential("sub-res-meetless");
+        seedCalendar(1L, googleCred, "meetless@example.com", false, false);
+        var dav = new CaldavAccount();
+        dav.ownerId = 1L;
+        dav.serverUrl = "https://dav.example.com/";
+        dav.username = "alice";
+        dav.password = "secret";
+        dav.principalUrl = "https://dav.example.com/p/alice/";
+        dav.homeUrl = "https://dav.example.com/cal/";
+        dav.persist();
+        // a CalDAV calendar never mints Meet links; supportsMeet keeps its default
+        seedCalendar(1L, dav.id, "/cal/work/", true, true);
+        MeetingType onCaldav = seedType(1L);
+        onCaldav.locationType = MeetingType.LocationType.GOOGLE_MEET;
+        MeetingType onGoogle = seedType(1L);
+        onGoogle.locationType = MeetingType.LocationType.GOOGLE_MEET;
+        onGoogle.overrideAccountId = googleCred;
+        onGoogle.overrideRemoteCalendarId = "meetless@example.com";
+        onGoogle.persistAndFlush();
+
+        assertThat(resolver.blocksMeet(1L, onCaldav)).isFalse();
+        assertThat(resolver.meetUnavailable(1L, onCaldav)).isTrue();
+        assertThat(resolver.blocksMeet(1L, onGoogle)).isTrue();
+        assertThat(resolver.meetUnavailable(1L, onGoogle)).isFalse();
     }
 
     @Test

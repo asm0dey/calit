@@ -80,11 +80,12 @@ class GroupBookingWriteTest {
         assertThat(rows).hasSize(2);
         rows.forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.CONFIRMED));
         // exactly one Google event, on the creator (organizer), with both hosts + invitee as attendees
+        Booking organizerRow = Booking.leadOfGroup(lead.groupId, 1L);
         verify(calendarPort, times(1))
             .createEvent(
                     eq(1L),
                     any(),
-                    any(),
+                    eq(organizerRow.manageToken),
                     anyString(),
                     anyString(),
                     any(),
@@ -93,7 +94,6 @@ class GroupBookingWriteTest {
                     eq(true),
                     any()
             );
-        Booking organizerRow = Booking.leadOfGroup(lead.groupId, 1L);
         assertThat(organizerRow.eventId).isEqualTo("evt-1");
     }
 

@@ -6,16 +6,18 @@ import com.google.api.client.util.DateTime;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.*;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Typed;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import site.asm0dey.calit.calendar.*;
 import site.asm0dey.calit.domain.OwnerSettings;
 
 /**
- * Real CalendarPort backed by the Google Calendar API. @ApplicationScoped so downstream
- * tests can replace it with a Mockito {@code @InjectMock CalendarPort}.
+ * {@link CalendarPort} over the owner's Google accounts. {@code @Typed} keeps it out of plain {@code CalendarPort}
+ * injection: {@link RoutingCalendarPort} picks it per Mirror event.
  */
 @ApplicationScoped
+@Typed(GoogleCalendarPort.class)
 public class GoogleCalendarPort implements CalendarPort {
     private final GoogleTokenService tokens;
     private final GoogleCalendarClientFactory clientFactory;
@@ -334,7 +336,8 @@ public class GoogleCalendarPort implements CalendarPort {
 
     private SelectedCalendar requireWriteTarget(Long ownerId) {
         SelectedCalendar target = SelectedCalendar.writeTarget(ownerId);
-        if (target == null) {
+        // a CalDAV write target is not ours to write on; the router only sends us here for Google
+        if (target == null || !(CalendarAccount.findOwned(ownerId, target.accountId) instanceof GoogleCredential)) {
             throw new IllegalStateException("No write-target Google calendar selected. POST /api/google/calendars.");
         }
         return target;
