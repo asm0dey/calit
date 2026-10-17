@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -111,6 +112,6 @@ class CaldavProbeTest {
         scheduler.tick();
 
         assertThat(reload(id).needsReconnect).isFalse();
-        verify(emailService, Mockito.never()).sendCalendarDisconnected(any(), any(), any(), any(), any());
+        verify(emailService, never()).sendCalendarDisconnected(any(), any(), any(), any(), any());
     }
 }

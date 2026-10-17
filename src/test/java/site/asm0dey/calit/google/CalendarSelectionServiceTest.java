@@ -29,7 +29,7 @@ class CalendarSelectionServiceTest {
                 Set.of(cred.id),
                 List.of(new CalendarSelectionService.Selection(cred.id, "write@example.com", "Write", false, true))
         );
-        SelectedCalendar saved = SelectedCalendar.writeTarget(1L);
+        SelectedCalendar saved = SelectedCalendar.writeTargetOf(1L);
         assertThat(saved.remoteId).isEqualTo("write@example.com");
         assertThat(saved.readForBusy).as("write target must be read for busy").isTrue();
     }
@@ -43,8 +43,8 @@ class CalendarSelectionServiceTest {
                 new CalendarSelectionService.Selection(cred.id, "a", "A", true, true),
                 new CalendarSelectionService.Selection(cred.id, "b", "B", true, true)
         );
-        assertThatExceptionOfType(IllegalArgumentException.class)
-            .isThrownBy(() -> service.save(1L, Set.of(cred.id), selections));
+        var covered = Set.of(cred.id);
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> service.save(1L, covered, selections));
     }
 
     @Test
@@ -55,8 +55,8 @@ class CalendarSelectionServiceTest {
         GoogleCredential other = cred(2L, "sub-X");
         other.persist();
         var selections = List.of(new CalendarSelectionService.Selection(other.id, "a", "A", true, false));
-        assertThatExceptionOfType(IllegalArgumentException.class)
-            .isThrownBy(() -> service.save(1L, Set.of(other.id), selections));
+        var covered = Set.of(other.id);
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> service.save(1L, covered, selections));
     }
 
     @Test
@@ -78,7 +78,7 @@ class CalendarSelectionServiceTest {
                         )
                 )
         );
-        SelectedCalendar wt = SelectedCalendar.writeTarget(1L);
+        SelectedCalendar wt = SelectedCalendar.writeTargetOf(1L);
         assertThat(wt.supportsMeet).as("capability must persist from the selection").isFalse();
     }
 
@@ -121,11 +121,8 @@ class CalendarSelectionServiceTest {
         GoogleCredential b = cred(1L, "sub-B");
         b.persist();
         var selections = List.of(new CalendarSelectionService.Selection(b.id, "b", "B", true, false));
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> service.save(
-                1L,
-                Set.of(a.id),
-                selections
-        ));
+        var covered = Set.of(a.id);
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> service.save(1L, covered, selections));
     }
 
     private static GoogleCredential cred(long owner, String sub) {

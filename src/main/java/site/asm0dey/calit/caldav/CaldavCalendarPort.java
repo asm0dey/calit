@@ -301,7 +301,7 @@ public class CaldavCalendarPort implements ProviderCalendarPort {
     }
 
     private static WriteAddress writeTarget(Long ownerId) {
-        var target = SelectedCalendar.writeTarget(ownerId);
+        var target = SelectedCalendar.writeTargetOf(ownerId);
         if (target == null || !(CalendarAccount.findOwned(ownerId, target.accountId) instanceof CaldavAccount a)) {
             throw new IllegalStateException("No CalDAV write-target calendar selected.");
         }

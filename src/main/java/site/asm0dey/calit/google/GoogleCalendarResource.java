@@ -91,7 +91,7 @@ public class GoogleCalendarResource {
     @GET
     @Path("/write-target")
     public SelectedCalendar writeTarget() {
-        SelectedCalendar target = SelectedCalendar.writeTarget(currentOwner.id());
+        SelectedCalendar target = SelectedCalendar.writeTargetOf(currentOwner.id());
         if (target == null) {
             throw new NotFoundException("No write-target calendar selected");
         }

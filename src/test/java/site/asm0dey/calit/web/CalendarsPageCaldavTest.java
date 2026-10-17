@@ -93,6 +93,8 @@ class CalendarsPageCaldavTest {
     }
 
     @Test
+    // S1612: not a method reference -- CaldavAccount::listAll breaks under Panache bytecode
+    @SuppressWarnings("java:S1612")
     void reconnectingTheSamePrincipalUpdatesThePassword() {
         discovers();
         connect("old").statusCode(303);
@@ -108,6 +110,8 @@ class CalendarsPageCaldavTest {
     }
 
     @Test
+    // S1612: not a method reference -- CaldavAccount::count breaks under Panache bytecode
+    @SuppressWarnings("java:S1612")
     void privateHostShowsInlineErrorAndStoresNothing() {
         when(caldav.discover(anyString(), anyString(), anyString()))
             .thenThrow(new CaldavException(CaldavException.Reason.PRIVATE_HOST, "private"));
@@ -119,6 +123,8 @@ class CalendarsPageCaldavTest {
     }
 
     @Test
+    // S1612: not a method reference -- CaldavAccount::count breaks under Panache bytecode
+    @SuppressWarnings("java:S1612")
     void unsafeServerUrlsAreRefusedWithoutEchoingCredentials() {
         for (var url :
                 List.of(
@@ -152,6 +158,8 @@ class CalendarsPageCaldavTest {
     }
 
     @Test
+    // S1612: not a method reference -- CaldavAccount::count breaks under Panache bytecode
+    @SuppressWarnings("java:S1612")
     void wrongPasswordShowsInlineError() {
         when(caldav.discover(anyString(), anyString(), anyString()))
             .thenThrow(new CaldavException(CaldavException.Reason.UNAUTHORIZED, "401"));
@@ -245,6 +253,8 @@ class CalendarsPageCaldavTest {
     }
 
     @Test
+    // S1612: not a method reference -- CaldavAccount::count breaks under Panache bytecode
+    @SuppressWarnings("java:S1612")
     void deletesOwnCaldavAccount() {
         Long id = seedCaldav(1L, false);
         given()
@@ -310,7 +320,7 @@ class CalendarsPageCaldavTest {
 
         assertThat(QuarkusTransaction
             .requiringNew()
-            .call(() -> SelectedCalendar.writeTarget(1L))).isNull();
+            .call(() -> SelectedCalendar.writeTargetOf(1L))).isNull();
     }
 
     @Test
@@ -333,7 +343,7 @@ class CalendarsPageCaldavTest {
 
         assertThat(QuarkusTransaction
             .requiringNew()
-            .call(() -> SelectedCalendar.writeTarget(1L)))
+            .call(() -> SelectedCalendar.writeTargetOf(1L)))
             .extracting(c -> c.remoteId)
             .isEqualTo(href);
     }
@@ -412,7 +422,7 @@ class CalendarsPageCaldavTest {
 
         assertThat(QuarkusTransaction
             .requiringNew()
-            .call(() -> SelectedCalendar.writeTarget(1L))).isNull();
+            .call(() -> SelectedCalendar.writeTargetOf(1L))).isNull();
         assertThat(QuarkusTransaction
             .requiringNew()
             .<Long>call(() -> SelectedCalendar.count("ownerId = ?1 and readForBusy = true", 1L))
@@ -454,7 +464,7 @@ class CalendarsPageCaldavTest {
 
         assertThat(QuarkusTransaction
             .requiringNew()
-            .call(() -> SelectedCalendar.writeTarget(1L))).isNull();
+            .call(() -> SelectedCalendar.writeTargetOf(1L))).isNull();
     }
 
     @Test
@@ -472,6 +482,8 @@ class CalendarsPageCaldavTest {
     }
 
     @Test
+    // S1612: not a method reference -- CaldavAccount::count breaks under Panache bytecode
+    @SuppressWarnings("java:S1612")
     void unexpectedListingFailureOnConnectShowsGenericErrorAndStoresNothing() {
         when(caldav.discover(anyString(), anyString(), anyString()))
             .thenReturn(

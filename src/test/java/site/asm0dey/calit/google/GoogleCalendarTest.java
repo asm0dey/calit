@@ -16,7 +16,7 @@ class GoogleCalendarTest {
         cal("busy@example.com", "Side", true, false);
         cal("ignored@example.com", "Ignored", false, false);
 
-        List<SelectedCalendar> readers = SelectedCalendar.readForBusy(1L);
+        List<SelectedCalendar> readers = SelectedCalendar.busyCalendars(1L);
 
         assertThat(readers)
             .hasSize(2)
@@ -29,7 +29,7 @@ class GoogleCalendarTest {
         cal("read@example.com", "Read", true, false);
         cal("write@example.com", "Write", false, true);
 
-        SelectedCalendar target = SelectedCalendar.writeTarget(1L);
+        SelectedCalendar target = SelectedCalendar.writeTargetOf(1L);
 
         assertThat(target).isNotNull();
         assertThat(target.remoteId).isEqualTo("write@example.com");
@@ -39,7 +39,7 @@ class GoogleCalendarTest {
     @TestTransaction
     void writeTargetIsNullWhenNoneSelected() {
         cal("read@example.com", "Read", true, false);
-        assertThat(SelectedCalendar.writeTarget(1L)).isNull();
+        assertThat(SelectedCalendar.writeTargetOf(1L)).isNull();
     }
 
     private SelectedCalendar cal(String id, String summary, boolean read, boolean write) {

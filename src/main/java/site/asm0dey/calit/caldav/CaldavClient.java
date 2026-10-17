@@ -16,6 +16,10 @@ public class CaldavClient {
     private static final String DAV = "DAV:";
     private static final String CALDAV = "urn:ietf:params:xml:ns:caldav";
     private static final String XML = "application/xml; charset=utf-8";
+    private static final String PROPFIND = "PROPFIND";
+    private static final String DEPTH = "Depth";
+    private static final String CONTENT_TYPE = "Content-Type";
+    private static final String STATUS = "status";
     private static final String PRINCIPAL_BODY =
             """
             <?xml version="1.0" encoding="utf-8"?>
@@ -121,12 +125,13 @@ public class CaldavClient {
      * stored credentials, throws {@link CaldavException} otherwise.
      */
     public void probe(CaldavAccount a) {
-        var res = http.send(
-                a,
-                "PROPFIND",
-                URI.create(a.principalUrl),
-                Map.of("Depth", "0", "Content-Type", XML),
-                PRINCIPAL_BODY
+        var res =
+                http.send(
+                        a,
+                        PROPFIND,
+                        URI.create(a.principalUrl),
+                        Map.of(DEPTH, "0", CONTENT_TYPE, XML),
+                        PRINCIPAL_BODY
         );
         expectMultistatus(res);
     }
@@ -136,7 +141,7 @@ public class CaldavClient {
      */
     public List<RemoteCalendar> listCalendars(CaldavAccount a) {
         var home = URI.create(a.homeUrl);
-        var res = http.send(a, "PROPFIND", home, Map.of("Depth", "1", "Content-Type", XML), LIST_BODY);
+        var res = http.send(a, PROPFIND, home, Map.of(DEPTH, "1", CONTENT_TYPE, XML), LIST_BODY);
         expectMultistatus(res);
         return parse(res.body(), home)
             .stream()
@@ -158,7 +163,7 @@ public class CaldavClient {
     public List<String> queryEvents(CaldavAccount a, String calendarHref, Instant from, Instant to) {
         var uri = URI.create(calendarHref);
         var body = QUERY_BODY.formatted(UTC_STAMP.format(from), UTC_STAMP.format(to));
-        var res = http.send(a, "REPORT", uri, Map.of("Depth", "1", "Content-Type", XML), body);
+        var res = http.send(a, "REPORT", uri, Map.of(DEPTH, "1", CONTENT_TYPE, XML), body);
         expectMultistatus(res);
         var responses = parse(res.body(), uri);
         // fail closed: a forbidden, missing or truncated (507) part would silently drop busy time
@@ -200,7 +205,7 @@ public class CaldavClient {
 
     private String put(CaldavAccount a, URI eventUrl, String ics, String precondition, String value) {
         var headers = new HashMap<String, String>();
-        headers.put("Content-Type", "text/calendar; charset=utf-8");
+        headers.put(CONTENT_TYPE, "text/calendar; charset=utf-8");
         if (precondition != null) {
             headers.put(precondition, value);
         }
@@ -239,7 +244,7 @@ public class CaldavClient {
      * PROPFIND used during discovery: anything but a parseable 207 means "not here", so the next candidate is tried.
      */
     private List<DavResponse> propfind(String user, String password, URI uri, String depth, String body) {
-        var res = http.send(user, password, "PROPFIND", uri, Map.of("Depth", depth, "Content-Type", XML), body);
+        var res = http.send(user, password, PROPFIND, uri, Map.of(DEPTH, depth, CONTENT_TYPE, XML), body);
         if (res.status() != 207) {
             return List.of();
         }
@@ -337,17 +342,17 @@ public class CaldavClient {
             var propstats = children(response, DAV, "propstat");
             var props = propstats
                 .stream()
-                .filter(ps -> children(ps, DAV, "status")
+                .filter(ps -> children(ps, DAV, STATUS)
                     .stream()
                     .allMatch(s -> statusCode(s) == 200))
                 .flatMap(ps -> children(ps, DAV, "prop").stream())
                 .toList();
             var failed = Stream
                 .concat(
-                        children(response, DAV, "status").stream(),
+                        children(response, DAV, STATUS).stream(),
                         propstats
                             .stream()
-                            .flatMap(ps -> children(ps, DAV, "status").stream())
+                            .flatMap(ps -> children(ps, DAV, STATUS).stream())
                 )
                 .mapToInt(CaldavClient::statusCode)
                 .filter(c -> c != 200)

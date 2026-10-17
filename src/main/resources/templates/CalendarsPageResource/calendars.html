@@ -1,9 +1,7 @@
 {@java.util.List<site.asm0dey.calit.web.AccountView> accounts}
 {@java.lang.Boolean loadError}
 {@java.lang.Boolean noWriteTarget}
-{@java.lang.String error}
-{@java.lang.String connectError}
-{@site.asm0dey.calit.web.CalendarsPageResource$ConnectForm connect}
+{@site.asm0dey.calit.web.CalendarsPageResource$Feedback feedback}
 {@java.lang.Long pendingCount}
 {@java.lang.Boolean isAdmin}
 {@java.lang.String title}
@@ -13,8 +11,8 @@
 
   <a class="btn btn-primary mb-4" href="/api/google/connect">{adm:google_btn_connect}</a>
 
-  {#if error}
-    <div class="alert alert-error mb-4" role="alert"><span>{error}</span></div>
+  {#if feedback.error}
+    <div class="alert alert-error mb-4" role="alert"><span>{feedback.error}</span></div>
   {/if}
   {#if loadError}
     <div class="alert alert-error mb-4">{adm:google_load_error}</div>
@@ -103,15 +101,15 @@
     <div class="card-body gap-3">
       <h2 class="text-lg font-semibold">{adm:calendars_caldav_h2}</h2>
       <p class="text-sm text-base-content/70">{adm:calendars_caldav_hint}</p>
-      {#if connectError}
-        <div class="alert alert-error" role="alert"><span>{connectError}</span></div>
+      {#if feedback.connectError}
+        <div class="alert alert-error" role="alert"><span>{feedback.connectError}</span></div>
       {/if}
       <form method="post" action="/me/calendars/caldav" class="fieldset">
         <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
         <label class="label" for="caldav-url">{adm:calendars_caldav_label_url}</label>
-        <input id="caldav-url" class="input w-full" type="url" name="serverUrl" required placeholder="https://" value="{connect.serverUrl}">
+        <input id="caldav-url" class="input w-full" type="url" name="serverUrl" required placeholder="https://" value="{feedback.connect.serverUrl}">
         <label class="label" for="caldav-user">{adm:calendars_caldav_label_username}</label>
-        <input id="caldav-user" class="input w-full" type="text" name="username" required autocomplete="username" value="{connect.username}">
+        <input id="caldav-user" class="input w-full" type="text" name="username" required autocomplete="username" value="{feedback.connect.username}">
         <label class="label" for="caldav-password">{adm:calendars_caldav_label_password}</label>
         <input id="caldav-password" class="input w-full" type="password" name="password" required autocomplete="current-password">
         <div><button type="submit" class="btn btn-primary mt-2">{adm:calendars_btn_connect_caldav}</button></div>

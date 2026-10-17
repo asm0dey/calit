@@ -234,8 +234,8 @@ class CaldavCalendarPortTest {
             .startsWith("/remote.php/")
             .endsWith(uid + ".ics")
             .hasSizeLessThanOrEqualTo(255);
-        assertThatThrownBy(() -> CaldavCalendarPort.eventUrl("https://h/" + "x".repeat(250) + "/", uid))
-            .isInstanceOf(CaldavException.class);
+        var tooLong = "https://h/" + "x".repeat(250) + "/";
+        assertThatThrownBy(() -> CaldavCalendarPort.eventUrl(tooLong, uid)).isInstanceOf(CaldavException.class);
     }
 
     /**

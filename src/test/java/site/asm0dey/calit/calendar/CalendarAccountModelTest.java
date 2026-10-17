@@ -1,8 +1,8 @@
 package site.asm0dey.calit.calendar;
 
+import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static site.asm0dey.calit.calendar.CalendarProvider.GOOGLE;
-import module java.base;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -39,7 +39,7 @@ class CalendarAccountModelTest {
         calendar(c.id, "c-cal");
 
         assertThat(SelectedCalendar.readForBusyByAccount(1L, GOOGLE).keySet()).containsExactly(g.id);
-        assertThat(SelectedCalendar.readForBusy(1L, CalendarProvider.CALDAV))
+        assertThat(SelectedCalendar.busyCalendars(1L, CalendarProvider.CALDAV))
             .extracting(s -> s.remoteId)
             .containsExactly("c-cal");
     }

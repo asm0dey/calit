@@ -47,14 +47,15 @@ class RoutingCalendarPortTest {
         when(a.provider()).thenReturn(CalendarProvider.GOOGLE);
         when(b.provider()).thenReturn(CalendarProvider.GOOGLE);
 
-        assertThatThrownBy(() -> new RoutingCalendarPort(List.of(a, b))).isInstanceOf(IllegalStateException.class);
+        var ports = List.of(a, b);
+        assertThatThrownBy(() -> new RoutingCalendarPort(ports)).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void routerReachesEveryProviderPortBean() {
-        var router = new RoutingCalendarPort(providerPorts);
+        var routing = new RoutingCalendarPort(providerPorts);
 
-        assertThat(router.providers())
+        assertThat(routing.providers())
             .containsExactlyInAnyOrderElementsOf(providerPorts.stream().map(ProviderCalendarPort::provider).toList())
             .containsExactlyInAnyOrder(CalendarProvider.values());
     }

@@ -67,9 +67,9 @@ class GoogleEntitiesOwnerScopeTest {
         b.accountId = credB.id;
         b.persist();
 
-        assertThat(SelectedCalendar.readForBusy(3001L)).hasSize(1);
-        assertThat(SelectedCalendar.writeTarget(3001L).remoteId).isEqualTo("cal-a");
-        assertThat(SelectedCalendar.writeTarget(3002L).remoteId).isEqualTo("cal-b");
+        assertThat(SelectedCalendar.busyCalendars(3001L)).hasSize(1);
+        assertThat(SelectedCalendar.writeTargetOf(3001L).remoteId).isEqualTo("cal-a");
+        assertThat(SelectedCalendar.writeTargetOf(3002L).remoteId).isEqualTo("cal-b");
         assertThat(SelectedCalendar.findByRemoteId(3001L, "cal-a").remoteId).isEqualTo("cal-a");
         assertThat(SelectedCalendar.findByRemoteId(3001L, "cal-b")).as("other owner's calendar id -> null").isNull();
     }

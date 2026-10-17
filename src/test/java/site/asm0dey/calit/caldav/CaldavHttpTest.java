@@ -1,7 +1,6 @@
 package site.asm0dey.calit.caldav;
 
 import module java.base;
-import module java.net.http;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.sun.net.httpserver.HttpServer;

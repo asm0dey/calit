@@ -37,52 +37,12 @@ public class CaldavHttp {
             // shortcut: DNS rebinding between check and connect is not prevented, pin the resolved IP via a custom
             // resolver if this instance is multi-tenant and hostile
             uri = HostGuard.checked(uri, config.allowPrivateHosts());
-            HttpRequest request;
-            try {
-                var req = HttpRequest
-                    .newBuilder(uri)
-                    .timeout(config.timeout())
-                    .method(
-                            method,
-                            body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(
-                                    body
-                            )
-                    );
-                headers.forEach(req::header);
-                // never hand the credentials to a different host than the one the user entered
-                if (sameOrigin(origin, uri)) {
-                    var basic =
-                            Base64
-                        .getEncoder()
-                        .encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8));
-                    req.header("Authorization", "Basic " + basic);
-                }
-                request = req.build();
-            } catch (IllegalArgumentException e) {
-                throw new CaldavException(CaldavException.Reason.HTTP_ERROR, 0, "Invalid CalDAV request", e);
-            }
-            HttpResponse<InputStream> res;
-            String text;
-            try {
-                res = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-                text = readCapped(res);
-            } catch (IOException e) {
-                throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "CalDAV server unreachable", e);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "Interrupted", e);
-            }
+            var fetched = execute(request(user, password, method, origin, uri, headers, body));
+            var res = fetched.response();
             int status = res.statusCode();
             var location = res.headers().firstValue("Location");
             if (status >= 300 && status < 400 && location.isPresent()) {
-                if (hop >= MAX_REDIRECTS) {
-                    throw new CaldavException(CaldavException.Reason.HTTP_ERROR, status, "Too many redirects", null);
-                }
-                try {
-                    uri = uri.resolve(location.get());
-                } catch (IllegalArgumentException e) {
-                    throw new CaldavException(CaldavException.Reason.HTTP_ERROR, status, "Malformed redirect", e);
-                }
+                uri = redirect(uri, location.get(), status, hop);
                 continue;
             }
             if (status == 401 || status == 403) {
@@ -93,7 +53,69 @@ public class CaldavHttp {
                         null
                 );
             }
-            return new Response(status, res.headers().map(), text);
+            return new Response(status, res.headers().map(), fetched.text());
+        }
+    }
+
+    private record Fetched(HttpResponse<InputStream> response, String text) {}
+
+    /**
+     * Builds the request for {@code uri}, which must be the value {@link HostGuard#checked} just returned.
+     */
+    private HttpRequest request(
+            String user,
+            String password,
+            String method,
+            URI origin,
+            URI uri,
+            Map<String, String> headers,
+            String body
+    ) {
+        try {
+            var req = HttpRequest
+                .newBuilder(uri)
+                .timeout(config.timeout())
+                .method(
+                        method,
+                        body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body)
+                );
+            headers.forEach(req::header);
+            // never hand the credentials to a different host than the one the user entered
+            if (sameOrigin(origin, uri)) {
+                var basic = Base64
+                    .getEncoder()
+                    .encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8));
+                req.header("Authorization", "Basic " + basic);
+            }
+            return req.build();
+        } catch (IllegalArgumentException e) {
+            throw new CaldavException(CaldavException.Reason.HTTP_ERROR, 0, "Invalid CalDAV request", e);
+        }
+    }
+
+    private Fetched execute(HttpRequest request) {
+        try {
+            var res = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            return new Fetched(res, readCapped(res));
+        } catch (IOException e) {
+            throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "CalDAV server unreachable", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "Interrupted", e);
+        }
+    }
+
+    /**
+     * The next hop's (not yet guarded) target, or a refusal once {@link #MAX_REDIRECTS} hops were followed.
+     */
+    private static URI redirect(URI uri, String location, int status, int hop) {
+        if (hop >= MAX_REDIRECTS) {
+            throw new CaldavException(CaldavException.Reason.HTTP_ERROR, status, "Too many redirects", null);
+        }
+        try {
+            return uri.resolve(location);
+        } catch (IllegalArgumentException e) {
+            throw new CaldavException(CaldavException.Reason.HTTP_ERROR, status, "Malformed redirect", e);
         }
     }
 

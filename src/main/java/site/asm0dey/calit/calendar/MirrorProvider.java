@@ -18,7 +18,7 @@ public final class MirrorProvider {
         return QuarkusTransaction.joiningExisting().call(() -> {
             CalendarAccount account = ref == null ? null : CalendarAccount.findOwned(ownerId, ref.accountId());
             if (account == null) {
-                SelectedCalendar target = SelectedCalendar.writeTarget(ownerId);
+                SelectedCalendar target = SelectedCalendar.writeTargetOf(ownerId);
                 account = target == null ? null : CalendarAccount.findOwned(ownerId, target.accountId);
             }
             return account == null ? null : account.provider();

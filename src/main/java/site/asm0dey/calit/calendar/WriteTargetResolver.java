@@ -71,7 +71,7 @@ public class WriteTargetResolver {
                     ownerId
             );
         }
-        return SelectedCalendar.writeTarget(ownerId);
+        return SelectedCalendar.writeTargetOf(ownerId);
     }
 
     /**
@@ -87,7 +87,7 @@ public class WriteTargetResolver {
      * "nowhere".
      */
     public CalendarRef writeTargetRef(Long ownerId) {
-        return address(SelectedCalendar.writeTarget(ownerId));
+        return address(SelectedCalendar.writeTargetOf(ownerId));
     }
 
     private static CalendarRef address(SelectedCalendar calendar) {

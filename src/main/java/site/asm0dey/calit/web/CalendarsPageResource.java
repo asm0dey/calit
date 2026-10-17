@@ -42,15 +42,21 @@ public class CalendarsPageResource {
      */
     public record ConnectForm(String serverUrl, String username) {}
 
+    /**
+     * What the last submit sends back: a page-level error, a Connect CalDAV form error, and that form's echo.
+     */
+    public record Feedback(String error, String connectError, ConnectForm connect) {}
+
     @CheckedTemplate
     public static class Templates {
+        private Templates() {
+        }
+
         public static native TemplateInstance calendars(
                 List<AccountView> accounts,
                 boolean loadError,
                 boolean noWriteTarget,
-                String error,
-                String connectError,
-                ConnectForm connect,
+                Feedback feedback,
                 Long pendingCount,
                 boolean isAdmin,
                 String title
@@ -100,68 +106,75 @@ public class CalendarsPageResource {
 
     private TemplateInstance page(String error, String connectError, ConnectForm connect) {
         Long ownerId = currentOwner.id();
-        List<AccountView> accounts = new ArrayList<>();
-        var loadError = false;
-        for (CalendarAccount account : accounts(ownerId)) {
-            Map<String, SelectedCalendar> saved = SelectedCalendar
-                .<SelectedCalendar>list("accountId", account.id)
-                .stream()
-                .collect(Collectors.toMap(c -> c.remoteId, c -> c, (a, b) -> a));
-            List<CalendarRow> rows = new ArrayList<>();
-            var loadFailed = account.needsReconnect;
-            if (!loadFailed) {
-                try {
-                    for (CalendarListPort.RemoteCalendar rc : calendarListPort.listCalendars(account)) {
-                        SelectedCalendar s = saved.get(rc.remoteId());
-                        // first-load: all read
-                        boolean read = s == null ? saved.isEmpty() : s.readForBusy;
-                        rows.add(
-                                new CalendarRow(
-                                        account.id,
-                                        rc.remoteId(),
-                                        rc.summary(),
-                                        read,
-                                        s != null && s.writeTarget
-                                )
-                        );
-                    }
-                } catch (RuntimeException ex) {
-                    // The UI only says "couldn't load", so this WARN is the only way an operator learns WHY
-                    // (e.g. Calendar API not enabled, 403, revoked scope, CalDAV server down).
-                    LOG.warnf(ex, "Calendar list failed for owner %d, account %d", ownerId, account.id);
-                    loadError = true;
-                    loadFailed = true;
-                    rows.clear();
-                }
-            }
-            if (loadFailed) {
-                // Dead or unreachable account: show the saved config so the owner sees what's configured.
-                for (SelectedCalendar s : saved.values()) {
-                    rows.add(new CalendarRow(account.id, s.remoteId, s.summary, s.readForBusy, s.writeTarget));
-                }
-            }
-            accounts.add(
-                    new AccountView(
-                            account.id,
-                            account.label() == null ? m().calendars_account_unnamed() : account.label(),
-                            account.provider().name(),
-                            account.needsReconnect,
-                            loadFailed,
-                            rows
-                    )
-            );
-        }
+        List<AccountView> accounts = accounts(ownerId).stream().map(this::accountView).toList();
+        // the listing threw, as opposed to an account already flagged for reconnect
+        var loadError = accounts
+            .stream()
+            .anyMatch(a -> a.loadFailed() && !a.needsReconnect());
         return Templates.calendars(
                 accounts,
                 loadError,
-                !accounts.isEmpty() && SelectedCalendar.writeTarget(ownerId) == null,
-                error,
-                connectError,
-                connect,
+                !accounts.isEmpty() && SelectedCalendar.writeTargetOf(ownerId) == null,
+                new Feedback(error, connectError, connect),
                 Booking.count("ownerId = ?1 and status = ?2", ownerId, BookingStatus.PENDING),
                 identity.hasRole("admin"),
                 m().adm_google_title()
         );
+    }
+
+    private AccountView accountView(CalendarAccount account) {
+        Map<String, SelectedCalendar> saved = SelectedCalendar
+            .<SelectedCalendar>list("accountId", account.id)
+            .stream()
+            .collect(Collectors.toMap(c -> c.remoteId, c -> c, (a, b) -> a));
+        // The UI only says "couldn't load", so this WARN is the only way an operator learns WHY
+        // (e.g. Calendar API not enabled, 403, revoked scope, CalDAV server down).
+        Optional<List<CalendarListPort.RemoteCalendar>> live = account.needsReconnect
+                ? Optional.empty()
+                : listCalendars(account, "Calendar list failed for owner %d, account %d");
+        List<CalendarRow> rows = live
+            .map(calendars -> liveRows(account.id, calendars, saved))
+            // Dead or unreachable account: show the saved config so the owner sees what's configured.
+            .orElseGet(() -> saved
+                .values()
+                .stream()
+                .map(s -> new CalendarRow(account.id, s.remoteId, s.summary, s.readForBusy, s.writeTarget))
+                .toList());
+        return new AccountView(
+                account.id,
+                account.label() == null ? m().calendars_account_unnamed() : account.label(),
+                account.provider().name(),
+                account.needsReconnect,
+                live.isEmpty(),
+                rows
+        );
+    }
+
+    private static List<CalendarRow> liveRows(
+            Long accountId,
+            List<CalendarListPort.RemoteCalendar> calendars,
+            Map<String, SelectedCalendar> saved
+    ) {
+        List<CalendarRow> rows = new ArrayList<>();
+        for (CalendarListPort.RemoteCalendar rc : calendars) {
+            SelectedCalendar s = saved.get(rc.remoteId());
+            // first-load: all read
+            boolean read = s == null ? saved.isEmpty() : s.readForBusy;
+            rows.add(new CalendarRow(accountId, rc.remoteId(), rc.summary(), read, s != null && s.writeTarget));
+        }
+        return rows;
+    }
+
+    /**
+     * The account's live calendar list, or empty after logging {@code failure} (formatted with owner and account id).
+     */
+    private Optional<List<CalendarListPort.RemoteCalendar>> listCalendars(CalendarAccount account, String failure) {
+        try {
+            return Optional.of(calendarListPort.listCalendars(account));
+        } catch (RuntimeException ex) {
+            LOG.warnf(ex, failure, account.ownerId, account.id);
+            return Optional.empty();
+        }
     }
 
     private Response badRequest(String error, String connectError, ConnectForm connect) {
@@ -199,12 +212,12 @@ public class CalendarsPageResource {
         account.username = echo.username();
         account.password = password;
         try {
-            try {
-                account.serverUrl = CaldavClient.serverUri(echo.serverUrl()).toASCIIString();
-            } catch (CaldavException ex) {
-                // the rejected text may hold userinfo, so it is not echoed back
-                return badRequest(null, caldavError(ex), new ConnectForm("", echo.username()));
-            }
+            account.serverUrl = CaldavClient.serverUri(echo.serverUrl()).toASCIIString();
+        } catch (CaldavException ex) {
+            // the rejected text may hold userinfo, so it is not echoed back
+            return badRequest(null, caldavError(ex), new ConnectForm("", echo.username()));
+        }
+        try {
             var found = caldav.discover(account.serverUrl, account.username, password);
             account.principalUrl = found.principalUrl().toString();
             account.homeUrl = found.homeUrl().toString();
@@ -289,21 +302,16 @@ public class CalendarsPageResource {
                 // unreachable: preserved from DB below
                 continue;
             }
-            List<CalendarListPort.RemoteCalendar> live;
-            try {
-                live = calendarListPort.listCalendars(account);
-            } catch (RuntimeException ex) {
-                LOG.warnf(
-                        ex,
-                        "Calendar list failed while saving selection for owner %d, account %d; keeping saved rows",
-                        ownerId,
-                        account.id
-                );
+            var live = listCalendars(
+                    account,
+                    "Calendar list failed while saving selection for owner %d, account %d; keeping saved rows"
+            );
+            if (live.isEmpty()) {
                 // unreachable mid-save: preserved from DB below
                 continue;
             }
             reachable.add(account.id);
-            for (CalendarListPort.RemoteCalendar rc : live) {
+            for (CalendarListPort.RemoteCalendar rc : live.get()) {
                 String key = account.id + ":" + rc.remoteId();
                 var read = readVals.contains(key);
                 var write = key.equals(writeVal);
@@ -328,17 +336,32 @@ public class CalendarsPageResource {
         boolean submittedHasWriteTarget = selections
             .stream()
             .anyMatch(CalendarSelectionService.Selection::writeTarget);
-        // Preserve existing rows for accounts we could NOT reach (flagged/errored). Keep their read
-        // selections; demote a preserved write target only if the form chose a new one, so the
-        // single-write-target-per-owner invariant holds.
+        // an explicit "None" (empty value) gives up the write calendar even on an unreachable account
+        selections.addAll(preserved(ownerId, covered, reachable, !submittedHasWriteTarget && writeVal == null));
+
+        selectionService.save(ownerId, covered, selections);
+        return Response.seeOther(PAGE).build();
+    }
+
+    /**
+     * Existing rows for accounts we could NOT reach (flagged/errored). Keeps their read selections; keeps a
+     * write target only when {@code keepWriteTarget} (the form chose no new one), so the single-write-target-per-owner
+     * invariant holds.
+     */
+    private static List<CalendarSelectionService.Selection> preserved(
+            Long ownerId,
+            Set<Long> covered,
+            Set<Long> reachable,
+            boolean keepWriteTarget
+    ) {
+        List<CalendarSelectionService.Selection> kept = new ArrayList<>();
         for (SelectedCalendar s : SelectedCalendar.<SelectedCalendar>list("ownerId", ownerId)) {
             if (reachable.contains(s.accountId) || !covered.contains(s.accountId)) {
-                // reachable accounts are fully respecified by the form above
+                // reachable accounts are fully respecified by the form
                 continue;
             }
-            // an explicit "None" (empty value) gives up the write calendar even on an unreachable account
-            var keepWrite = s.writeTarget && !submittedHasWriteTarget && writeVal == null;
-            selections.add(
+            var keepWrite = s.writeTarget && keepWriteTarget;
+            kept.add(
                     new CalendarSelectionService.Selection(
                             s.accountId,
                             s.remoteId,
@@ -349,9 +372,7 @@ public class CalendarsPageResource {
                     )
             );
         }
-
-        selectionService.save(ownerId, covered, selections);
-        return Response.seeOther(PAGE).build();
+        return kept;
     }
 
     @POST

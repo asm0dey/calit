@@ -101,7 +101,8 @@ class BusyExtractorTest {
 
     @Test
     void unparsableObjectFailsClosed() {
-        assertThatThrownBy(() -> busy(cal(event("UID:x", "DTSTART:20261103T100000Z")), "not ical at all"))
+        var calendar = cal(event("UID:x", "DTSTART:20261103T100000Z"));
+        assertThatThrownBy(() -> busy(calendar, "not ical at all"))
             .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
                 .isEqualTo(CaldavException.Reason.HTTP_ERROR));
     }

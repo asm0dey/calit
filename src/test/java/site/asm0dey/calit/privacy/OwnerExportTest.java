@@ -151,7 +151,8 @@ class OwnerExportTest {
             a.persist();
         });
         String body = given().when().get("/me/export").then().statusCode(200).extract().asString();
-        assertThat(body).contains("\"username\"", "dav-export-user", "https://dav.example.com/");
-        assertThat(body).doesNotContain("caldav_password", "KNOWN-CALDAV-APP-PASSWORD");
+        assertThat(body)
+            .contains("\"username\"", "dav-export-user", "https://dav.example.com/")
+            .doesNotContain("caldav_password", "KNOWN-CALDAV-APP-PASSWORD");
     }
 }

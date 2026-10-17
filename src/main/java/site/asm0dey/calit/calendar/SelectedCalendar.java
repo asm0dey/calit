@@ -50,14 +50,14 @@ public class SelectedCalendar extends PanacheEntityBase {
     /**
      * This owner's calendars whose busy time should be subtracted from availability.
      */
-    public static List<SelectedCalendar> readForBusy(Long ownerId) {
+    public static List<SelectedCalendar> busyCalendars(Long ownerId) {
         return list("ownerId = ?1 and readForBusy = true", ownerId);
     }
 
     /**
      * This owner's single write-target calendar, or null if none selected yet.
      */
-    public static SelectedCalendar writeTarget(Long ownerId) {
+    public static SelectedCalendar writeTargetOf(Long ownerId) {
         return find("ownerId = ?1 and writeTarget = true", ownerId).firstResult();
     }
 
@@ -93,13 +93,13 @@ public class SelectedCalendar extends PanacheEntityBase {
      * This owner's read-for-busy calendars grouped by the Connected account they belong to.
      */
     public static Map<Long, List<SelectedCalendar>> readForBusyByAccount(Long ownerId, CalendarProvider provider) {
-        return readForBusy(ownerId, provider).stream().collect(Collectors.groupingBy(c -> c.accountId));
+        return busyCalendars(ownerId, provider).stream().collect(Collectors.groupingBy(c -> c.accountId));
     }
 
     /**
      * This owner's read-for-busy calendars on accounts of {@code provider}.
      */
-    public static List<SelectedCalendar> readForBusy(Long ownerId, CalendarProvider provider) {
+    public static List<SelectedCalendar> busyCalendars(Long ownerId, CalendarProvider provider) {
         var accountEntity = switch (provider) {
             case GOOGLE -> "GoogleCredential";
             case CALDAV -> "CaldavAccount";

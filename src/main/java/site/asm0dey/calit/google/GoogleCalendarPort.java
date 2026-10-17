@@ -340,7 +340,7 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
     }
 
     private SelectedCalendar requireWriteTarget(Long ownerId) {
-        SelectedCalendar target = SelectedCalendar.writeTarget(ownerId);
+        SelectedCalendar target = SelectedCalendar.writeTargetOf(ownerId);
         // a CalDAV write target is not ours to write on; the router only sends us here for Google
         if (target == null || !(CalendarAccount.findOwned(ownerId, target.accountId) instanceof GoogleCredential)) {
             throw new IllegalStateException("No write-target Google calendar selected. POST /api/google/calendars.");
