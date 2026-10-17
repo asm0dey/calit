@@ -29,6 +29,7 @@
     <test-order-plugin.version>0.1.0</test-order-plugin.version>
     <sonar-maven-plugin.version>5.8.0.7211</sonar-maven-plugin.version>
     <assertj.version>3.27.7</assertj.version>
+    <ical4j.version>4.4.0</ical4j.version>
 
     <!-- SonarQube Cloud analysis (CI-based, via sonar-maven-plugin). The Maven scanner does
          NOT read sonar-project.properties; all analysis parameters live here. -->
@@ -96,6 +97,12 @@
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-qute</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-rest-qute</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-reactive-routes</artifactId></dependency>
+    <!-- CalDAV: parse iCalendar data and expand recurrences client-side. -->
+    <dependency>
+      <groupId>org.mnode.ical4j</groupId>
+      <artifactId>ical4j</artifactId>
+      <version>${ical4j.version}</version>
+    </dependency>
     <!-- java.awt in the native image: renders the social-preview card. Needs runtime .so files and
          a font on disk in the container - see Dockerfile.native. -->
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-awt</artifactId></dependency>
@@ -114,6 +121,11 @@
     </dependency>
 
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-junit5</artifactId><scope>test</scope></dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
