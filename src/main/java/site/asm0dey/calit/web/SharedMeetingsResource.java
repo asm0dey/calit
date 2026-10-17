@@ -272,7 +272,7 @@ public class SharedMeetingsResource {
         // MeetingType columns (a creator reaches this page via their CREATOR host row); null for a Co-host.
         var override = writeTargets.writeOverride(currentOwner.id(), type);
         // Only the Creator has a write-calendar override (ADR 0007): an empty list hides the picker for Co-hosts.
-        var writeCalendars = currentOwner.id().equals(type.ownerId)
+        var writeCalendars = Objects.equals(currentOwner.id(), type.ownerId)
                 ? SelectedCalendar.<SelectedCalendar>list("ownerId = ?1 order by summary", currentOwner.id())
                 : List.<SelectedCalendar>of();
         var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
