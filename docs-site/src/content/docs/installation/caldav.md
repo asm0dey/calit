@@ -19,10 +19,10 @@ calit lists the account's calendars. Tick **Read busy** on each calendar that sh
 
 | Provider | Server URL | App password |
 |---|---|---|
-| Nextcloud | `https://cloud.example.com`, or `https://cloud.example.com/remote.php/dav/calendars/USERNAME/` | **Settings → Security → Devices & sessions**, create a new app password |
-| Fastmail | `https://caldav.fastmail.com/dav/calendars/user/you@example.com/` | **Settings → Privacy & Security → Integrations → New app password**, access *Calendars (CalDAV)* |
-| iCloud | `https://caldav.icloud.com` | At appleid.apple.com, **Sign-In and Security → App-Specific Passwords**. Use your Apple ID as the username |
-| mailbox.org | `https://dav.mailbox.org` | An app password from the mailbox.org security settings |
+| Nextcloud | `https://cloud.example.com` (or the principal path `https://cloud.example.com/remote.php/dav/principals/users/USERNAME/`) | **Settings → Security → Devices & sessions**, create a new app password |
+| Fastmail | `https://caldav.fastmail.com` (auto-discovery), or the calendar URL from **Settings → Calendars → Export** | **Settings → Privacy & Security → Connected apps & API tokens → Manage app passwords and access → New app password**, access *Mail, Contacts & Calendars* |
+| iCloud | `https://caldav.icloud.com` | At account.apple.com, **Sign-In and Security → App-Specific Passwords**; two-factor authentication must be on. Use your Apple ID as the username |
+| mailbox.org | `https://dav.mailbox.org`; per-calendar URLs look like `https://dav.mailbox.org/caldav/<folder-ID>` (shown in the webmailer's calendar settings). The username is your full mailbox.org address | An app password, required when 2FA is on |
 | Radicale | `https://radicale.example.com/USERNAME/` | Your Radicale password (whatever its auth backend uses) |
 
 Menu names change between provider releases; if one differs, look for "app password" in the provider's security settings.
@@ -48,7 +48,7 @@ CALDAV_ALLOW_PRIVATE_HOSTS=true
 
 ## Rejected passwords
 
-calit probes each CalDAV account on the same schedule as Google (`GOOGLE_PROBE_INTERVAL`). When the server rejects the password, the account is marked for reconnect, and the owner is emailed with a link to re-enter the password. Enter a new password via **Update password** on the Calendars page.
+calit probes each CalDAV account on the same schedule as Google (`GOOGLE_PROBE_INTERVAL`). When the server rejects the password, the account is marked for reconnect, and the owner is emailed with a link to re-enter the password. Enter a new password via **Update password** on the Calendars page. If that account's calendars are used for busy time, no slots are offered for your meeting types until you update the password.
 
 ## Troubleshooting
 

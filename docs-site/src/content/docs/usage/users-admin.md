@@ -37,7 +37,7 @@ Locking an account does not cancel the bookings it already has. They stay on the
 
 Any user can delete their own account from **Settings → Delete my account** (`/me/settings/delete`), confirming with their password, or with their username if they sign in only through Google or SSO. A site admin can delete another account with the **Delete** link in `/me/users`: it opens a confirm page (`/me/users/{id}/delete`) naming the account, and the admin must type that account's username. A mismatch deletes nothing.
 
-- Upcoming pending and confirmed bookings on the account's own meeting types are cancelled first, including every host's copy of a multi-host booking. Invitees, guests and co-hosts get the usual cancellation email, and the Google event is deleted where Google is reachable.
+- Upcoming pending and confirmed bookings on the account's own meeting types are cancelled first, including every host's copy of a multi-host booking. Invitees, guests and co-hosts get the usual cancellation email, and the calendar event (Google or CalDAV) is deleted where the calendar provider is reachable.
 - Deletion then removes the account, its settings, meeting types, availability, bookings, connected Google accounts and notification channels. The deleted user gets no email.
 - The last enabled admin cannot be deleted. An admin deletes their own account from Settings, not from `/me/users`.
 - It does not revoke calit's access at Google; the user does that in their Google account.

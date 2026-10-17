@@ -25,19 +25,19 @@ server, so the tools below are on by default, and only two of them are configura
   email and answers, and its guests. It is always available.
 - **Invitee erasure.** The same page carries an erase button (`/booking/{token}/erase`). A confirm
   page states what erasure cannot reach, then:
-  - an upcoming booking is cancelled first through the normal cancel path, so the Google event is
+  - an upcoming booking is cancelled first through the normal cancel path, so the calendar event (Google or CalDAV) is
     deleted and the slot is freed;
   - the booking is anonymised: name and email blanked, answers emptied, the meet link and the
     booking's own title and description cleared, guests deleted, unsent reminders and the booking's
     queued email deleted;
   - the row survives with `erased_at` set, and the host sees "(erased at the invitee's request)" in
     place of the invitee;
-  - for a past booking with a Google event, calit makes a best-effort delete of that event and
+  - for a past booking with a calendar event, calit makes a best-effort delete of that event and
     clears the event reference from the row;
   - for a multi-host booking, every host's copy is anonymised.
 
-  If Google fails the delete, the erasure still completes: the booking is cancelled and anonymised,
-  and the done page reports the Google copy as unreachable.
+  If the calendar provider fails the delete, the erasure still completes: the booking is cancelled and anonymised,
+  and the done page reports the calendar copy as unreachable.
 
   Hosts' copies of a multi-host booking can be anonymised at different times, because retention
   follows each host's own window. The link keeps working until every host's copy is erased: the
@@ -79,13 +79,13 @@ calit erases what it holds. It cannot reach copies that have already left the se
 
 | Copy | Reachable? | What happens |
 |---|---|---|
-| Google Calendar event on the host's calendar | While Google is connected | Deleted, then kept in Google's trash for about 30 days. If the host has since disconnected Google, calit cannot reach it. |
+| Calendar event (Google or CalDAV) on the host's calendar | While the account is connected | Deleted. Google keeps it in its trash for about 30 days (Google only). If the host has since disconnected the account, calit cannot reach it. |
 | Notification-channel message (Telegram, Slack, Discord, ntfy, …) | No | A delivered message cannot be recalled. |
 | Email already delivered over SMTP | No | It stays in every mailbox it reached. |
 | The `.ics` invite in the invitee's and guests' calendars | No | It stays in their own calendars. |
 
 The erase confirm page lists these limits before the invitee clicks, and the done page reports what
-happened to each copy: the Google event removed, unreachable, or never there. When a copy is out of
+happened to each copy: the calendar event removed, unreachable, or never there. When a copy is out of
 reach, the done page shows your `PRIVACY_CONTACT_EMAIL`, when set.
 
 Two more consequences of the erasure order:
@@ -94,7 +94,7 @@ Two more consequences of the erasure order:
   directly. If the direct send failed and a notice is parked in `email_outbox` for retry, the
   erasure deletes it with the rest of that booking's queued email, so neither the host's nor the
   invitee's copy is delivered. The host still sees the booking marked as erased.
-- Retention sweeps do not touch Google events. A booking anonymised by retention keeps its event on
+- Retention sweeps do not touch calendar events. A booking anonymised by retention keeps its event on
   the host's calendar.
 
 ## Bookings are not linked by email
@@ -120,8 +120,8 @@ own account from `/me/users`.
 - **Upcoming bookings are cancelled first.** Every upcoming pending or confirmed booking on the
   account's own meeting types is cancelled through the normal cancel path before anything is
   deleted, including every host's copy of a multi-host booking. Invitees, guests and co-hosts get
-  the usual cancellation email, and the Google event is deleted where Google is reachable; a Google
-  failure does not stop the deletion.
+  the usual cancellation email, and the calendar event is deleted where the calendar provider is reachable; a calendar provider
+  failure does not stop the deletion. Invitee erasure and account deletion remove Mirror events for both Google and CalDAV.
 - **Queued cancellation emails survive.** If a cancellation email could not be sent and is waiting
   in `email_outbox`, the copies for invitees, guests and co-hosts are kept for retry; their booking
   link is dropped, so the 30-day age purge clears them. The deleted user's own copy is deleted with

@@ -17,12 +17,15 @@ Merged but not yet in a tagged release.
 - `CALDAV_ALLOW_PRIVATE_HOSTS` (default `false`): CalDAV servers on private or loopback addresses are
   refused unless it is set. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - With no write calendar selected, bookings succeed without a Mirror event and calit emails the `.ics`
-  to everyone, the Creator included; this was a booking error. ([#TBD](https://github.com/asm0dey/calit/pulls))
+  to everyone, the Creator included. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - The `.ics` for cancelled and declined bookings now carries `METHOD:CANCEL` and the booking's
-  `SEQUENCE` (calit-bgxr). ([#TBD](https://github.com/asm0dey/calit/pulls))
+  `SEQUENCE`. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - Mirror events are written on the Creator's account only and the co-hosts' write-calendar picker is
   removed; a Meet-type booking without a minted link falls back to the meeting type's location detail
-  (calit-5fw0). ([#TBD](https://github.com/asm0dey/calit/pulls))
+ . ([#TBD](https://github.com/asm0dey/calit/pulls))
+- Owner erasure and account deletion also delete CalDAV Mirror events. ([#TBD](https://github.com/asm0dey/calit/pulls))
+- A CalDAV account whose password is rejected is marked for reconnect; if its calendars count for busy
+  time, no slots are offered until it is fixed, as for Google. ([#TBD](https://github.com/asm0dey/calit/pulls))
 - The owner data export lists CalDAV accounts (server URL, username; never the password). ([#TBD](https://github.com/asm0dey/calit/pulls))
 - Migration V37 adds `calendar_account` and `calendar` with compatibility views and paired-column
   triggers; V38 adds `booking.removed_mirror_provider`. The previous release keeps working on this

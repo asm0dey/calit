@@ -87,7 +87,7 @@ A shared meeting type shows as **temporarily unavailable** — no bookable slots
 
 - A co-host hasn't accepted yet.
 - A co-host's account is disabled.
-- A co-host's Google Calendar is disconnected.
+- A co-host's calendar account is disconnected or needs reconnect.
 
 This is a deliberate **fail-closed** design: calit will never offer a slot it cannot confirm against every host's calendar, rather than risk double-booking someone.
 
