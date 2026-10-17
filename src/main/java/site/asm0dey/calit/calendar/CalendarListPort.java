@@ -5,11 +5,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import site.asm0dey.calit.google.GoogleCredential;
 
 /**
- * Lists the owner's available Google calendars so they can choose read/write ones.
+ * Lists the owner's available calendars on its Connected accounts so they can choose read/write ones.
  */
 public interface CalendarListPort {
     /**
-     * A calendar as reported by Google's calendarList.list.
+     * A calendar as reported by the provider (Google's calendarList.list, or a CalDAV calendar-home listing).
      */
     // JSON key kept from before the rename: /api/google/calendars serialises this record.
     record RemoteCalendar(@JsonProperty("googleCalendarId") String remoteId, String summary, boolean meetSupported) {
@@ -24,7 +24,7 @@ public interface CalendarListPort {
     List<RemoteCalendar> listCalendars();
 
     /**
-     * Calendars for one specific connected account.
+     * Calendars for one specific Google connected account.
      */
     List<RemoteCalendar> listCalendars(GoogleCredential credential);
 }

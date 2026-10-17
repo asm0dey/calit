@@ -3,7 +3,7 @@ package site.asm0dey.calit.calendar;
 import module java.base;
 
 /**
- * Pure interval algebra for busy time. No Google or CDI dependencies — unit-tested directly.
+ * Pure interval algebra for busy time. No provider or CDI dependencies — unit-tested directly.
  */
 public final class BusyIntervals {
     private BusyIntervals() {

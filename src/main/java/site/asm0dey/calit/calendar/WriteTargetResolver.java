@@ -5,12 +5,12 @@ import org.jboss.logging.Logger;
 import site.asm0dey.calit.domain.MeetingType;
 
 /**
- * Which Google calendar a given host writes a given meeting type's events on:
+ * Which calendar (on any provider) a given host writes a given meeting type's Mirror events on:
  *
  * <ol>
  *   <li>the Creator's override on the {@code meeting_type} columns, when it still names one of
  *       their selected calendars (a Co-host has none; ADR 0007);
- *   <li>otherwise the owner's write target ({@code google_calendar.write_target});
+ *   <li>otherwise the owner's write target (the {@code calendar} table's {@code write_target} flag);
  *   <li>otherwise nothing, and {@link CalendarPort} raises its existing "no write target"
  *       error.
  * </ol>
@@ -98,7 +98,7 @@ public class WriteTargetResolver {
      * The write-calendar picker's three-valued form encoding for {@code override}: {@code ""} when
      * there is no override, {@link #KEEP} when {@code dangling} (round-trips a dangling override
      * through an unrelated save instead of erasing it), else the
-     * {@code "credentialId:googleCalendarId"} pair -- byte-identical to {@link
+     * {@code "accountId:remoteCalendarId"} pair -- byte-identical to {@link
      * SelectedCalendar#optionValue()}, which the template compares against to pre-select the matching
      * {@code <option>}. {@code AdminResource} (creator) and {@code SharedMeetingsResource} (co-host)
      * both call this one method so their two save paths can never silently diverge on the encoding.
@@ -112,7 +112,7 @@ public class WriteTargetResolver {
 
     /**
      * True when the Google calendar this host would write {@code type} on cannot mint Google Meet links,
-     * so GOOGLE_MEET must be refused. False when there is no calendar yet — don't over-block, the owner
+     * so GOOGLE_MEET must be refused (Meet links are Google-only). False when there is no calendar yet — don't over-block, the owner
      * may pick a Meet-capable one later — and false on a non-Google calendar, which is
      * {@link #meetUnavailable} (warn and allow) instead.
      */
@@ -139,8 +139,8 @@ public class WriteTargetResolver {
     }
 
     /**
-     * Parse the {@code "credentialId:googleCalendarId"} value the pickers submit (same encoding the
-     * Google settings page already uses). Blank or malformed → null, meaning "no override".
+     * Parse the {@code "accountId:remoteCalendarId"} value the pickers submit (same encoding the
+     * calendar settings page uses). Blank or malformed → null, meaning "no override".
      */
     public static CalendarRef parseRef(String raw) {
         if (raw == null || raw.isBlank()) {

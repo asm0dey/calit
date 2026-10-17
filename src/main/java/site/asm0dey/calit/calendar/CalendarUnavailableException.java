@@ -1,7 +1,7 @@
 package site.asm0dey.calit.calendar;
 
 /**
- * The owner's Google free/busy data could not be read (an account is disconnected or a live call
+ * The owner's free/busy data (Google or CalDAV) could not be read (an account is disconnected or a live call
  * failed), so availability cannot be trusted. Callers must fail CLOSED — never offer slots — rather
  * than treat a missing busy list as "all free". Unchecked: propagates from freeBusy through
  * BookingService.availableSlots to the web layer, which renders the "temporarily unavailable" page.

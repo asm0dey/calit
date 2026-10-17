@@ -26,7 +26,7 @@ public abstract class CalendarAccount extends PanacheEntityBase {
     /**
      * When the owner was last emailed about this account being disconnected. NULL = not yet
      * notified for the current outage. INVARIANT: reset to NULL whenever {@code needsReconnect}
-     * is cleared (recovery), so the next outage re-notifies. See GoogleTokenService.
+     * is cleared (recovery), so the next outage re-notifies. See GoogleTokenService (Google) and the CalDAV probe/notifier for the CalDAV equivalent.
      */
     @Column(name = "reconnect_notified_at")
     public Instant reconnectNotifiedAt;

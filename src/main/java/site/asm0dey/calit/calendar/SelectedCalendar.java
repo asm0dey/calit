@@ -14,14 +14,14 @@ public class SelectedCalendar extends PanacheEntityBase {
     @Column(name = "owner_id", nullable = false)
     public Long ownerId;
     /**
-     * The connected Google account this calendar belongs to.
+     * The Connected account (Google or CalDAV) this calendar belongs to.
      */
     @Column(name = "account_id", nullable = false)
     // pre-rename JSON key of /api/google/calendars/write-target
     @JsonProperty("googleCredentialId")
     public Long accountId;
     /**
-     * The Google-side calendar id (often an email address or an opaque id).
+     * The provider-side calendar id: Google's (often an email address or an opaque id) or the CalDAV calendar href.
      */
     @Column(name = "remote_id", nullable = false)
     // pre-rename JSON key of /api/google/calendars/write-target
@@ -35,14 +35,14 @@ public class SelectedCalendar extends PanacheEntityBase {
     @Column(name = "read_for_busy", nullable = false)
     public boolean readForBusy = false;
     /**
-     * Create new booking events on this calendar. At most one row per owner may have this true.
+     * Create new Mirror events on this calendar (the Write target). At most one row per owner may have this true.
      */
     @Column(name = "write_target", nullable = false)
     public boolean writeTarget = false;
     /**
-     * Whether this calendar can create Google Meet conferences ("hangoutsMeet" allowed). When the
-     * write target can't, GOOGLE_MEET meeting types are forbidden so bookings don't 500 on Google's
-     * "Invalid conference type value". Captured from calendarList at selection time.
+     * Whether this calendar can create Google Meet conferences ("hangoutsMeet" allowed); Google-only, CalDAV
+     * calendars never can. When a Google write target can't, GOOGLE_MEET meeting types are forbidden so bookings don't 500 on Google's
+     * "Invalid conference type value". Captured from Google's calendarList at selection time.
      */
     @Column(name = "supports_meet", nullable = false)
     public boolean supportsMeet = true;
@@ -62,14 +62,14 @@ public class SelectedCalendar extends PanacheEntityBase {
     }
 
     /**
-     * This owner's calendar with the given Google id, or null.
+     * This owner's calendar with the given provider calendar id, or null.
      */
     public static SelectedCalendar findByRemoteId(Long ownerId, String remoteId) {
         return find("ownerId = ?1 and remoteId = ?2", ownerId, remoteId).firstResult();
     }
 
     /**
-     * This owner's selected calendar with the given Google id on the given connected account, or
+     * This owner's selected calendar with the given provider calendar id on the given connected account, or
      * null. Unlike {@link #findByRemoteId(Long, String)} this disambiguates a calendar shared into
      * two accounts, which is exactly what a stored (credential, calendar) override names.
      */
@@ -81,8 +81,8 @@ public class SelectedCalendar extends PanacheEntityBase {
     }
 
     /**
-     * This calendar as a {@code "accountId:remoteId"} form value — the encoding the Google
-     * settings page already uses for its checkboxes/radios, and what the write-calendar pickers
+     * This calendar as a {@code "accountId:remoteId"} form value — the encoding the calendar
+     * settings page uses for its checkboxes/radios, and what the write-calendar pickers
      * submit. A method (not template string-concat) because Qute has no concatenation operator.
      */
     public String optionValue() {
@@ -97,7 +97,7 @@ public class SelectedCalendar extends PanacheEntityBase {
     }
 
     /**
-     * This owner's read-for-busy calendars grouped by the credential (account) they belong to.
+     * This owner's read-for-busy calendars grouped by the Connected account they belong to.
      */
     public static Map<Long, List<SelectedCalendar>> readForBusyByAccount(Long ownerId, CalendarProvider provider) {
         return readForBusy(ownerId, provider).stream().collect(Collectors.groupingBy(c -> c.accountId));
