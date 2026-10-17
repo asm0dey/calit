@@ -59,47 +59,51 @@ class EmailServiceGuestTest {
      * Seeds a booking with the given status + icsSequence and one guest; returns the booking id.
      */
     private long seedWithGuest(GuestStatus guestStatus, BookingStatus bookingStatus, int icsSequence) {
-        return QuarkusTransaction.requiringNew().call(() -> {
-            OwnerSettings s = OwnerSettings.forOwner(1L);
-            if (s == null) {
-                s = new OwnerSettings();
-                s.ownerId = 1L;
-            }
-            s.ownerName = "Owner";
-            s.ownerEmail = OWNER_EMAIL;
-            s.timezone = "Europe/Amsterdam";
-            s.ownerNotificationsEnabled = true;
-            s.persist();
-            MeetingType t = new MeetingType();
-            t.ownerId = 1L;
-            t.name = "Discovery Call";
-            t.slug = "disc-" + System.nanoTime();
-            t.durationMinutes = 30;
-            t.locationType = LocationType.GOOGLE_MEET;
-            t.persist();
-            Booking b = new Booking();
-            b.ownerId = 1L;
-            b.meetingTypeId = t.id;
-            b.inviteeName = "Sam Invitee";
-            b.inviteeEmail = INVITEE_EMAIL;
-            b.startUtc = Instant.parse("2026-06-08T09:00:00Z");
-            b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
-            b.meetLink = "https://meet.google.com/abc";
-            b.status = bookingStatus;
-            b.manageToken = "tok-" + System.nanoTime();
-            b.createdAt = Instant.now();
-            b.icsSequence = icsSequence;
-            b.persist();
-            BookingGuest g = new BookingGuest();
-            g.ownerId = 1L;
-            g.bookingId = b.id;
-            g.email = GUEST_EMAIL;
-            g.status = guestStatus;
-            g.declineToken = "dt-" + System.nanoTime();
-            g.createdAt = Instant.now();
-            g.persist();
-            return b.id;
-        });
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                OwnerSettings s = OwnerSettings.forOwner(1L);
+                if (s == null) {
+                    s = new OwnerSettings();
+                    s.ownerId = 1L;
+                }
+                s.ownerName = "Owner";
+                s.ownerEmail = OWNER_EMAIL;
+                s.timezone = "Europe/Amsterdam";
+                s.ownerNotificationsEnabled = true;
+                s.persist();
+                MeetingType t = new MeetingType();
+                t.ownerId = 1L;
+                t.name = "Discovery Call";
+                t.slug = "disc-" + System.nanoTime();
+                t.durationMinutes = 30;
+                t.locationType = LocationType.GOOGLE_MEET;
+                t.persist();
+                Booking b = new Booking();
+                b.ownerId = 1L;
+                b.meetingTypeId = t.id;
+                b.inviteeName = "Sam Invitee";
+                b.inviteeEmail = INVITEE_EMAIL;
+                b.startUtc = Instant.parse("2026-06-08T09:00:00Z");
+                b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
+                b.meetLink = "https://meet.google.com/abc";
+                // the Mirror event Google invited the guest to (inert when not connected)
+                b.eventId = "evt-guest";
+                b.status = bookingStatus;
+                b.manageToken = "tok-" + System.nanoTime();
+                b.createdAt = Instant.now();
+                b.icsSequence = icsSequence;
+                b.persist();
+                BookingGuest g = new BookingGuest();
+                g.ownerId = 1L;
+                g.bookingId = b.id;
+                g.email = GUEST_EMAIL;
+                g.status = guestStatus;
+                g.declineToken = "dt-" + System.nanoTime();
+                g.createdAt = Instant.now();
+                g.persist();
+                return b.id;
+            });
     }
 
     /**
@@ -108,48 +112,52 @@ class EmailServiceGuestTest {
      * always use "auto" regardless of what the host chose.
      */
     private long seedWithGuestAndHostPreference(String hostTimeFormat) {
-        return QuarkusTransaction.requiringNew().call(() -> {
-            OwnerSettings s = OwnerSettings.forOwner(1L);
-            if (s == null) {
-                s = new OwnerSettings();
-                s.ownerId = 1L;
-            }
-            s.ownerName = "Owner";
-            s.ownerEmail = OWNER_EMAIL;
-            s.timezone = "UTC";
-            s.ownerNotificationsEnabled = true;
-            s.timeFormat = hostTimeFormat;
-            s.persist();
-            MeetingType t = new MeetingType();
-            t.ownerId = 1L;
-            t.name = "Discovery Call";
-            t.slug = "disc-hc-" + System.nanoTime();
-            t.durationMinutes = 30;
-            t.locationType = LocationType.GOOGLE_MEET;
-            t.persist();
-            Booking b = new Booking();
-            b.ownerId = 1L;
-            b.meetingTypeId = t.id;
-            b.inviteeName = "Sam Invitee";
-            b.inviteeEmail = INVITEE_EMAIL;
-            b.startUtc = Instant.parse("2026-06-08T13:00:00Z");
-            b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
-            b.meetLink = "https://meet.google.com/abc";
-            b.status = BookingStatus.CONFIRMED;
-            b.manageToken = "tok-" + System.nanoTime();
-            b.createdAt = Instant.now();
-            b.icsSequence = 0;
-            b.persist();
-            BookingGuest g = new BookingGuest();
-            g.ownerId = 1L;
-            g.bookingId = b.id;
-            g.email = GUEST_EMAIL;
-            g.status = GuestStatus.INVITED;
-            g.declineToken = "dt-" + System.nanoTime();
-            g.createdAt = Instant.now();
-            g.persist();
-            return b.id;
-        });
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                OwnerSettings s = OwnerSettings.forOwner(1L);
+                if (s == null) {
+                    s = new OwnerSettings();
+                    s.ownerId = 1L;
+                }
+                s.ownerName = "Owner";
+                s.ownerEmail = OWNER_EMAIL;
+                s.timezone = "UTC";
+                s.ownerNotificationsEnabled = true;
+                s.timeFormat = hostTimeFormat;
+                s.persist();
+                MeetingType t = new MeetingType();
+                t.ownerId = 1L;
+                t.name = "Discovery Call";
+                t.slug = "disc-hc-" + System.nanoTime();
+                t.durationMinutes = 30;
+                t.locationType = LocationType.GOOGLE_MEET;
+                t.persist();
+                Booking b = new Booking();
+                b.ownerId = 1L;
+                b.meetingTypeId = t.id;
+                b.inviteeName = "Sam Invitee";
+                b.inviteeEmail = INVITEE_EMAIL;
+                b.startUtc = Instant.parse("2026-06-08T13:00:00Z");
+                b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
+                b.meetLink = "https://meet.google.com/abc";
+                // the Mirror event Google invited the guest to (inert when not connected)
+                b.eventId = "evt-guest";
+                b.status = BookingStatus.CONFIRMED;
+                b.manageToken = "tok-" + System.nanoTime();
+                b.createdAt = Instant.now();
+                b.icsSequence = 0;
+                b.persist();
+                BookingGuest g = new BookingGuest();
+                g.ownerId = 1L;
+                g.bookingId = b.id;
+                g.email = GUEST_EMAIL;
+                g.status = GuestStatus.INVITED;
+                g.declineToken = "dt-" + System.nanoTime();
+                g.createdAt = Instant.now();
+                g.persist();
+                return b.id;
+            });
     }
 
     @Test

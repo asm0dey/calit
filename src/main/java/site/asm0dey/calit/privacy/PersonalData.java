@@ -113,6 +113,7 @@ public final class PersonalData {
                                 "meet_link",
                                 "meeting_type_id",
                                 "owner_id",
+                                "removed_mirror_provider",
                                 "start_utc",
                                 "status",
                                 "title"

@@ -33,12 +33,4 @@ public final class MirrorProvider {
         var holder = holder(ownerId, ref);
         return holder == null ? CalendarProvider.GOOGLE : holder;
     }
-
-    /**
-     * True when the provider sends the attendees their invitations itself (Google), so calit must not attach its own
-     * {@code .ics}; false for CalDAV, whose events carry no attendees, and when there is no Mirror event.
-     */
-    public static boolean providerNotifiesAttendees(Long ownerId, CalendarRef ref) {
-        return holder(ownerId, ref) == CalendarProvider.GOOGLE;
-    }
 }

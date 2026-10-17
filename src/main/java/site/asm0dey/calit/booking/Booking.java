@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.calendar.CalendarProvider;
 import site.asm0dey.calit.calendar.CalendarRef;
 
 @Entity
@@ -38,6 +39,12 @@ public class Booking extends PanacheEntityBase {
      */
     @Column(name = "calendar_account_id")
     public Long calendarAccountId;
+    /**
+     * The provider of the Mirror event calit last removed from this row (V38); null when none was removed.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "removed_mirror_provider", columnDefinition = "text")
+    public CalendarProvider removedMirrorProvider;
     @Column(name = "meet_link", length = 512)
     public String meetLink;
     @Enumerated(EnumType.STRING)

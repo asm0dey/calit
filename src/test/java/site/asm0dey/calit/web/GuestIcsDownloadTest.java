@@ -73,6 +73,20 @@ class GuestIcsDownloadTest {
     }
 
     @Test
+    void confirmationPageOffersTheIcsWhenNoMirrorEventWasWritten() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        // a write target exists, but this booking got no Mirror event (createEvent answered none)
+        MultiHostFixtures.googleWriteTarget(1L);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+
+        GuestBookingFixture
+            .book(this.getClass().getSimpleName() + "-no-mirror")
+            .then()
+            .statusCode(200)
+            .body(containsString("/invite.ics"));
+    }
+
+    @Test
     void icsEndpointServesTheCalendarEntry() {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
 

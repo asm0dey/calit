@@ -23,6 +23,7 @@ import site.asm0dey.calit.email.EmailService;
 import site.asm0dey.calit.email.MailHealth;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.calendar.CalendarUnavailableException;
+import site.asm0dey.calit.calendar.CalendarProvider;
 import site.asm0dey.calit.calendar.MirrorProvider;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AppMessageResolver;
@@ -633,8 +634,9 @@ public class PublicResource {
         // showing the old time. A CalDAV Mirror event invites nobody, so the .ics is offered as in
         // degraded mode. The endpoint itself stays unconditional -- a guest who deliberately
         // goes for the file still gets it.
-        boolean googleConnected = calendarPort.isConnected(type.ownerId)
-                && MirrorProvider.providerNotifiesAttendees(type.ownerId, booking.calendarRef());
+        boolean googleConnected = booking.eventId != null
+                && calendarPort.isConnected(type.ownerId)
+                && MirrorProvider.of(type.ownerId, booking.calendarRef()) == CalendarProvider.GOOGLE;
         return Templates.confirmation(
                 title,
                 booking,

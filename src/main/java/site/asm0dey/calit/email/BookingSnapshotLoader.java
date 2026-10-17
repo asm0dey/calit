@@ -7,6 +7,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.MeetingHosts;
+import site.asm0dey.calit.calendar.CalendarProvider;
+import site.asm0dey.calit.calendar.MirrorProvider;
 import site.asm0dey.calit.domain.BookingField;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
@@ -53,7 +55,8 @@ public class BookingSnapshotLoader {
         List<EmailService.AnswerLine> answers = buildAnswerLines(booking, type);
         List<HostDelivery> hostDeliveries =
                 booking.groupId == null ? List.of() : loadHostDeliveries(booking.groupId, type);
-        return new BookingSnapshot(booking, type, owner, zone, answers, hostDeliveries, booking.calendarRef());
+        List<Booking> rows = booking.groupId == null ? List.of(booking) : Booking.group(booking.groupId);
+        return new BookingSnapshot(booking, type, owner, zone, answers, hostDeliveries, mirror(rows));
     }
 
     /**
@@ -107,5 +110,23 @@ public class BookingSnapshotLoader {
             }
         }
         return lines;
+    }
+
+    /**
+     * The provider of the Mirror event among {@code rows} (a group has one, on one row): the live one, else the one
+     * calit last removed, else null. A live event with no stored address (pre-V26) resolves via the write target.
+     */
+    private static CalendarProvider mirror(List<Booking> rows) {
+        for (Booking r : rows) {
+            if (r.eventId != null) {
+                return MirrorProvider.of(r.ownerId, r.calendarRef());
+            }
+        }
+        return rows
+            .stream()
+            .map(r -> r.removedMirrorProvider)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElse(null);
     }
 }

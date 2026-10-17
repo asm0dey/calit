@@ -18,7 +18,6 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.calendar.CalendarProvider;
-import site.asm0dey.calit.calendar.MirrorProvider;
 import site.asm0dey.calit.i18n.AppLocales;
 import site.asm0dey.calit.i18n.AppMessageResolver;
 
@@ -611,12 +610,10 @@ public class EmailService {
     }
 
     void handleCancelled(BookingCancelled e) {
-        BookingSnapshot loaded = snapshots.load(e.bookingId());
-        if (loaded == null) {
+        BookingSnapshot l = snapshots.load(e.bookingId());
+        if (l == null) {
             return;
         }
-        // the cancel already cleared the booking's address; decide from where the Mirror event was
-        BookingSnapshot l = e.mirrorRef() == null ? loaded : loaded.withMirrorRef(e.mirrorRef());
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
         // No location/meet link in the cancellation body; .ics attached when Google is not connected.
         sendForKindLocaleAware(
@@ -1050,12 +1047,11 @@ public class EmailService {
     }
 
     /**
-     * The provider holding this booking's Mirror event; null in degraded mode or when there is none.
+     * The provider of this booking's Mirror event (live, or last removed by calit); null in degraded mode or when it
+     * never had one.
      */
     private CalendarProvider mirror(BookingSnapshot l) {
-        return calendarPort.isConnected(l.owner().ownerId)
-                ? MirrorProvider.holder(l.owner().ownerId, l.mirrorRef())
-                : null;
+        return calendarPort.isConnected(l.owner().ownerId) ? l.mirror() : null;
     }
 
     /**

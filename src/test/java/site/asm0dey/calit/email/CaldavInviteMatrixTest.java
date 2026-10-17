@@ -143,6 +143,34 @@ class CaldavInviteMatrixTest {
     }
 
     @Test
+    void preV26GoogleRowWithoutWriteTargetGetsNoCalitIcs() {
+        long id = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                var g = new GoogleCredential();
+                g.ownerId = 1L;
+                g.refreshToken = "rt";
+                g.googleSub = "sub-pre-v26";
+                g.persist();
+                MultiHostFixtures.settings(1L, "Owner");
+                Booking b =
+                        booking(
+                                1L,
+                                MultiHostFixtures.meetingType(1L, "pre-v26-" + System.nanoTime(), 30),
+                                BookingStatus.CONFIRMED
+                );
+                // written before V26: an event id but no stored address, and no write target today
+                b.eventId = "evt-old";
+                b.persist();
+                return b.id;
+            });
+
+        emailService.handleConfirmed(new BookingConfirmed(id));
+
+        assertNoIcs(INVITEE_EMAIL);
+    }
+
+    @Test
     void groupCohostGetsIcsCreatorDoesNot() {
         long leadId = seedGroup(caldavWriteTarget());
 

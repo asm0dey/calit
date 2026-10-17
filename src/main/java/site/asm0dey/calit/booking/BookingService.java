@@ -27,6 +27,7 @@ import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.CalendarUnavailableException;
 import site.asm0dey.calit.calendar.CreatedEvent;
+import site.asm0dey.calit.calendar.MirrorProvider;
 import site.asm0dey.calit.calendar.WriteTargetResolver;
 import site.asm0dey.calit.i18n.AppLocales;
 
@@ -533,6 +534,14 @@ public class BookingService {
      * lives on are written together" has ONE home -- a row carrying an event id but no address
      * cannot be cleaned up on the right calendar later (calit-vi8n).
      */
+    /**
+     * Records which provider held the row's Mirror event before its address is cleared: the mail that follows (this
+     * cancel, a later decline) must know whether that provider or calit invited the attendees.
+     */
+    private static void rememberRemovedMirror(Booking row) {
+        row.removedMirrorProvider = MirrorProvider.of(row.ownerId, row.calendarRef());
+    }
+
     private static void stampCreatedEvent(Booking row, CreatedEvent created) {
         if (created == null) {
             // no write calendar: no Mirror event, the row keeps no address
@@ -964,6 +973,9 @@ public class BookingService {
         if (reApproval) {
             // Feature 14: return to the approval queue; drop any existing event.
             booking.status = BookingStatus.PENDING;
+            if (booking.eventId != null) {
+                rememberRemovedMirror(booking);
+            }
             booking.eventId = null;
             booking.meetLink = null;
             booking.calendarRemoteId = null;
@@ -1354,32 +1366,22 @@ public class BookingService {
             return cancelSingle(booking, byOwner, tolerateGoogleFailure);
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        // captured before the delete clears it: the cancel mail follows where the Mirror event was
-        CalendarRef mirror = Booking
-            .<Booking>group(booking.groupId)
-            .stream()
-            .filter(r -> r.eventId != null)
-            .map(Booking::calendarRef)
-            .filter(Objects::nonNull)
-            .findFirst()
-            .orElse(null);
         // one shared event
         boolean deleted = deleteGroupGoogleEvent(booking.groupId, tolerateGoogleFailure);
         for (Booking r : Booking.<Booking>group(booking.groupId)) {
             r.status = BookingStatus.CANCELLED;
         }
         Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
-        bookingCancelledEvent.fire(new BookingCancelled(lead.id, byOwner, mirror));
+        bookingCancelledEvent.fire(new BookingCancelled(lead.id, byOwner));
         return deleted;
     }
 
     private boolean cancelSingle(Booking booking, boolean byOwner, boolean tolerateGoogleFailure) {
         booking.status = BookingStatus.CANCELLED;
         var deleted = false;
-        // captured before the refs are cleared: the cancel mail follows where the Mirror event was
-        CalendarRef mirror = booking.calendarRef();
         if (booking.eventId != null) {
             deleted = deleteRemoteEvent(booking, tolerateGoogleFailure);
+            rememberRemovedMirror(booking);
             // Clear the refs whether or not the remote call could be made -- same rule, and same
             // reason, as deleteGroupGoogleEvent: a cancelled row must not keep pointing at an event
             // that is gone (calit-ek26).
@@ -1388,7 +1390,7 @@ public class BookingService {
             booking.calendarRemoteId = null;
             booking.calendarAccountId = null;
         }
-        bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner, mirror));
+        bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner));
         return deleted;
     }
 
@@ -1409,6 +1411,7 @@ public class BookingService {
         for (Booking r : Booking.<Booking>group(groupId)) {
             if (r.eventId != null) {
                 deleted |= deleteRemoteEvent(r, tolerateGoogleFailure);
+                rememberRemovedMirror(r);
                 r.eventId = null;
                 r.calendarRemoteId = null;
                 r.calendarAccountId = null;

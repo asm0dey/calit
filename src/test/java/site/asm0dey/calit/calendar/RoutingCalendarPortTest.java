@@ -139,10 +139,9 @@ class RoutingCalendarPortTest {
     }
 
     @Test
-    void unknownRefAndNoWriteTargetRouteToGoogleButNotifyNobody() {
+    void unknownRefAndNoWriteTargetRouteToGoogleButHaveNoHolder() {
         assertThat(MirrorProvider.of(1L, new CalendarRef(999L, "nope"))).isEqualTo(CalendarProvider.GOOGLE);
         assertThat(MirrorProvider.holder(1L, null)).isNull();
-        assertThat(MirrorProvider.providerNotifiesAttendees(1L, null)).isFalse();
     }
 
     @Test
