@@ -59,8 +59,8 @@ site is the source of truth.
 ## Run it
 
 Prebuilt multi-arch images are published to **`ghcr.io/asm0dey/calit`** and, with identical tags,
-**`docker.io/asm0dey/calit`** (tags: `latest`, `1.27.2`,
-`1.27.2-native`). The fastest path is Docker Compose:
+**`docker.io/asm0dey/calit`** (tags: `latest`, `1.28.0`,
+`1.28.0-native`). The fastest path is Docker Compose:
 
 ```bash
 cp .env.example .env    # set at least DB_PASSWORD, SESSION_ENCRYPTION_KEY, APP_BASE_URL, MAIL_*
