@@ -1,11 +1,11 @@
 ---
 # calit-5fw0
 title: 'The Creator is always the Organizer: remove the Co-host write override'
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-08-23T16:52:30Z
-updated_at: 2026-10-17T11:49:55Z
+updated_at: 2026-10-17T17:18:17Z
 ---
 
 Implements `docs/adr/0007-the-creator-is-always-the-organizer.md` and the
@@ -65,8 +65,12 @@ a `## Unreleased` changelog bullet on the `docs-site` branch.
 - [x] Location fallback in EmailService.resolveLocation + PublicResource
 - [x] Update MeetingHostsTest and BookingWriteTargetOverrideTest
 - [x] Full `mvn test` green
-- [ ] Changelog bullet under `## Unreleased` on docs-site
+- [x] Changelog bullet under `## Unreleased` on docs-site
 
 ## Progress
 
 Code done on feat/caldav (e20a87d3, ca2cd6e3, 5d68de43, d1d068f7); mvn verify green (1308). Legacy pre-ADR-0007 co-host event rows guarded by GroupEditDetailsTest. Open: changelog + docs-site google-oauth.md co-host text — written in CalDAV plan Task 10.
+
+## Summary of Changes
+
+The Creator is the only organizer: chooseOrganizer returns the Creator or null; group Mirror events live on the lead row; the Co-host write override, its picker and the MeetingTypeHost google_* mapping are gone (columns kept for the previous release; drop tracked in calit-4air). Pre-ADR-0007 Co-host event rows stay editable/cancellable (GroupEditDetailsTest). Meet-type bookings without a minted link fall back to the type's locationDetail (EmailService.resolveLocation, PublicResource). Docs: google-oauth.md co-host text, changelog Unreleased. Follow-ups: GOOGLE_MEET styling, declineGuest co-host drop, dashboard location beans.
