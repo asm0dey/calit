@@ -201,7 +201,7 @@ public class PrivacyService {
         // Proof of handling: one log line, booking id plus per-destination outcome. No erasure_log
         // table until an operator actually needs an audit trail (ponytail).
         Log.infof(
-                "PRIVACY erasure booking=%d google=%s channels=%s mail=%s",
+                "PRIVACY erasure booking=%d mirror=%s channels=%s mail=%s",
                 live.id,
                 report.google(),
                 report.channelsWereUsed(),

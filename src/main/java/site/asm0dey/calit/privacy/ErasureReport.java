@@ -8,16 +8,16 @@ package site.asm0dey.calit.privacy;
 public record ErasureReport(GoogleOutcome google, boolean channelsWereUsed, boolean mailWasDelivered) {
     public enum GoogleOutcome {
         /**
-         * No Google event existed for this booking (degraded mode, or already cancelled).
+         * No Mirror event existed for this booking (no write calendar, or already cancelled).
          */
         NOT_APPLICABLE,
         /**
-         * The delete call was made. Google keeps the event in the calendar's trash for roughly
-         * 30 days afterwards — "removed" is not "unrecoverable".
+         * The delete call was made. The provider may keep the event in trash or backups afterwards
+         * (Google: roughly 30 days) — "removed" is not "unrecoverable".
          */
         REMOVED,
         /**
-         * An event id was recorded but the grant is gone, so the remote copy could not be touched.
+         * An event id was recorded but the calendar account is gone, so the remote copy could not be touched.
          */
         UNREACHABLE
     }

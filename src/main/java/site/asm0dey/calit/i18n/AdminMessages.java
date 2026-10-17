@@ -952,7 +952,7 @@ public interface AdminMessages {
     String adm_delete_account_title();
 
     @Message("This permanently removes your account, your meeting types and availability, every booking "
-            + "on your calendar, your connected Google accounts and your notification channels. "
+            + "on your calendar, your connected calendar accounts and your notification channels. "
             + "It can't be undone.")
     String adm_delete_account_desc();
 
@@ -1198,7 +1198,7 @@ public interface AdminMessages {
     String adm_users_delete_title();
 
     @Message("This permanently removes the account {username}: its meeting types and availability, every "
-            + "booking on its calendar, its connected Google accounts and its notification channels. "
+            + "booking on its calendar, its connected calendar accounts and its notification channels. "
             + "It can't be undone.")
     String adm_users_delete_desc(String username);
 

@@ -738,7 +738,7 @@ public class AdminResource {
     }
 
     /**
-     * How many upcoming bookings of {@code type} already have a Google event on a calendar other
+     * How many upcoming bookings of {@code type} already have a Mirror event on a calendar other
      * than {@code newTarget} — the EFFECTIVE calendar after this save, so callers clearing an
      * override pass the write target, not null. Those events stay where they were created
      * (calit-rma2 addresses each booking by its stored ref) and the count drives the "they stay
@@ -862,7 +862,7 @@ public class AdminResource {
                 requireType(id);
                 // booking.meeting_type_id cascades (V34), so deleting a type deletes its bookings -- every
                 // host's row of a group booking included. An upcoming one would vanish with no mail to
-                // anyone and its Google event left behind, so refuse until it is cancelled. Counted across
+                // anyone and its Mirror event left behind, so refuse until it is cancelled. Counted across
                 // all owners on purpose: co-hosts' rows carry this (creator's) type id too.
                 if (Booking.count(
                         "meetingTypeId = ?1 and endUtc > ?2 and status in ?3",
@@ -2316,7 +2316,7 @@ public class AdminResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance approveBooking(@PathParam("id") Long id) {
         requireOwnedBooking(id);
-        // PENDING→CONFIRMED (+ Google event if connected)
+        // PENDING→CONFIRMED (+ Mirror event if a calendar is connected)
         bookingService.approve(id);
         List<Booking> pending = Booking.list(PENDING_BY_OWNER_QUERY, currentOwner.id(), BookingStatus.PENDING);
         return Templates.pending(pending, Layout.TZ_SCRIPT, isAdmin(), m().adm_pending_title(), ownerZone());
@@ -2365,7 +2365,7 @@ public class AdminResource {
             h1 = m().adm_approve_gone_h1();
             desc = m().adm_approve_gone_desc();
         } else if (approve) {
-            // PENDING -> CONFIRMED (+ Google event if connected)
+            // PENDING -> CONFIRMED (+ Mirror event if a calendar is connected)
             bookingService.approve(id);
             h1 = m().adm_approve_approved_h1();
             desc = m().adm_approve_approved_desc();

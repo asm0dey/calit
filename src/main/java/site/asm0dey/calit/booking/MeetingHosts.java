@@ -109,7 +109,7 @@ public class MeetingHosts {
     }
 
     /**
-     * The Creator if connected, else null (no Google event; ADR 0007).
+     * The Creator if connected, else null (no Mirror event; ADR 0007).
      */
     public Long chooseOrganizer(MeetingType type) {
         return calendarPort.isConnected(type.ownerId) ? type.ownerId : null;
