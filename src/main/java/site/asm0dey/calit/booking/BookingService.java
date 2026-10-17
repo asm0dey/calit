@@ -89,7 +89,7 @@ public class BookingService {
 
     /**
      * Bookable slots = raw work-hour slots (Plan 1b override semantics already applied) whose
-     * buffered interval does not overlap any busy interval — busy = Google free/busy
+     * buffered interval does not overlap any busy interval — busy = the Connected accounts' busy time
      * (only when {@code isConnected()}) + all PENDING/CONFIRMED bookings — and which also survive
      * the min-notice and horizon filters relative to {@code now} (feature 11). {@code excludeBookingId}
      * omits one booking from the busy set (used by reschedule so a booking can move within its own window).
@@ -232,7 +232,7 @@ public class BookingService {
     }
 
     /**
-     * Google busy intervals (only when connected — degraded mode skips freeBusy) plus all
+     * Connected-account busy intervals (only when connected — degraded mode skips the busy read) plus all
      * PENDING+CONFIRMED bookings in the window (minus an excluded one). PENDING is included so a
      * pending approval request holds its slot (feature 14).
      */
@@ -420,11 +420,11 @@ public class BookingService {
         persistGuests(booking, guestEmails);
 
         if (type.requiresApproval) {
-            // Feature 14: PENDING request — NO Google event yet; the owner approves/declines later.
+            // Feature 14: PENDING request — NO Mirror event yet; the owner approves/declines later.
             bookingRequestedEvent.fire(new BookingRequested(booking.id));
             return booking;
         }
-        // Auto type: create the Google event when connected (degraded mode skips it entirely).
+        // Auto type: create the Mirror event when connected (degraded mode skips it entirely).
         // If createEvent throws, the @Transactional boundary rolls back this booking (no orphan row).
         // `createGoogleEvent` (shared with `approve`) applies the feature-13
         // location logic: createMeetLink=(locationType==GOOGLE_MEET), locationText=locationDetail.
@@ -441,7 +441,7 @@ public class BookingService {
      * single flush so a cross-node overlap on ANY host's row rolls back the whole group (same 409 the
      * single-host path uses). Guests attach to the lead (creator's) row only. Approval types insert N
      * PENDING rows (each with its own approvalToken) and fire one {@code BookingRequested(leadId)}; auto
-     * types insert N CONFIRMED rows and create exactly one Google event on the Creator's lead row.
+     * types insert N CONFIRMED rows and create exactly one Mirror event on the Creator's lead row.
      */
     private Booking bookGroup(
             MeetingType type,
@@ -502,7 +502,7 @@ public class BookingService {
     }
 
     /**
-     * One Google event on the Creator's account (lead row), all other hosts + invitee + guests invited.
+     * One Mirror event on the Creator's account (lead row), all other hosts + invitee + guests invited.
      */
     private void createGroupGoogleEvent(MeetingType type, UUID groupId) {
         // the removed event may sit on another row (written before ADR 0007); the group is re-stamped as a whole
@@ -512,7 +512,7 @@ public class BookingService {
         List<Long> hostIds = meetingHosts.hostOwnerIds(type);
         Long organizer = meetingHosts.chooseOrganizer(type);
         if (organizer == null) {
-            // the Creator has no Google -> calit-only booking
+            // the Creator has no Connected account -> calit-only booking
             return;
         }
         Booking lead = Booking.leadOfGroup(groupId, type.ownerId);
@@ -541,7 +541,7 @@ public class BookingService {
     }
 
     /**
-     * Stamps a created Google event onto its booking row: the event id, the meet link, and the
+     * Stamps a created Mirror event onto its booking row: the event id, the meet link, and the
      * calendar it actually landed on. Extracted so the invariant "the event id and the address it
      * lives on are written together" has ONE home -- a row carrying an event id but no address
      * cannot be cleaned up on the right calendar later (calit-vi8n).
@@ -645,7 +645,7 @@ public class BookingService {
     }
 
     /**
-     * Creates the Google event for a CONFIRMED booking and stores its ids. Applies the feature-13
+     * Creates the Mirror event for a CONFIRMED booking and stores its ids. Applies the feature-13
      * location logic: {@code createMeetLink = (locationType == GOOGLE_MEET)},
      * {@code locationText = locationDetail}. Shared by {@code book} (auto branch) and {@code approve}.
      * Caller must guard with {@code calendarPort.isConnected()} (degraded mode skips this entirely).
@@ -668,14 +668,14 @@ public class BookingService {
     }
 
     /**
-     * Google event SUMMARY for a booking: "{effective title} with {invitee}".
+     * Mirror event SUMMARY for a booking: "{effective title} with {invitee}".
      */
     private static String googleSummary(MeetingType type, Booking booking) {
         return booking.effectiveTitle(type) + " with " + booking.inviteeName;
     }
 
     /**
-     * Google event DESCRIPTION: the booking's effective description, or "" when none. Empty (not null) so a
+     * Mirror event DESCRIPTION: the booking's effective description, or "" when none. Empty (not null) so a
      * PATCH actively clears a removed description (a null field is omitted from the patch and would linger).
      */
     private static String googleDescription(MeetingType type, Booking booking) {
@@ -844,7 +844,7 @@ public class BookingService {
             throw new NotFoundException("No booking " + bookingId);
         }
         // Only a PENDING request can be approved (UC-014 BR-006). Covers double-submits (no second
-        // Google event / BookingConfirmed) and stale tabs acting on a cancelled or declined booking.
+        // Mirror event / BookingConfirmed) and stale tabs acting on a cancelled or declined booking.
         if (booking.status != BookingStatus.PENDING) {
             return;
         }
@@ -852,7 +852,7 @@ public class BookingService {
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         if (booking.groupId == null) {
             // Single-host: unchanged from pre-multi-host behavior.
-            // Feature 14 + degraded mode: create the Google event now, only when connected.
+            // Feature 14 + degraded mode: create the Mirror event now, only when connected.
             if (calendarPort.isConnected(type.ownerId)) {
                 createGoogleEvent(type, booking);
             }
@@ -861,7 +861,7 @@ public class BookingService {
         }
         // Group: row-status is the source of truth for "all approved" -- no extra group-state
         // column. Only the LAST host's approval (no group row still PENDING) creates the ONE
-        // shared Google event and fires the invitee-facing BookingConfirmed; earlier approvals
+        // shared Mirror event and fires the invitee-facing BookingConfirmed; earlier approvals
         // just flip that host's row and wait.
         boolean anyPending =
                 Booking
@@ -889,7 +889,7 @@ public class BookingService {
         }
         if (booking.groupId == null) {
             // Single-host: unchanged. DECLINED leaves the PENDING|CONFIRMED partial constraint ->
-            // frees the slot. A PENDING request has no Google event, so nothing to delete.
+            // frees the slot. A PENDING request has no Mirror event, so nothing to delete.
             booking.status = BookingStatus.DECLINED;
             bookingDeclinedEvent.fire(new BookingDeclined(bookingId));
             return;
@@ -1010,7 +1010,7 @@ public class BookingService {
     }
 
     /**
-     * Post-commit calendar sync + domain event for a reschedule. Re-approval types drop any prior Google
+     * Post-commit calendar sync + domain event for a reschedule. Re-approval types drop any prior Mirror
      * event and re-enter the approval queue (BookingRequested); auto types patch the existing event's time
      * (when connected) and fire BookingRescheduled. Split out of {@link #reschedule} to keep that method's
      * cognitive complexity in check.
@@ -1048,7 +1048,7 @@ public class BookingService {
 
     /**
      * Group reschedule: re-checks the multi-host intersection at the new time, moves every row in the
-     * group (start/end/SEQUENCE), and drops the one shared Google event (recreated on full re-confirm).
+     * group (start/end/SEQUENCE), and drops the one shared Mirror event (recreated on full re-confirm).
      * For an approval type this re-enters the approval queue: an invitee-initiated reschedule
      * ({@code initiatorOwnerId == null}) resets every host row to PENDING; a host-initiated one spares
      * only the initiating host's row (that host just picked the slot, so re-approving themselves would
@@ -1125,8 +1125,8 @@ public class BookingService {
      * blank stores null so the meeting type's value shows through (bounded: title ≤ 200, description ≤ 2000).
      * {@code guestEmails} reconciles the active guest set exactly (empty list removes all). If nothing
      * actually changed (normalized title/description/guest-set all equal current) this is a NO-OP: it
-     * returns without bumping the SEQUENCE, patching Google, or emailing anyone. On a real change it bumps
-     * the iTIP SEQUENCE, patches the Google event (name/description + attendees), fires GuestRemoved per
+     * returns without bumping the SEQUENCE, patching the Mirror event, or emailing anyone. On a real change it bumps
+     * the iTIP SEQUENCE, patches the Mirror event (name/description + attendees), fires GuestRemoved per
      * dropped guest and BookingDetailsChanged so EmailService re-notifies invitee + owner + guests. Never
      * changes status or time.
      */
@@ -1196,7 +1196,7 @@ public class BookingService {
      * group (kept identical across hosts), each row's iTIP SEQUENCE bumps (same as {@link
      * #rescheduleGroup}) so a resent guest .ics supersedes the prior one, guests reconcile on the lead
      * row only with {@link GuestRemoved} fired per dropped guest, and — if the group has a shared
-     * Google event and its row's owner is still connected — it is patched exactly once via that
+     * Mirror event and its row's owner is still connected — it is patched exactly once via that
      * row (the lead row; a Co-host row for pre-ADR-0007 bookings; a disconnected owner skips the remote patch, mirroring {@link
      * #updateDetails}'s {@code isConnected} guard, but local rows still update). Fires a single
      * {@link BookingDetailsChanged} keyed by the lead. No no-op short-circuit here; unlike the
@@ -1246,7 +1246,7 @@ public class BookingService {
     }
 
     /**
-     * The group row carrying the shared Google event (the lead row; a Co-host row for
+     * The group row carrying the shared Mirror event (the lead row; a Co-host row for
      * bookings written before ADR 0007 — see {@link #createGroupGoogleEvent}), or null when the group never had one.
      */
     private Booking groupEventRow(UUID groupId) {
@@ -1351,11 +1351,11 @@ public class BookingService {
 
     /**
      * {@link #cancel(String, boolean)} for the privacy paths (invitee erasure, account deletion), which
-     * must not fail because Google does: a failing remote delete is logged and the cancellation still
+     * must not fail because the calendar provider does: a failing remote delete is logged and the cancellation still
      * commits, mails and all. The ordinary cancel keeps failing loudly — a host clicking Cancel should
      * learn that the calendar event survived.
      *
-     * @return true when a Google event was deleted remotely; false when there was none, the owner is
+     * @return true when a Mirror event was deleted remotely; false when there was none, the owner is
      *     not connected, or the delete failed
      */
     @Transactional
@@ -1401,10 +1401,10 @@ public class BookingService {
     }
 
     /**
-     * Deletes the one Google event shared by a group (only one row carries it: the lead row, or a
+     * Deletes the one Mirror event shared by a group (only one row carries it: the lead row, or a
      * Co-host row for bookings written before ADR 0007 — see {@link #createGroupGoogleEvent}) and clears
-     * it from that row. A no-op when the group never had a Google event (degraded mode, or the Creator
-     * was not connected at confirm time). If that row's owner has since disconnected Google, the remote delete is skipped but the local event refs are still
+     * it from that row. A no-op when the group never had a Mirror event (degraded mode, or the Creator
+     * was not connected at confirm time). If that row's owner has since disconnected that account, the remote delete is skipped but the local event refs are still
      * cleared — the calit-side state must not be left dangling just because the remote call can't be
      * made. {@link #cancelSingle} follows the same rule.
      */
@@ -1435,7 +1435,7 @@ public class BookingService {
      * <p>Tolerant mode runs the call in its OWN transaction: {@code CalendarPort.deleteEvent} is
      * {@code @Transactional} and rethrows, and a failure inside the caller's transaction would mark
      * that transaction rollback-only — catching the exception afterwards could not save the
-     * cancellation. The call touches only Google credential/calendar rows (a token refresh may write
+     * cancellation. The call touches only Connected account/calendar rows (a token refresh may write
      * the credential), which the cancel itself never changes, so the two transactions cannot collide.
      */
     private boolean deleteRemoteEvent(Booking row, boolean tolerateFailure) {
@@ -1455,7 +1455,7 @@ public class BookingService {
                 .run(() -> calendarPort.deleteEvent(ownerId, ref, eventId));
             return true;
         } catch (RuntimeException e) {
-            Log.warnf(e, "Could not delete Google event %s for booking %d; cancelling anyway", eventId, row.id);
+            Log.warnf(e, "Could not delete Mirror event %s for booking %d; cancelling anyway", eventId, row.id);
             return false;
         }
     }
@@ -1463,7 +1463,7 @@ public class BookingService {
     /**
      * Task 18: cascade for the co-host-removal keep-vs-cancel interstitial. Cancels every future
      * (PENDING|CONFIRMED) group booking that {@code hostOwnerId} is a party to on {@code type} —
-     * each whole group (all hosts' rows -> CANCELLED, the one shared Google event deleted, one
+     * each whole group (all hosts' rows -> CANCELLED, the one shared Mirror event deleted, one
      * {@code BookingCancelled} fired), by delegating to the same {@link #cancel(String, boolean)}
      * used by the manual group-cancel path. Lives here (not on {@link MeetingHosts}) so it can
      * reuse {@code cancel} without a constructor cycle — {@code BookingService} already depends on

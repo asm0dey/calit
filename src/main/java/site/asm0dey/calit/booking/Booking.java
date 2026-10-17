@@ -30,7 +30,7 @@ public class Booking extends PanacheEntityBase {
     @Column(name = "event_id")
     public String eventId;
     /**
-     * Google's calendar id for {@link #eventId}; null on rows created before V26.
+     * The remote id of the calendar holding {@link #eventId}; null on rows created before V26.
      */
     @Column(name = "calendar_remote_id", columnDefinition = "text")
     public String calendarRemoteId;
@@ -83,13 +83,13 @@ public class Booking extends PanacheEntityBase {
     /**
      * Per-booking override of the meeting's displayed name. NULL (or blank) means "no override" —
      * {@link #effectiveTitle} falls back to the meeting type's name. Editable post-booking by both the
-     * host and the invitee; changes propagate to email, the Google event summary, and the .ics SUMMARY.
+     * host and the invitee; changes propagate to email, the Mirror event summary, and the .ics SUMMARY.
      */
     @Column(columnDefinition = "text")
     public String title;
     /**
      * Per-booking override of the meeting description. NULL (or blank) falls back to the meeting type's
-     * description (which may itself be null). Propagates to the .ics DESCRIPTION and Google event description.
+     * description (which may itself be null). Propagates to the .ics DESCRIPTION and Mirror event description.
      */
     @Column(columnDefinition = "text")
     public String description;
@@ -184,7 +184,7 @@ public class Booking extends PanacheEntityBase {
     }
 
     /**
-     * This row's Google event address, or null when unknown (pre-V26 rows) — see {@link CalendarRef}.
+     * This row's Mirror event address, or null when unknown (pre-V26 rows) — see {@link CalendarRef}.
      */
     public CalendarRef calendarRef() {
         return calendarRemoteId == null ? null : new CalendarRef(calendarAccountId, calendarRemoteId);

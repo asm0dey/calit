@@ -180,6 +180,26 @@ class EmailServiceTest {
         assertThat(m.getAttachments()).as("no .ics when Google connected (no calendar event was ever created)").isEmpty();
     }
 
+    @Test
+    void neverApprovedRequestOfAConnectedOwnerCarriesNoIcsOnRequestOrDecline() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        long bookingId = seed(b -> {
+            b.status = BookingStatus.PENDING;
+            // no Mirror event until approval
+            b.eventId = null;
+        }, true, LocationType.PHONE, null);
+
+        emailService.handleRequested(new BookingRequested(bookingId));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> Booking.<Booking>findById(bookingId).status = BookingStatus.DECLINED);
+        emailService.handleDeclined(new BookingDeclined(bookingId));
+
+        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL))
+            .hasSize(2)
+            .allSatisfy(m -> assertThat(m.getAttachments()).isEmpty());
+    }
+
     // ---- ownerNotificationsEnabled = false: owner gets nothing; invitee per rules ----
     @Test
     void ownerOptedOutGetsNothingInviteeStillFallbackWhenDisconnected() {

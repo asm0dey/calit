@@ -139,11 +139,11 @@ public class PrivacyService {
      * the invitee's data, and 404s only once every row is erased. Every remaining row of the group
      * is erased.
      *
-     * <p>An UPCOMING booking is cancelled first, through the ordinary cancel path, so the Google
-     * event is deleted and the owner gets the normal cancellation mail — in its Google-tolerant
-     * variant: an unreachable Google must not block the invitee's erasure, so a failed delete is
+     * <p>An UPCOMING booking is cancelled first, through the ordinary cancel path, so the Mirror
+     * event is deleted and the owner gets the normal cancellation mail — in its failure-tolerant
+     * variant: an unreachable calendar provider must not block the invitee's erasure, so a failed delete is
      * logged, the cancellation still commits, and the report says UNREACHABLE. A past booking is
-     * anonymised directly: there is nothing left to cancel, so a stored Google event id (the owner's
+     * anonymised directly: there is nothing left to cancel, so a stored Mirror event id (the owner's
      * copy the spec still lists as reachable while connected) gets its own best-effort delete here,
      * and the row's event refs are cleared in the anonymising transaction either way — same rule as
      * cancel (calit-ek26): an erased row must not keep pointing at the owner's event.
@@ -170,7 +170,7 @@ public class PrivacyService {
                 ? List.of(live)
                 : QuarkusTransaction.requiringNew().call(() -> Booking.group(live.groupId));
         List<Long> ids = rows.stream().map(r -> r.id).toList();
-        // The shared Google event lives on the lead row (a Co-host row for bookings written before
+        // The shared Mirror event lives on the lead row (a Co-host row for bookings written before
         // ADR 0007 -- BookingService.createGroupGoogleEvent), not necessarily this row: look across the group.
         Booking eventRow = rows
             .stream()
@@ -180,7 +180,7 @@ public class PrivacyService {
 
         ErasureReport.GoogleOutcome google;
         if (isUpcomingAndHeld(live)) {
-            // Deletes the Google event (best effort) and mails the owner, committed before anonymise.
+            // Deletes the Mirror event (best effort) and mails the owner, committed before anonymise.
             boolean deleted = bookingService.cancelToleratingGoogleFailure(live.manageToken, false);
             google = googleOutcome(eventRow, deleted);
         } else {
@@ -219,9 +219,9 @@ public class PrivacyService {
 
     /**
      * Past bookings are never cancelled, so nothing else calls {@code CalendarPort.deleteEvent} for
-     * them; a stored event id still means the owner's Google copy exists, and the spec lists it as
+     * them; a stored event id still means the owner's Mirror event exists, and the spec lists it as
      * reachable while connected. Mirrors {@code BookingService.cancelSingle}'s connected-gated
-     * delete, but — unlike cancel, which lets a Google failure roll back the whole cancellation —
+     * delete, but — unlike cancel, which lets a provider failure roll back the whole cancellation —
      * catches rather than propagates: the invitee's own erasure of calit's copy must still complete
      * even when the remote call fails.
      */
@@ -233,7 +233,7 @@ public class PrivacyService {
             calendarPort.deleteEvent(eventRow.ownerId, eventRow.calendarRef(), eventRow.eventId);
             return ErasureReport.GoogleOutcome.REMOVED;
         } catch (RuntimeException e) {
-            Log.warnf(e, "PRIVACY erasure booking=%d could not delete Google event %s", eventRow.id, eventRow.eventId);
+            Log.warnf(e, "PRIVACY erasure booking=%d could not delete Mirror event %s", eventRow.id, eventRow.eventId);
             return ErasureReport.GoogleOutcome.UNREACHABLE;
         }
     }
@@ -439,7 +439,7 @@ public class PrivacyService {
      * <p>Upcoming bookings on the account's OWN meeting types are cancelled first. The {@code
      * meeting_type_id} cascade would otherwise delete them silently — including co-hosts' rows of a
      * group booking, which carry the creator's type — with no mail to the invitee or co-hosts and
-     * the Google event left behind. Each is cancelled through {@link
+     * the Mirror event left behind. Each is cancelled through {@link
      * BookingService#cancelToleratingGoogleFailure} (a Google outage must not block deletion), one
      * group once, each in its own committed transaction, so the {@code AFTER_SUCCESS} cancellation
      * observers render their mails from real rows and send them before anything is deleted. Parked

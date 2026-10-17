@@ -385,7 +385,7 @@ public class PublicResource {
         try {
             byDate = daySlots(type, durationChoice.chosen());
         } catch (CalendarUnavailableException e) {
-            // Fail-closed: the owner's Google calendar can't be read, so we cannot safely offer slots.
+            // Fail-closed: a busy calendar of the owner can't be read, so we cannot safely offer slots.
             return Templates.unavailable(m.pub_unavailable_title());
         }
         // Resolved EXTRA fields (per-type-else-global), already ordered by position.
@@ -638,7 +638,7 @@ public class PublicResource {
         // showing the old time. A CalDAV Mirror event invites nobody, so the .ics is offered as in
         // degraded mode. The endpoint itself stays unconditional -- a guest who deliberately
         // goes for the file still gets it.
-        boolean googleConnected = booking.eventId != null
+        boolean googleMirror = booking.eventId != null
                 && calendarPort.isConnected(type.ownerId)
                 && MirrorProvider.of(type.ownerId, booking.calendarRef()) == CalendarProvider.GOOGLE;
         return Templates.confirmation(
@@ -653,7 +653,7 @@ public class PublicResource {
                 Layout.tzBar(m),
                 Layout.TZ_SCRIPT,
                 mailUndelivered,
-                googleConnected
+                googleMirror
         );
     }
 

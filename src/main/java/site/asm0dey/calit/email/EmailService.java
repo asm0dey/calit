@@ -111,7 +111,7 @@ public class EmailService {
     /**
      * Critical operational alert: the owner's Google or CalDAV account is disconnected and their booking page
      * is paused. Sent regardless of {@code ownerNotificationsEnabled} (that flag governs only routine
-     * booking notifications). Links to the Google settings page so the owner can reconnect.
+     * booking notifications). Links to the calendars page so the owner can reconnect.
      * {@code locale} drives any {msg:} keys rendered in the template body. {@code ownerId} tags a
      * parked copy so deleting that account also clears it.
      */
@@ -424,7 +424,7 @@ public class EmailService {
                     .render(),
                 // Actionable: an opted-out host must still be able to approve/decline their row, or
                 // the group deadlocks. (Single-host behavior is unaffected -- see the send core.)
-                IcsMethod.REQUEST,
+                awaitingFirstInvite(l) ? null : IcsMethod.REQUEST,
                 true
         );
     }
@@ -508,7 +508,7 @@ public class EmailService {
      * Renders + delivers the declined email through the given sink (direct or outbox).
      */
     private void deliverDeclined(BookingSnapshot l, MailSink sink) {
-        // No Google event ever existed -> always notify the invitee. No answers, no location link.
+        // No Mirror event ever existed -> always notify the invitee. No answers, no location link.
         sendForKindLocaleAware(
                 l,
                 resolveLocation(l),
@@ -527,7 +527,7 @@ public class EmailService {
                     .setLocale(locale)
                     .render(),
                 sink,
-                IcsMethod.CANCEL,
+                awaitingFirstInvite(l) ? null : IcsMethod.CANCEL,
                 false
         );
     }
@@ -629,7 +629,7 @@ public class EmailService {
             return;
         }
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
-        // No location/meet link in the cancellation body; .ics attached when Google is not connected.
+        // No location/meet link in the cancellation body; .ics attached unless the Mirror event is on Google.
         sendForKindLocaleAware(
                 l,
                 resolveLocation(l),
@@ -976,6 +976,7 @@ public class EmailService {
      * approve/decline their row, or the whole group deadlocks. When the Mirror event is on Google it natively
      * notifies invitee + owner(s) (they are event attendees), so calit attaches NO .ics. On CalDAV everyone but
      * the Creator (whose calendar holds the event) gets calit's .ics; in degraded mode, or with no Mirror event, everyone does.
+     * A null {@code icsMethod} attaches nothing.
      */
     private void sendForKindLocaleAware(
             BookingSnapshot l,
@@ -987,7 +988,10 @@ public class EmailService {
             boolean actionable
     ) {
         CalendarProvider mirror = mirror(l);
-        var ics = mirror == CalendarProvider.GOOGLE ? null : inviteeIcsBytes(l, icsLocation, icsMethod);
+        var ics =
+                mirror == CalendarProvider.GOOGLE || icsMethod == null
+                ? null
+                : inviteeIcsBytes(l, icsLocation, icsMethod);
         // a CalDAV Mirror event already sits on the Creator's calendar; a calit copy would duplicate it
         var creatorIcs = mirror == CalendarProvider.CALDAV ? null : ics;
         var from = fromName(l);
@@ -1061,6 +1065,15 @@ public class EmailService {
     }
 
     /**
+     * A never-approved request of a connected owner: the first invite comes with the approval (a Mirror event, or
+     * calit's .ics when none can be written), so the request and decline mails attach no .ics that a later Google
+     * invite would duplicate. In degraded mode calit's .ics is the only invite, so it is attached from the request on.
+     */
+    private boolean awaitingFirstInvite(BookingSnapshot l) {
+        return l.mirror() == null && l.booking().icsSequence == 0 && calendarPort.isConnected(l.owner().ownerId);
+    }
+
+    /**
      * The provider of this booking's Mirror event (live, or last removed by calit); null in degraded mode or when it
      * never had one.
      */
@@ -1121,10 +1134,10 @@ public class EmailService {
      * Public because a failed send used to take the calendar entry with it: the .ics existed only as
      * a mail attachment, so a guest with a confirmed booking had no way to get it. Opens its own
      * transaction via {@link BookingSnapshotLoader#load}, so it is safe to call from a plain GET. Unlike {@link
-     * #sendForKindLocaleAware}, this is built REGARDLESS of whether Google is connected: the route
+     * #sendForKindLocaleAware}, this is built REGARDLESS of where the Mirror event is: the route
      * is reached only by following a link, and refusing to serve a file a guest deliberately asked
-     * for buys nothing. The confirmation page, which merely OFFERS the link, does hide it when
-     * Google is connected -- an imported copy Google can never update is worse than no copy.
+     * for buys nothing. The confirmation page, which merely OFFERS the link, does hide it when the
+     * Mirror event is on Google -- an imported copy Google can never update is worse than no copy.
      */
     public Optional<byte[]> inviteeIcs(Long bookingId) {
         var l = snapshots.load(bookingId);
