@@ -75,6 +75,14 @@
         <artifactId>jackson-core</artifactId>
         <version>2.22.3</version>
       </dependency>
+      <!-- Pin ahead of quarkus-bom 3.40.1 (byte-buddy 1.18.8, Java <= 26): on JDK 27 that version reads Hibernate's
+           shared enhancer advice via the non-thread-safe Class-File API and augmentation fails at random.
+           1.18.10+ knows Java 27 and stays on ASM. Guarded by EntityEnhancerReaderTest; drop once the BOM catches up. -->
+      <dependency>
+        <groupId>net.bytebuddy</groupId>
+        <artifactId>byte-buddy</artifactId>
+        <version>1.18.11</version>
+      </dependency>
       <dependency>
         <groupId>${quarkus.platform.group-id}</groupId>
         <artifactId>${quarkus.platform.artifact-id}</artifactId>
