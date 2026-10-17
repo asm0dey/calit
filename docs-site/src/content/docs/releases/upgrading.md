@@ -58,6 +58,9 @@ Run Flyway migrations before the rolling restart by letting the first replica
 start fully before updating the rest, or run migrations as a separate init
 step.
 
+CalDAV caveat: the previous release (1.27.x) cannot see CalDAV accounts. Don't connect one until every
+replica runs the new release, and don't roll back to 1.27.x once one is connected.
+
 ## Further reading
 
 - [Docker Compose deployment](/calit/installation/docker-compose/)

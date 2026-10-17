@@ -58,3 +58,7 @@ calit probes each CalDAV account on the same schedule as Google (`GOOGLE_PROBE_I
 | *The server rejected that username or password.* | Wrong credentials; use an app password |
 | *No CalDAV calendars found at that URL.* | Wrong address; try the full calendar-home URL |
 | *Couldn't reach that server.* | DNS, TLS or network problem |
+
+## Upgrading and rollback
+
+Release 1.27.x cannot see CalDAV accounts. Don't connect one until every replica runs a CalDAV-capable release, and don't roll back to 1.27.x afterwards: busy time would be ignored and cancelling or rescheduling CalDAV-held bookings can fail.

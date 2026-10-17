@@ -29,11 +29,13 @@ Merged but not yet in a tagged release.
 - The owner data export lists CalDAV accounts (server URL, username; never the password). ([#TBD](https://github.com/asm0dey/calit/pulls))
 - Migration V37 adds `calendar_account` and `calendar` with compatibility views and paired-column
   triggers; V38 adds `booking.removed_mirror_provider`. The previous release keeps working on this
-  schema during a rolling deploy. ([#TBD](https://github.com/asm0dey/calit/pulls))
+  schema for Google-only use. ([#TBD](https://github.com/asm0dey/calit/pulls))
 
-Upgrade: rolling deploys are safe, as the previous release runs on the V37/V38 schema; the compatibility
-views and old columns are dropped in a later release. Nothing to configure unless CalDAV servers sit on
-private addresses (`CALDAV_ALLOW_PRIVATE_HOSTS`).
+Upgrade: rolling deploys are safe as long as nobody connects a CalDAV account until every replica runs
+this release; 1.27.x cannot see CalDAV accounts, so it ignores their busy time and can fail to cancel or
+reschedule CalDAV-held bookings. Once a CalDAV account is connected, don't roll back to 1.27.x. The
+compatibility views and old columns are dropped in a later release. Nothing to configure unless CalDAV
+servers sit on private addresses (`CALDAV_ALLOW_PRIVATE_HOSTS`).
 
 ## 1.27.2
 
