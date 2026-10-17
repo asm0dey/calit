@@ -26,6 +26,7 @@
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.version>3.40.1</quarkus.platform.version>
     <surefire-plugin.version>3.6.0</surefire-plugin.version>
+    <jacoco-plugin.version>0.8.15</jacoco-plugin.version>
     <test-order-plugin.version>0.1.0</test-order-plugin.version>
     <sonar-maven-plugin.version>5.8.0.7211</sonar-maven-plugin.version>
     <assertj.version>3.27.7</assertj.version>
@@ -132,12 +133,10 @@
       <version>${assertj.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- Code coverage: Quarkus-native JaCoCo (test-time instrumentation; writes target/jacoco-report/jacoco.xml
-         consumed by SonarQube). Uses Quarkus's own agent wiring, so the reuseForks argLine is untouched.
-         Only instruments code reached through a booted @QuarkusTest; plain-JUnit tests that construct
-         objects directly contribute nothing to the report, no matter how thorough their assertions are
-         (verified: a run of only plain-JUnit tests produces no target/jacoco-report/ at all). A low
-         coverage number here can mean "the wrong kind of test", not "no test". -->
+    <!-- Code coverage: quarkus-jacoco writes target/jacoco-report/jacoco.xml (consumed by SonarQube) at the end of
+         the @QuarkusTest run. It only instruments code loaded by the QuarkusClassLoader; plain-JUnit tests are
+         covered by the jacoco-maven-plugin agent below, which writes to the same jacoco-quarkus.exec so the one
+         report merges both (Quarkus "Coverage for tests not using @QuarkusTest"). -->
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-jacoco</artifactId><scope>test</scope></dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -263,6 +262,26 @@
             <quarkus.jacoco.reuse-data-file>true</quarkus.jacoco.reuse-data-file>
           </systemPropertyVariables>
         </configuration>
+      </plugin>
+      <plugin>
+        <!-- JaCoCo agent for plain-JUnit tests (sets @{argLine}); skips QuarkusClassLoader classes, which
+             quarkus-jacoco instruments, and appends to its data file so its report includes these tests. -->
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>default-prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+            <configuration>
+              <exclClassLoaders>*QuarkusClassLoader</exclClassLoaders>
+              <destFile>${project.build.directory}/jacoco-quarkus.exec</destFile>
+              <append>true</append>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <!-- Runs @QuarkusIntegrationTest classes: Quarkus packages the app (quarkus:build already
