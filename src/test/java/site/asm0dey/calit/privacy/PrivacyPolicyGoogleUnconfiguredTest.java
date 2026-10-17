@@ -70,7 +70,9 @@ class PrivacyPolicyGoogleUnconfiguredTest {
             .body(containsString("CALIT_MIRROR_EVENT"))
             .body(containsString("host's calendar provider — the CalDAV server the host connected"))
             .body(containsString("On a CalDAV server they are written into the event description"))
-            .body(not(containsString("On Google they are added as event attendees")));
+            .body(containsString("the email addresses of the invitee, the host(s) and any active guests"))
+            .body(not(containsString("On Google they are added as event attendees")))
+            .body(not(containsString("Google Meet link")));
     }
 
     public static class BlankGoogleClientId implements QuarkusTestProfile {

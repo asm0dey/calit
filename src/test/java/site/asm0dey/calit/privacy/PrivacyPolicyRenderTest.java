@@ -115,9 +115,11 @@ class PrivacyPolicyRenderTest {
             .statusCode(200)
             .body(containsString("CALIT_MIRROR_EVENT"))
             .body(containsString("Google, or the CalDAV server the host connected"))
-            .body(containsString("the email addresses of the invitee, the host and any active guests"))
+            .body(containsString("the email addresses of the invitee, the host(s) and any active guests"))
             .body(containsString("On Google they are added as event attendees"))
             .body(containsString("On a CalDAV server they are written into the event description"))
-            .body(containsString("held under the provider's own privacy policy and retention"));
+            .body(containsString("held under the provider's own privacy policy and retention"))
+            .body(containsString("(or a generated Google Meet link)"))
+            .body(containsString("events of past bookings remain on the provider's calendar"));
     }
 }
