@@ -19,8 +19,8 @@ import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
@@ -150,7 +150,7 @@ class BookingPostTest {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         // createEvent returns a known Meet link that BookingService stores on Booking.meetLink.
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(
                     new CreatedEvent(
                             "evt-1",
@@ -223,7 +223,7 @@ class BookingPostTest {
     void mintedLinkWinsOverLocationDetailOnConfirmationPage() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(
                     new CreatedEvent(
                             "evt-2",
@@ -328,7 +328,7 @@ class BookingPostTest {
     void postSetsBookingOwnerIdFromResolvedUser() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(
                     new CreatedEvent(
                             "evt-owner",

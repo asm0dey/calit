@@ -3,6 +3,8 @@ package site.asm0dey.calit.google;
 import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import site.asm0dey.calit.calendar.BusyInterval;
+import site.asm0dey.calit.calendar.CalendarPort;
 
 /**
  * Example downstream consumer of CalendarPort. Demonstrates the mockable seam:

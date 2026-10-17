@@ -17,8 +17,8 @@ import site.asm0dey.calit.domain.BookingField;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 
 @QuarkusTest
 class BookServiceTest {
@@ -54,6 +54,7 @@ class BookServiceTest {
         when(calendarPort.createEvent(
                 anyLong(),
                 any(),
+                any(),
                 anyString(),
                 anyString(),
                 eq(SLOT_09),
@@ -86,7 +87,7 @@ class BookServiceTest {
         );
 
         assertThat(b.status).isEqualTo(BookingStatus.CONFIRMED);
-        assertThat(b.googleEventId).isEqualTo("evt-99");
+        assertThat(b.eventId).isEqualTo("evt-99");
         assertThat(b.meetLink).isEqualTo("https://meet.google.com/xyz-1234-pqr");
         Booking loaded = Booking.findById(b.id);
         assertThat(loaded.meetLink).isEqualTo("https://meet.google.com/xyz-1234-pqr");
@@ -94,6 +95,7 @@ class BookServiceTest {
         verify(calendarPort, times(1))
             .createEvent(
                     anyLong(),
+                    any(),
                     any(),
                     anyString(),
                     anyString(),
@@ -117,6 +119,7 @@ class BookServiceTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),
@@ -146,6 +149,7 @@ class BookServiceTest {
         verify(calendarPort, times(1))
             .createEvent(
                     anyLong(),
+                    any(),
                     any(),
                     anyString(),
                     anyString(),
@@ -179,11 +183,11 @@ class BookServiceTest {
         );
 
         assertThat(b.status).isEqualTo(BookingStatus.CONFIRMED);
-        assertThat(b.googleEventId).isNull();
+        assertThat(b.eventId).isNull();
         assertThat(b.meetLink).isNull();
         // createEvent and freeBusy must never be called when disconnected.
         verify(calendarPort, never())
-            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
         verify(calendarPort, never()).freeBusy(anyLong(), any(), any());
     }
 
@@ -212,11 +216,11 @@ class BookServiceTest {
         );
 
         assertThat(b.status).isEqualTo(BookingStatus.PENDING);
-        assertThat(b.googleEventId).isNull();
+        assertThat(b.eventId).isNull();
         assertThat(b.meetLink).isNull();
         // The PENDING request must NOT touch Google.
         verify(calendarPort, never())
-            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
         assertThat(REQUESTED.get()).as("BookingRequested fired for approval type").isEqualTo(requestedBefore + 1);
         assertThat(CONFIRMED.get()).as("BookingConfirmed NOT fired for a PENDING request").isEqualTo(confirmedBefore);
     }
@@ -232,6 +236,7 @@ class BookServiceTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),
@@ -321,6 +326,7 @@ class BookServiceTest {
         when(calendarPort.createEvent(
                 anyLong(),
                 any(),
+                any(),
                 anyString(),
                 anyString(),
                 any(),
@@ -361,6 +367,7 @@ class BookServiceTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),

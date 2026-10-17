@@ -8,6 +8,7 @@ import com.google.api.services.calendar.model.*;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import site.asm0dey.calit.calendar.*;
 import site.asm0dey.calit.domain.OwnerSettings;
 
 /**
@@ -38,12 +39,13 @@ public class GoogleCalendarPort implements CalendarPort {
 
     @Override
     public List<BusyInterval> freeBusy(Long ownerId, Instant from, Instant to) {
-        Map<Long, List<GoogleCalendar>> byCredential = GoogleCalendar.readForBusyByCredential(ownerId);
+        Map<Long, List<SelectedCalendar>> byCredential =
+                SelectedCalendar.readForBusyByAccount(ownerId, CalendarProvider.GOOGLE);
         if (byCredential.isEmpty()) {
             return List.of();
         }
         List<BusyInterval> raw = new ArrayList<>();
-        for (Map.Entry<Long, List<GoogleCalendar>> e : byCredential.entrySet()) {
+        for (Map.Entry<Long, List<SelectedCalendar>> e : byCredential.entrySet()) {
             GoogleCredential cred = GoogleCredential.findById(e.getKey());
             if (cred == null || cred.needsReconnect) {
                 // Fail-CLOSED: a busy-feeding account that is gone or known-broken means we cannot see
@@ -58,7 +60,7 @@ public class GoogleCalendarPort implements CalendarPort {
                 .setItems(e
                     .getValue()
                     .stream()
-                    .map(c -> new FreeBusyRequestItem().setId(c.googleCalendarId))
+                    .map(c -> new FreeBusyRequestItem().setId(c.remoteId))
                     .toList());
             try {
                 FreeBusyResponse response = client(cred).freebusy().query(request).execute();
@@ -97,6 +99,7 @@ public class GoogleCalendarPort implements CalendarPort {
     public CreatedEvent createEvent(
             Long ownerId,
             CalendarRef target,
+            String uid,
             String summary,
             String description,
             Instant start,
@@ -106,7 +109,7 @@ public class GoogleCalendarPort implements CalendarPort {
             String locationText
     ) {
         var ctx = writeContext(ownerId, target);
-        GoogleCalendar targetCalendar = ctx.target();
+        SelectedCalendar targetCalendar = ctx.target();
         GoogleCredential cred = ctx.cred();
         Event event = buildEvent(
                 summary,
@@ -125,7 +128,7 @@ public class GoogleCalendarPort implements CalendarPort {
                     created.getId(),
                     meetLink,
                     created.getHtmlLink(),
-                    new CalendarRef(cred.id, targetCalendar.googleCalendarId)
+                    new CalendarRef(cred.id, targetCalendar.remoteId)
             );
         } catch (GoogleJsonResponseException e) {
             return handleCreateFailure(e, cred, targetCalendar, event, createMeetLink);
@@ -180,7 +183,7 @@ public class GoogleCalendarPort implements CalendarPort {
     private CreatedEvent handleCreateFailure(
             GoogleJsonResponseException e,
             GoogleCredential cred,
-            GoogleCalendar target,
+            SelectedCalendar target,
             Event event,
             boolean createMeetLink
     ) {
@@ -204,13 +207,10 @@ public class GoogleCalendarPort implements CalendarPort {
      * capability so the UI stops offering GOOGLE_MEET for this write target. The booking gets a plain
      * event, no link.
      */
-    private CreatedEvent retryWithoutConference(GoogleCredential cred, GoogleCalendar target, Event event) {
+    private CreatedEvent retryWithoutConference(GoogleCredential cred, SelectedCalendar target, Event event) {
         org.jboss.logging.Logger
             .getLogger(GoogleCalendarPort.class)
-            .warnf(
-                    "Write-target calendar %s rejected a Meet conference; creating event without one",
-                    target.googleCalendarId
-            );
+            .warnf("Write-target calendar %s rejected a Meet conference; creating event without one", target.remoteId);
         // managed entity; flushes with the booking transaction
         target.supportsMeet = false;
         event.setConferenceData(null);
@@ -220,7 +220,7 @@ public class GoogleCalendarPort implements CalendarPort {
                     created.getId(),
                     null,
                     created.getHtmlLink(),
-                    new CalendarRef(cred.id, target.googleCalendarId)
+                    new CalendarRef(cred.id, target.remoteId)
             );
         } catch (IOException ex) {
             throw new UncheckedIOException("createEvent failed", ex);
@@ -233,12 +233,12 @@ public class GoogleCalendarPort implements CalendarPort {
      * the two flags in a separate transaction (same pattern as GoogleTokenService.validAccessToken's
      * fail-soft flag commit).
      */
-    private void clearDeletedWriteTarget(GoogleCalendar target, GoogleCredential cred) {
+    private void clearDeletedWriteTarget(SelectedCalendar target, GoogleCredential cred) {
         Long targetId = target.id, credId = cred.id;
         io.quarkus.narayana.jta.QuarkusTransaction
             .requiringNew()
             .run(() -> {
-                GoogleCalendar t = GoogleCalendar.findById(targetId);
+                SelectedCalendar t = SelectedCalendar.findById(targetId);
                 if (t != null) {
                     t.writeTarget = false;
                     t.persist();
@@ -332,8 +332,8 @@ public class GoogleCalendarPort implements CalendarPort {
         }
     }
 
-    private GoogleCalendar requireWriteTarget(Long ownerId) {
-        GoogleCalendar target = GoogleCalendar.writeTarget(ownerId);
+    private SelectedCalendar requireWriteTarget(Long ownerId) {
+        SelectedCalendar target = SelectedCalendar.writeTarget(ownerId);
         if (target == null) {
             throw new IllegalStateException("No write-target Google calendar selected. POST /api/google/calendars.");
         }
@@ -343,11 +343,11 @@ public class GoogleCalendarPort implements CalendarPort {
     /**
      * The write-target calendar plus its (non-null) owning credential, or fail clearly.
      */
-    private record WriteContext(GoogleCalendar target, GoogleCredential cred) {}
+    private record WriteContext(SelectedCalendar target, GoogleCredential cred) {}
 
     private WriteContext writeContext(Long ownerId) {
-        GoogleCalendar target = requireWriteTarget(ownerId);
-        GoogleCredential cred = GoogleCredential.findById(target.googleCredentialId);
+        SelectedCalendar target = requireWriteTarget(ownerId);
+        GoogleCredential cred = GoogleCredential.findById(target.accountId);
         if (cred == null) {
             throw new IllegalStateException("Write-target calendar has no credential; reconnect Google.");
         }
@@ -362,9 +362,9 @@ public class GoogleCalendarPort implements CalendarPort {
      */
     private WriteContext writeContext(Long ownerId, CalendarRef ref) {
         if (ref != null) {
-            GoogleCalendar target = GoogleCalendar.findOwned(ownerId, ref.credentialId(), ref.googleCalendarId());
+            SelectedCalendar target = SelectedCalendar.findOwned(ownerId, ref.accountId(), ref.remoteCalendarId());
             if (target != null) {
-                GoogleCredential cred = GoogleCredential.findById(target.googleCredentialId);
+                GoogleCredential cred = GoogleCredential.findById(target.accountId);
                 if (cred != null && ownerId.equals(cred.ownerId)) {
                     return new WriteContext(target, cred);
                 }
@@ -385,14 +385,14 @@ public class GoogleCalendarPort implements CalendarPort {
      * pre-calit-rma2 behaviour rather than failing the call.
      */
     private WriteAddress writeAddress(Long ownerId, CalendarRef ref) {
-        if (ref != null && ref.googleCalendarId() != null && ref.credentialId() != null) {
-            GoogleCredential cred = GoogleCredential.findById(ref.credentialId());
+        if (ref != null && ref.remoteCalendarId() != null && ref.accountId() != null) {
+            GoogleCredential cred = GoogleCredential.findById(ref.accountId());
             if (cred != null && ownerId.equals(cred.ownerId)) {
-                return new WriteAddress(ref.googleCalendarId(), cred, true);
+                return new WriteAddress(ref.remoteCalendarId(), cred, true);
             }
         }
         var ctx = writeContext(ownerId);
-        return new WriteAddress(ctx.target().googleCalendarId, ctx.cred(), false);
+        return new WriteAddress(ctx.target().remoteId, ctx.cred(), false);
     }
 
     /**
@@ -412,10 +412,11 @@ public class GoogleCalendarPort implements CalendarPort {
      * Insert the event. setConferenceDataVersion(1) is required so Google honors a createRequest
      * (harmless at 0 when there's no conference); setSendUpdates("all") emails the attendees the invite.
      */
-    private Event insert(GoogleCredential cred, GoogleCalendar target, Event event, boolean withMeet) throws IOException {
+    private Event insert(GoogleCredential cred, SelectedCalendar target, Event event, boolean withMeet)
+            throws IOException {
         return client(cred)
             .events()
-            .insert(target.googleCalendarId, event)
+            .insert(target.remoteId, event)
             .setConferenceDataVersion(withMeet ? 1 : 0)
             .setSendUpdates("all")
             .execute();

@@ -18,7 +18,7 @@ import site.asm0dey.calit.booking.events.BookingDeclined;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 
 // When SMTP is down, a booking notification must NOT throw out of the observer -- it must land in the outbox.
 @QuarkusTest

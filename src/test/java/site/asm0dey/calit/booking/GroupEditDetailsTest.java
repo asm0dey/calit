@@ -12,9 +12,9 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.events.BookingDetailsChanged;
 import site.asm0dey.calit.booking.events.GuestRemoved;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CalendarRef;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarRef;
+import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
@@ -61,7 +61,18 @@ class GroupEditDetailsTest {
     private void stubOrganizerOnCreator() {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyList(),
+                anyBoolean(),
+                any()
+        ))
             .thenReturn(new CreatedEvent("grp-evt", "meet", "cal", null));
     }
 
@@ -86,7 +97,18 @@ class GroupEditDetailsTest {
         // to address it specifically rather than "whatever ref, if any".
         GoogleCredential cred = seedCredential("sub-group-details");
         CalendarRef ref = new CalendarRef(cred.id, "grp-cal@example.com");
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyList(),
+                anyBoolean(),
+                any()
+        ))
             .thenReturn(new CreatedEvent("grp-evt", "meet", "cal", ref));
         // auto-confirm -> event created immediately
         groupType();
@@ -107,7 +129,7 @@ class GroupEditDetailsTest {
         List<Booking> rows = Booking.group(lead.groupId);
         assertThat(rows).hasSize(2);
         verify(calendarPort, times(1))
-            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
 
         var detailsChangedBefore = DETAILS_CHANGED.get();
         Map<Long, Integer> seqBefore = new java.util.HashMap<>();
@@ -188,7 +210,7 @@ class GroupEditDetailsTest {
         List<Booking> rows = Booking.group(lead.groupId);
         assertThat(rows).hasSize(2);
         verify(calendarPort, times(1))
-            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
         // The organizer (creator, owner id 1) disconnects Google after confirmation.
         when(calendarPort.isConnected(1L)).thenReturn(false);
 
@@ -280,7 +302,7 @@ class GroupEditDetailsTest {
         );
         Booking
             .<Booking>group(lead.groupId)
-            .forEach(r -> assertThat(r.googleEventId).isNull());
+            .forEach(r -> assertThat(r.eventId).isNull());
 
         assertThatCode(() -> bookingService.updateDetails(
                 lead.manageToken,
@@ -333,9 +355,9 @@ class GroupEditDetailsTest {
             .findFirst()
             .orElseThrow();
         cohostId[0] = cohost.ownerId;
-        cohost.googleEventId = "legacy-evt";
-        cohost.googleCredentialId = ref.credentialId();
-        cohost.googleCalendarId = ref.googleCalendarId();
+        cohost.eventId = "legacy-evt";
+        cohost.calendarAccountId = ref.accountId();
+        cohost.calendarRemoteId = ref.remoteCalendarId();
         cohost.meetLink = "https://meet/legacy";
         lead.meetLink = "https://meet/legacy";
         when(calendarPort.isConnected(cohost.ownerId)).thenReturn(true);
@@ -372,7 +394,7 @@ class GroupEditDetailsTest {
 
         verify(calendarPort).deleteEvent(cohostId[0], ref, "legacy-evt");
         Booking.<Booking>group(cohost.groupId).forEach(r -> {
-            assertThat(r.googleEventId).isNull();
+            assertThat(r.eventId).isNull();
             assertThat(r.meetLink).as("no dead Meet link survives on any row").isNull();
         });
     }

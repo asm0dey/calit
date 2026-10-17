@@ -96,13 +96,13 @@ public class MeetingType extends PanacheEntityBase {
      * Optional per-type override of the creator's write calendar: Google's calendar id. Null means
      * "use the creator's write target". Resolved by {@code WriteTargetResolver}.
      */
-    @Column(name = "google_calendar_id", columnDefinition = "text")
-    public String googleCalendarId;
+    @Column(name = "override_remote_calendar_id", columnDefinition = "text")
+    public String overrideRemoteCalendarId;
     /**
-     * The connected account {@link #googleCalendarId} belongs to; nulled when that account is disconnected.
+     * The connected account {@link #overrideRemoteCalendarId} belongs to; nulled when that account is disconnected.
      */
-    @Column(name = "google_credential_id")
-    public Long googleCredentialId;
+    @Column(name = "override_account_id")
+    public Long overrideAccountId;
 
     public static MeetingType findBySlug(Long ownerId, String slug) {
         return find("ownerId = ?1 and slug = ?2", ownerId, slug).firstResult();

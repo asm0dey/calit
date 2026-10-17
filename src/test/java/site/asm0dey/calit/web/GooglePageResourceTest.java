@@ -8,8 +8,8 @@ import static org.mockito.Mockito.when;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.google.CalendarListPort;
-import site.asm0dey.calit.google.GoogleCalendar;
+import site.asm0dey.calit.calendar.CalendarListPort;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 
 @QuarkusTest
@@ -178,18 +178,14 @@ class GooglePageResourceTest {
 
     @Transactional
     void assertWriteTarget(long credId, String googleCalId) {
-        long n = GoogleCalendar.count(
-                "googleCredentialId = ?1 and googleCalendarId = ?2 and writeTarget = true",
-                credId,
-                googleCalId
-        );
+        long n = SelectedCalendar.count("accountId = ?1 and remoteId = ?2 and writeTarget = true", credId, googleCalId);
         assertThat(n).as("expected " + googleCalId + " to be the write target").isOne();
     }
 
     @Transactional
     void assertReadForBusy(long credId, String googleCalId, boolean expected) {
-        long n = GoogleCalendar.count(
-                "googleCredentialId = ?1 and googleCalendarId = ?2 and readForBusy = ?3",
+        long n = SelectedCalendar.count(
+                "accountId = ?1 and remoteId = ?2 and readForBusy = ?3",
                 credId,
                 googleCalId,
                 expected
@@ -199,7 +195,7 @@ class GooglePageResourceTest {
 
     @Transactional
     void assertCalendarExists(long credId, String googleCalId) {
-        long n = GoogleCalendar.count("googleCredentialId = ?1 and googleCalendarId = ?2", credId, googleCalId);
+        long n = SelectedCalendar.count("accountId = ?1 and remoteId = ?2", credId, googleCalId);
         assertThat(n).as("expected calendar " + googleCalId + " to still exist for credential " + credId).isOne();
     }
 
@@ -213,19 +209,19 @@ class GooglePageResourceTest {
         y.needsReconnect = true;
         y.persist();
         // X currently holds the write target.
-        GoogleCalendar xw = new GoogleCalendar();
+        SelectedCalendar xw = new SelectedCalendar();
         xw.ownerId = ownerId;
-        xw.googleCredentialId = x.id;
-        xw.googleCalendarId = "x1";
+        xw.accountId = x.id;
+        xw.remoteId = "x1";
         xw.summary = "X1";
         xw.readForBusy = true;
         xw.writeTarget = true;
         xw.persist();
         // Y (flagged) has a saved read calendar that must survive a save.
-        GoogleCalendar yr = new GoogleCalendar();
+        SelectedCalendar yr = new SelectedCalendar();
         yr.ownerId = ownerId;
-        yr.googleCredentialId = y.id;
-        yr.googleCalendarId = "y1";
+        yr.accountId = y.id;
+        yr.remoteId = "y1";
         yr.summary = "Y1";
         yr.readForBusy = true;
         yr.writeTarget = false;
@@ -241,10 +237,10 @@ class GooglePageResourceTest {
         a.persist();
         GoogleCredential b = cred(ownerId, "sub-B");
         b.persist();
-        GoogleCalendar w = new GoogleCalendar();
+        SelectedCalendar w = new SelectedCalendar();
         w.ownerId = ownerId;
-        w.googleCredentialId = a.id;
-        w.googleCalendarId = "w";
+        w.accountId = a.id;
+        w.remoteId = "w";
         w.summary = "W";
         w.readForBusy = true;
         w.writeTarget = true;

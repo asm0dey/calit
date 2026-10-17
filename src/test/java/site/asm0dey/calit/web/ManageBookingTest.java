@@ -19,8 +19,8 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 
 @QuarkusTest
 class ManageBookingTest {
@@ -149,7 +149,7 @@ class ManageBookingTest {
     void rescheduleOffersSlotsAtTheBookedLengthNotTheTypeDefault() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(new CreatedEvent("evt-m4", "https://meet.google.com/manage-link4", "h", null));
         var token = seedMultiDurationBooking();
         // "16:30" is a valid start ONLY at the type's 30-minute default, never at the booking's
@@ -163,7 +163,7 @@ class ManageBookingTest {
     void managePageRendersForValidToken() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(new CreatedEvent("evt-m", "https://meet.google.com/manage-link", "h", null));
         var token = seedBooking();
 
@@ -193,7 +193,7 @@ class ManageBookingTest {
     void rescheduleSubmitsAbsoluteInstantUnaffectedByDisplayZone() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(new CreatedEvent("evt-m3", "https://meet.google.com/manage-link3", "h", null));
         var token = seedBooking();
         // Pull a reschedule slot's absolute UTC instant from the manage page's radio value,
@@ -224,7 +224,7 @@ class ManageBookingTest {
     void cancelMarksBookingCancelled() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
             .thenReturn(new CreatedEvent("evt-m2", "https://meet.google.com/manage-link2", "h", null));
         var token = seedBooking();
 

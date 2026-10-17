@@ -11,6 +11,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import site.asm0dey.calit.calendar.CalendarListPort;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 
 @QuarkusTest
 class GoogleCalendarResourceTest {
@@ -23,7 +25,7 @@ class GoogleCalendarResourceTest {
     @AfterEach
     @Transactional
     void tearDown() {
-        GoogleCalendar.deleteAll();
+        SelectedCalendar.deleteAll();
         GoogleCredential.deleteAll();
     }
 
@@ -31,7 +33,7 @@ class GoogleCalendarResourceTest {
     @BeforeEach
     @Transactional
     void setUp() {
-        GoogleCalendar.deleteAll();
+        SelectedCalendar.deleteAll();
         GoogleCredential.deleteAll();
         GoogleCredential cred = new GoogleCredential();
         cred.ownerId = 1L;

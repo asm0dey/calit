@@ -21,10 +21,10 @@ import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType.FieldMode;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.email.MailHealth;
-import site.asm0dey.calit.google.CalendarRef;
-import site.asm0dey.calit.google.GoogleCalendar;
+import site.asm0dey.calit.calendar.CalendarRef;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
-import site.asm0dey.calit.google.WriteTargetResolver;
+import site.asm0dey.calit.calendar.WriteTargetResolver;
 import site.asm0dey.calit.i18n.*;
 import site.asm0dey.calit.notify.ChannelAdmin;
 import site.asm0dey.calit.notify.ChannelRejected;
@@ -57,7 +57,7 @@ public class AdminResource {
 
         public static native TemplateInstance meetingTypes(
                 List<MeetingType> types,
-                List<GoogleCalendar> writeCalendars,
+                List<SelectedCalendar> writeCalendars,
                 LocationType[] locationTypes,
                 DayOfWeek[] daysOfWeek,
                 List<WeekRow> week,
@@ -86,7 +86,7 @@ public class AdminResource {
                 List<DateOverride> overrides,
                 List<HostRow> hosts,
                 List<DurationRow> durations,
-                List<GoogleCalendar> writeCalendars,
+                List<SelectedCalendar> writeCalendars,
                 String writeCalendarValue,
                 boolean writeCalendarDangling,
                 LocationType[] locationTypes,
@@ -460,7 +460,7 @@ public class AdminResource {
         // Pass LocationType.values() so the form can render the location dropdown options.
         return Templates.meetingTypes(
                 singleHostTypes(),
-                GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id()),
+                SelectedCalendar.<SelectedCalendar>list("ownerId = ?1 order by summary", currentOwner.id()),
                 allowedLocationTypes(),
                 DayOfWeek.values(),
                 WeekRow.blank(),
@@ -584,8 +584,8 @@ public class AdminResource {
                     assertNoOwnerSlugCollision(t.slug);
                     meetingHosts.assertSlugFreeAcrossHosts(t, t.slug);
                     var ref = requireOwnedCalendar(writeCalendar);
-                    t.googleCredentialId = ref == null ? null : ref.credentialId();
-                    t.googleCalendarId = ref == null ? null : ref.googleCalendarId();
+                    t.overrideAccountId = ref == null ? null : ref.accountId();
+                    t.overrideRemoteCalendarId = ref == null ? null : ref.remoteCalendarId();
                     applyEditableFields(
                             t,
                             description,
@@ -752,10 +752,10 @@ public class AdminResource {
      *     package visibility and {@code static} modifier are not themselves an authorization check.
      */
     static long bookingsStayingBehind(MeetingType type, CalendarRef newTarget) {
-        String newCalendarId = newTarget == null ? null : newTarget.googleCalendarId();
+        String newCalendarId = newTarget == null ? null : newTarget.remoteCalendarId();
         return Booking.count(
-                "meetingTypeId = ?1 and status in ?2 and startUtc > ?3 and googleEventId is not null "
-                + "and (googleCalendarId is null or googleCalendarId <> ?4)",
+                "meetingTypeId = ?1 and status in ?2 and startUtc > ?3 and eventId is not null "
+                + "and (calendarRemoteId is null or calendarRemoteId <> ?4)",
                 type.id,
                 List.of(BookingStatus.CONFIRMED, BookingStatus.PENDING),
                 Instant.now(),
@@ -973,7 +973,7 @@ public class AdminResource {
         // every day the host never touched (the grid is the type's whole week once any row exists).
         List<DateOverride> overrides = overridesForType(id);
         var override = writeTargets.writeOverride(currentOwner.id(), t);
-        var writeCalendars = GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id());
+        var writeCalendars = SelectedCalendar.<SelectedCalendar>list("ownerId = ?1 order by summary", currentOwner.id());
         var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
         var writeCalendarValue = WriteTargetResolver.writeCalendarValue(override, writeCalendarDangling);
         String title = m().adm_meetingTypeDetail_title_prefix().stripTrailing() + " " + t.name;
@@ -1300,10 +1300,10 @@ public class AdminResource {
             return 0L;
         }
         var ref = requireOwnedCalendar(writeCalendar);
-        var before = new CalendarRef(t.googleCredentialId, t.googleCalendarId);
-        t.googleCredentialId = ref == null ? null : ref.credentialId();
-        t.googleCalendarId = ref == null ? null : ref.googleCalendarId();
-        var after = new CalendarRef(t.googleCredentialId, t.googleCalendarId);
+        var before = new CalendarRef(t.overrideAccountId, t.overrideRemoteCalendarId);
+        t.overrideAccountId = ref == null ? null : ref.accountId();
+        t.overrideRemoteCalendarId = ref == null ? null : ref.remoteCalendarId();
+        var after = new CalendarRef(t.overrideAccountId, t.overrideRemoteCalendarId);
         if (before.equals(after)) {
             // The save re-submitted the calendar the type already wrote on. Older bookings may
             // still sit elsewhere, but nothing moved, so "they stay behind" would imply a move

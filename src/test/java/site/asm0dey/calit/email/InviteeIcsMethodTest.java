@@ -20,7 +20,7 @@ import site.asm0dey.calit.booking.events.*;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 
 /**
  * With no Google calendar, calit's own .ics is the guest's only calendar source: a cancellation must be

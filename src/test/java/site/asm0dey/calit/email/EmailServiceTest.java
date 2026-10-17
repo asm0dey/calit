@@ -20,7 +20,7 @@ import site.asm0dey.calit.domain.BookingField.FieldType;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
 
@@ -609,7 +609,7 @@ class EmailServiceTest {
                 b.inviteeEmail = INVITEE_EMAIL;
                 b.startUtc = startUtc;
                 b.endUtc = startUtc.plus(30, ChronoUnit.MINUTES);
-                b.googleEventId = "evt-" + System.nanoTime();
+                b.eventId = "evt-" + System.nanoTime();
                 b.meetLink = null;
                 b.status = BookingStatus.CONFIRMED;
                 b.answers = Map.of();

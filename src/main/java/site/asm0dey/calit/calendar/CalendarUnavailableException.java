@@ -1,4 +1,4 @@
-package site.asm0dey.calit.google;
+package site.asm0dey.calit.calendar;
 
 /**
  * The owner's Google free/busy data could not be read (an account is disconnected or a live call

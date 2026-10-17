@@ -4,6 +4,7 @@ import module java.base;
 import com.google.api.services.calendar.model.CalendarListEntry;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import site.asm0dey.calit.calendar.CalendarListPort;
 import site.asm0dey.calit.user.CurrentOwner;
 
 /**

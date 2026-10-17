@@ -205,7 +205,7 @@ class BookingErasureTest {
         var id = ErasureFixtures.seedPastBookingId();
         String token = QuarkusTransaction.requiringNew().call(() -> {
             Booking b = Booking.<Booking>findById(id);
-            b.googleEventId = "evt-123";
+            b.eventId = "evt-123";
             return b.manageToken;
         });
 

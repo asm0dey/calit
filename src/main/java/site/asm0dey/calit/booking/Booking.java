@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.google.CalendarRef;
+import site.asm0dey.calit.calendar.CalendarRef;
 
 @Entity
 @Table(name = "booking")
@@ -26,18 +26,18 @@ public class Booking extends PanacheEntityBase {
     public Instant startUtc;
     @Column(name = "end_utc", nullable = false)
     public Instant endUtc;
-    @Column(name = "google_event_id")
-    public String googleEventId;
+    @Column(name = "event_id")
+    public String eventId;
     /**
-     * Google's calendar id for {@link #googleEventId}; null on rows created before V26.
+     * Google's calendar id for {@link #eventId}; null on rows created before V26.
      */
-    @Column(name = "google_calendar_id", columnDefinition = "text")
-    public String googleCalendarId;
+    @Column(name = "calendar_remote_id", columnDefinition = "text")
+    public String calendarRemoteId;
     /**
      * The connected account the event was created with; nulled when that account is disconnected.
      */
-    @Column(name = "google_credential_id")
-    public Long googleCredentialId;
+    @Column(name = "calendar_account_id")
+    public Long calendarAccountId;
     @Column(name = "meet_link", length = 512)
     public String meetLink;
     @Enumerated(EnumType.STRING)
@@ -180,7 +180,7 @@ public class Booking extends PanacheEntityBase {
      * This row's Google event address, or null when unknown (pre-V26 rows) — see {@link CalendarRef}.
      */
     public CalendarRef calendarRef() {
-        return googleCalendarId == null ? null : new CalendarRef(googleCredentialId, googleCalendarId);
+        return calendarRemoteId == null ? null : new CalendarRef(calendarAccountId, calendarRemoteId);
     }
 
     /**

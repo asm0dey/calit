@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.user.TestOwners;
 
 @QuarkusTest
@@ -26,8 +27,8 @@ class CalendarSelectionServiceTest {
                 1L,
                 List.of(new CalendarSelectionService.Selection(cred.id, "write@example.com", "Write", false, true))
         );
-        GoogleCalendar saved = GoogleCalendar.writeTarget(1L);
-        assertThat(saved.googleCalendarId).isEqualTo("write@example.com");
+        SelectedCalendar saved = SelectedCalendar.writeTarget(1L);
+        assertThat(saved.remoteId).isEqualTo("write@example.com");
         assertThat(saved.readForBusy).as("write target must be read for busy").isTrue();
     }
 
@@ -72,7 +73,7 @@ class CalendarSelectionServiceTest {
                         )
                 )
         );
-        GoogleCalendar wt = GoogleCalendar.writeTarget(1L);
+        SelectedCalendar wt = SelectedCalendar.writeTarget(1L);
         assertThat(wt.supportsMeet).as("capability must persist from the selection").isFalse();
     }
 

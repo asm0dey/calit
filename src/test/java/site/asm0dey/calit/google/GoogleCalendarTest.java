@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 
 @QuarkusTest
 class GoogleCalendarTest {
@@ -15,7 +16,7 @@ class GoogleCalendarTest {
         cal("busy@example.com", "Side", true, false);
         cal("ignored@example.com", "Ignored", false, false);
 
-        List<GoogleCalendar> readers = GoogleCalendar.readForBusy(1L);
+        List<SelectedCalendar> readers = SelectedCalendar.readForBusy(1L);
 
         assertThat(readers)
             .hasSize(2)
@@ -28,20 +29,20 @@ class GoogleCalendarTest {
         cal("read@example.com", "Read", true, false);
         cal("write@example.com", "Write", false, true);
 
-        GoogleCalendar target = GoogleCalendar.writeTarget(1L);
+        SelectedCalendar target = SelectedCalendar.writeTarget(1L);
 
         assertThat(target).isNotNull();
-        assertThat(target.googleCalendarId).isEqualTo("write@example.com");
+        assertThat(target.remoteId).isEqualTo("write@example.com");
     }
 
     @Test
     @TestTransaction
     void writeTargetIsNullWhenNoneSelected() {
         cal("read@example.com", "Read", true, false);
-        assertThat(GoogleCalendar.writeTarget(1L)).isNull();
+        assertThat(SelectedCalendar.writeTarget(1L)).isNull();
     }
 
-    private GoogleCalendar cal(String id, String summary, boolean read, boolean write) {
+    private SelectedCalendar cal(String id, String summary, boolean read, boolean write) {
         // Ensure a credential exists for owner 1 (reuse within the same transaction).
         GoogleCredential cred = GoogleCredential.forOwner(1L);
         if (cred == null) {
@@ -51,13 +52,13 @@ class GoogleCalendarTest {
             cred.googleSub = "sub-cal-test";
             cred.persist();
         }
-        GoogleCalendar c = new GoogleCalendar();
+        SelectedCalendar c = new SelectedCalendar();
         c.ownerId = 1L;
-        c.googleCalendarId = id;
+        c.remoteId = id;
         c.summary = summary;
         c.readForBusy = read;
         c.writeTarget = write;
-        c.googleCredentialId = cred.id;
+        c.accountId = cred.id;
         c.persist();
         return c;
     }

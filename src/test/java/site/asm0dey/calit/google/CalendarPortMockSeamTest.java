@@ -9,6 +9,8 @@ import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.BusyInterval;
+import site.asm0dey.calit.calendar.CalendarPort;
 
 @QuarkusTest
 class CalendarPortMockSeamTest {

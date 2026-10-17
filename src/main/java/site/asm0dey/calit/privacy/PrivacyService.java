@@ -14,7 +14,7 @@ import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailOutbox;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.notify.NotificationChannel;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.DeletedUsername;
@@ -174,7 +174,7 @@ public class PrivacyService {
         // ADR 0007 -- BookingService.createGroupGoogleEvent), not necessarily this row: look across the group.
         Booking eventRow = rows
             .stream()
-            .filter(r -> r.googleEventId != null)
+            .filter(r -> r.eventId != null)
             .findFirst()
             .orElse(null);
 
@@ -190,10 +190,7 @@ public class PrivacyService {
         QuarkusTransaction.requiringNew().run(() -> {
             anonymise(ids);
             if (eventRow != null) {
-                Booking.update(
-                        "googleEventId = null, googleCalendarId = null, googleCredentialId = null where id in ?1",
-                        ids
-                );
+                Booking.update("eventId = null, calendarRemoteId = null, calendarAccountId = null where id in ?1", ids);
             }
         });
 
@@ -233,15 +230,10 @@ public class PrivacyService {
             return ErasureReport.GoogleOutcome.UNREACHABLE;
         }
         try {
-            calendarPort.deleteEvent(eventRow.ownerId, eventRow.calendarRef(), eventRow.googleEventId);
+            calendarPort.deleteEvent(eventRow.ownerId, eventRow.calendarRef(), eventRow.eventId);
             return ErasureReport.GoogleOutcome.REMOVED;
         } catch (RuntimeException e) {
-            Log.warnf(
-                    e,
-                    "PRIVACY erasure booking=%d could not delete Google event %s",
-                    eventRow.id,
-                    eventRow.googleEventId
-            );
+            Log.warnf(e, "PRIVACY erasure booking=%d could not delete Google event %s", eventRow.id, eventRow.eventId);
             return ErasureReport.GoogleOutcome.UNREACHABLE;
         }
     }
@@ -411,7 +403,7 @@ public class PrivacyService {
                                 SELECT json_agg(json_build_object(
                                     'email', coalesce(g.account_email, '')
                                 ) ORDER BY g.id)
-                                FROM google_credential g WHERE g.owner_id = :ownerId
+                                FROM calendar_account g WHERE g.provider = 'GOOGLE' AND g.owner_id = :ownerId
                             ), '[]'::json)
                         )::text
                         """

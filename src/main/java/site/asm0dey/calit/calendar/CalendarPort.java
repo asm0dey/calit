@@ -1,6 +1,7 @@
-package site.asm0dey.calit.google;
+package site.asm0dey.calit.calendar;
 
 import module java.base;
+import site.asm0dey.calit.google.GoogleCredential;
 
 /**
  * Owner-level calendar operations. The real implementation talks to Google;
@@ -26,6 +27,8 @@ public interface CalendarPort {
      * @param target         where to create it: the meeting type's resolved write calendar. Null — or
      *                       one that no longer names a selected calendar — falls back to the owner's
      *                       write target, which is what every create did before calit-bh5t
+     * @param uid            stable event identity (the lead booking's manage token); a provider that
+     *                       names events itself may ignore it
      * @param createMeetLink when true, attach a Google Meet conference (returns a non-null meetLink);
      *                       when false, no conference is created and {@code locationText} is set as the
      *                       event location instead, and the returned meetLink is null
@@ -34,6 +37,7 @@ public interface CalendarPort {
     CreatedEvent createEvent(
             Long ownerId,
             CalendarRef target,
+            String uid,
             String summary,
             String description,
             Instant start,

@@ -12,8 +12,8 @@ import static org.mockito.Mockito.when;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 
 // #195: IcsBuilder output only ever left the app as a mail attachment, so a failed send took the
 // guest's calendar entry with it. The confirmation page now serves it directly -- but only where
@@ -48,6 +48,7 @@ class GuestIcsDownloadTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),

@@ -9,8 +9,8 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
 
@@ -44,7 +44,18 @@ class GroupApprovalTest {
     void confirmsOnlyAfterEveryHostApproves() {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyList(),
+                anyBoolean(),
+                any()
+        ))
             .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
         type(true);
 
@@ -66,8 +77,25 @@ class GroupApprovalTest {
         // first host approves
         bookingService.approve(rows.get(0).id);
         assertThat(Booking.<Booking>findById(rows.get(0).id).status).isEqualTo(BookingStatus.CONFIRMED);
-        verify(calendarPort, never()).createEvent(
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+        // last host approves -> event + confirm
+        bookingService.approve(rows.get(1).id);
+        Booking
+            .<Booking>group(lead.groupId)
+            .forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.CONFIRMED));
+        verify(calendarPort, times(1))
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+    }
+
+    @Test
+    @TestTransaction
+    void doubleApproveOnAlreadyConfirmedGroupRowDoesNotDuplicateEvent() {
+        when(calendarPort.isConnected(1L)).thenReturn(true);
+        when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
+        when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 any(),
                 any(),
@@ -76,22 +104,7 @@ class GroupApprovalTest {
                 anyList(),
                 anyBoolean(),
                 any()
-        );
-        // last host approves -> event + confirm
-        bookingService.approve(rows.get(1).id);
-        Booking
-            .<Booking>group(lead.groupId)
-            .forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.CONFIRMED));
-        verify(calendarPort, times(1))
-            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
-    }
-
-    @Test
-    @TestTransaction
-    void doubleApproveOnAlreadyConfirmedGroupRowDoesNotDuplicateEvent() {
-        when(calendarPort.isConnected(1L)).thenReturn(true);
-        when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        ))
             .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
         type(true);
 
@@ -115,12 +128,12 @@ class GroupApprovalTest {
         // last host approves -> event created + group confirmed
         bookingService.approve(rows.get(1).id);
         verify(calendarPort, times(1))
-            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
         // Double-submit: re-approve an already-CONFIRMED row (double-click / back-button replay).
         // Must NOT re-run createGroupGoogleEvent -> still exactly ONE event, not two.
         bookingService.approve(rows.get(1).id);
         verify(calendarPort, times(1))
-            .createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 
     @Test
@@ -154,17 +167,8 @@ class GroupApprovalTest {
         Booking
             .<Booking>group(lead.groupId)
             .forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.DECLINED));
-        verify(calendarPort, never()).createEvent(
-                anyLong(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                anyList(),
-                anyBoolean(),
-                any()
-        );
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 
     @Test
@@ -194,17 +198,8 @@ class GroupApprovalTest {
         Booking
             .<Booking>group(lead.groupId)
             .forEach(r -> assertThat(r.status).isEqualTo(BookingStatus.DECLINED));
-        verify(calendarPort, never()).createEvent(
-                anyLong(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                anyList(),
-                anyBoolean(),
-                any()
-        );
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 
     @Test

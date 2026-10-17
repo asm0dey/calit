@@ -13,9 +13,9 @@ import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeHost;
-import site.asm0dey.calit.google.GoogleCalendar;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
-import site.asm0dey.calit.google.WriteTargetResolver;
+import site.asm0dey.calit.calendar.WriteTargetResolver;
 import site.asm0dey.calit.user.AppUser;
 
 /**
@@ -30,7 +30,7 @@ class SharedWriteCalendarTest {
         Booking.delete("meetingTypeId in (select t.id from MeetingType t where t.slug like ?1)", "shared-cal-%");
         MeetingTypeHost.delete("meetingTypeId in (select t.id from MeetingType t where t.slug like ?1)", "shared-cal-%");
         MeetingType.delete("slug like ?1", "shared-cal-%");
-        GoogleCalendar.deleteAll();
+        SelectedCalendar.deleteAll();
         GoogleCredential.deleteAll();
         AppUser.delete("username", "shared-cal-creator");
         AppUser.delete("username", "shared-cal-cohost2");
@@ -59,8 +59,8 @@ class SharedWriteCalendarTest {
         saveBuffers(typeId, credId + ":work@example.com").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertThat(t.googleCredentialId).isNull();
-        assertThat(t.googleCalendarId).isNull();
+        assertThat(t.overrideAccountId).isNull();
+        assertThat(t.overrideRemoteCalendarId).isNull();
         assertThat(MeetingTypeHost.<MeetingTypeHost>forType(typeId)).hasSize(2);
         // The columns are unmapped now, so only SQL can prove no row received the value.
         assertThat(hostRowGoogleColumns(typeId)).isEmpty();
@@ -98,8 +98,8 @@ class SharedWriteCalendarTest {
         saveBuffers(typeId, credId + ":work@example.com").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertThat(t.googleCredentialId).isEqualTo(credId);
-        assertThat(t.googleCalendarId).isEqualTo("work@example.com");
+        assertThat(t.overrideAccountId).isEqualTo(credId);
+        assertThat(t.overrideRemoteCalendarId).isEqualTo("work@example.com");
     }
 
     @Test
@@ -111,8 +111,8 @@ class SharedWriteCalendarTest {
         saveBuffers(typeId, foreignCredId + ":creator@example.com").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertThat(t.googleCredentialId).isNull();
-        assertThat(t.googleCalendarId).isNull();
+        assertThat(t.overrideAccountId).isNull();
+        assertThat(t.overrideRemoteCalendarId).isNull();
     }
 
     @Test
@@ -124,8 +124,8 @@ class SharedWriteCalendarTest {
         saveBuffers(typeId, "keep").statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertThat(t.googleCredentialId).isEqualTo(credId);
-        assertThat(t.googleCalendarId).isEqualTo("unticked@example.com");
+        assertThat(t.overrideAccountId).isEqualTo(credId);
+        assertThat(t.overrideRemoteCalendarId).isEqualTo("unticked@example.com");
     }
 
     @Test
@@ -147,8 +147,8 @@ class SharedWriteCalendarTest {
             .statusCode(200);
 
         MeetingType t = MeetingType.findById(typeId);
-        assertThat(t.googleCredentialId).isNull();
-        assertThat(t.googleCalendarId).isEqualTo("was-on-a-disconnected-account@example.com");
+        assertThat(t.overrideAccountId).isNull();
+        assertThat(t.overrideRemoteCalendarId).isEqualTo("was-on-a-disconnected-account@example.com");
     }
 
     @Test
@@ -219,8 +219,8 @@ class SharedWriteCalendarTest {
     @Transactional
     void setCreatorOverride(Long typeId, Long credId, String calendarId) {
         MeetingType t = MeetingType.findById(typeId);
-        t.googleCredentialId = credId;
-        t.googleCalendarId = calendarId;
+        t.overrideAccountId = credId;
+        t.overrideRemoteCalendarId = calendarId;
         t.persist();
     }
 
@@ -307,9 +307,9 @@ class SharedWriteCalendarTest {
         b.status = BookingStatus.CONFIRMED;
         b.createdAt = Instant.now();
         b.manageToken = UUID.randomUUID().toString();
-        b.googleEventId = "evt-staying";
-        b.googleCredentialId = credId;
-        b.googleCalendarId = calendarId;
+        b.eventId = "evt-staying";
+        b.calendarAccountId = credId;
+        b.calendarRemoteId = calendarId;
         b.persist();
     }
 
@@ -330,10 +330,10 @@ class SharedWriteCalendarTest {
     }
 
     private static void persistCalendar(Long ownerId, Long credId, String calId, boolean writeTarget) {
-        GoogleCalendar g = new GoogleCalendar();
+        SelectedCalendar g = new SelectedCalendar();
         g.ownerId = ownerId;
-        g.googleCredentialId = credId;
-        g.googleCalendarId = calId;
+        g.accountId = credId;
+        g.remoteId = calId;
         g.summary = calId;
         g.readForBusy = writeTarget;
         g.writeTarget = writeTarget;

@@ -3,6 +3,7 @@ package site.asm0dey.calit.google;
 import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 
 /**
  * Validates and persists an owner's calendar selection, replacing any prior selection. Shared by the
@@ -44,7 +45,7 @@ public class CalendarSelectionService {
         if (writeTargets > 1) {
             throw new IllegalArgumentException("At most one write-target calendar is allowed");
         }
-        GoogleCalendar.deleteForOwner(ownerId);
+        SelectedCalendar.deleteForOwner(ownerId);
         for (Selection sel : selections) {
             GoogleCredential cred = GoogleCredential.findById(sel.googleCredentialId());
             if (cred == null || !ownerId.equals(cred.ownerId)) {
@@ -52,10 +53,10 @@ public class CalendarSelectionService {
                         + sel.googleCredentialId()
                         + " for this owner");
             }
-            GoogleCalendar c = new GoogleCalendar();
+            SelectedCalendar c = new SelectedCalendar();
             c.ownerId = ownerId;
-            c.googleCredentialId = sel.googleCredentialId();
-            c.googleCalendarId = sel.googleCalendarId();
+            c.accountId = sel.googleCredentialId();
+            c.remoteId = sel.googleCalendarId();
             c.summary = sel.summary();
             // Write target is always read for busy (hard coupling).
             c.readForBusy = sel.readForBusy() || sel.writeTarget();

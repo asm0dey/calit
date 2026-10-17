@@ -17,8 +17,8 @@ import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.booking.MeetingHosts;
 import site.asm0dey.calit.domain.*;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
 
@@ -92,7 +92,18 @@ class SharedMeetingsResourceTest {
     private void stubOrganizerOnCreator(Long creatorId) {
         when(calendarPort.isConnected(creatorId)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && !id.equals(creatorId)))).thenReturn(false);
-        when(calendarPort.createEvent(anyLong(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any()))
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyList(),
+                anyBoolean(),
+                any()
+        ))
             .thenReturn(new CreatedEvent("evt", "meet", "cal", null));
     }
 

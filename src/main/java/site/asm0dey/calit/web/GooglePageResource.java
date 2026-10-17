@@ -13,9 +13,9 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
-import site.asm0dey.calit.google.CalendarListPort;
+import site.asm0dey.calit.calendar.CalendarListPort;
 import site.asm0dey.calit.google.CalendarSelectionService;
-import site.asm0dey.calit.google.GoogleCalendar;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AdminMessageResolver;
@@ -77,10 +77,10 @@ public class GooglePageResource {
         List<AccountView> accounts = new ArrayList<>();
         var loadError = false;
         for (GoogleCredential cred : creds) {
-            Map<String, GoogleCalendar> saved = GoogleCalendar
-                .<GoogleCalendar>list("googleCredentialId", cred.id)
+            Map<String, SelectedCalendar> saved = SelectedCalendar
+                .<SelectedCalendar>list("accountId", cred.id)
                 .stream()
-                .collect(Collectors.toMap(c -> c.googleCalendarId, c -> c, (a, b) -> a));
+                .collect(Collectors.toMap(c -> c.remoteId, c -> c, (a, b) -> a));
             List<CalendarRow> rows = new ArrayList<>();
             var holdsWriteTarget = false;
             var loadFailed = false;
@@ -88,23 +88,23 @@ public class GooglePageResource {
             if (cred.needsReconnect) {
                 // Dead token: don't call Google. Show saved config so the owner sees what's configured.
                 loadFailed = true;
-                for (GoogleCalendar s : saved.values()) {
+                for (SelectedCalendar s : saved.values()) {
                     if (s.writeTarget) {
                         holdsWriteTarget = true;
                     }
-                    rows.add(new CalendarRow(cred.id, s.googleCalendarId, s.summary, s.readForBusy, s.writeTarget));
+                    rows.add(new CalendarRow(cred.id, s.remoteId, s.summary, s.readForBusy, s.writeTarget));
                 }
             } else {
                 try {
                     for (CalendarListPort.RemoteCalendar rc : calendarListPort.listCalendars(cred)) {
-                        GoogleCalendar s = saved.get(rc.googleCalendarId());
+                        SelectedCalendar s = saved.get(rc.remoteId());
                         // first-load: all read
                         boolean read = s == null ? saved.isEmpty() : s.readForBusy;
                         var write = s != null && s.writeTarget;
                         if (write) {
                             holdsWriteTarget = true;
                         }
-                        rows.add(new CalendarRow(cred.id, rc.googleCalendarId(), rc.summary(), read, write));
+                        rows.add(new CalendarRow(cred.id, rc.remoteId(), rc.summary(), read, write));
                     }
                 } catch (RuntimeException ex) {
                     // Transient failure: banner + fall back to saved rows so config stays visible.
@@ -115,11 +115,11 @@ public class GooglePageResource {
                     loadFailed = true;
                     rows.clear();
                     holdsWriteTarget = false;
-                    for (GoogleCalendar s : saved.values()) {
+                    for (SelectedCalendar s : saved.values()) {
                         if (s.writeTarget) {
                             holdsWriteTarget = true;
                         }
-                        rows.add(new CalendarRow(cred.id, s.googleCalendarId, s.summary, s.readForBusy, s.writeTarget));
+                        rows.add(new CalendarRow(cred.id, s.remoteId, s.summary, s.readForBusy, s.writeTarget));
                     }
                 }
             }
@@ -170,14 +170,14 @@ public class GooglePageResource {
             }
             reachable.add(cred.id);
             for (CalendarListPort.RemoteCalendar rc : live) {
-                String key = cred.id + ":" + rc.googleCalendarId();
+                String key = cred.id + ":" + rc.remoteId();
                 var read = readVals.contains(key);
                 var write = key.equals(writeVal);
                 if (read || write) {
                     selections.add(
                             new CalendarSelectionService.Selection(
                                     cred.id,
-                                    rc.googleCalendarId(),
+                                    rc.remoteId(),
                                     rc.summary(),
                                     read,
                                     write,
@@ -194,16 +194,16 @@ public class GooglePageResource {
         // Preserve existing rows for accounts we could NOT reach (flagged/errored). Keep their read
         // selections; demote a preserved write target only if the form chose a new one, so the
         // single-write-target-per-owner invariant holds.
-        for (GoogleCalendar s : GoogleCalendar.<GoogleCalendar>list("ownerId", ownerId)) {
-            if (reachable.contains(s.googleCredentialId)) {
+        for (SelectedCalendar s : SelectedCalendar.<SelectedCalendar>list("ownerId", ownerId)) {
+            if (reachable.contains(s.accountId)) {
                 // reachable accounts are fully respecified by the form above
                 continue;
             }
             var keepWrite = s.writeTarget && !submittedHasWriteTarget;
             selections.add(
                     new CalendarSelectionService.Selection(
-                            s.googleCredentialId,
-                            s.googleCalendarId,
+                            s.accountId,
+                            s.remoteId,
                             s.summary,
                             s.readForBusy || keepWrite,
                             keepWrite,
@@ -233,7 +233,7 @@ public class GooglePageResource {
         if (cred == null || !ownerId.equals(cred.ownerId)) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        var holdsWriteTarget = GoogleCalendar.count("googleCredentialId = ?1 and writeTarget = true", credentialId) > 0;
+        var holdsWriteTarget = SelectedCalendar.count("accountId = ?1 and writeTarget = true", credentialId) > 0;
         var otherAccountsRemain = GoogleCredential.countForOwner(ownerId) > 1;
         if (holdsWriteTarget && otherAccountsRemain) {
             return Response

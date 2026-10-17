@@ -7,6 +7,8 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.CalendarUnavailableException;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 
 @QuarkusTest
 class FreeBusyMultiAccountTest {
@@ -42,10 +44,10 @@ class FreeBusyMultiAccountTest {
     }
 
     private static void readCal(long owner, long credId, String calId) {
-        GoogleCalendar g = new GoogleCalendar();
+        SelectedCalendar g = new SelectedCalendar();
         g.ownerId = owner;
-        g.googleCredentialId = credId;
-        g.googleCalendarId = calId;
+        g.accountId = credId;
+        g.remoteId = calId;
         g.summary = calId;
         g.readForBusy = true;
         g.persist();

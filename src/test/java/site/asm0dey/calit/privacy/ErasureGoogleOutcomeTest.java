@@ -15,7 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarPort;
 
 /**
  * The Google half of invitee erasure, with the calendar port faked: a reachable Google reports
@@ -41,8 +41,8 @@ class ErasureGoogleOutcomeTest {
     private static String withGoogleEvent(Long id) {
         return QuarkusTransaction.requiringNew().call(() -> {
             Booking b = Booking.findById(id);
-            b.googleEventId = EVENT;
-            b.googleCalendarId = "primary";
+            b.eventId = EVENT;
+            b.calendarRemoteId = "primary";
             return b.manageToken;
         });
     }
@@ -80,7 +80,7 @@ class ErasureGoogleOutcomeTest {
         assertThat(b.isErased()).as("a Google failure must not block the erasure").isTrue();
         assertThat(b.status).as("the booking is still cancelled").isEqualTo(BookingStatus.CANCELLED);
         assertThat(b.inviteeName).isEmpty();
-        assertThat(b.googleEventId).isNull();
+        assertThat(b.eventId).isNull();
     }
 
     @Test
@@ -95,8 +95,8 @@ class ErasureGoogleOutcomeTest {
         Booking b = reload(id);
         assertThat(b.isErased()).isTrue();
         assertThat(b.status).as("a past booking is not cancelled").isEqualTo(BookingStatus.CONFIRMED);
-        assertThat(b.googleEventId).as("an erased row must not keep pointing at the owner's event").isNull();
-        assertThat(b.googleCalendarId).isNull();
-        assertThat(b.googleCredentialId).isNull();
+        assertThat(b.eventId).as("an erased row must not keep pointing at the owner's event").isNull();
+        assertThat(b.calendarRemoteId).isNull();
+        assertThat(b.calendarAccountId).isNull();
     }
 }

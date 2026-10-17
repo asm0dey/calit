@@ -9,8 +9,8 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
 
@@ -49,6 +49,7 @@ class GroupBookingWriteTest {
         when(calendarPort.createEvent(
                 anyLong(),
                 any(),
+                any(),
                 anyString(),
                 anyString(),
                 any(),
@@ -83,6 +84,7 @@ class GroupBookingWriteTest {
             .createEvent(
                     eq(1L),
                     any(),
+                    any(),
                     anyString(),
                     anyString(),
                     any(),
@@ -92,7 +94,7 @@ class GroupBookingWriteTest {
                     any()
             );
         Booking organizerRow = Booking.leadOfGroup(lead.groupId, 1L);
-        assertThat(organizerRow.googleEventId).isEqualTo("evt-1");
+        assertThat(organizerRow.eventId).isEqualTo("evt-1");
     }
 
     @Test
@@ -123,10 +125,21 @@ class GroupBookingWriteTest {
         );
         // ADR 0007: a Co-host is never promoted to organizer; the group books in degraded mode
         verify(calendarPort, never())
-            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), anyList(), anyBoolean(), any());
+            .createEvent(
+                    anyLong(),
+                    any(),
+                    any(),
+                    anyString(),
+                    anyString(),
+                    any(),
+                    any(),
+                    anyList(),
+                    anyBoolean(),
+                    any()
+            );
         Booking.group(lead.groupId).forEach(r -> {
             assertThat(r.status).isEqualTo(BookingStatus.CONFIRMED);
-            assertThat(r.googleEventId).isNull();
+            assertThat(r.eventId).isNull();
         });
     }
 
@@ -154,16 +167,7 @@ class GroupBookingWriteTest {
             assertThat(r.status).isEqualTo(BookingStatus.PENDING);
             assertThat(r.approvalToken).isNotNull();
         });
-        verify(calendarPort, never()).createEvent(
-                anyLong(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                anyList(),
-                anyBoolean(),
-                any()
-        );
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
 }

@@ -13,8 +13,8 @@ import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.BusyInterval;
-import site.asm0dey.calit.google.CalendarPort;
+import site.asm0dey.calit.calendar.BusyInterval;
+import site.asm0dey.calit.calendar.CalendarPort;
 
 @QuarkusTest
 class AvailableSlotsTest {

@@ -22,12 +22,12 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.MeetingTypeDuration;
 import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.BusyInterval;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CalendarRef;
-import site.asm0dey.calit.google.CalendarUnavailableException;
-import site.asm0dey.calit.google.CreatedEvent;
-import site.asm0dey.calit.google.WriteTargetResolver;
+import site.asm0dey.calit.calendar.BusyInterval;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarRef;
+import site.asm0dey.calit.calendar.CalendarUnavailableException;
+import site.asm0dey.calit.calendar.CreatedEvent;
+import site.asm0dey.calit.calendar.WriteTargetResolver;
 import site.asm0dey.calit.i18n.AppLocales;
 
 @ApplicationScoped
@@ -515,6 +515,7 @@ public class BookingService {
         CreatedEvent created = calendarPort.createEvent(
                 organizer,
                 writeTargets.resolve(type.ownerId, type),
+                lead.manageToken,
                 googleSummary(type, lead),
                 googleDescription(type, lead),
                 lead.startUtc,
@@ -533,10 +534,10 @@ public class BookingService {
      * cannot be cleaned up on the right calendar later (calit-vi8n).
      */
     private static void stampCreatedEvent(Booking row, CreatedEvent created) {
-        row.googleEventId = created.googleEventId();
+        row.eventId = created.eventId();
         row.meetLink = created.meetLink();
-        row.googleCalendarId = created.calendar() == null ? null : created.calendar().googleCalendarId();
-        row.googleCredentialId = created.calendar() == null ? null : created.calendar().credentialId();
+        row.calendarRemoteId = created.calendar() == null ? null : created.calendar().remoteCalendarId();
+        row.calendarAccountId = created.calendar() == null ? null : created.calendar().accountId();
     }
 
     /**
@@ -635,6 +636,7 @@ public class BookingService {
         CreatedEvent created = calendarPort.createEvent(
                 type.ownerId,
                 writeTargets.resolve(type.ownerId, type),
+                booking.manageToken,
                 googleSummary(type, booking),
                 googleDescription(type, booking),
                 booking.startUtc,
@@ -953,15 +955,15 @@ public class BookingService {
         // longer reverts to PENDING -- only an invitee-initiated one does. A host already knows their
         // own slot is free (they just picked it), so re-approving themselves would be theater.
         var reApproval = type.requiresApproval && !byOwner;
-        String priorEventId = booking.googleEventId;
+        String priorEventId = booking.eventId;
         CalendarRef priorRef = booking.calendarRef();
         if (reApproval) {
             // Feature 14: return to the approval queue; drop any existing event.
             booking.status = BookingStatus.PENDING;
-            booking.googleEventId = null;
+            booking.eventId = null;
             booking.meetLink = null;
-            booking.googleCalendarId = null;
-            booking.googleCredentialId = null;
+            booking.calendarRemoteId = null;
+            booking.calendarAccountId = null;
         }
         // Reconcile guests (if the caller supplied a list) inside the same transaction. Collect the
         // ids of guests removed so we can fire cancel emails after commit.
@@ -1007,12 +1009,12 @@ public class BookingService {
             // re-approval request
             bookingRequestedEvent.fire(new BookingRequested(booking.id));
         } else {
-            if (calendarPort.isConnected(type.ownerId) && booking.googleEventId != null) {
+            if (calendarPort.isConnected(type.ownerId) && booking.eventId != null) {
                 OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
                 calendarPort.updateEvent(
                         type.ownerId,
                         booking.calendarRef(),
-                        booking.googleEventId,
+                        booking.eventId,
                         booking.startUtc,
                         booking.endUtc,
                         attendeeEmails(booking, owner)
@@ -1151,12 +1153,12 @@ public class BookingService {
             guestRemovedEvent.fire(new GuestRemoved(booking.id, guestId));
         }
 
-        if (calendarPort.isConnected(type.ownerId) && booking.googleEventId != null) {
+        if (calendarPort.isConnected(type.ownerId) && booking.eventId != null) {
             OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
             calendarPort.updateEventDetails(
                     type.ownerId,
                     booking.calendarRef(),
-                    booking.googleEventId,
+                    booking.eventId,
                     googleSummary(type, booking),
                     googleDescription(type, booking),
                     attendeeEmails(booking, owner)
@@ -1210,7 +1212,7 @@ public class BookingService {
             calendarPort.updateEventDetails(
                     eventRow.ownerId,
                     eventRow.calendarRef(),
-                    eventRow.googleEventId,
+                    eventRow.eventId,
                     googleSummary(type, lead),
                     googleDescription(type, lead),
                     groupAttendeeEmails(type, booking.groupId, meetingHosts.hostOwnerIds(type))
@@ -1227,7 +1229,7 @@ public class BookingService {
      */
     private Booking groupEventRow(UUID groupId) {
         for (Booking r : Booking.<Booking>group(groupId)) {
-            if (r.googleEventId != null) {
+            if (r.eventId != null) {
                 return r;
             }
         }
@@ -1361,15 +1363,15 @@ public class BookingService {
     private boolean cancelSingle(Booking booking, boolean byOwner, boolean tolerateGoogleFailure) {
         booking.status = BookingStatus.CANCELLED;
         var deleted = false;
-        if (booking.googleEventId != null) {
+        if (booking.eventId != null) {
             deleted = deleteRemoteEvent(booking, tolerateGoogleFailure);
             // Clear the refs whether or not the remote call could be made -- same rule, and same
             // reason, as deleteGroupGoogleEvent: a cancelled row must not keep pointing at an event
             // that is gone (calit-ek26).
-            booking.googleEventId = null;
+            booking.eventId = null;
             booking.meetLink = null;
-            booking.googleCalendarId = null;
-            booking.googleCredentialId = null;
+            booking.calendarRemoteId = null;
+            booking.calendarAccountId = null;
         }
         bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner));
         return deleted;
@@ -1390,11 +1392,11 @@ public class BookingService {
     private boolean deleteGroupGoogleEvent(UUID groupId, boolean tolerateGoogleFailure) {
         var deleted = false;
         for (Booking r : Booking.<Booking>group(groupId)) {
-            if (r.googleEventId != null) {
+            if (r.eventId != null) {
                 deleted |= deleteRemoteEvent(r, tolerateGoogleFailure);
-                r.googleEventId = null;
-                r.googleCalendarId = null;
-                r.googleCredentialId = null;
+                r.eventId = null;
+                r.calendarRemoteId = null;
+                r.calendarAccountId = null;
             }
             // Every row: a group written before ADR 0007 has the link copied onto the lead as well.
             r.meetLink = null;
@@ -1418,7 +1420,7 @@ public class BookingService {
         }
         Long ownerId = row.ownerId;
         CalendarRef ref = row.calendarRef();
-        String eventId = row.googleEventId;
+        String eventId = row.eventId;
         if (!tolerateFailure) {
             calendarPort.deleteEvent(ownerId, ref, eventId);
             return true;
@@ -1476,12 +1478,12 @@ public class BookingService {
         // Re-sync the Google attendee list (now excludes this guest, since activeForBooking returns only INVITED).
         // Google emails the removed guest a cancellation via sendUpdates=all.
         Booking booking = Booking.findById(guest.bookingId);
-        if (booking != null && calendarPort.isConnected(guest.ownerId) && booking.googleEventId != null) {
+        if (booking != null && calendarPort.isConnected(guest.ownerId) && booking.eventId != null) {
             OwnerSettings owner = OwnerSettings.forOwner(guest.ownerId);
             calendarPort.updateEvent(
                     guest.ownerId,
                     booking.calendarRef(),
-                    booking.googleEventId,
+                    booking.eventId,
                     booking.startUtc,
                     booking.endUtc,
                     attendeeEmails(booking, owner)

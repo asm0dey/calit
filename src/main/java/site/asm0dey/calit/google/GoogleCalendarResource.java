@@ -5,6 +5,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import site.asm0dey.calit.calendar.CalendarListPort;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.user.CurrentOwner;
 
 @Path("/api/google/calendars")
@@ -55,10 +57,10 @@ public class GoogleCalendarResource {
         java.util.Map<String, Boolean> meetByCalendar = calendarListPort
             .listCalendars(cred)
             .stream()
-            .collect(java.util.stream.Collectors.toMap(CalendarListPort.RemoteCalendar::googleCalendarId, CalendarListPort.RemoteCalendar::meetSupported, (
-                                                                                                                                                                  a,
-                                                                                                                                                                  _
-                                                                                                                                                          ) -> a)
+            .collect(java.util.stream.Collectors.toMap(CalendarListPort.RemoteCalendar::remoteId, CalendarListPort.RemoteCalendar::meetSupported, (
+                                                                                                                                                          a,
+                                                                                                                                                          _
+                                                                                                                                                  ) -> a)
             );
         try {
             selectionService.save(
@@ -87,8 +89,8 @@ public class GoogleCalendarResource {
      */
     @GET
     @Path("/write-target")
-    public GoogleCalendar writeTarget() {
-        GoogleCalendar target = GoogleCalendar.writeTarget(currentOwner.id());
+    public SelectedCalendar writeTarget() {
+        SelectedCalendar target = SelectedCalendar.writeTarget(currentOwner.id());
         if (target == null) {
             throw new NotFoundException("No write-target calendar selected");
         }

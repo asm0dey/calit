@@ -32,7 +32,7 @@ class BookingTest {
         b.inviteeEmail = "sam@example.com";
         b.startUtc = start;
         b.endUtc = start.plusSeconds(1800);
-        b.googleEventId = "evt-1";
+        b.eventId = "evt-1";
         b.meetLink = "https://meet.google.com/abc-defg-hij";
         b.status = BookingStatus.CONFIRMED;
         b.createdAt = Instant.parse("2026-06-01T10:00:00Z");

@@ -17,9 +17,9 @@ import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.booking.MeetingHosts;
 import site.asm0dey.calit.domain.*;
-import site.asm0dey.calit.google.CalendarRef;
-import site.asm0dey.calit.google.GoogleCalendar;
-import site.asm0dey.calit.google.WriteTargetResolver;
+import site.asm0dey.calit.calendar.CalendarRef;
+import site.asm0dey.calit.calendar.SelectedCalendar;
+import site.asm0dey.calit.calendar.WriteTargetResolver;
 import site.asm0dey.calit.i18n.ActiveLocale;
 import site.asm0dey.calit.i18n.AdminMessageResolver;
 import site.asm0dey.calit.i18n.AdminMessages;
@@ -67,7 +67,7 @@ public class SharedMeetingsResource {
                 List<AvailabilityRule> rules,
                 List<WeekRow> week,
                 List<DateOverride> overrides,
-                List<GoogleCalendar> writeCalendars,
+                List<SelectedCalendar> writeCalendars,
                 String writeCalendarValue,
                 boolean writeCalendarDangling,
                 DayOfWeek[] daysOfWeek,
@@ -273,8 +273,8 @@ public class SharedMeetingsResource {
         var override = writeTargets.writeOverride(currentOwner.id(), type);
         // Only the Creator has a write-calendar override (ADR 0007): an empty list hides the picker for Co-hosts.
         var writeCalendars = currentOwner.id().equals(type.ownerId)
-                ? GoogleCalendar.<GoogleCalendar>list("ownerId = ?1 order by summary", currentOwner.id())
-                : List.<GoogleCalendar>of();
+                ? SelectedCalendar.<SelectedCalendar>list("ownerId = ?1 order by summary", currentOwner.id())
+                : List.<SelectedCalendar>of();
         var writeCalendarDangling = override != null && !writeTargets.owns(currentOwner.id(), override);
         var writeCalendarValue = WriteTargetResolver.writeCalendarValue(override, writeCalendarDangling);
         // Routing override view model, scoped to THIS co-host: only their own channels are offered,
@@ -487,11 +487,10 @@ public class SharedMeetingsResource {
         if (!Objects.equals(currentOwner.id(), type.ownerId)) {
             return 0L;
         }
-        var before = new CalendarRef(type.googleCredentialId, type.googleCalendarId);
-        var after =
-                new CalendarRef(ref == null ? null : ref.credentialId(), ref == null ? null : ref.googleCalendarId());
-        type.googleCredentialId = after.credentialId();
-        type.googleCalendarId = after.googleCalendarId();
+        var before = new CalendarRef(type.overrideAccountId, type.overrideRemoteCalendarId);
+        var after = new CalendarRef(ref == null ? null : ref.accountId(), ref == null ? null : ref.remoteCalendarId());
+        type.overrideAccountId = after.accountId();
+        type.overrideRemoteCalendarId = after.remoteCalendarId();
         if (before.equals(after)) {
             // no-op save -- nothing moved, so nothing "stays behind" (calit-jk8y)
             return 0L;

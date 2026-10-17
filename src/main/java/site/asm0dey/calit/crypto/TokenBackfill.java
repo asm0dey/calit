@@ -36,8 +36,8 @@ public class TokenBackfill {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em
             .createNativeQuery(
-                    "select id, refresh_token, access_token from google_credential "
-                    + "where refresh_token not like 'enc:v1:%' or access_token not like 'enc:v1:%' "
+                    "select id, refresh_token, access_token from calendar_account "
+                    + "where provider = 'GOOGLE' and (refresh_token not like 'enc:v1:%' or access_token not like 'enc:v1:%') "
                     + "for update skip locked"
             )
             .getResultList();
@@ -58,7 +58,7 @@ public class TokenBackfill {
             if (changed) {
                 em
                     .createNativeQuery(
-                            "update google_credential set refresh_token = :r, access_token = :a where id = :id"
+                            "update calendar_account set refresh_token = :r, access_token = :a where id = :id"
                     )
                     .setParameter("r", refresh)
                     .setParameter("a", access)

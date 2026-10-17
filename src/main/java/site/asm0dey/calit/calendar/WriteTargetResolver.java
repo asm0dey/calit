@@ -1,4 +1,4 @@
-package site.asm0dey.calit.google;
+package site.asm0dey.calit.calendar;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.jboss.logging.Logger;
@@ -41,24 +41,24 @@ public class WriteTargetResolver {
         if (ownerId == null || type == null) {
             return null;
         }
-        return ownerId.equals(type.ownerId) ? ref(type.googleCredentialId, type.googleCalendarId) : null;
+        return ownerId.equals(type.ownerId) ? ref(type.overrideAccountId, type.overrideRemoteCalendarId) : null;
     }
 
     /**
      * True when {@code ref} names one of this owner's currently selected calendars.
      */
     public boolean owns(Long ownerId, CalendarRef ref) {
-        return ref != null && GoogleCalendar.findOwned(ownerId, ref.credentialId(), ref.googleCalendarId()) != null;
+        return ref != null && SelectedCalendar.findOwned(ownerId, ref.accountId(), ref.remoteCalendarId()) != null;
     }
 
     /**
      * The calendar this host writes {@code type} on, or null when they have no write calendar at all.
      */
-    public GoogleCalendar resolveCalendar(Long ownerId, MeetingType type) {
+    public SelectedCalendar resolveCalendar(Long ownerId, MeetingType type) {
         CalendarRef override = writeOverride(ownerId, type);
         if (override != null) {
-            GoogleCalendar live =
-                    GoogleCalendar.findOwned(ownerId, override.credentialId(), override.googleCalendarId());
+            SelectedCalendar live =
+                    SelectedCalendar.findOwned(ownerId, override.accountId(), override.remoteCalendarId());
             if (live != null) {
                 return live;
             }
@@ -66,12 +66,12 @@ public class WriteTargetResolver {
                     "Meeting type %s: write-calendar override %s (credential %s, owner %d) is no longer "
                     + "selected; falling back to the write target",
                     type.id,
-                    override.googleCalendarId(),
-                    override.credentialId(),
+                    override.remoteCalendarId(),
+                    override.accountId(),
                     ownerId
             );
         }
-        return GoogleCalendar.writeTarget(ownerId);
+        return SelectedCalendar.writeTarget(ownerId);
     }
 
     /**
@@ -87,11 +87,11 @@ public class WriteTargetResolver {
      * "nowhere".
      */
     public CalendarRef writeTargetRef(Long ownerId) {
-        return address(GoogleCalendar.writeTarget(ownerId));
+        return address(SelectedCalendar.writeTarget(ownerId));
     }
 
-    private static CalendarRef address(GoogleCalendar calendar) {
-        return calendar == null ? null : new CalendarRef(calendar.googleCredentialId, calendar.googleCalendarId);
+    private static CalendarRef address(SelectedCalendar calendar) {
+        return calendar == null ? null : new CalendarRef(calendar.accountId, calendar.remoteId);
     }
 
     /**
@@ -99,7 +99,7 @@ public class WriteTargetResolver {
      * there is no override, {@link #KEEP} when {@code dangling} (round-trips a dangling override
      * through an unrelated save instead of erasing it), else the
      * {@code "credentialId:googleCalendarId"} pair -- byte-identical to {@link
-     * GoogleCalendar#optionValue()}, which the template compares against to pre-select the matching
+     * SelectedCalendar#optionValue()}, which the template compares against to pre-select the matching
      * {@code <option>}. {@code AdminResource} (creator) and {@code SharedMeetingsResource} (co-host)
      * both call this one method so their two save paths can never silently diverge on the encoding.
      */
@@ -107,7 +107,7 @@ public class WriteTargetResolver {
         if (override == null) {
             return "";
         }
-        return dangling ? KEEP : override.credentialId() + ":" + override.googleCalendarId();
+        return dangling ? KEEP : override.accountId() + ":" + override.remoteCalendarId();
     }
 
     /**
@@ -116,7 +116,7 @@ public class WriteTargetResolver {
      * may pick a Meet-capable one later.
      */
     public boolean blocksMeet(Long ownerId, MeetingType type) {
-        GoogleCalendar target = resolveCalendar(ownerId, type);
+        SelectedCalendar target = resolveCalendar(ownerId, type);
         return target != null && !target.supportsMeet;
     }
 
@@ -143,7 +143,7 @@ public class WriteTargetResolver {
      * The calendar id alone decides whether an override exists: a null credential means the account
      * was disconnected (the FK nulled it), which is a dangling override, not the absence of one.
      */
-    private static CalendarRef ref(Long credentialId, String googleCalendarId) {
-        return googleCalendarId == null ? null : new CalendarRef(credentialId, googleCalendarId);
+    private static CalendarRef ref(Long accountId, String remoteCalendarId) {
+        return remoteCalendarId == null ? null : new CalendarRef(accountId, remoteCalendarId);
     }
 }

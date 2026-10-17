@@ -18,10 +18,10 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CalendarRef;
-import site.asm0dey.calit.google.CreatedEvent;
-import site.asm0dey.calit.google.GoogleCalendar;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarRef;
+import site.asm0dey.calit.calendar.CreatedEvent;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
@@ -53,6 +53,7 @@ class BookingWriteTargetOverrideTest {
             .createEvent(
                     eq(1L),
                     eq(new CalendarRef(credId, "work@example.com")),
+                    any(),
                     anyString(),
                     anyString(),
                     any(),
@@ -76,6 +77,7 @@ class BookingWriteTargetOverrideTest {
             .createEvent(
                     eq(1L),
                     eq(new CalendarRef(credId, "default@example.com")),
+                    any(),
                     anyString(),
                     anyString(),
                     any(),
@@ -99,6 +101,7 @@ class BookingWriteTargetOverrideTest {
             .createEvent(
                     eq(1L),
                     eq(new CalendarRef(credId, "default@example.com")),
+                    any(),
                     anyString(),
                     anyString(),
                     any(),
@@ -117,7 +120,7 @@ class BookingWriteTargetOverrideTest {
         book("book-degraded", null, null);
 
         verify(calendarPort, never())
-            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
 
     /**
@@ -145,8 +148,8 @@ class BookingWriteTargetOverrideTest {
         MeetingType t = MultiHostFixtures.acceptedTwoHostType(1L, cohostId, "group-override", 60, false);
         t.locationType = MeetingType.LocationType.PHONE;
         // Creator's own override -- set directly on MeetingType (see book()'s comment below).
-        t.googleCredentialId = creatorCredId;
-        t.googleCalendarId = "creator-override@example.com";
+        t.overrideAccountId = creatorCredId;
+        t.overrideRemoteCalendarId = "creator-override@example.com";
         t.persist();
         // Only the cohost is Google-connected; the Creator is the only possible organizer.
         when(calendarPort.isConnected(1L)).thenReturn(false);
@@ -154,6 +157,7 @@ class BookingWriteTargetOverrideTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),
@@ -170,7 +174,7 @@ class BookingWriteTargetOverrideTest {
 
         assertThat(booking.status).isEqualTo(BookingStatus.CONFIRMED);
         verify(calendarPort, never())
-            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
 
     private void stubGoogle() {
@@ -178,6 +182,7 @@ class BookingWriteTargetOverrideTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),
@@ -216,8 +221,8 @@ class BookingWriteTargetOverrideTest {
         t.minNoticeMinutes = 0;
         t.horizonDays = 50_000;
         t.locationType = MeetingType.LocationType.PHONE;
-        t.googleCredentialId = credId;
-        t.googleCalendarId = calendarId;
+        t.overrideAccountId = credId;
+        t.overrideRemoteCalendarId = calendarId;
         t.persist();
 
         AvailabilityRule r = new AvailabilityRule();
@@ -249,10 +254,10 @@ class BookingWriteTargetOverrideTest {
     }
 
     private static void seedCalendar(Long ownerId, Long credId, String calId, boolean writeTarget) {
-        GoogleCalendar c = new GoogleCalendar();
+        SelectedCalendar c = new SelectedCalendar();
         c.ownerId = ownerId;
-        c.googleCredentialId = credId;
-        c.googleCalendarId = calId;
+        c.accountId = credId;
+        c.remoteId = calId;
         c.summary = calId;
         c.readForBusy = writeTarget;
         c.writeTarget = writeTarget;

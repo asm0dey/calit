@@ -1,4 +1,4 @@
-package site.asm0dey.calit.google;
+package site.asm0dey.calit.calendar;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;

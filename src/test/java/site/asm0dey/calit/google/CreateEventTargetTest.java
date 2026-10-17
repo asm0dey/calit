@@ -14,6 +14,9 @@ import com.google.api.services.calendar.model.Event;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.CalendarRef;
+import site.asm0dey.calit.calendar.CreatedEvent;
+import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.domain.OwnerSettings;
 
 /**
@@ -35,6 +38,7 @@ class CreateEventTargetTest {
         CreatedEvent created = port.createEvent(
                 1L,
                 new CalendarRef(credId, "work@example.com"),
+                null,
                 "s",
                 "d",
                 Instant.parse("2026-01-01T10:00:00Z"),
@@ -45,8 +49,8 @@ class CreateEventTargetTest {
         );
 
         verify(events).insert(eqCalendar("work@example.com"), any());
-        assertThat(created.calendar().googleCalendarId()).isEqualTo("work@example.com");
-        assertThat(created.calendar().credentialId()).isEqualTo(credId);
+        assertThat(created.calendar().remoteCalendarId()).isEqualTo("work@example.com");
+        assertThat(created.calendar().accountId()).isEqualTo(credId);
     }
 
     @Test
@@ -58,6 +62,7 @@ class CreateEventTargetTest {
 
         port.createEvent(
                 1L,
+                null,
                 null,
                 "s",
                 "d",
@@ -81,6 +86,7 @@ class CreateEventTargetTest {
         port.createEvent(
                 1L,
                 new CalendarRef(credId, "gone@example.com"),
+                null,
                 "s",
                 "d",
                 Instant.parse("2026-01-01T10:00:00Z"),
@@ -143,10 +149,10 @@ class CreateEventTargetTest {
         c.refreshToken = "rt";
         c.googleSub = sub;
         c.persist();
-        GoogleCalendar wt = new GoogleCalendar();
+        SelectedCalendar wt = new SelectedCalendar();
         wt.ownerId = 1L;
-        wt.googleCredentialId = c.id;
-        wt.googleCalendarId = calendarId;
+        wt.accountId = c.id;
+        wt.remoteId = calendarId;
         wt.summary = "Default";
         wt.readForBusy = true;
         wt.writeTarget = true;
@@ -158,10 +164,10 @@ class CreateEventTargetTest {
      * A second selected (non-default) calendar on the same account.
      */
     private static void seedCalendar(Long credId, String calendarId) {
-        GoogleCalendar c = new GoogleCalendar();
+        SelectedCalendar c = new SelectedCalendar();
         c.ownerId = 1L;
-        c.googleCredentialId = credId;
-        c.googleCalendarId = calendarId;
+        c.accountId = credId;
+        c.remoteId = calendarId;
         c.summary = calendarId;
         c.persist();
     }

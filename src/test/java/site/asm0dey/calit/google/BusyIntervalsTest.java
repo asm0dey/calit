@@ -3,6 +3,8 @@ package site.asm0dey.calit.google;
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.BusyInterval;
+import site.asm0dey.calit.calendar.BusyIntervals;
 
 class BusyIntervalsTest {
     private static Instant t(String iso) {

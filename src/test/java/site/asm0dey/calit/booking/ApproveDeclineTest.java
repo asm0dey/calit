@@ -14,8 +14,8 @@ import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.google.CalendarPort;
-import site.asm0dey.calit.google.CreatedEvent;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CreatedEvent;
 
 @QuarkusTest
 class ApproveDeclineTest {
@@ -38,6 +38,7 @@ class ApproveDeclineTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),
@@ -68,12 +69,13 @@ class ApproveDeclineTest {
 
         Booking loaded = Booking.findById(b.id);
         assertThat(loaded.status).isEqualTo(BookingStatus.CONFIRMED);
-        assertThat(loaded.googleEventId).isEqualTo("evt-ap");
+        assertThat(loaded.eventId).isEqualTo("evt-ap");
         assertThat(loaded.meetLink).isEqualTo("https://meet.google.com/ap-1-2");
         // The event is created at approve time (createMeetLink=true for GOOGLE_MEET), not at book time.
         verify(calendarPort, times(1))
             .createEvent(
                     anyLong(),
+                    any(),
                     any(),
                     anyString(),
                     anyString(),
@@ -117,7 +119,7 @@ class ApproveDeclineTest {
         Booking loaded = Booking.findById(b.id);
         assertThat(loaded.status).isEqualTo(BookingStatus.DECLINED);
         verify(calendarPort, never())
-            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
         // DECLINED leaves the partial constraint -> 09:00 is bookable again.
         List<TimeSlot> avail = bookingService.availableSlots(t, DAY, DAY);
         assertThat(avail)
@@ -140,7 +142,7 @@ class ApproveDeclineTest {
 
         assertThat(Booking.<Booking>findById(b.id).status).isEqualTo(BookingStatus.CANCELLED);
         verify(calendarPort, never())
-            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
 
     @Test
@@ -157,7 +159,7 @@ class ApproveDeclineTest {
 
         assertThat(Booking.<Booking>findById(b.id).status).isEqualTo(BookingStatus.DECLINED);
         verify(calendarPort, never())
-            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
 
     @Test
@@ -170,6 +172,7 @@ class ApproveDeclineTest {
         when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
         when(calendarPort.createEvent(
                 anyLong(),
+                any(),
                 any(),
                 anyString(),
                 anyString(),
@@ -186,7 +189,7 @@ class ApproveDeclineTest {
         bookingService.approve(b.id);
 
         verify(calendarPort, times(1))
-            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
 
     @Test
@@ -232,6 +235,7 @@ class ApproveDeclineTest {
         when(calendarPort.createEvent(
                 anyLong(),
                 any(),
+                any(),
                 anyString(),
                 anyString(),
                 any(),
@@ -263,7 +267,7 @@ class ApproveDeclineTest {
             second.get(10, TimeUnit.SECONDS);
         }
         verify(calendarPort, times(1))
-            .createEvent(anyLong(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
     }
 
     /**

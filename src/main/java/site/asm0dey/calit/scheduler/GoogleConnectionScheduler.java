@@ -68,9 +68,9 @@ public class GoogleConnectionScheduler {
                 @SuppressWarnings("unchecked")
                 List<Number> ids = em
                     .createNativeQuery(
-                            "SELECT id FROM google_credential "
-                            + "WHERE last_probed_at IS NULL "
-                            + "   OR last_probed_at <= now() - make_interval(secs => :secs) "
+                            "SELECT id FROM calendar_account WHERE provider = 'GOOGLE' "
+                            + "AND (last_probed_at IS NULL "
+                            + "   OR last_probed_at <= now() - make_interval(secs => :secs)) "
                             + "ORDER BY last_probed_at NULLS FIRST "
                             + "FOR UPDATE SKIP LOCKED "
                             + "LIMIT 50"
@@ -111,8 +111,8 @@ public class GoogleConnectionScheduler {
                 @SuppressWarnings("unchecked")
                 List<Number> ids = em
                     .createNativeQuery(
-                            "SELECT id FROM google_credential "
-                            + "WHERE needs_reconnect = true AND reconnect_notified_at IS NULL "
+                            "SELECT id FROM calendar_account WHERE provider = 'GOOGLE' "
+                            + "AND needs_reconnect = true AND reconnect_notified_at IS NULL "
                             + "FOR UPDATE SKIP LOCKED "
                             + "LIMIT 50"
                     )
