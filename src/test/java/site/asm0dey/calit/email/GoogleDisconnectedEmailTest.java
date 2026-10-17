@@ -18,7 +18,13 @@ class GoogleDisconnectedEmailTest {
 
     @Test
     void sendsReconnectLinkToOwner() {
-        emailService.sendGoogleDisconnected(1L, "owner@example.com", "work@gmail.com", Locale.ENGLISH);
+        emailService.sendCalendarDisconnected(
+                1L,
+                "owner@example.com",
+                "work@gmail.com",
+                site.asm0dey.calit.calendar.CalendarProvider.GOOGLE,
+                Locale.ENGLISH
+        );
 
         ArgumentCaptor<String> to = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> subject = ArgumentCaptor.forClass(String.class);
@@ -44,10 +50,11 @@ class GoogleDisconnectedEmailTest {
 
     @Test
     void germanLocaleProducesGermanSubject() {
-        emailService.sendGoogleDisconnected(
+        emailService.sendCalendarDisconnected(
                 1L,
                 "owner@example.com",
                 "work@gmail.com",
+                site.asm0dey.calit.calendar.CalendarProvider.GOOGLE,
                 java.util.Locale.forLanguageTag("de")
         );
 
@@ -69,5 +76,32 @@ class GoogleDisconnectedEmailTest {
             .isNotBlank()
             .as("German subject must differ from hardcoded English")
             .isNotEqualTo("Action needed: reconnect your Google Calendar");
+    }
+
+    @Test
+    void caldavVariantNamesPasswordFix() {
+        emailService.sendCalendarDisconnected(
+                1L,
+                "owner@example.com",
+                "alice @ dav.example.com",
+                site.asm0dey.calit.calendar.CalendarProvider.CALDAV,
+                Locale.ENGLISH
+        );
+
+        ArgumentCaptor<String> subject = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        Mockito
+            .verify(mailSender)
+            .send(
+                    Mockito.isNull(),
+                    Mockito.any(),
+                    subject.capture(),
+                    body.capture(),
+                    Mockito.isNull(),
+                    Mockito.any(MailTag.class)
+            );
+
+        assertThat(subject.getValue()).contains("CalDAV password");
+        assertThat(body.getValue()).contains("alice @ dav.example.com", "/me/calendars", "CalDAV");
     }
 }

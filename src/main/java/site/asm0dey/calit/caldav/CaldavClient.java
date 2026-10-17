@@ -100,6 +100,21 @@ public class CaldavClient {
     }
 
     /**
+     * Cheap authenticated request (Depth 0 PROPFIND on the principal): returns when the server accepts the
+     * stored credentials, throws {@link CaldavException} otherwise.
+     */
+    public void probe(CaldavAccount a) {
+        var res = http.send(
+                a,
+                "PROPFIND",
+                URI.create(a.principalUrl),
+                Map.of("Depth", "0", "Content-Type", XML),
+                PRINCIPAL_BODY
+        );
+        expectMultistatus(res);
+    }
+
+    /**
      * Calendars under the home that can hold events.
      */
     public List<RemoteCalendar> listCalendars(CaldavAccount a) {

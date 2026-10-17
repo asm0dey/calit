@@ -72,13 +72,19 @@ class GoogleConnectionTickTest {
 
         scheduler.notifyPendingDisconnects();
 
-        verify(emailService, times(1)).sendGoogleDisconnected(any(), Mockito.eq("owner@example.com"), any(), any());
+        verify(emailService, times(1)).sendCalendarDisconnected(
+                any(),
+                Mockito.eq("owner@example.com"),
+                any(),
+                any(),
+                any()
+        );
         GoogleCredential c = QuarkusTransaction
             .requiringNew()
             .call(() -> GoogleCredential.findById(id));
         assertThat(c.reconnectNotifiedAt).as("notify must stamp reconnect_notified_at").isNotNull();
         // Second run: already stamped -> no second email (exactly-once).
         scheduler.notifyPendingDisconnects();
-        verify(emailService, times(1)).sendGoogleDisconnected(any(), any(), any(), any());
+        verify(emailService, times(1)).sendCalendarDisconnected(any(), any(), any(), any(), any());
     }
 }

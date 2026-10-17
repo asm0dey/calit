@@ -631,6 +631,9 @@ public interface AppMessages {
     @Message("Action needed: reconnect your Google Calendar")
     String email_google_disconnected_subject();
 
+    @Message("Action needed: re-enter your CalDAV password")
+    String email_caldav_disconnected_subject();
+
     @Message("You're invited to co-host: {meetingTypeName}")
     String email_host_consent_subject(String meetingTypeName);
 
@@ -915,6 +918,20 @@ public interface AppMessages {
     @Message("This usually happens when access was revoked, your password changed, or the connection "
             + "sat unused for a long time. Reconnecting takes a few seconds.")
     String email_google_disconnected_why();
+
+    // ---- Email body — CalDAV disconnected (greeting/paused shared with the Google mail) ----
+    @Message("Reconnect your CalDAV calendar")
+    String email_caldav_disconnected_title();
+
+    @Message("calit can no longer sign in to your CalDAV account {accountLabel}.")
+    String email_caldav_disconnected_body(String accountLabel);
+
+    @Message("Re-enter CalDAV password")
+    String email_caldav_disconnected_btn();
+
+    @Message("This usually happens when the password was changed or the app password was revoked. "
+            + "Open Calendars and re-enter the password; it takes a few seconds.")
+    String email_caldav_disconnected_why();
 
     // ---- Email body — host consent ----
     @Message("Co-host invitation")

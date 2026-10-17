@@ -109,26 +109,35 @@ public class EmailService {
     }
 
     /**
-     * Critical operational alert: the owner's Google account is disconnected and their booking page
+     * Critical operational alert: the owner's Google or CalDAV account is disconnected and their booking page
      * is paused. Sent regardless of {@code ownerNotificationsEnabled} (that flag governs only routine
      * booking notifications). Links to the Google settings page so the owner can reconnect.
      * {@code locale} drives any {msg:} keys rendered in the template body. {@code ownerId} tags a
      * parked copy so deleting that account also clears it.
      */
-    public void sendGoogleDisconnected(Long ownerId, String toEmail, String accountEmail, Locale locale) {
+    public void sendCalendarDisconnected(
+            Long ownerId,
+            String toEmail,
+            String accountLabel,
+            CalendarProvider provider,
+            Locale locale
+    ) {
         var reconnectUrl = baseUrl + "/me/calendars";
+        boolean caldav = provider == CalendarProvider.CALDAV;
         String body = Templates
-            .googleDisconnected(
+            .calendarDisconnected(
                     locale.getLanguage(),
-                    accountEmail == null ? "your account" : accountEmail,
-                    reconnectUrl
+                    accountLabel == null ? "your account" : accountLabel,
+                    reconnectUrl,
+                    caldav
             )
             .setLocale(locale)
             .render();
+        var m = messages.forLocale(locale);
         mailSender.send(
                 null,
                 toEmail,
-                messages.forLocale(locale).email_google_disconnected_subject(),
+                caldav ? m.email_caldav_disconnected_subject() : m.email_google_disconnected_subject(),
                 body,
                 null,
                 MailTag.forOwner(ownerId)
@@ -301,7 +310,12 @@ public class EmailService {
 
         static native TemplateInstance invite(String lang, String activationUrl, String inviter, String host);
 
-        static native TemplateInstance googleDisconnected(String lang, String accountEmail, String reconnectUrl);
+        static native TemplateInstance calendarDisconnected(
+                String lang,
+                String accountLabel,
+                String reconnectUrl,
+                boolean caldav
+        );
 
         static native TemplateInstance hostConsent(
                 String lang,
