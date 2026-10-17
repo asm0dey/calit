@@ -13,23 +13,23 @@ Merged but not yet in a tagged release.
 
 - CalDAV calendars (Nextcloud, Fastmail, iCloud, mailbox.org, Radicale) work alongside Google for the
   busy-time check and Mirror event writes. Settings → Google is now Settings → Calendars at
-  `/me/calendars`; the old path redirects. ([#TBD](https://github.com/asm0dey/calit/pulls))
+  `/me/calendars`; the old path redirects. ([#256](https://github.com/asm0dey/calit/pull/256))
 - `CALDAV_ALLOW_PRIVATE_HOSTS` (default `false`): CalDAV servers on private or loopback addresses are
-  refused unless it is set. ([#TBD](https://github.com/asm0dey/calit/pulls))
+  refused unless it is set. ([#256](https://github.com/asm0dey/calit/pull/256))
 - With no write calendar selected, bookings succeed without a Mirror event and calit emails the `.ics`
-  to everyone, the Creator included. ([#TBD](https://github.com/asm0dey/calit/pulls))
+  to everyone, the Creator included. ([#256](https://github.com/asm0dey/calit/pull/256))
 - The `.ics` for cancelled and declined bookings now carries `METHOD:CANCEL` and the booking's
-  `SEQUENCE`. ([#TBD](https://github.com/asm0dey/calit/pulls))
+  `SEQUENCE`. ([#256](https://github.com/asm0dey/calit/pull/256))
 - Mirror events are written on the Creator's account only and the co-hosts' write-calendar picker is
   removed; a Meet-type booking without a minted link falls back to the meeting type's location detail.
-  ([#TBD](https://github.com/asm0dey/calit/pulls))
-- Owner erasure and account deletion also delete CalDAV Mirror events. ([#TBD](https://github.com/asm0dey/calit/pulls))
+  ([#256](https://github.com/asm0dey/calit/pull/256))
+- Owner erasure and account deletion also delete CalDAV Mirror events. ([#256](https://github.com/asm0dey/calit/pull/256))
 - A CalDAV account whose password is rejected is marked for reconnect; if its calendars count for busy
-  time, no slots are offered until it is fixed, as for Google. ([#TBD](https://github.com/asm0dey/calit/pulls))
-- The owner data export lists CalDAV accounts (server URL, username; never the password). ([#TBD](https://github.com/asm0dey/calit/pulls))
+  time, no slots are offered until it is fixed, as for Google. ([#256](https://github.com/asm0dey/calit/pull/256))
+- The owner data export lists CalDAV accounts (server URL, username; never the password). ([#256](https://github.com/asm0dey/calit/pull/256))
 - Migration V37 adds `calendar_account` and `calendar` with compatibility views and paired-column
   triggers; V38 adds `booking.removed_mirror_provider`. The previous release keeps working on this
-  schema for Google-only use. ([#TBD](https://github.com/asm0dey/calit/pulls))
+  schema for Google-only use. ([#256](https://github.com/asm0dey/calit/pull/256))
 
 Upgrade: rolling deploys are safe as long as nobody connects a CalDAV account until every replica runs
 this release; 1.27.x cannot see CalDAV accounts, so it ignores their busy time and can fail to cancel or
