@@ -143,12 +143,11 @@ public class CalendarsPageResource {
             accounts.add(
                     new AccountView(
                             account.id,
-                            account.label(),
+                            account.label() == null ? m().calendars_account_unnamed() : account.label(),
                             account.provider().name(),
                             account.needsReconnect,
                             loadFailed,
-                            rows,
-                            rows.stream().anyMatch(CalendarRow::writeTarget)
+                            rows
                     )
             );
         }
@@ -207,8 +206,12 @@ public class CalendarsPageResource {
             // proves the home is listable before anything is stored
             caldav.listCalendars(account);
         } catch (CaldavException ex) {
-            LOG.infof("CalDAV connect refused for owner %d: %s (%s)", ownerId, ex.reason(), ex.getMessage());
+            // reason only: messages and URLs can carry what the owner typed, userinfo included
+            LOG.infof("CalDAV connect refused for owner %d: %s", ownerId, ex.reason());
             return badRequest(null, caldavError(ex), echo);
+        } catch (RuntimeException ex) {
+            LOG.warnf("CalDAV connect failed for owner %d: %s", ownerId, ex.getClass().getName());
+            return badRequest(null, m().calendars_caldav_error_http(), echo);
         }
         QuarkusTransaction.requiringNew().run(() -> {
             CaldavAccount existing =
@@ -242,14 +245,22 @@ public class CalendarsPageResource {
             caldav.discover(account.serverUrl, account.username, password);
         } catch (CaldavException ex) {
             return badRequest(caldavError(ex), null, new ConnectForm("", ""));
+        } catch (RuntimeException ex) {
+            LOG.warnf("CalDAV password check failed for account %d: %s", accountId, ex.getClass().getName());
+            return badRequest(m().calendars_caldav_error_http(), null, new ConnectForm("", ""));
         }
-        QuarkusTransaction.requiringNew().run(() -> {
+        // disconnected while we were talking to the server
+        boolean stored = QuarkusTransaction.requiringNew().call(() -> {
             CaldavAccount a = CaldavAccount.findById(accountId);
+            if (a == null) {
+                return false;
+            }
             a.password = password;
             a.needsReconnect = false;
             a.reconnectNotifiedAt = null;
+            return true;
         });
-        return Response.seeOther(PAGE).build();
+        return stored ? Response.seeOther(PAGE).build() : Response.status(Response.Status.NOT_FOUND).build();
     }
 
     // NOT @Transactional: this loops N calendarListPort.listCalendars() network calls to re-fetch
@@ -320,7 +331,8 @@ public class CalendarsPageResource {
                 // reachable accounts are fully respecified by the form above
                 continue;
             }
-            var keepWrite = s.writeTarget && !submittedHasWriteTarget;
+            // an explicit "None" (empty value) gives up the write calendar even on an unreachable account
+            var keepWrite = s.writeTarget && !submittedHasWriteTarget && writeVal == null;
             selections.add(
                     new CalendarSelectionService.Selection(
                             s.accountId,
@@ -333,12 +345,6 @@ public class CalendarsPageResource {
             );
         }
 
-        if (selections.stream().noneMatch(CalendarSelectionService.Selection::writeTarget)) {
-            return Response
-                .status(Response.Status.BAD_REQUEST)
-                .entity("Pick exactly one write-target calendar")
-                .build();
-        }
         selectionService.save(ownerId, covered, selections);
         return Response.seeOther(PAGE).build();
     }
@@ -354,15 +360,8 @@ public class CalendarsPageResource {
         if (account == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        var holdsWriteTarget = SelectedCalendar.count("accountId = ?1 and writeTarget = true", accountId) > 0;
-        var otherAccountsRemain = CalendarAccount.count("ownerId", ownerId) > 1;
-        if (holdsWriteTarget && otherAccountsRemain) {
-            return Response
-                .status(Response.Status.CONFLICT)
-                .entity("Pick a new write target on another account before disconnecting this one")
-                .build();
-        }
-        // ON DELETE CASCADE removes this account's calendar rows
+        // ON DELETE CASCADE removes this account's calendar rows; losing the write calendar just means no
+        // Mirror events until another is picked (calit sends the .ics)
         account.delete();
         return Response.seeOther(PAGE).build();
     }

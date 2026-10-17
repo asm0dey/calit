@@ -118,9 +118,10 @@ class CalendarsPageCaldavTest {
     void wrongPasswordShowsInlineError() {
         when(caldav.discover(anyString(), anyString(), anyString()))
             .thenThrow(new CaldavException(CaldavException.Reason.UNAUTHORIZED, "401"));
-        connect("wrong")
+        connect("s3cr3t-Pa55")
             .statusCode(400)
             .body(containsString("rejected that username or password"))
+            .body(not(containsString("s3cr3t-Pa55")))
             // the typed URL survives the bounce
             .body(containsString("value=\"" + SERVER + "\""));
 
@@ -354,6 +355,164 @@ class CalendarsPageCaldavTest {
             .then()
             .statusCode(200)
             .body(containsString("data-meet-unavailable"));
+    }
+
+    @Test
+    void savingWithNoWriteCalendarPersistsNoneAndShowsTheNotice() {
+        discovers();
+        Long dav = seedCaldav(1L, false);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("read", dav + ":" + WORK)
+            .formParam("writeTarget", "")
+            .when()
+            .post("/me/calendars/calendars")
+            .then()
+            .statusCode(303);
+
+        assertThat(QuarkusTransaction
+            .requiringNew()
+            .call(() -> SelectedCalendar.writeTarget(1L))).isNull();
+        assertThat(QuarkusTransaction
+            .requiringNew()
+            .<Long>call(() -> SelectedCalendar.count("ownerId = ?1 and readForBusy = true", 1L))
+        )
+            .isOne();
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/calendars")
+            .then()
+            .statusCode(200)
+            .body(containsString("No calendar is selected for writing"))
+            .body(containsString("name=\"writeTarget\" value=\"\""));
+    }
+
+    @Test
+    void disconnectingTheWriteTargetAccountLeavesNoWriteCalendar() {
+        Long dav = seedCaldav(1L, false);
+        seedGoogle();
+        QuarkusTransaction.requiringNew().run(() -> {
+            var c = new SelectedCalendar();
+            c.ownerId = 1L;
+            c.accountId = dav;
+            c.remoteId = WORK;
+            c.summary = "Work";
+            c.readForBusy = true;
+            c.writeTarget = true;
+            c.persist();
+        });
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/calendars/accounts/" + dav + "/delete")
+            .then()
+            .statusCode(303);
+
+        assertThat(QuarkusTransaction
+            .requiringNew()
+            .call(() -> SelectedCalendar.writeTarget(1L))).isNull();
+    }
+
+    @Test
+    void unauthorizedListingFlagsTheAccountForReconnect() {
+        Long dav = seedCaldav(1L, false);
+        when(caldav.listCalendars(any())).thenThrow(new CaldavException(CaldavException.Reason.UNAUTHORIZED, "401"));
+        given().cookie("quarkus-credential", FormAuth.login()).when().get("/me/calendars").then().statusCode(200);
+
+        assertThat(
+                QuarkusTransaction
+                    .requiringNew()
+                    .<CaldavAccount>call(() -> CaldavAccount.findById(dav)).needsReconnect
+        )
+            .isTrue();
+    }
+
+    @Test
+    void unexpectedListingFailureOnConnectShowsGenericErrorAndStoresNothing() {
+        when(caldav.discover(anyString(), anyString(), anyString()))
+            .thenReturn(
+                    new CaldavClient.Discovery(
+                            URI.create("https://dav.example.com/p/alice/"),
+                            URI.create("https://dav.example.com/cal/alice/")
+                    )
+            );
+        when(caldav.listCalendars(any())).thenThrow(new IllegalArgumentException("bad home"));
+        connect("secret").statusCode(400).body(containsString("answered with an error"));
+
+        assertThat(QuarkusTransaction
+            .requiringNew()
+            .<Long>call(() -> CaldavAccount.count())).isZero();
+    }
+
+    @Test
+    void cannotUpdateAnotherOwnersPassword() {
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> TestOwners.ensure(em, 2L));
+        Long foreign = seedCaldav(2L, false);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("password", "x")
+            .when()
+            .post("/me/calendars/caldav/" + foreign + "/password")
+            .then()
+            .statusCode(404);
+
+        assertThat(
+                QuarkusTransaction
+                    .requiringNew()
+                    .<CaldavAccount>call(() -> CaldavAccount.findById(foreign)).password
+        )
+            .isEqualTo("secret");
+    }
+
+    @Test
+    void passwordUpdateForAnAccountDeletedMeanwhileIs404() {
+        Long id = seedCaldav(1L, true);
+        when(caldav.discover(anyString(), anyString(), anyString())).thenAnswer(inv -> {
+            QuarkusTransaction
+                .requiringNew()
+                .run(() -> CaldavAccount.deleteById(id));
+            return new CaldavClient.Discovery(
+                    URI.create("https://dav.example.com/p/alice/"),
+                    URI.create("https://dav.example.com/cal/alice/")
+            );
+        });
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("password", "fresh")
+            .when()
+            .post("/me/calendars/caldav/" + id + "/password")
+            .then()
+            .statusCode(404);
+    }
+
+    @Test
+    void unnamedGoogleAccountGetsALocalizedFallbackLabel() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            var g = new GoogleCredential();
+            g.ownerId = 1L;
+            g.refreshToken = "rt";
+            g.googleSub = "sub-noemail";
+            g.needsReconnect = true;
+            g.persist();
+        });
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/calendars")
+            .then()
+            .statusCode(200)
+            .body(containsString("Unnamed account"));
     }
 
     private static Long seedCaldav(Long ownerId, boolean needsReconnect) {

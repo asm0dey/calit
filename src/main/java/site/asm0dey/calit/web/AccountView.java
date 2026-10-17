@@ -11,6 +11,5 @@ public record AccountView(
         String provider,
         boolean needsReconnect,
         boolean loadFailed,
-        List<CalendarRow> calendars,
-        boolean holdsWriteTarget
+        List<CalendarRow> calendars
 ) {}

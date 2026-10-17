@@ -71,8 +71,8 @@ public class CaldavClient {
         URI base;
         try {
             base = new URI(serverUrl.strip());
-        } catch (URISyntaxException e) {
-            throw new CaldavException(CaldavException.Reason.NOT_CALDAV, 0, "Not a valid URL", e);
+        } catch (URISyntaxException _) {
+            throw new CaldavException(CaldavException.Reason.NOT_CALDAV, 0, "Not a valid URL", null);
         }
         for (var candidate : List.of(base, base.resolve("/.well-known/caldav"))) {
             var principal = propfind(user, password, candidate, "0", PRINCIPAL_BODY)
@@ -96,7 +96,7 @@ public class CaldavClient {
                 return new Discovery(principal.get(), home.get());
             }
         }
-        throw new CaldavException(CaldavException.Reason.NOT_CALDAV, "No CalDAV principal found at " + serverUrl);
+        throw new CaldavException(CaldavException.Reason.NOT_CALDAV, "No CalDAV principal found");
     }
 
     /**

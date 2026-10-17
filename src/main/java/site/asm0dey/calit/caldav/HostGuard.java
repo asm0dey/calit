@@ -12,7 +12,7 @@ final class HostGuard {
     static void check(URI uri, boolean allowPrivate) {
         var scheme = uri.getScheme();
         if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
-            throw new CaldavException(CaldavException.Reason.PRIVATE_HOST, "Only http and https URLs are allowed");
+            throw new CaldavException(CaldavException.Reason.NOT_CALDAV, "Only http and https URLs are allowed");
         }
         var host = uri.getHost();
         if (host == null || host.isBlank()) {

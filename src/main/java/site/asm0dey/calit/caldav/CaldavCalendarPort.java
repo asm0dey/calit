@@ -223,8 +223,11 @@ public class CaldavCalendarPort implements ProviderCalendarPort {
         }
     }
 
-    private static void flagIfUnauthorized(CaldavAccount account, CaldavException ex) {
-        if (ex.reason() != CaldavException.Reason.UNAUTHORIZED) {
+    /**
+     * Marks a stored account as needing a new password when the server refused its credentials.
+     */
+    public static void flagIfUnauthorized(CaldavAccount account, CaldavException ex) {
+        if (ex.reason() != CaldavException.Reason.UNAUTHORIZED || account.id == null) {
             return;
         }
         Long id = account.id;

@@ -34,12 +34,11 @@
             <div class="flex items-center justify-between">
               <h2 class="text-lg font-semibold">
                 <span class="badge badge-neutral badge-sm me-2">{#if acc.provider == 'CALDAV'}{adm:calendars_badge_caldav}{#else}{adm:calendars_badge_google}{/if}</span>
-                {acc.label ?: "Google account"}
+                {acc.label}
                 {#if acc.needsReconnect}<span class="badge badge-warning ms-2">{adm:google_badge_needs_reconnect}</span>{/if}
                 {#if acc.loadFailed && !acc.needsReconnect}<span class="badge badge-warning ms-2">{adm:google_badge_load_failed}</span>{/if}
               </h2>
-              <button type="submit" form="disc-{acc.accountId}" class="btn btn-outline btn-error btn-sm"
-                      {#if acc.holdsWriteTarget && accounts.size() > 1}disabled title="{adm:google_disabled_title}"{/if}>
+              <button type="submit" form="disc-{acc.accountId}" class="btn btn-outline btn-error btn-sm">
                 {adm:google_btn_disconnect}
               </button>
             </div>
@@ -83,6 +82,10 @@
           </div>
         </div>
       {/for}
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="radio" class="radio radio-sm" name="writeTarget" value="" {#if noWriteTarget}checked{/if}>
+        <span>{adm:calendars_write_none}</span>
+      </label>
       <div><button type="submit" class="btn btn-primary">{adm:google_btn_save_selection}</button></div>
     </form>
 

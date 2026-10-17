@@ -1055,8 +1055,11 @@ public interface AdminMessages {
     @Message("Disconnect this account? Its calendar selections are removed.")
     String google_disconnect_confirm();
 
-    @Message("Pick a new write target on another account first")
-    String google_disabled_title();
+    @Message("No calendar — send an .ics instead")
+    String calendars_write_none();
+
+    @Message("Unnamed account")
+    String calendars_account_unnamed();
 
     @Message("Google")
     String calendars_badge_google();

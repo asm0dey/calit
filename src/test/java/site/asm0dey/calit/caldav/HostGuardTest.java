@@ -49,6 +49,6 @@ class HostGuardTest {
     void refusesNonHttpScheme() {
         assertThatThrownBy(() -> HostGuard.check(URI.create("file:///etc/passwd"), true))
             .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
-                .isEqualTo(CaldavException.Reason.PRIVATE_HOST));
+                .isEqualTo(CaldavException.Reason.NOT_CALDAV));
     }
 }

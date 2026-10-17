@@ -18,14 +18,16 @@ class CalendarsPageResourceTest {
     CalendarListPort calendarListPort;
 
     @Test
-    void disconnectBlockedWhenItHoldsWriteTargetAndOtherAccountsRemain() {
+    void disconnectAllowedWhenItHoldsWriteTargetAndOtherAccountsRemain() {
         var credId = seedTwoAccountsWriteOnFirst();
         given()
             .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
             .when()
             .post("/me/calendars/accounts/" + credId + "/delete")
             .then()
-            .statusCode(409);
+            .statusCode(303);
     }
 
     @Test
@@ -79,7 +81,7 @@ class CalendarsPageResourceTest {
     }
 
     @Test
-    void saveWithoutWriteTargetReturns400() {
+    void saveWithoutWriteTargetSavesNone() {
         var credId = seedSingleAccount();
         when(calendarListPort.listCalendars(any()))
             .thenReturn(List.of(
@@ -88,13 +90,23 @@ class CalendarsPageResourceTest {
             ));
         given()
             .cookie("quarkus-credential", FormAuth.login())
+            .redirects()
+            .follow(false)
             .contentType("application/x-www-form-urlencoded")
             .formParam("read", credId + ":c1")
             .formParam("read", credId + ":c2")
             .when()
             .post("/me/calendars/calendars")
             .then()
-            .statusCode(400);
+            .statusCode(303);
+
+        assertReadForBusy(credId, "c1", true);
+        assertNoWriteTarget();
+    }
+
+    @Transactional
+    void assertNoWriteTarget() {
+        assertThat(SelectedCalendar.count("writeTarget = true")).isZero();
     }
 
     @Test
