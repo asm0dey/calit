@@ -2,7 +2,7 @@
 
 Where a meeting happens — a phone number, an address, custom text, or a Google Meet link — is part
 of what a Creator publishes when they define a meeting type. It does not vary with who books it,
-which Host attends, or which calendar the Google event lands on.
+which Host attends, or which calendar the Mirror event lands on.
 
 Three of the four location kinds satisfy this for free: `PHONE`, `IN_PERSON` and `CUSTOM` store the
 location in `location_detail` on the meeting type itself. `GOOGLE_MEET` is the exception, and it is

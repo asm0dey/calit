@@ -11,7 +11,7 @@ the words we have decided not to use. No implementation detail belongs here.
 **Owner**:
 The user whose time is being booked and who configures the meeting types, availability and
 settings. Every tenant row belongs to exactly one.
-_Avoid_: user (a login), admin (site-wide privilege), account (a connected Google account)
+_Avoid_: user (a login), admin (site-wide privilege), account (a connected calendar account)
 
 **Invitee**:
 The person who books an Owner's time. Has no login and no calit row of their own beyond the
@@ -97,7 +97,9 @@ _Avoid_: credential (the token or password inside it), integration, calendar
 
 **Write target**:
 The one calendar, among a connected account's calendars, where an Owner's new Mirror events are
-created by default.
+created by default. May be absent: a connected account with no write target books without a
+Mirror event, and calit's own `.ics` goes to everyone including the Creator
+(`docs/adr/0013-no-write-calendar-means-no-mirror-event.md`).
 _Avoid_: primary calendar, default calendar, target
 
 **Write override**:
