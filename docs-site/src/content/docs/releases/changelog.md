@@ -7,9 +7,10 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.28.0
 
-Merged but not yet in a tagged release.
+CalDAV calendars work alongside Google, bookings go through without a write calendar, and calit's
+`.ics` cancellations now remove the meeting from guests' calendars.
 
 - CalDAV calendars (Nextcloud, Fastmail, iCloud, mailbox.org, Radicale) work alongside Google for the
   busy-time check and Mirror event writes. Settings → Google is now Settings → Calendars at
