@@ -109,16 +109,14 @@ class BusyExtractorTest {
 
     @Test
     void unknownTzidFailsClosed() {
-        assertThatThrownBy(() -> busy(
-                cal(
-                        event(
-                                "UID:z",
-                                "DTSTART;TZID=Nowhere/Atlantis:20261103T100000",
-                                "DTEND;TZID=Nowhere/Atlantis:20261103T110000"
-                        )
+        var calendar = cal(
+                event(
+                        "UID:z",
+                        "DTSTART;TZID=Nowhere/Atlantis:20261103T100000",
+                        "DTEND;TZID=Nowhere/Atlantis:20261103T110000"
                 )
-        ))
-            .isInstanceOf(CaldavException.class);
+        );
+        assertThatThrownBy(() -> busy(calendar)).isInstanceOf(CaldavException.class);
     }
 
     @Test

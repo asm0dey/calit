@@ -318,18 +318,7 @@ public class CalendarsPageResource {
                 if (write && account instanceof CaldavAccount && !CaldavCalendarPort.fitsEventIds(rc.remoteId())) {
                     return badRequest(m().calendars_error_write_href_too_long(), null, new ConnectForm("", ""));
                 }
-                if (read || write) {
-                    selections.add(
-                            new CalendarSelectionService.Selection(
-                                    account.id,
-                                    rc.remoteId(),
-                                    rc.summary(),
-                                    read,
-                                    write,
-                                    rc.meetSupported()
-                            )
-                    );
-                }
+                addIfPicked(selections, account, rc, read, write);
             }
         }
 
@@ -341,6 +330,27 @@ public class CalendarsPageResource {
 
         selectionService.save(ownerId, covered, selections);
         return Response.seeOther(PAGE).build();
+    }
+
+    private static void addIfPicked(
+            List<CalendarSelectionService.Selection> selections,
+            CalendarAccount account,
+            CalendarListPort.RemoteCalendar rc,
+            boolean read,
+            boolean write
+    ) {
+        if (read || write) {
+            selections.add(
+                    new CalendarSelectionService.Selection(
+                            account.id,
+                            rc.remoteId(),
+                            rc.summary(),
+                            read,
+                            write,
+                            rc.meetSupported()
+                    )
+            );
+        }
     }
 
     /**
