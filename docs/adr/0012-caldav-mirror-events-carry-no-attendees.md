@@ -1,7 +1,7 @@
 # CalDAV Mirror events carry no attendees; calit sends the invites
 
-A Mirror event written to a CalDAV calendar has no `ORGANIZER` and no `ATTENDEE` properties; guests'
-names and emails go in the description. calit's own `.ics` is the invitation, exactly as in degraded
+A Mirror event written to a CalDAV calendar has no `ORGANIZER` and no `ATTENDEE` properties; guests' email
+addresses go in the description. calit's own `.ics` is the invitation, exactly as in degraded
 mode (Google differs only because Google itself sends invites). Servers that implement RFC 6638
 implicit scheduling, Nextcloud among them, therefore have nothing to schedule and send no second
 invitation.
