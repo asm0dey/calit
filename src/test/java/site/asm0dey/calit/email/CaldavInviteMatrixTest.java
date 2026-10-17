@@ -2,9 +2,12 @@ package site.asm0dey.calit.email;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.mutiny.Multi;
 import jakarta.inject.Inject;
@@ -12,21 +15,24 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
+import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.booking.GuestStatus;
-import site.asm0dey.calit.booking.events.BookingCancelled;
 import site.asm0dey.calit.booking.events.BookingConfirmed;
+import site.asm0dey.calit.caldav.CaldavCalendarPort;
 import site.asm0dey.calit.calendar.CaldavAccount;
 import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.google.GoogleCalendarPort;
 import site.asm0dey.calit.google.GoogleCredential;
 import site.asm0dey.calit.test.MultiHostFixtures;
 
 /**
  * Who gets calit's .ics when the Mirror event lives on CalDAV (spec call 12): the invitee, guests and co-hosts do;
- * the Creator, whose calendar already holds the event, does not. Real ports, no mocks: nothing here talks to a
- * server, and {@code isConnected} counts account rows.
+ * the Creator, whose calendar already holds the event, does not. Both providers count as connected; which one holds
+ * the Mirror event comes from the account rows. Cancels go through {@link BookingService#cancel}, which clears the
+ * booking's calendar address before the mail goes out.
  */
 @QuarkusTest
 class CaldavInviteMatrixTest {
@@ -37,10 +43,19 @@ class CaldavInviteMatrixTest {
     EmailService emailService;
     @Inject
     MockMailbox mailbox;
+    @Inject
+    BookingService bookingService;
+    // the remote half of a cancel is stubbed; the mail decision under test reads only account rows
+    @InjectMock
+    GoogleCalendarPort google;
+    @InjectMock
+    CaldavCalendarPort caldav;
 
     @BeforeEach
     void clear() {
         mailbox.clear();
+        when(google.isConnected(anyLong())).thenReturn(true);
+        when(caldav.isConnected(anyLong())).thenReturn(true);
     }
 
     @Test
@@ -65,13 +80,49 @@ class CaldavInviteMatrixTest {
     }
 
     @Test
-    void cancelSendsCancelIcsToInvitee() {
-        long id = seedSingle(caldavWriteTarget(), BookingStatus.CANCELLED);
+    void cancelOfCaldavEventSendsCancelIcsEvenWithGoogleWriteTarget() {
+        googleCalendar(true);
+        Booking b = booking(seedSingle(caldavCalendar(false), BookingStatus.CONFIRMED));
 
-        emailService.handleCancelled(new BookingCancelled(id, false));
+        bookingService.cancel(b.manageToken, false);
 
         assertThat(ics(INVITEE_EMAIL)).contains("METHOD:CANCEL");
+        assertThat(ics(GUEST_EMAIL)).contains("METHOD:CANCEL");
         assertThat(mailbox.getMailsSentTo(OWNER_EMAIL)).allSatisfy(m -> assertThat(m.getAttachments()).isEmpty());
+    }
+
+    @Test
+    void cancelOfGoogleEventSendsNoIcsEvenWithCaldavWriteTarget() {
+        caldavCalendar(true);
+        Booking b = booking(seedSingle(googleCalendar(false), BookingStatus.CONFIRMED));
+
+        bookingService.cancel(b.manageToken, false);
+
+        assertNoIcs(INVITEE_EMAIL);
+        assertNoIcs(GUEST_EMAIL);
+    }
+
+    @Test
+    void groupCancelOfCaldavEventSendsCancelIcsEvenWithGoogleWriteTarget() {
+        googleCalendar(true);
+        long leadId = seedGroup(caldavCalendar(false));
+
+        bookingService.cancel(booking(leadId).manageToken, false);
+
+        assertThat(ics(INVITEE_EMAIL)).contains("METHOD:CANCEL");
+        assertThat(ics("Cohost@x.com")).contains("METHOD:CANCEL");
+        assertNoIcs("Creator@x.com");
+    }
+
+    @Test
+    void groupCancelOfGoogleEventSendsNoIcsEvenWithCaldavWriteTarget() {
+        caldavCalendar(true);
+        long leadId = seedGroup(googleCalendar(false));
+
+        bookingService.cancel(booking(leadId).manageToken, false);
+
+        assertNoIcs(INVITEE_EMAIL);
+        assertNoIcs("Cohost@x.com");
     }
 
     @Test
@@ -90,8 +141,20 @@ class CaldavInviteMatrixTest {
 
     @Test
     void groupCohostGetsIcsCreatorDoesNot() {
-        var ref = caldavWriteTarget();
-        long leadId = QuarkusTransaction.requiringNew().call(() -> {
+        long leadId = seedGroup(caldavWriteTarget());
+
+        emailService.handleConfirmed(new BookingConfirmed(leadId));
+
+        assertThat(ics(INVITEE_EMAIL)).contains("METHOD:REQUEST");
+        assertThat(ics("Cohost@x.com")).contains("METHOD:REQUEST");
+        assertNoIcs("Creator@x.com");
+    }
+
+    /**
+     * A two-host group whose lead row's Mirror event is on {@code mirror}; returns the lead id.
+     */
+    private static long seedGroup(SelectedCalendar mirror) {
+        return QuarkusTransaction.requiringNew().call(() -> {
             MultiHostFixtures.enabledUser("cohost");
             MultiHostFixtures.settings(1L, "Creator");
             MultiHostFixtures.settings(2L, "Cohost");
@@ -99,25 +162,38 @@ class CaldavInviteMatrixTest {
             var groupId = UUID.randomUUID();
             Booking lead = booking(1L, type, BookingStatus.CONFIRMED);
             lead.groupId = groupId;
-            lead.calendarAccountId = ref.accountId;
-            lead.calendarRemoteId = ref.remoteId;
+            lead.eventId = "evt-group";
+            lead.calendarAccountId = mirror.accountId;
+            lead.calendarRemoteId = mirror.remoteId;
             lead.persist();
             Booking cohostRow = booking(2L, type, BookingStatus.CONFIRMED);
             cohostRow.groupId = groupId;
             cohostRow.persist();
             return lead.id;
         });
+    }
 
-        emailService.handleConfirmed(new BookingConfirmed(leadId));
+    private static Booking booking(long id) {
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.findById(id));
+    }
 
-        assertThat(ics(INVITEE_EMAIL)).contains("METHOD:REQUEST");
-        assertThat(ics("Cohost@x.com")).contains("METHOD:REQUEST");
-        assertThat(mailbox.getMailsSentTo("Creator@x.com"))
+    private void assertNoIcs(String to) {
+        assertThat(mailbox.getMailsSentTo(to))
             .singleElement()
             .satisfies(m -> assertThat(m.getAttachments()).isEmpty());
     }
 
     private static SelectedCalendar caldavWriteTarget() {
+        return caldavCalendar(true);
+    }
+
+    private static SelectedCalendar googleWriteTarget() {
+        return googleCalendar(true);
+    }
+
+    private static SelectedCalendar caldavCalendar(boolean writeTarget) {
         return QuarkusTransaction.requiringNew().call(() -> {
             var a = new CaldavAccount();
             a.ownerId = 1L;
@@ -127,28 +203,28 @@ class CaldavInviteMatrixTest {
             a.principalUrl = "https://dav.example.com/p/alice/";
             a.homeUrl = "https://dav.example.com/cal/";
             a.persist();
-            return calendar(a.id, "/cal/work/");
+            return calendar(a.id, "/cal/work/", writeTarget);
         });
     }
 
-    private static SelectedCalendar googleWriteTarget() {
+    private static SelectedCalendar googleCalendar(boolean writeTarget) {
         return QuarkusTransaction.requiringNew().call(() -> {
             var g = new GoogleCredential();
             g.ownerId = 1L;
             g.refreshToken = "rt";
             g.googleSub = "sub-matrix";
             g.persist();
-            return calendar(g.id, "owner@example.com");
+            return calendar(g.id, "owner@example.com", writeTarget);
         });
     }
 
-    private static SelectedCalendar calendar(Long accountId, String remoteId) {
+    private static SelectedCalendar calendar(Long accountId, String remoteId, boolean writeTarget) {
         var c = new SelectedCalendar();
         c.ownerId = 1L;
         c.accountId = accountId;
         c.remoteId = remoteId;
         c.summary = remoteId;
-        c.writeTarget = true;
+        c.writeTarget = writeTarget;
         c.persist();
         return c;
     }

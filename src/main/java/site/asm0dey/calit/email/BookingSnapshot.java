@@ -2,6 +2,7 @@ package site.asm0dey.calit.email;
 
 import module java.base;
 import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
 
@@ -17,5 +18,11 @@ public record BookingSnapshot(
         OwnerSettings owner,
         ZoneId zone,
         List<EmailService.AnswerLine> answers,
-        List<HostDelivery> hostDeliveries
-) {}
+        List<HostDelivery> hostDeliveries,
+        // where the Mirror event is (or was, for a cancel that already cleared the booking's address)
+        CalendarRef mirrorRef
+) {
+    public BookingSnapshot withMirrorRef(CalendarRef ref) {
+        return new BookingSnapshot(booking, meetingType, owner, zone, answers, hostDeliveries, ref);
+    }
+}

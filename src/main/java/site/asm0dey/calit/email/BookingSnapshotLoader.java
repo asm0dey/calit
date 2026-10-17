@@ -53,7 +53,7 @@ public class BookingSnapshotLoader {
         List<EmailService.AnswerLine> answers = buildAnswerLines(booking, type);
         List<HostDelivery> hostDeliveries =
                 booking.groupId == null ? List.of() : loadHostDeliveries(booking.groupId, type);
-        return new BookingSnapshot(booking, type, owner, zone, answers, hostDeliveries);
+        return new BookingSnapshot(booking, type, owner, zone, answers, hostDeliveries, booking.calendarRef());
     }
 
     /**

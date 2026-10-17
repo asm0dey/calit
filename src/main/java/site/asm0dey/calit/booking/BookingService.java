@@ -1350,19 +1350,30 @@ public class BookingService {
             return cancelSingle(booking, byOwner, tolerateGoogleFailure);
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        // captured before the delete clears it: the cancel mail follows where the Mirror event was
+        CalendarRef mirror = Booking
+            .<Booking>group(booking.groupId)
+            .stream()
+            .filter(r -> r.eventId != null)
+            .map(Booking::calendarRef)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElse(null);
         // one shared event
         boolean deleted = deleteGroupGoogleEvent(booking.groupId, tolerateGoogleFailure);
         for (Booking r : Booking.<Booking>group(booking.groupId)) {
             r.status = BookingStatus.CANCELLED;
         }
         Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
-        bookingCancelledEvent.fire(new BookingCancelled(lead.id, byOwner));
+        bookingCancelledEvent.fire(new BookingCancelled(lead.id, byOwner, mirror));
         return deleted;
     }
 
     private boolean cancelSingle(Booking booking, boolean byOwner, boolean tolerateGoogleFailure) {
         booking.status = BookingStatus.CANCELLED;
         var deleted = false;
+        // captured before the refs are cleared: the cancel mail follows where the Mirror event was
+        CalendarRef mirror = booking.calendarRef();
         if (booking.eventId != null) {
             deleted = deleteRemoteEvent(booking, tolerateGoogleFailure);
             // Clear the refs whether or not the remote call could be made -- same rule, and same
@@ -1373,7 +1384,7 @@ public class BookingService {
             booking.calendarRemoteId = null;
             booking.calendarAccountId = null;
         }
-        bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner));
+        bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner, mirror));
         return deleted;
     }
 

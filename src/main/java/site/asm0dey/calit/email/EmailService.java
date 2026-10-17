@@ -610,10 +610,12 @@ public class EmailService {
     }
 
     void handleCancelled(BookingCancelled e) {
-        BookingSnapshot l = snapshots.load(e.bookingId());
-        if (l == null) {
+        BookingSnapshot loaded = snapshots.load(e.bookingId());
+        if (loaded == null) {
             return;
         }
+        // the cancel already cleared the booking's address; decide from where the Mirror event was
+        BookingSnapshot l = e.mirrorRef() == null ? loaded : loaded.withMirrorRef(e.mirrorRef());
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
         // No location/meet link in the cancellation body; .ics attached when Google is not connected.
         sendForKindLocaleAware(
@@ -1047,7 +1049,7 @@ public class EmailService {
     }
 
     private static boolean providerNotifies(BookingSnapshot l, boolean connected) {
-        return connected && MirrorProvider.providerNotifiesAttendees(l.owner().ownerId, l.booking().calendarRef());
+        return connected && MirrorProvider.providerNotifiesAttendees(l.owner().ownerId, l.mirrorRef());
     }
 
     /**
