@@ -2,6 +2,7 @@ package site.asm0dey.calit.caldav;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.calendar.BusyInterval;
 
@@ -91,10 +92,62 @@ class BusyExtractorTest {
         assertThat(
                 busy(
                         cal(event("UID:x", "DTSTART:20261103T100000Z", "DTEND:20261103T110000Z")),
-                        cal(event("UID:y", "DTSTART:20261103T103000Z", "DTEND:20261103T120000Z")),
-                        "not ical at all"
+                        cal(event("UID:y", "DTSTART:20261103T103000Z", "DTEND:20261103T120000Z"))
                 )
         )
             .containsExactly(iv("2026-11-03T10:00:00Z", "2026-11-03T12:00:00Z"));
+    }
+
+    @Test
+    void unparsableObjectFailsClosed() {
+        assertThatThrownBy(() -> busy(cal(event("UID:x", "DTSTART:20261103T100000Z")), "not ical at all"))
+            .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
+                .isEqualTo(CaldavException.Reason.HTTP_ERROR));
+    }
+
+    @Test
+    void unknownTzidFailsClosed() {
+        assertThatThrownBy(() -> busy(
+                cal(
+                        event(
+                                "UID:z",
+                                "DTSTART;TZID=Nowhere/Atlantis:20261103T100000",
+                                "DTEND;TZID=Nowhere/Atlantis:20261103T110000"
+                        )
+                )
+        ))
+            .isInstanceOf(CaldavException.class);
+    }
+
+    @Test
+    void blankLineInsideEventStillBlocks() {
+        var quirky = cal(event("UID:q", "DTSTART:20261103T100000Z", "", "DTEND:20261103T110000Z"));
+        assertThat(busy(quirky)).containsExactly(iv("2026-11-03T10:00:00Z", "2026-11-03T11:00:00Z"));
+    }
+
+    @Test
+    void tzidWithoutVtimezoneResolves() {
+        // no VTIMEZONE block anywhere: the zone comes from ical4j's bundled zoneinfo
+        var data = cal(
+                event("UID:b", "DTSTART;TZID=Europe/Berlin:20261103T100000", "DTEND;TZID=Europe/Berlin:20261103T110000")
+        );
+        assertThat(busy(data)).containsExactly(iv("2026-11-03T09:00:00Z", "2026-11-03T10:00:00Z"));
+    }
+
+    @Test
+    void outlookTzidResolves() {
+        var data = cal(
+                event(
+                        "UID:o",
+                        "DTSTART;TZID=W. Europe Standard Time:20261103T100000",
+                        "DTEND;TZID=W. Europe Standard Time:20261103T110000"
+                )
+        );
+        assertThat(busy(data)).containsExactly(iv("2026-11-03T09:00:00Z", "2026-11-03T10:00:00Z"));
+    }
+
+    @Test
+    void zeroLengthEventIsDropped() {
+        assertThat(busy(cal(event("UID:0", "DTSTART:20261103T100000Z", "DTEND:20261103T100000Z")))).isEmpty();
     }
 }

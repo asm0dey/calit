@@ -46,9 +46,10 @@ public class CaldavClient {
     public record Fetched(String ics, String etag) {}
 
     /**
-     * One {@code DAV:response}: its href resolved against the request URI, and the props reported with 200.
+     * One {@code DAV:response}: its href resolved against the request URI, the props reported with 200, and the
+     * first non-200 status in it (response-level or propstat), 0 when there is none.
      */
-    private record DavResponse(URI href, List<Element> props) {
+    private record DavResponse(URI href, List<Element> props, int failedStatus) {
         Optional<Element> prop(String ns, String local) {
             return props
                 .stream()
@@ -127,7 +128,22 @@ public class CaldavClient {
         var body = QUERY_BODY.formatted(UTC_STAMP.format(from), UTC_STAMP.format(to));
         var res = http.send(a, "REPORT", uri, Map.of("Depth", "1", "Content-Type", XML), body);
         expectMultistatus(res);
-        return parse(res.body(), uri)
+        var responses = parse(res.body(), uri);
+        // fail closed: a forbidden, missing or truncated (507) part would silently drop busy time
+        var failed = responses
+            .stream()
+            .mapToInt(DavResponse::failedStatus)
+            .filter(s -> s != 0)
+            .findFirst();
+        if (failed.isPresent()) {
+            throw new CaldavException(
+                    CaldavException.Reason.HTTP_ERROR,
+                    failed.getAsInt(),
+                    "CalDAV calendar-query incomplete: HTTP " + failed.getAsInt(),
+                    null
+            );
+        }
+        return responses
             .stream()
             .flatMap(r -> r.prop(CALDAV, "calendar-data").stream())
             .map(Element::getTextContent)
@@ -270,16 +286,40 @@ public class CaldavClient {
             if (href.isEmpty()) {
                 continue;
             }
-            var props = children(response, DAV, "propstat")
+            var propstats = children(response, DAV, "propstat");
+            var props = propstats
                 .stream()
                 .filter(ps -> children(ps, DAV, "status")
                     .stream()
-                    .anyMatch(s -> s.getTextContent().contains(" 200")))
+                    .allMatch(s -> statusCode(s) == 200))
                 .flatMap(ps -> children(ps, DAV, "prop").stream())
                 .toList();
-            out.add(new DavResponse(href.get(), props));
+            var failed = Stream
+                .concat(
+                        children(response, DAV, "status").stream(),
+                        propstats
+                            .stream()
+                            .flatMap(ps -> children(ps, DAV, "status").stream())
+                )
+                .mapToInt(CaldavClient::statusCode)
+                .filter(c -> c != 200)
+                .findFirst()
+                .orElse(0);
+            out.add(new DavResponse(href.get(), props, failed));
         }
         return out;
+    }
+
+    /**
+     * The code in a {@code DAV:status} line such as "HTTP/1.1 404 Not Found"; -1 when unreadable.
+     */
+    private static int statusCode(Element status) {
+        var parts = status.getTextContent().strip().split("\\s+");
+        try {
+            return parts.length > 1 ? Integer.parseInt(parts[1]) : -1;
+        } catch (NumberFormatException _) {
+            return -1;
+        }
     }
 
     private static List<Element> children(Element parent, String ns, String local) {

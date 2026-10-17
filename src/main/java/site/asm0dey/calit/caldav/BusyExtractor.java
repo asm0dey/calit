@@ -9,7 +9,6 @@ import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.property.DateListProperty;
 import net.fortuna.ical4j.model.property.DateProperty;
-import org.jboss.logging.Logger;
 import site.asm0dey.calit.calendar.BusyInterval;
 import site.asm0dey.calit.calendar.BusyIntervals;
 
@@ -17,7 +16,6 @@ import site.asm0dey.calit.calendar.BusyIntervals;
  * Turns raw CalDAV {@code calendar-data} into busy time, expanding recurrences client-side.
  */
 public final class BusyExtractor {
-    private static final Logger LOG = Logger.getLogger(BusyExtractor.class);
     // expansion runs on a window padded by this on each side so zone/day boundaries can't clip an instance
     private static final Duration PAD = Duration.ofDays(2);
 
@@ -27,44 +25,47 @@ public final class BusyExtractor {
     public static List<BusyInterval> busy(List<String> calendarData, Instant from, Instant to, ZoneId ownerZone) {
         var out = new ArrayList<BusyInterval>();
         for (var data : calendarData) {
-            List<VEvent> events;
             try {
-                events = new CalendarBuilder().build(new StringReader(data)).getComponents(Component.VEVENT);
+                collect(data, from, to, ownerZone, out);
             } catch (IOException | ParserException | RuntimeException e) {
-                // shortcut: one unparseable object is skipped, not fatal; its time is not blocked
-                LOG.warnf("Skipping unparseable CalDAV object: %s", e.getMessage());
-                continue;
-            }
-            // RECURRENCE-ID overrides replace the master's instance at that start
-            var overridden = events
-                .stream()
-                .flatMap(e -> e.<DateProperty<Temporal>>getProperty(Property.RECURRENCE_ID).stream())
-                .map(p -> toInstant(p.getDate(), ownerZone))
-                .collect(Collectors.toSet());
-            for (var event : events) {
-                if (ignored(event)) {
-                    continue;
-                }
-                var isMaster = event.getProperty(Property.RECURRENCE_ID).isEmpty();
-                var excluded = new HashSet<Instant>();
-                if (isMaster) {
-                    excluded.addAll(overridden);
-                    event
-                        .<DateListProperty<Temporal>>getProperties(Property.EXDATE)
-                        .forEach(p -> p
-                            .getDates()
-                            .forEach(d -> excluded.add(toInstant(d, ownerZone))));
-                }
-                for (var period : expand(event, from, to, ownerZone)) {
-                    var start = toInstant(period.getStart(), ownerZone);
-                    var end = toInstant(period.getEnd(), ownerZone);
-                    if (!excluded.contains(start) && start.isBefore(to) && end.isAfter(from)) {
-                        out.add(new BusyInterval(start, end));
-                    }
-                }
+                // fail closed: an object we can't read could be hiding busy time
+                throw new CaldavException(CaldavException.Reason.HTTP_ERROR, 0, "Unreadable CalDAV event data", e);
             }
         }
         return BusyIntervals.merge(out);
+    }
+
+    private static void collect(String data, Instant from, Instant to, ZoneId ownerZone, List<BusyInterval> out)
+            throws IOException,
+            ParserException {
+        List<VEvent> events = new CalendarBuilder().build(new StringReader(data)).getComponents(Component.VEVENT);
+        // RECURRENCE-ID overrides replace the master's instance at that start
+        var overridden = events
+            .stream()
+            .flatMap(e -> e.<DateProperty<Temporal>>getProperty(Property.RECURRENCE_ID).stream())
+            .map(p -> toInstant(p.getDate(), ownerZone))
+            .collect(Collectors.toSet());
+        for (var event : events) {
+            if (ignored(event)) {
+                continue;
+            }
+            var excluded = new HashSet<Instant>();
+            if (event.getProperty(Property.RECURRENCE_ID).isEmpty()) {
+                excluded.addAll(overridden);
+                event
+                    .<DateListProperty<Temporal>>getProperties(Property.EXDATE)
+                    .forEach(p -> p
+                        .getDates()
+                        .forEach(d -> excluded.add(toInstant(d, ownerZone))));
+            }
+            for (var period : expand(event, from, to, ownerZone)) {
+                var start = toInstant(period.getStart(), ownerZone);
+                var end = toInstant(period.getEnd(), ownerZone);
+                if (end.isAfter(start) && !excluded.contains(start) && start.isBefore(to) && end.isAfter(from)) {
+                    out.add(new BusyInterval(start, end));
+                }
+            }
+        }
     }
 
     private static boolean ignored(VEvent e) {
