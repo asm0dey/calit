@@ -196,10 +196,15 @@ public class CalendarsPageResource {
         }
         var account = new CaldavAccount();
         account.ownerId = ownerId;
-        account.serverUrl = echo.serverUrl();
         account.username = echo.username();
         account.password = password;
         try {
+            try {
+                account.serverUrl = CaldavClient.serverUri(echo.serverUrl()).toASCIIString();
+            } catch (CaldavException ex) {
+                // the rejected text may hold userinfo, so it is not echoed back
+                return badRequest(null, caldavError(ex), new ConnectForm("", echo.username()));
+            }
             var found = caldav.discover(account.serverUrl, account.username, password);
             account.principalUrl = found.principalUrl().toString();
             account.homeUrl = found.homeUrl().toString();

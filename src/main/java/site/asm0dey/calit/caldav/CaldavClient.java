@@ -65,15 +65,32 @@ public class CaldavClient {
     }
 
     /**
+     * The one place a typed server URL is vetted: absolute http(s) with a host, no userinfo, query or fragment;
+     * returned normalized. The message never carries the input (it may hold a password).
+     */
+    public static URI serverUri(String serverUrl) {
+        try {
+            var u = new URI(serverUrl.strip()).normalize();
+            if (u.isAbsolute()
+                    && u.getScheme() != null
+                    && (u.getScheme().equalsIgnoreCase("http") || u.getScheme().equalsIgnoreCase("https"))
+                    && u.getHost() != null
+                    && u.getUserInfo() == null
+                    && u.getRawQuery() == null
+                    && u.getRawFragment() == null) {
+                return u;
+            }
+        } catch (URISyntaxException _) {
+            // falls through to the same refusal
+        }
+        throw new CaldavException(CaldavException.Reason.NOT_CALDAV, 0, "Not a valid URL", null);
+    }
+
+    /**
      * RFC 6764: the URL as given, then {@code /.well-known/caldav}; principal, then calendar home.
      */
     public Discovery discover(String serverUrl, String user, String password) {
-        URI base;
-        try {
-            base = new URI(serverUrl.strip());
-        } catch (URISyntaxException _) {
-            throw new CaldavException(CaldavException.Reason.NOT_CALDAV, 0, "Not a valid URL", null);
-        }
+        var base = serverUri(serverUrl);
         for (var candidate : List.of(base, base.resolve("/.well-known/caldav"))) {
             var principal = propfind(user, password, candidate, "0", PRINCIPAL_BODY)
                 .stream()

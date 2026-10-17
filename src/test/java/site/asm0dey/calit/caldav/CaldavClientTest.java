@@ -67,6 +67,31 @@ class CaldavClientTest {
     }
 
     @Test
+    void refusesUnsafeServerUrls() {
+        for (var url :
+                List.of(
+                        "https://user:pass@host/",
+                        "ftp://host/",
+                        "host/no-scheme",
+                        "https://host/?q=1",
+                        "https://host/#frag",
+                        "https:///nohost"
+        )) {
+            assertThatThrownBy(() -> client.discover(url, "alice", "secret"))
+                .isInstanceOfSatisfying(CaldavException.class, e -> {
+                    assertThat(e.reason()).isEqualTo(CaldavException.Reason.NOT_CALDAV);
+                    assertThat(e.getMessage()).doesNotContain("pass");
+                });
+        }
+    }
+
+    @Test
+    void normalizesServerUrl() {
+        assertThat(CaldavClient.serverUri(" HTTPS://Host.Example/./dav/../dav/ ").toASCIIString())
+            .isEqualTo("HTTPS://Host.Example/dav/");
+    }
+
+    @Test
     void wrongPasswordIsUnauthorized() {
         assertThatThrownBy(() -> client.discover(baseUrl, "alice", "nope"))
             .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())

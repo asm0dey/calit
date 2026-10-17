@@ -48,12 +48,16 @@ class CalendarsPageCaldavTest {
     }
 
     private static io.restassured.response.ValidatableResponse connect(String password) {
+        return connect(SERVER, password);
+    }
+
+    private static io.restassured.response.ValidatableResponse connect(String serverUrl, String password) {
         return given()
             .cookie("quarkus-credential", FormAuth.login())
             .redirects()
             .follow(false)
             .contentType("application/x-www-form-urlencoded")
-            .formParam("serverUrl", SERVER)
+            .formParam("serverUrl", serverUrl)
             .formParam("username", "alice")
             .formParam("password", password)
             .when()
@@ -112,6 +116,39 @@ class CalendarsPageCaldavTest {
         assertThat(QuarkusTransaction
             .requiringNew()
             .<Long>call(() -> CaldavAccount.count())).isZero();
+    }
+
+    @Test
+    void unsafeServerUrlsAreRefusedWithoutEchoingCredentials() {
+        for (var url :
+                List.of(
+                        "https://user:p4ssw0rd@dav.example.com/",
+                        "ftp://dav.example.com/",
+                        "dav.example.com/no-scheme",
+                        "https://dav.example.com/?q=1",
+                        "https://dav.example.com/#frag",
+                        "https:///nohost"
+        )) {
+            connect(url, "secret")
+                .statusCode(400)
+                .body(containsString("No CalDAV calendars found"))
+                .body(not(containsString("p4ssw0rd")));
+        }
+        assertThat(QuarkusTransaction
+            .requiringNew()
+            .<Long>call(() -> CaldavAccount.count())).isZero();
+    }
+
+    @Test
+    void storesTheNormalizedServerUrl() {
+        discovers();
+        connect("HTTPS://Dav.Example.com/./dav/../dav/", "secret").statusCode(303);
+        assertThat(
+                QuarkusTransaction
+                    .requiringNew()
+                    .<CaldavAccount>call(() -> CaldavAccount.<CaldavAccount>findAll().firstResult()).serverUrl
+        )
+            .isEqualTo("HTTPS://Dav.Example.com/dav/");
     }
 
     @Test
