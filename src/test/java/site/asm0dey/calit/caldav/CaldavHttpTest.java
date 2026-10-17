@@ -26,6 +26,22 @@ class CaldavHttpTest {
             x.sendResponseHeaders(302, -1);
             x.close();
         });
+        server.createContext("/badloc", x -> {
+            x.getResponseHeaders().add("Location", "http://exa mple/");
+            x.sendResponseHeaders(302, -1);
+            x.close();
+        });
+        server.createContext("/huge", x -> {
+            x.sendResponseHeaders(200, 0);
+            var chunk = new byte[64 * 1024];
+            try (var out = x.getResponseBody()) {
+                for (int i = 0; i < 200; i++) {
+                    out.write(chunk);
+                }
+            } catch (IOException _) {
+                // client hung up at the cap, as intended
+            }
+        });
         server.createContext("/denied", x -> {
             x.sendResponseHeaders(401, -1);
             x.close();
@@ -99,5 +115,29 @@ class CaldavHttpTest {
             .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
                 .isEqualTo(CaldavException.Reason.PRIVATE_HOST));
         assertThat(seen).isEmpty();
+    }
+
+    @Test
+    void oversizedBodyIsRefused() {
+        var http = new CaldavHttp(config(true));
+        assertThatThrownBy(() -> http.send("u", "p", "GET", url("/huge"), Map.of(), null))
+            .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
+                .isEqualTo(CaldavException.Reason.HTTP_ERROR));
+    }
+
+    @Test
+    void malformedLocationIsHttpError() {
+        var http = new CaldavHttp(config(true));
+        assertThatThrownBy(() -> http.send("u", "p", "GET", url("/badloc"), Map.of(), null))
+            .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
+                .isEqualTo(CaldavException.Reason.HTTP_ERROR));
+    }
+
+    @Test
+    void restrictedHeaderIsHttpError() {
+        var http = new CaldavHttp(config(true));
+        assertThatThrownBy(() -> http.send("u", "p", "GET", url("/ok"), Map.of("Content-Length", "1"), null))
+            .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
+                .isEqualTo(CaldavException.Reason.HTTP_ERROR));
     }
 }

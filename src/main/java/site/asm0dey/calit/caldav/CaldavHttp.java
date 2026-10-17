@@ -11,6 +11,7 @@ import site.asm0dey.calit.calendar.CaldavAccount;
 @ApplicationScoped
 public class CaldavHttp {
     private static final int MAX_REDIRECTS = 5;
+    private static final int MAX_BODY = 10 * 1024 * 1024;
 
     public record Response(int status, Map<String, List<String>> headers, String body) {}
 
@@ -36,26 +37,35 @@ public class CaldavHttp {
             // shortcut: DNS rebinding between check and connect is not prevented, pin the resolved IP via a custom
             // resolver if this instance is multi-tenant and hostile
             HostGuard.check(uri, config.allowPrivateHosts());
-            var req = HttpRequest
-                .newBuilder(uri)
-                .timeout(config.timeout())
-                .method(
-                        method,
-                        body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body)
-                );
-            headers.forEach(req::header);
-            // never hand the credentials to a different host than the one the user entered
-            if (sameOrigin(origin, uri)) {
-                req.header(
-                        "Authorization",
-                        "Basic " + Base64
-                            .getEncoder()
-                            .encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8))
-                );
-            }
-            HttpResponse<String> res;
+            HttpRequest request;
             try {
-                res = client.send(req.build(), HttpResponse.BodyHandlers.ofString());
+                var req = HttpRequest
+                    .newBuilder(uri)
+                    .timeout(config.timeout())
+                    .method(
+                            method,
+                            body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(
+                                    body
+                            )
+                    );
+                headers.forEach(req::header);
+                // never hand the credentials to a different host than the one the user entered
+                if (sameOrigin(origin, uri)) {
+                    var basic =
+                            Base64
+                        .getEncoder()
+                        .encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8));
+                    req.header("Authorization", "Basic " + basic);
+                }
+                request = req.build();
+            } catch (IllegalArgumentException e) {
+                throw new CaldavException(CaldavException.Reason.HTTP_ERROR, 0, "Invalid CalDAV request", e);
+            }
+            HttpResponse<InputStream> res;
+            String text;
+            try {
+                res = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+                text = readCapped(res);
             } catch (IOException e) {
                 throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "CalDAV server unreachable", e);
             } catch (InterruptedException e) {
@@ -68,7 +78,11 @@ public class CaldavHttp {
                 if (hop >= MAX_REDIRECTS) {
                     throw new CaldavException(CaldavException.Reason.HTTP_ERROR, status, "Too many redirects", null);
                 }
-                uri = uri.resolve(location.get());
+                try {
+                    uri = uri.resolve(location.get());
+                } catch (IllegalArgumentException e) {
+                    throw new CaldavException(CaldavException.Reason.HTTP_ERROR, status, "Malformed redirect", e);
+                }
                 continue;
             }
             if (status == 401 || status == 403) {
@@ -79,8 +93,42 @@ public class CaldavHttp {
                         null
                 );
             }
-            return new Response(status, res.headers().map(), res.body());
+            return new Response(status, res.headers().map(), text);
         }
+    }
+
+    /**
+     * Reads at most {@link #MAX_BODY} bytes; a longer body is abandoned (stream closed) and refused.
+     */
+    private static String readCapped(HttpResponse<InputStream> res) throws IOException {
+        try (var in = res.body()) {
+            var bytes = in.readNBytes(MAX_BODY + 1);
+            if (bytes.length > MAX_BODY) {
+                throw new CaldavException(
+                        CaldavException.Reason.HTTP_ERROR,
+                        res.statusCode(),
+                        "CalDAV response too large",
+                        null
+                );
+            }
+            return new String(bytes, charset(res));
+        }
+    }
+
+    private static Charset charset(HttpResponse<?> res) {
+        return res
+            .headers()
+            .firstValue("Content-Type")
+            .map(ct -> Pattern.compile("charset=\"?([\\w.:-]+)", Pattern.CASE_INSENSITIVE).matcher(ct))
+            .filter(Matcher::find)
+            .map(m -> {
+                try {
+                    return Charset.forName(m.group(1));
+                } catch (IllegalArgumentException _) {
+                    return StandardCharsets.UTF_8;
+                }
+            })
+            .orElse(StandardCharsets.UTF_8);
     }
 
     private static boolean sameOrigin(URI a, URI b) {

@@ -20,7 +20,14 @@ class HostGuardTest {
             "http://100.64.0.1/",
             "http://0.0.0.0/",
             "http://[::ffff:10.0.0.1]/",
-            "http://224.0.0.1/"
+            "http://224.0.0.1/",
+            "http://[::a00:1]/",
+            "http://[64:ff9b::a00:1]/",
+            "http://[2002:a00:1::]/",
+            "http://0.1.2.3/",
+            "http://240.0.0.1/",
+            "http://255.255.255.255/",
+            "http://[64:ff9b::7f00:1]/"
     })
     void refusesPrivateAddresses(String url) {
         assertThatThrownBy(() -> HostGuard.check(URI.create(url), false))
