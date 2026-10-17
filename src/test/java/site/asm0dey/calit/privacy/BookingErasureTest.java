@@ -3,11 +3,20 @@ package site.asm0dey.calit.privacy;
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.NotFoundException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.caldav.CaldavCalendarPort;
+import site.asm0dey.calit.calendar.CalendarProvider;
+import site.asm0dey.calit.calendar.CaldavAccount;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.BookingStatus;
@@ -23,6 +32,14 @@ class BookingErasureTest {
     private static final Long OWNER = ErasureFixtures.OWNER;
     @Inject
     PrivacyService privacy;
+    @InjectMock
+    CaldavCalendarPort caldav;
+
+    @BeforeEach
+    void stubCaldav() {
+        when(caldav.provider()).thenReturn(CalendarProvider.CALDAV);
+        when(caldav.isConnected(anyLong())).thenReturn(true);
+    }
 
     /**
      * A second host for group-booking rows — booking.owner_id's no-overlap constraint is per-owner.
@@ -217,5 +234,28 @@ class BookingErasureTest {
         assertThat(report.google())
             .as("a stored event id with no connected Google account cannot be deleted")
             .isEqualTo(ErasureReport.GoogleOutcome.UNREACHABLE);
+    }
+
+    @Test
+    void erasureDeletesCaldavMirrorEvent() {
+        var id = ErasureFixtures.seedPastBookingId();
+        String token = QuarkusTransaction.requiringNew().call(() -> {
+            var a = new CaldavAccount();
+            a.ownerId = OWNER;
+            a.serverUrl = "https://dav.example.com/";
+            a.username = "alice";
+            a.password = "secret";
+            a.persist();
+            Booking b = Booking.<Booking>findById(id);
+            b.eventId = "evt-dav";
+            b.calendarAccountId = a.id;
+            b.calendarRemoteId = "/cal/work/";
+            return b.manageToken;
+        });
+
+        ErasureReport report = privacy.eraseByManageToken(token);
+
+        verify(caldav).deleteEvent(any(), any(), org.mockito.ArgumentMatchers.eq("evt-dav"));
+        assertThat(report.google()).isEqualTo(ErasureReport.GoogleOutcome.REMOVED);
     }
 }
