@@ -3,8 +3,9 @@
 title: 'The Creator is always the Organizer: remove the Co-host write override'
 status: todo
 type: task
+priority: normal
 created_at: 2026-08-23T16:52:30Z
-updated_at: 2026-08-23T16:52:30Z
+updated_at: 2026-10-17T10:38:57Z
 ---
 
 Implements `docs/adr/0007-the-creator-is-always-the-organizer.md` and the
@@ -30,8 +31,9 @@ by nothing.
   its override is still live.
 - `sharedAvailability.html:40-49` — remove the write-calendar picker for a
   Co-host. It stays for the Creator.
-- Migration `V*.sql` dropping `meeting_type_host.google_credential_id` and
-  `meeting_type_host.google_calendar_id`.
+- `MeetingTypeHost` stops mapping/reading `google_credential_id` and `google_calendar_id`. **No
+  drop in this release** — the previous release still reads them (backward-compatible
+  migrations rule); dropping them is a follow-up bean for the next release.
 - Location fallback (ADR-0005): `EmailService.resolveLocation:883` and
   `PublicResource:391` return the minted link, else the meeting type's
   `locationDetail`. The field is already collected on both meeting-type forms
@@ -59,7 +61,7 @@ a `## Unreleased` changelog bullet on the `docs-site` branch.
 - [ ] createGroupGoogleEvent: organizer row is always the lead row
 - [ ] Remove the Co-host branch of applyWriteCalendar (keep the Creator branch)
 - [ ] Remove the Co-host write-calendar picker from sharedAvailability.html
-- [ ] Migration dropping the two meeting_type_host columns
+- [ ] Stop mapping the two meeting_type_host columns (drop deferred to a next-release bean)
 - [ ] Location fallback in EmailService.resolveLocation + PublicResource
 - [ ] Update MeetingHostsTest and BookingWriteTargetOverrideTest
 - [ ] Full `mvn test` green
