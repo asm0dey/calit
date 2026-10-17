@@ -51,13 +51,37 @@ deployment's database.
   server URL, your username, and the app password, which is encrypted at rest
   like Google tokens.
 
+## Booking details on the host's calendar
+
+When a host has connected a calendar account and selected a calendar to write
+bookings to, calit copies each booking to that calendar as an event. The event
+is stored by the host's calendar provider — Google, or the CalDAV server the
+host connected. It carries:
+
+- the title "_meeting title_ with _invitee name_" and the booking's description;
+- the start and end time, and the meeting location;
+- the email addresses of the invitee, the host and any active guests. On Google
+  they are added as event attendees, so Google stores them and emails them
+  invitations. On a CalDAV server they are written into the event description,
+  and the server stores them.
+
+If you book a meeting, your name, email address and these booking details are
+therefore stored by the host's calendar provider as well as by calit. If you
+are a host, this is the copy on your own calendar. That copy is held under the
+provider's own privacy policy and retention. calit deletes the event when the
+booking is cancelled, when the booking is erased, and when the host's account
+is deleted, but it cannot remove copies the provider keeps in its trash or
+backups. No such event is created when the host has no connected calendar or
+no write calendar selected.
+
 ## How CalDAV data is used
 
 When you connect a CalDAV account, calit fetches the full event objects from
 the CalDAV calendars you select, within the booking window. It uses only their
-times to compute busy intervals and discards the rest: event content is never
-stored. When bookings are made, rescheduled, or cancelled, calit creates,
-updates, and deletes the event on the calendar you chose as write target.
+times to compute busy intervals and discards the rest: the content of events
+calit reads is never stored. When bookings are made, rescheduled, or cancelled,
+calit creates, updates, and deletes the event on the calendar you chose as
+write target; that event carries the booking details listed above.
 
 ## How Google user data is used (when Google is configured)
 
@@ -69,7 +93,8 @@ uses it **only** to provide scheduling:
 - **Create, update, and delete events** on the single write-target calendar you
   choose, when bookings are made, rescheduled, or cancelled.
 
-calit does not read the content of your calendar events beyond busy intervals,
+calit does not read the content of your calendar events beyond busy intervals
+(the events calit writes for bookings carry the booking details listed above),
 and does not use Google data for advertising, profiling, or any purpose other
 than the scheduling features you initiated.
 
@@ -89,8 +114,9 @@ services its operator has configured, and its own `/privacy` page lists exactly
 which ones:
 
 - **The CalDAV server you connect**, if you connect one, for the calendar
-  operations above.
-- **Google** (when configured), for the calendar operations above.
+  operations above, including the booking details copied to your calendar.
+- **Google** (when configured), for the calendar operations above, including the
+  booking details copied to your calendar.
 - **A single sign-on identity provider** (when configured), when you sign in with it.
 - **The SMTP server** the operator configures, which delivers booking and
   notification emails.
