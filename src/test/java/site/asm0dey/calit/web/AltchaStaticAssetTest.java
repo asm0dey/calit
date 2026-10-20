@@ -2,6 +2,7 @@ package site.asm0dey.calit.web;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
@@ -18,5 +19,17 @@ class AltchaStaticAssetTest {
             .then()
             .statusCode(200)
             .body(containsString("altcha"));
+    }
+
+    // Widget 3.4.0 shipped a v1-challenge detector that is always false, so the v1 challenges
+    // AltchaResource mints were rejected with "Challenge validation failed." and nobody could book.
+    @Test
+    void altchaWidgetRecognisesV1Challenges() {
+        given()
+            .when()
+            .get("/webjars/altcha/dist/main/altcha.i18n.min.js")
+            .then()
+            .statusCode(200)
+            .body(not(containsString("typeof!!e&&\"object\"===e")));
     }
 }

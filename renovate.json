@@ -17,6 +17,11 @@
       "description": "One PR for everything that is not a major bump. Majors stay on their own, and a security update still opens its own PR regardless of this rule.",
       "matchUpdateTypes": ["minor", "patch", "digest", "pin", "bump"],
       "groupName": "all non-major dependencies"
+    },
+    {
+      "description": "ALTCHA widget 3.4.0 rejects the v1 challenges AltchaResource mints (fixed in 3.4.1).",
+      "matchPackageNames": ["org.webjars.npm:altcha"],
+      "allowedVersions": "!/^3\\.4\\.0$/"
     }
   ],
   "customManagers": [
