@@ -7,6 +7,15 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## 1.28.1
+
+Bookings on ALTCHA-protected pages work again.
+
+- The ALTCHA widget is pinned to 3.3.0: 3.4.0, shipped in 1.28.0, rejected every challenge with
+  "Challenge validation failed." and blocked booking. ([#259](https://github.com/asm0dey/calit/pull/259))
+
+Upgrade: nothing to do. If you set `CAPTCHA_PROVIDER` away from `altcha` to work around 1.28.0, set it back.
+
 ## 1.28.0
 
 CalDAV calendars work alongside Google, bookings go through without a write calendar, and calit's
