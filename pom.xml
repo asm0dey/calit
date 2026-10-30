@@ -83,6 +83,12 @@
         <artifactId>byte-buddy</artifactId>
         <version>1.18.11</version>
       </dependency>
+      <!-- Pin ahead of google-api-client 2.9.1, which ships guava 33.6.0-jre (CVE-2026-102554, image Trivy gate). -->
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>33.7.2-jre</version>
+      </dependency>
       <dependency>
         <groupId>${quarkus.platform.group-id}</groupId>
         <artifactId>${quarkus.platform.artifact-id}</artifactId>
