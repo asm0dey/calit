@@ -22,6 +22,11 @@
       "description": "ALTCHA widget 3.4.0 rejects the v1 challenges AltchaResource mints (fixed in 3.4.1).",
       "matchPackageNames": ["org.webjars.npm:altcha"],
       "allowedVersions": "!/^3\\.4\\.0$/"
+    },
+    {
+      "description": "Byte Buddy also publishes -jdk5 builds (Java 5 bytecode); stay on the regular line.",
+      "matchPackageNames": ["net.bytebuddy:**"],
+      "allowedVersions": "!/-jdk5$/"
     }
   ],
   "customManagers": [
