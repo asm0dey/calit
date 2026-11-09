@@ -27,6 +27,7 @@ class AdminInviteTest {
 
         var html = given()
             .cookie("quarkus-credential", FormAuth.login())
+            .contentType(io.restassured.http.ContentType.URLENC)
             .when()
             .post("/me/meeting-types/" + id + "/invites")
             .then()
@@ -55,6 +56,7 @@ class AdminInviteTest {
         var id = seedType(1L);
         var html = given()
             .cookie("quarkus-credential", FormAuth.login())
+            .contentType(io.restassured.http.ContentType.URLENC)
             .when()
             .post("/me/meeting-types/" + id + "/invites")
             .then()
@@ -85,6 +87,7 @@ class AdminInviteTest {
 
         given()
             .cookie("quarkus-credential", FormAuth.login())
+            .contentType(io.restassured.http.ContentType.URLENC)
             .when()
             .post("/me/meeting-types/" + id + "/invites")
             .then()
@@ -100,6 +103,7 @@ class AdminInviteTest {
         given()
             .redirects()
             .follow(false)
+            .contentType(io.restassured.http.ContentType.URLENC)
             .when()
             .post("/me/meeting-types/" + id + "/invites")
             .then()
@@ -108,6 +112,23 @@ class AdminInviteTest {
                     org.hamcrest.Matchers.is(401),
                     org.hamcrest.Matchers.is(403)
             ));
+        assertThat(inviteCount()).isEqualTo(before);
+    }
+
+    @Test
+    void nonFormContentTypeIsRefused() {
+        // rest-csrf only checks form-encoded bodies, so the route must accept nothing else
+        var id = seedType(1L);
+        var before = inviteCount();
+
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("text/plain")
+            .body("x")
+            .when()
+            .post("/me/meeting-types/" + id + "/invites")
+            .then()
+            .statusCode(415);
         assertThat(inviteCount()).isEqualTo(before);
     }
 

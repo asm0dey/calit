@@ -868,6 +868,7 @@ public class AdminResource {
      */
     @POST
     @Path("/meeting-types/{id}/invites")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance generateInvite(@PathParam("id") Long id) {
         var type = QuarkusTransaction
