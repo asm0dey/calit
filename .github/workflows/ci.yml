@@ -52,8 +52,48 @@ jobs:
           bun run css:build
           test -s src/main/resources/META-INF/resources/calit.css
 
+      # Diff coverage for pull requests. cribro has no release yet, so this builds a pinned commit.
+      # Best effort: if it fails, the tests below run without it. Only the verify step loads it.
+      - name: Build cribro
+        id: cribro
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        run: |
+          git clone --quiet https://github.com/cribro-dev/cribro.git "$RUNNER_TEMP/cribro"
+          cd "$RUNNER_TEMP/cribro"
+          git checkout --quiet a4e546e958c3972eb8a6b37c9ced72c9014170f3
+          mise exec java@liberica-25.0.5+11 -- ./gradlew --quiet :cribro-maven-plugin:extensionJar
+          jar="$RUNNER_TEMP/cribro/cribro-maven-plugin/build/dist/cribro-maven.jar"
+          echo "args=-Dmaven.ext.class.path=$jar -Dcribro.diffBase=origin/$GITHUB_BASE_REF" >> "$GITHUB_OUTPUT"
+
       - name: Build and run tests
-        run: ./mvnw --batch-mode --no-transfer-progress verify
+        env:
+          CRIBRO_ARGS: ${{ steps.cribro.outputs.args }}
+        run: |
+          # shellcheck disable=SC2086 # CRIBRO_ARGS holds two arguments, or none
+          ./mvnw --batch-mode --no-transfer-progress verify $CRIBRO_ARGS
+
+      # cribro writes no report when the PR changed no Java lines it measures, and then nothing is
+      # published.
+      - name: Publish diff coverage to the job summary
+        if: ${{ !cancelled() && steps.cribro.outcome == 'success' && hashFiles('target/cribro/diff-coverage.txt') != '' }}
+        run: |
+          {
+            echo '## Diff coverage'
+            echo '~~~~~text'
+            head -c 60000 target/cribro/diff-coverage.txt
+            echo
+            echo '~~~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload diff coverage for the PR comment
+        if: ${{ !cancelled() && steps.cribro.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: diff-coverage
+          path: target/cribro/diff-coverage.txt
+          if-no-files-found: ignore
+          retention-days: 1
 
       # CI-based SonarQube Cloud analysis (Automatic Analysis is disabled for this project so the
       # sonar-maven-plugin's parameters in pom.xml — exclusions/ignores — are authoritative).
@@ -67,6 +107,45 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./mvnw --batch-mode --no-transfer-progress org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
 
+
+  # A separate job so the token that can comment never shares a runner with the build.
+  diff-coverage-comment:
+    name: Comment diff coverage
+    needs: test
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork }}
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download the report
+        continue-on-error: true # no artifact: the comment step clears any earlier report
+        uses: actions/download-artifact@v8
+        with:
+          name: diff-coverage
+
+      - name: Create or update the PR comment
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- cribro-diff-coverage -->";
+            const hasReport = fs.existsSync("diff-coverage.txt");
+            const content = hasReport
+              ? `~~~~~text\n${fs.readFileSync("diff-coverage.txt", "utf8").slice(0, 60000)}\n~~~~~`
+              : "No report for the latest push: it changed no measured Java lines, or cribro did not run.";
+            const body = `${marker}\n## Diff coverage\n\n${content}`;
+            const target = { owner: context.repo.owner, repo: context.repo.repo };
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              ...target,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ ...target, comment_id: existing.id, body });
+            } else if (hasReport) {
+              await github.rest.issues.createComment({ ...target, issue_number: context.issue.number, body });
+            }
 
   scan:
     name: Vulnerability scan (Trivy fs)
