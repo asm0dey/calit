@@ -30,6 +30,7 @@ import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.calendar.MirrorProvider;
 import site.asm0dey.calit.calendar.WriteTargetResolver;
 import site.asm0dey.calit.i18n.AppLocales;
+import site.asm0dey.calit.user.LoginTicketService;
 
 @ApplicationScoped
 public class BookingService {
@@ -350,6 +351,41 @@ public class BookingService {
             List<String> guestEmails,
             int durationMinutes
     ) {
+        return book(
+                ownerId,
+                meetingTypeSlug,
+                startUtc,
+                inviteeName,
+                inviteeEmail,
+                answers,
+                turnstileToken,
+                altchaSolution,
+                honeypot,
+                locale,
+                guestEmails,
+                durationMinutes,
+                null
+        );
+    }
+
+    // S107: one param per booking input; the 12-arg overload above books without an invite.
+    @SuppressWarnings("java:S107")
+    @Transactional
+    public Booking book(
+            Long ownerId,
+            String meetingTypeSlug,
+            Instant startUtc,
+            String inviteeName,
+            String inviteeEmail,
+            Map<String, String> answers,
+            String turnstileToken,
+            String altchaSolution,
+            String honeypot,
+            String locale,
+            List<String> guestEmails,
+            int durationMinutes,
+            String inviteToken
+    ) {
         validateInviteeEmail(inviteeEmail);
         validateInputBounds(inviteeName, answers);
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
@@ -382,6 +418,12 @@ public class BookingService {
         // App-level availability re-check: nice errors + buffer/min-notice/horizon enforcement
         // (the DB constraint only guards raw-time overlap, not buffers).
         assertSlotAvailable(type, startUtc, Set.of(), durationMinutes);
+        // Consume only once the slot is known free; the delete is the atomic claim, and it rolls back
+        // with this transaction if the booking later fails. A committed booking keeps it deleted.
+        if (inviteToken != null
+                && BookingInvite.consume(LoginTicketService.sha256Hex(inviteToken), type.id, Instant.now()) == 0) {
+            throw new InvalidInviteException("Invite is invalid, expired or already used.");
+        }
 
         if (MeetingTypeHost.isMultiHost(type.id)) {
             return bookGroup(type, startUtc, endUtc, inviteeName, inviteeEmail, submitted, locale, guestEmails);
