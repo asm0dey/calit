@@ -420,10 +420,7 @@ public class BookingService {
         assertSlotAvailable(type, startUtc, Set.of(), durationMinutes);
         // Consume only once the slot is known free; the delete is the atomic claim, and it rolls back
         // with this transaction if the booking later fails. A committed booking keeps it deleted.
-        if (inviteToken != null
-                && BookingInvite.consume(LoginTicketService.sha256Hex(inviteToken), type.id, Instant.now()) == 0) {
-            throw new InvalidInviteException("Invite is invalid, expired or already used.");
-        }
+        consumeInvite(inviteToken, type);
 
         if (MeetingTypeHost.isMultiHost(type.id)) {
             return bookGroup(type, startUtc, endUtc, inviteeName, inviteeEmail, submitted, locale, guestEmails);
@@ -862,6 +859,13 @@ public class BookingService {
      * length has already passed {@link #assertDurationAllowed}, and by the reschedule paths at the
      * booking's own {@link #lengthOf} length.
      */
+    private static void consumeInvite(String inviteToken, MeetingType type) {
+        if (inviteToken != null
+                && BookingInvite.consume(LoginTicketService.sha256Hex(inviteToken), type.id, Instant.now()) == 0) {
+            throw new InvalidInviteException("Invite is invalid, expired or already used.");
+        }
+    }
+
     private void assertSlotAvailable(
             MeetingType type,
             Instant startUtc,

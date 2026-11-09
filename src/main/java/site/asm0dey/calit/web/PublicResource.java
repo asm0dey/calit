@@ -40,6 +40,8 @@ import site.asm0dey.calit.user.Usernames;
 
 @Path("/")
 public class PublicResource {
+    private static final String INVITE_PARAM = "invite";
+
     @CheckedTemplate
     // S107: Qute @CheckedTemplate signatures pass one arg per template variable; param count is inherent.
     @SuppressWarnings("java:S107")
@@ -346,7 +348,7 @@ public class PublicResource {
         var m = messages.forLocale(activeLocale.current());
         AppUser owner = resolveOwner(user);
         if (hasInvite(uriInfo)) {
-            return invitePage(user, owner, uriInfo.getQueryParameters().getFirst("invite"), duration, m);
+            return invitePage(user, owner, uriInfo.getQueryParameters().getFirst(INVITE_PARAM), duration, m);
         }
         OwnerSettings settings = OwnerSettings.forOwner(owner.id);
         if (settings == null) {
@@ -440,7 +442,7 @@ public class PublicResource {
      * {@code @RestQuery} but must still show the invalid page, not the landing.
      */
     private static boolean hasInvite(UriInfo uriInfo) {
-        return uriInfo.getQueryParameters().containsKey("invite");
+        return uriInfo.getQueryParameters().containsKey(INVITE_PARAM);
     }
 
     private static BookLinks inviteLinks(String username, String invite) {
@@ -684,7 +686,7 @@ public class PublicResource {
         if (!hasInvite(uriInfo)) {
             throw new NotFoundException("No such page");
         }
-        String invite = uriInfo.getQueryParameters().getFirst("invite");
+        String invite = uriInfo.getQueryParameters().getFirst(INVITE_PARAM);
         var m = messages.forLocale(activeLocale.current());
         AppUser owner = resolveOwner(user);
         var found = invites.find(owner.id, invite, Instant.now());

@@ -18,7 +18,7 @@ import site.asm0dey.calit.test.MultiHostFixtures;
  */
 @QuarkusTest
 class AdminInviteTest {
-    private static final Pattern URL = Pattern.compile("value=\"([^\"]*\\?invite=[^\"]+)\"");
+    private static final Pattern URL = Pattern.compile("value=\"([^\"?]*\\?invite=[^\"]+)\"");
 
     @Test
     void generateShowsWorkingUrl() {
