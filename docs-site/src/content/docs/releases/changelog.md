@@ -7,6 +7,17 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## 1.28.2
+
+Dependency security update.
+
+- Guava is pinned to 33.8.0-jre, ahead of the release `google-api-client` brings in, fixing
+  CVE-2026-102554. ([#261](https://github.com/asm0dey/calit/pull/261))
+- Quarkus 3.40.1.1, ALTCHA widget 3.5.0, and refreshed library versions and container base images.
+  ([#257](https://github.com/asm0dey/calit/pull/257))
+
+Upgrade: nothing to do.
+
 ## 1.28.1
 
 Bookings on ALTCHA-protected pages work again.
