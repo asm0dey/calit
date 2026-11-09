@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.is;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
@@ -27,15 +26,8 @@ import org.junit.jupiter.api.Test;
  * by the form-auth mechanism (not the JAX-RS CSRF filter), so login itself needs no token.
  */
 @QuarkusTest
-@TestProfile(CsrfEnforcementTest.CsrfOn.class)
+@TestProfile(OidcCsrfProfile.class)
 class CsrfEnforcementTest {
-    public static class CsrfOn implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("quarkus.rest-csrf.enabled", "true");
-        }
-    }
-
     // Enforcement: an authenticated state-changing form POST with no CSRF token is rejected (400).
     @Test
     void tokenlessAuthenticatedPostIsRejected() {

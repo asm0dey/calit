@@ -4,9 +4,9 @@ import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.web.IsolatedSettingsProfile;
 
 /**
  * The positive SMTP-recipient case: mail is NOT mocked and a real host is configured, so the
@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
  * anything).
  */
 @QuarkusTest
-@TestProfile(PrivacyPolicySmtpConfiguredTest.RealSmtp.class)
+@TestProfile(IsolatedSettingsProfile.class)
 class PrivacyPolicySmtpConfiguredTest {
     @Test
     void smtpBulletNamesTheConfiguredHostWhenMailIsNotMocked() {
@@ -28,12 +28,5 @@ class PrivacyPolicySmtpConfiguredTest {
             .statusCode(200)
             .body(containsString("The SMTP server"))
             .body(containsString("mail.example.org"));
-    }
-
-    public static class RealSmtp implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("quarkus.mailer.mock", "false", "quarkus.mailer.host", "mail.example.org");
-        }
     }
 }

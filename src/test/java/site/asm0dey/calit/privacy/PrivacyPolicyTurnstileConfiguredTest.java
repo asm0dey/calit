@@ -4,9 +4,9 @@ import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.web.IsolatedSettingsProfile;
 
 /**
  * When Cloudflare Turnstile is the effective CAPTCHA provider ({@link
@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
  * {@code @TestProfile}-requires-restart reason as its siblings in this package.
  */
 @QuarkusTest
-@TestProfile(PrivacyPolicyTurnstileConfiguredTest.TurnstileOn.class)
+@TestProfile(IsolatedSettingsProfile.class)
 class PrivacyPolicyTurnstileConfiguredTest {
     @Test
     void turnstileBulletRendersWhenTurnstileIsTheEffectiveCaptchaProvider() {
@@ -25,12 +25,5 @@ class PrivacyPolicyTurnstileConfiguredTest {
             .then()
             .statusCode(200)
             .body(containsString("Cloudflare Turnstile, which checks booking requests for abuse."));
-    }
-
-    public static class TurnstileOn implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("calit.turnstile.enabled", "true");
-        }
     }
 }

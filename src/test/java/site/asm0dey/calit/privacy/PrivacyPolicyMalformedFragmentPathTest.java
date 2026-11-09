@@ -4,9 +4,9 @@ import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.web.IsolatedSettingsProfile;
 
 /**
  * An {@code app.terms-path} value that isn't a valid path string at all (here, one carrying an
@@ -17,17 +17,10 @@ import org.junit.jupiter.api.Test;
  * copy, never surface a 500.
  */
 @QuarkusTest
-@TestProfile(PrivacyPolicyMalformedFragmentPathTest.MalformedPath.class)
+@TestProfile(IsolatedSettingsProfile.class)
 class PrivacyPolicyMalformedFragmentPathTest {
     @Test
     void aMalformedOverridePathFallsBackToTheShippedCopy() {
         given().when().get("/terms").then().statusCode(200).body(containsString("CALIT_LEGAL_TERMS"));
-    }
-
-    public static class MalformedPath implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("app.terms-path", "bad\0path.html");
-        }
     }
 }

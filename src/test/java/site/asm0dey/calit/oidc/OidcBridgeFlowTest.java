@@ -7,12 +7,12 @@ import static org.hamcrest.Matchers.containsString;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import io.quarkus.test.oidc.server.OidcWireMock;
 import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import io.restassured.filter.cookie.CookieFilter;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.web.OidcCsrfProfile;
 import site.asm0dey.calit.user.AppUser;
 
 /**
@@ -30,39 +30,12 @@ import site.asm0dey.calit.user.AppUser;
  */
 @QuarkusTest
 @QuarkusTestResource(OidcWiremockTestResource.class)
-@TestProfile(OidcBridgeFlowTest.OidcOn.class)
+@TestProfile(OidcCsrfProfile.class)
 class OidcBridgeFlowTest {
     // OidcWiremockTestResource's code-flow stub always issues an id_token for preferred_username
     // "alice" (hardcoded, see the "username=alice" submitted to the mock's login form below) with a
     // fixed sub "123456" (its TOKEN_SUBJECT constant).
     private static final String MOCK_SUB = "123456";
-
-    public static class OidcOn implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            // OidcWiremockTestResource.start() only returns "keycloak.url" (the Wiremock server's
-            // base "<baseUrl>/auth"); the realm path + client-id/secret are ours to pick — the mock's
-            // token/introspection stubs don't validate them, they only echo back whatever client-id
-            // is sent via HTTP Basic auth into the id_token's audience, so any value round-trips.
-            return Map.of(
-                    "calit.oidc.enabled",
-                    "true",
-                    "quarkus.oidc.tenant-enabled",
-                    "true",
-                    "calit.signup.enabled",
-                    "true",
-                    "quarkus.oidc.auth-server-url",
-                    "${keycloak.url}/realms/quarkus",
-                    "quarkus.oidc.client-id",
-                    "quarkus-web-app",
-                    "quarkus.oidc.credentials.secret",
-                    "secret",
-                    "quarkus.oidc.application-type",
-                    "web-app"
-            );
-        }
-    }
-
     // Injected by OidcWiremockTestResource; needed to submit the mock's own login form, which lives
     // on the Wiremock host, not ours.
     @OidcWireMock
@@ -136,7 +109,7 @@ class OidcBridgeFlowTest {
             .header("Location");
         // 5) the clean, authenticated hit that actually reaches OidcLoginResource: no AppUser exists
         // yet for this sub, so the resource provisions a brand-new one (calit.signup.enabled=true in
-        // OidcOn) and returns the bridge page.
+        // OidcCsrfProfile) and returns the bridge page.
         given()
             .filter(cookies)
             .when()
