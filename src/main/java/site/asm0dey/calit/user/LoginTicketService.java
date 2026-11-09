@@ -59,7 +59,7 @@ public class LoginTicketService {
         return AppUser.findById(userId);
     }
 
-    static String sha256Hex(String value) {
+    public static String sha256Hex(String value) {
         try {
             var digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest);

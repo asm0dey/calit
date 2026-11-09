@@ -279,6 +279,13 @@ public final class PersonalData {
                         EraseRoute.AGE_PURGE
                 ),
                 new Classified(
+                        "booking_invite",
+                        Set.of("expires_at", "id", "meeting_type_id", "owner_id", "token_hash"),
+                        Set.of("owner_id", "token_hash"),
+                        Subject.OWNER,
+                        EraseRoute.CASCADES
+                ),
+                new Classified(
                         "login_ticket",
                         Set.of("expires_at", "id", "token_hash", "user_id"),
                         Set.of("user_id", "token_hash"),

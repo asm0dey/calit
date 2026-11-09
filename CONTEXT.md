@@ -75,6 +75,12 @@ itself rather than re-reading from the meeting type. calit's sole source of trut
 meeting exists. Rescheduling moves it, never resizes it.
 _Avoid_: appointment, meeting (the real-world encounter), reservation, event (a Mirror event)
 
+**Invite**:
+A single-use URL, valid 30 days, that lets one person book one meeting type; the first committed
+booking consumes it for good, even if that booking is later cancelled. Distinct from inviting a
+Co-host and from the `.ics` invitation.
+_Avoid_: link (ambiguous with a Booking's manage link), ticket
+
 **Location**:
 Where a meeting happens: a phone number, an address, custom text, or a Google Meet link. A property
 of the meeting type its Creator published, never of a Booking or of a Host

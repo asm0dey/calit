@@ -1,0 +1,16 @@
+{@site.asm0dey.calit.domain.MeetingType type}
+{@java.lang.String inviteUrl}
+{@java.lang.Long pendingCount}
+{@java.lang.Boolean isAdmin}
+{@java.lang.String title}
+{#include adminBase title=title pendingCount=pendingCount active="meetingTypes" isAdmin=isAdmin}
+  <p class="mb-2"><a class="link link-hover text-sm" href="/me/meeting-types/{type.id}">{type.name}</a></p>
+  <div class="card bg-base-100 border border-base-300 shadow-sm max-w-2xl">
+    <div class="card-body gap-3">
+      <h1 class="text-2xl font-bold">{adm:adm_invite_created_title}</h1>
+      <p class="text-base-content/70">{adm:adm_invite_created_help}</p>
+      <input class="input w-full" type="text" readonly value="{inviteUrl}" onfocus="this.select()">
+      <div><a class="btn btn-ghost" href="/me/meeting-types/{type.id}">{type.name}</a></div>
+    </div>
+  </div>
+{/include}

@@ -11,6 +11,7 @@
 {@java.lang.String ownerName}
 {@java.lang.String initialGuests}
 {@site.asm0dey.calit.web.OgCard og}
+{@site.asm0dey.calit.web.PublicResource$BookLinks links}
 {#include base title=title og=og bodyClass="book-page"}
   {#head}
     {#if captcha.provider == 'turnstile'}
@@ -59,7 +60,7 @@
             <nav class="join mb-4">
               {#for d in duration.allowed}
                 <a class="join-item btn btn-sm {#if d == duration.chosen}btn-active{/if}"
-                   href="/{user}/{type.slug}?duration={d}">{d} {msg:pub_book_minutes_short}</a>
+                   href="{links.durationPrefix}{d}">{d} {msg:pub_book_minutes_short}</a>
               {/for}
             </nav>
           {/if}
@@ -68,7 +69,7 @@
             <p>{msg:pub_book_no_times}</p>
           {#else}
             {chrome.tzBar.raw}
-            <form method="post" action="/{user}/{type.slug}" class="space-y-4">
+            <form method="post" action="{links.action}" class="space-y-4">
               <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
               <input type="hidden" name="durationMinutes" value="{duration.chosen}">
               <div class="booking-grid">

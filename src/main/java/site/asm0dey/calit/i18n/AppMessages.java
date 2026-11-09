@@ -569,6 +569,16 @@ public interface AppMessages {
     @Message("This meeting has a co-host who hasn't confirmed yet. Please check back soon.")
     String pub_host_pending_desc();
 
+    // ---- Single-use invite pages (inviteInvalid.html, invite booking bounce) ----
+    @Message("This invite is no longer valid")
+    String pub_invite_invalid_title();
+
+    @Message("It may have been used already or have expired. Ask the person who sent it for a new link.")
+    String pub_invite_invalid_desc();
+
+    @Message("That time is no longer available. Please choose another.")
+    String pub_invite_slot_unavailable();
+
     // ---- Co-host consent page (ConsentResource) ----
     @Message("Co-host invitation")
     String pub_consent_confirm_title();

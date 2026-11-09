@@ -404,6 +404,15 @@ public interface AdminMessages {
     @Message("← All meeting types")
     String adm_detail_back();
 
+    @Message("Generate single-use invite")
+    String adm_invite_generate();
+
+    @Message("Your invite")
+    String adm_invite_created_title();
+
+    @Message("Copy this link now. It works for one booking, expires in 30 days, and will not be shown again.")
+    String adm_invite_created_help();
+
     @Message("Basics")
     String adm_detail_section_basics();
 
