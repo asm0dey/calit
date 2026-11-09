@@ -7,10 +7,12 @@ import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.RestQuery;
 import site.asm0dey.calit.availability.TimeSlot;
@@ -65,8 +67,11 @@ public class PublicResource {
                 boolean meetLink,
                 String ownerName,
                 String initialGuests,
-                OgCard og
+                OgCard og,
+                BookLinks links
         );
+
+        public static native TemplateInstance inviteInvalid(String title);
 
         public static native TemplateInstance confirmation(
                 String title,
@@ -169,6 +174,7 @@ public class PublicResource {
     final PrivacyConfig privacyConfig;
     final SiteInfo siteInfo;
     final WriteTargetResolver writeTargets;
+    final BookingInviteService invites;
 
     @Inject
     public PublicResource(
@@ -186,8 +192,10 @@ public class PublicResource {
             PrivacyService privacy,
             PrivacyConfig privacyConfig,
             SiteInfo siteInfo,
-            WriteTargetResolver writeTargets
+            WriteTargetResolver writeTargets,
+            BookingInviteService invites
     ) {
+        this.invites = invites;
         this.writeTargets = writeTargets;
         this.bookingService = bookingService;
         this.meetingHosts = meetingHosts;
@@ -234,6 +242,12 @@ public class PublicResource {
      * Captcha wiring for the booking form; siteKey is public and rendered into the page.
      */
     public record Captcha(String provider, String siteKey) {}
+
+    /**
+     * Where the booking page posts and how its duration picker links: {@code durationPrefix} is
+     * completed with the chosen length. The slug page and the invite page differ only in these.
+     */
+    public record BookLinks(String action, String durationPrefix) {}
 
     /**
      * The lengths this type offers and the one currently rendered.
@@ -324,9 +338,16 @@ public class PublicResource {
     @GET
     @Path("/{user}")
     @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance userLanding(@PathParam("user") String user) {
+    public TemplateInstance userLanding(
+            @PathParam("user") String user,
+            @RestQuery String duration,
+            @Context UriInfo uriInfo
+    ) {
         var m = messages.forLocale(activeLocale.current());
         AppUser owner = resolveOwner(user);
+        if (hasInvite(uriInfo)) {
+            return invitePage(user, owner, uriInfo.getQueryParameters().getFirst("invite"), duration, m);
+        }
         OwnerSettings settings = OwnerSettings.forOwner(owner.id);
         if (settings == null) {
             return Templates.notReady(m.pub_not_ready_title());
@@ -377,17 +398,89 @@ public class PublicResource {
         if (target.earlyExit() != null) {
             return target.earlyExit();
         }
-        AppUser urlUser = target.urlUser();
         MeetingType type = target.type();
-        OwnerSettings settings = target.settings();
         DurationChoice durationChoice = resolveDuration(type, duration);
+        var base = "/" + target.urlUser().username + "/" + type.slug;
+        return renderBook(
+                m,
+                target,
+                durationChoice,
+                new BookLinks(base, base + "?duration="),
+                ogCards.meetingType(user, type, target.settings().ownerName)
+        );
+    }
+
+    /**
+     * {@code GET /{user}?invite=}: the booking page for one single-use invite. Reuses the slug
+     * route's resolution (inactive 404, notReady, hostPending) but never names the slug and
+     * carries no social card. An invite that is blank, unknown, used, expired or another owner's
+     * renders the invalid page.
+     */
+    private TemplateInstance invitePage(String user, AppUser owner, String invite, String duration, AppMessages m) {
+        var found = invites.find(owner.id, invite, Instant.now());
+        MeetingType invited = found == null ? null : MeetingType.findById(found.meetingTypeId);
+        if (invited == null) {
+            return Templates.inviteInvalid(m.pub_invite_invalid_title());
+        }
+        BookingTarget target = resolveBookingTarget(user, invited.slug, m);
+        if (target.earlyExit() != null) {
+            return target.earlyExit();
+        }
+        return renderBook(
+                m,
+                target,
+                resolveDuration(target.type(), duration),
+                inviteLinks(owner.username, invite),
+                null
+        );
+    }
+
+    /**
+     * Whether {@code ?invite} is present at all: a bare {@code ?invite=} binds to null through
+     * {@code @RestQuery} but must still show the invalid page, not the landing.
+     */
+    private static boolean hasInvite(UriInfo uriInfo) {
+        return uriInfo.getQueryParameters().containsKey("invite");
+    }
+
+    private static BookLinks inviteLinks(String username, String invite) {
+        var base = "/" + username + "?invite=" + invite;
+        return new BookLinks(base, base + "&duration=");
+    }
+
+    /**
+     * Slots for {@code durationChoice} plus the form furniture, rendered as the booking page.
+     * Fail-closed: a calendar that can't be read gets the "unavailable" page instead of slots.
+     */
+    private TemplateInstance renderBook(
+            AppMessages m,
+            BookingTarget target,
+            DurationChoice durationChoice,
+            BookLinks links,
+            OgCard og
+    ) {
         List<DaySlots> byDate;
         try {
-            byDate = daySlots(type, durationChoice.chosen());
+            byDate = daySlots(target.type(), durationChoice.chosen());
         } catch (CalendarUnavailableException e) {
             // Fail-closed: a busy calendar of the owner can't be read, so we cannot safely offer slots.
             return Templates.unavailable(m.pub_unavailable_title());
         }
+        return bookTemplate(m, target, durationChoice, byDate, null, links, og);
+    }
+
+    // S107: Qute @CheckedTemplate signatures pass one arg per template variable; param count is inherent.
+    @SuppressWarnings("java:S107")
+    private TemplateInstance bookTemplate(
+            AppMessages m,
+            BookingTarget target,
+            DurationChoice durationChoice,
+            List<DaySlots> byDate,
+            String error,
+            BookLinks links,
+            OgCard og
+    ) {
+        MeetingType type = target.type();
         // Resolved EXTRA fields (per-type-else-global), already ordered by position.
         List<BookingField> fields = BookingField.formFor(type.ownerId, type.id);
         // turnstileEnabled drives the widget; site key is public (rendered). The approval
@@ -397,18 +490,19 @@ public class PublicResource {
         return Templates.book(
                 bookTitle,
                 // keeps the form posting back to the alias URL it was reached at
-                urlUser.username,
+                target.urlUser().username,
                 type,
                 byDate,
                 fields,
                 durationChoice,
-                null,
+                error,
                 new Chrome(Layout.tzBar(m), Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT),
                 new Captcha(captchaProviderConfig.provider(), turnstileSiteKey()),
                 writeTargets.mintsMeet(type.ownerId, type),
-                settings.ownerName,
+                target.settings().ownerName,
                 "",
-                ogCards.meetingType(user, type, settings.ownerName)
+                og,
+                links
         );
     }
 
@@ -547,10 +641,106 @@ public class PublicResource {
         if (target.earlyExit() != null) {
             return target.earlyExit();
         }
-        AppUser urlUser = target.urlUser();
+        var base = "/" + target.urlUser().username + "/" + target.type().slug;
+        return submit(
+                m,
+                target,
+                new BookLinks(base, base + "?duration="),
+                ogCards.meetingType(user, target.type(), target.settings().ownerName),
+                null,
+                startUtc,
+                inviteeName,
+                inviteeEmail,
+                website,
+                turnstileToken,
+                altchaSolution,
+                durationMinutes,
+                form
+        );
+    }
+
+    /**
+     * {@code POST /{user}?invite=}: books through a single-use invite. The invite names the meeting
+     * type; the shared {@link #submit} consumes it inside the booking transaction. A missing
+     * {@code invite} parameter is not a route at all (404); a bad one renders the invalid page.
+     */
+    @POST
+    @Path("/{user}")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance submitInvite(
+            @PathParam("user") String user,
+            @Context UriInfo uriInfo,
+            @RestForm String startUtc,
+            @RestForm String inviteeName,
+            @RestForm String inviteeEmail,
+            // honeypot
+            @RestForm String website,
+            @RestForm("cf-turnstile-response") String turnstileToken,
+            @RestForm("altcha") String altchaSolution,
+            @RestForm @DefaultValue("0") int durationMinutes,
+            MultivaluedMap<String, String> form
+    ) {
+        if (!hasInvite(uriInfo)) {
+            throw new NotFoundException("No such page");
+        }
+        String invite = uriInfo.getQueryParameters().getFirst("invite");
+        var m = messages.forLocale(activeLocale.current());
+        AppUser owner = resolveOwner(user);
+        var found = invites.find(owner.id, invite, Instant.now());
+        MeetingType invited = found == null ? null : MeetingType.findById(found.meetingTypeId);
+        if (invited == null) {
+            return Templates.inviteInvalid(m.pub_invite_invalid_title());
+        }
+        BookingTarget target = resolveBookingTarget(user, invited.slug, m);
+        if (target.earlyExit() != null) {
+            return target.earlyExit();
+        }
+        try {
+            return submit(
+                    m,
+                    target,
+                    inviteLinks(owner.username, invite),
+                    null,
+                    invite,
+                    startUtc,
+                    inviteeName,
+                    inviteeEmail,
+                    website,
+                    turnstileToken,
+                    altchaSolution,
+                    durationMinutes,
+                    form
+            );
+        } catch (InvalidInviteException _) {
+            // Lost the race for the invite (or it was used between find and book).
+            return Templates.inviteInvalid(m.pub_invite_invalid_title());
+        }
+    }
+
+    /**
+     * The booking POST shared by the slug and invite routes: books, or bounces back to the form
+     * with the message. {@code inviteToken} non-null means the invite route, whose pages must never
+     * name the slug (conflict messages embed it, so they are replaced with a generic one there).
+     */
+    // S107: one param per booking input; both routes forward the same form.
+    @SuppressWarnings("java:S107")
+    private TemplateInstance submit(
+            AppMessages m,
+            BookingTarget target,
+            BookLinks links,
+            OgCard og,
+            String inviteToken,
+            String startUtc,
+            String inviteeName,
+            String inviteeEmail,
+            String website,
+            String turnstileToken,
+            String altchaSolution,
+            int durationMinutes,
+            MultivaluedMap<String, String> form
+    ) {
         MeetingType type = target.type();
-        OwnerSettings settings = target.settings();
-        String bookTitle = m.pub_book_title_prefix() + " " + type.name;
         // A missing/blank hidden field binds to 0 (@DefaultValue), which must resolve to the type's
         // own default rather than reaching assertDurationAllowed with a bogus value.
         int submittedDuration = durationMinutes > 0 ? durationMinutes : type.durationMinutes;
@@ -583,7 +773,8 @@ public class PublicResource {
                     website,
                     locale,
                     parseGuests(form),
-                    submittedDuration
+                    submittedDuration,
+                    inviteToken
             );
         } catch (BookingValidationException | AbuseException | RateLimitException | BookingConflictException be) {
             // Required-field 422 OR an abuse-guard rejection (filled honeypot / failed Turnstile /
@@ -591,21 +782,10 @@ public class PublicResource {
             // 500, NOT confirm. (Plan 3 has no common BookingException superclass, so catch each.)
             // The invitee's chosen length is preserved on the bounce — not silently reset to default.
             var durationChoice = new DurationChoice(submittedDuration, MeetingTypeDuration.allowedDurations(type));
-            return Templates.book(
-                    bookTitle,
-                    urlUser.username,
-                    type,
-                    daySlots(type, submittedDuration),
-                    BookingField.formFor(type.ownerId, type.id),
-                    durationChoice,
-                    be.getMessage(),
-                    new Chrome(Layout.tzBar(m), Layout.TZ_SCRIPT, Layout.CALENDAR_SCRIPT),
-                    new Captcha(captchaProviderConfig.provider(), turnstileSiteKey()),
-                    writeTargets.mintsMeet(type.ownerId, type),
-                    settings.ownerName,
-                    "",
-                    ogCards.meetingType(user, type, settings.ownerName)
-            );
+            String error = inviteToken != null && be instanceof BookingConflictException
+                    ? m.pub_invite_slot_unavailable()
+                    : be.getMessage();
+            return bookTemplate(m, target, durationChoice, daySlots(type, submittedDuration), error, links, og);
         }
         return confirmationPage(booking, type);
     }
