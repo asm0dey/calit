@@ -33,7 +33,7 @@ jobs:
           fetch-depth: 0 # full history so SonarQube can attribute new-code lines via git blame
 
       - name: Set up tools from mise.toml
-        uses: jdx/mise-action@9b200bcecbfd6303e69a4a261b2e09e3757440a7 # v5.2.0
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
           install_args: "java bun"
 
@@ -363,7 +363,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
