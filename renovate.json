@@ -38,8 +38,8 @@
         "/^CLAUDE\\.md$/"
       ],
       "matchStrings": [
-        "badge/Quarkus-(?<currentValue>\\d+\\.\\d+\\.\\d+)-",
-        "on Quarkus (?<currentValue>\\d+\\.\\d+\\.\\d+) /"
+        "badge/Quarkus-(?<currentValue>\\d+(?:\\.\\d+){2,3})-",
+        "on Quarkus (?<currentValue>\\d+(?:\\.\\d+){2,3}) /"
       ],
       "depNameTemplate": "io.quarkus.platform:quarkus-bom",
       "datasourceTemplate": "maven"
