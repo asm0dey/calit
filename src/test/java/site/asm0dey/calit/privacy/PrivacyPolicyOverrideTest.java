@@ -1,13 +1,12 @@
 package site.asm0dey.calit.privacy;
 
-import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.web.CommonFeaturesProfile;
 
 /**
  * The operator fragment-override path ({@code app.privacy-policy-path}). A top-level class, not a
@@ -16,7 +15,7 @@ import org.junit.jupiter.api.Test;
  * top-level {@code @QuarkusTest} is skipped by surefire's default include pattern and never runs.
  */
 @QuarkusTest
-@TestProfile(PrivacyPolicyOverrideTest.WithOverride.class)
+@TestProfile(CommonFeaturesProfile.class)
 class PrivacyPolicyOverrideTest {
     @Test
     void theOperatorFragmentReplacesTheShippedBody() {
@@ -27,18 +26,5 @@ class PrivacyPolicyOverrideTest {
             .statusCode(200)
             .body(containsString("OPERATOR SUPPLIED POLICY"))
             .body(not(containsString("CALIT_LEGAL_PRIVACY")));
-    }
-
-    public static class WithOverride implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            try {
-                var f = Files.createTempFile("policy", ".html");
-                Files.writeString(f, "<h1>OPERATOR SUPPLIED POLICY</h1>");
-                return Map.of("app.privacy-policy-path", f.toAbsolutePath().toString());
-            } catch (IOException e) {
-                throw new IllegalStateException(e);
-            }
-        }
     }
 }

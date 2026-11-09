@@ -1,13 +1,12 @@
 package site.asm0dey.calit.privacy;
 
-import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.web.IsolatedSettingsProfile;
 
 /**
  * The "Google is not configured" case. A top-level class rather than a nested one: {@code
@@ -26,7 +25,7 @@ import org.junit.jupiter.api.Test;
  * unconfigured.
  */
 @QuarkusTest
-@TestProfile(PrivacyPolicyGoogleUnconfiguredTest.BlankGoogleClientId.class)
+@TestProfile(IsolatedSettingsProfile.class)
 class PrivacyPolicyGoogleUnconfiguredTest {
     @Test
     void googleSectionsAreAbsentWhenGoogleIsUnconfigured() {
@@ -73,12 +72,5 @@ class PrivacyPolicyGoogleUnconfiguredTest {
             .body(containsString("the email addresses of the invitee, the host(s) and any active guests"))
             .body(not(containsString("On Google they are added as event attendees")))
             .body(not(containsString("Google Meet link")));
-    }
-
-    public static class BlankGoogleClientId implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("google.oauth.client-id", " ");
-        }
     }
 }

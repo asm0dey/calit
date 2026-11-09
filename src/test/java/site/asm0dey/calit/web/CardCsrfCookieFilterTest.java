@@ -35,7 +35,7 @@ import site.asm0dey.calit.domain.OwnerSettings;
  * exists.
  */
 @QuarkusTest
-@TestProfile(CsrfEnforcementTest.CsrfOn.class)
+@TestProfile(OidcCsrfProfile.class)
 class CardCsrfCookieFilterTest {
     static final byte[] PNG_MAGIC = {(byte) 0x89, 'P', 'N', 'G'};
 

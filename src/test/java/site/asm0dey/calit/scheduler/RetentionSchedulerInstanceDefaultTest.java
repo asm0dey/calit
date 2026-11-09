@@ -4,10 +4,10 @@ import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.web.IsolatedSettingsProfile;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
@@ -22,7 +22,7 @@ import site.asm0dey.calit.user.AppUser;
  * {@code $}-named nested classes as tests in the first place.
  */
 @QuarkusTest
-@TestProfile(RetentionSchedulerInstanceDefaultTest.WithInstanceDefault.class)
+@TestProfile(IsolatedSettingsProfile.class)
 class RetentionSchedulerInstanceDefaultTest {
     @Inject
     RetentionScheduler scheduler;
@@ -134,12 +134,5 @@ class RetentionSchedulerInstanceDefaultTest {
         scheduler.sweep();
 
         assertThat(erased(id)).as("an owner with no owner_settings row must still fall back to the instance default").isTrue();
-    }
-
-    public static class WithInstanceDefault implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("calit.retention.booking-days", "14");
-        }
     }
 }
