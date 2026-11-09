@@ -49,7 +49,7 @@ class BookingInviteRoutesTest {
         given().when().get("/admin?invite=" + token).then().statusCode(200);
         given().when().get("/admin?invite=" + token).then().statusCode(200);
 
-        post(token, SLOT_09).then().statusCode(200).body(containsString("Sam Invitee"));
+        post(token, SLOT_09).then().statusCode(200).body(containsString("Sam Invitee")).body(not(containsString(SLUG)));
         assertThat(bookingCount()).isEqualTo(1);
     }
 

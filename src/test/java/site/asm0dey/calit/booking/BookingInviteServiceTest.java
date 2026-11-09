@@ -146,6 +146,24 @@ class BookingInviteServiceTest {
     }
 
     @Test
+    void failureAfterConsumeRollsBackConsumeAndBooking() {
+        seed("a");
+        var token = invites.issue(1L, typeId("a"), Instant.now());
+        // Slot check passes and the invite is consumed; the calendar write then fails, so the
+        // @Transactional boundary must undo both the booking row and the consume.
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.createEvent(any(), any(), any(), any(), any(), any(), any(), any(), anyBoolean(), any()))
+            .thenThrow(new IllegalStateException("calendar down"));
+
+        assertThatThrownBy(() -> book("a", SLOT_09, token)).isInstanceOf(RuntimeException.class);
+
+        assertThat(invites.find(1L, token, Instant.now())).isNotNull();
+        assertThat(QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.count("meetingTypeId", typeId("a")))).isZero();
+    }
+
+    @Test
     void cancelDoesNotReviveInvite() {
         seed("a");
         var token = invites.issue(1L, typeId("a"), Instant.now());
