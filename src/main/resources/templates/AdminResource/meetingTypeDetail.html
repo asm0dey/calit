@@ -39,6 +39,10 @@
   {/if}
 
   <div class="space-y-3 max-w-2xl">
+    <form method="post" action="/me/meeting-types/{type.id}/invites">
+      <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+      <button type="submit" class="btn btn-outline btn-sm">{adm:adm_invite_generate}</button>
+    </form>
     <div class="collapse collapse-arrow bg-base-100 border border-base-300">
       <input type="checkbox" checked>
       <div class="collapse-title font-semibold">{adm:adm_detail_section_basics}</div>

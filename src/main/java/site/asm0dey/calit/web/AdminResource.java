@@ -181,6 +181,14 @@ public class AdminResource {
                 String desc
         );
 
+        public static native TemplateInstance inviteCreated(
+                MeetingType type,
+                String inviteUrl,
+                Long pendingCount,
+                boolean isAdmin,
+                String title
+        );
+
         public static native TemplateInstance removeHostConfirm(
                 MeetingType type,
                 Long cohostOwnerId,
@@ -244,6 +252,7 @@ public class AdminResource {
     final PrivacyConfig privacyConfig;
     final PasswordHasher passwordHasher;
     final AuditLog audit;
+    final BookingInviteService invites;
 
     @Inject
     public AdminResource(
@@ -261,6 +270,7 @@ public class AdminResource {
             PrivacyConfig privacyConfig,
             PasswordHasher passwordHasher,
             AuditLog audit,
+            BookingInviteService invites,
             @ConfigProperty(name = "app.base-url") String baseUrl,
             @ConfigProperty(name = "calit.reminder.lead-minutes", defaultValue = "1440") int reminderLeadMinutes
     ) {
@@ -278,6 +288,7 @@ public class AdminResource {
         this.privacyConfig = privacyConfig;
         this.passwordHasher = passwordHasher;
         this.audit = audit;
+        this.invites = invites;
         this.baseUrl = baseUrl;
         this.reminderLeadMinutes = reminderLeadMinutes;
     }
@@ -849,6 +860,22 @@ public class AdminResource {
             t.active = !t.active;
         });
         return renderMeetingTypes();
+    }
+
+    /**
+     * Mints a single-use invite for one of this owner's meeting types and shows its URL once; only
+     * the hash is stored, so the link cannot be shown again.
+     */
+    @POST
+    @Path("/meeting-types/{id}/invites")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance generateInvite(@PathParam("id") Long id) {
+        var type = QuarkusTransaction
+            .requiringNew()
+            .call(() -> requireType(id));
+        var token = invites.issue(currentOwner.id(), id, Instant.now());
+        var url = baseUrl + "/" + currentOwner.require().username + "?invite=" + token;
+        return Templates.inviteCreated(type, url, pendingCount(), isAdmin(), m().adm_invite_created_title());
     }
 
     @POST
