@@ -64,7 +64,7 @@ jobs:
           git checkout --quiet a4e546e958c3972eb8a6b37c9ced72c9014170f3
           mise exec java@liberica-25.0.5+11 -- ./gradlew --quiet :cribro-maven-plugin:extensionJar
           jar="$RUNNER_TEMP/cribro/cribro-maven-plugin/build/dist/cribro-maven.jar"
-          echo "args=-Dmaven.ext.class.path=$jar -Dcribro.diffBase=origin/$GITHUB_BASE_REF" >> "$GITHUB_OUTPUT"
+          echo "args=-Dmaven.ext.class.path=$jar -Dcribro.diffBase=87f53fa0~1" >> "$GITHUB_OUTPUT"
 
       - name: Build and run tests
         env:
