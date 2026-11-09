@@ -5,12 +5,16 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
+import io.quarkus.test.junit.mockito.InjectSpy;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingInvite;
@@ -36,7 +40,7 @@ class BookingInviteRoutesTest {
     private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant();
     private static final Instant SLOT_10 = DAY.atTime(10, 0).atZone(ZONE).toInstant();
     private static final Instant SLOT_03 = DAY.atTime(3, 0).atZone(ZONE).toInstant();
-    @Inject
+    @InjectSpy
     BookingInviteService invites;
     @InjectMock
     CalendarPort calendarPort;
@@ -215,6 +219,37 @@ class BookingInviteRoutesTest {
 
         given().when().get("/admin?invite=" + token).then().statusCode(200).body(containsString("CALIT_HOST_PENDING"));
         assertThat(invites.find(1L, token, Instant.now())).isNotNull();
+    }
+
+    @Test
+    void multiHostPendingPostShowsHostPendingPageAndDoesNotBook() {
+        var typeId = seed(SLUG);
+        var token = invites.issue(1L, typeId, Instant.now());
+        QuarkusTransaction.requiringNew().run(() -> {
+            var cohost = MultiHostFixtures.enabledUser("invite-cohost");
+            MeetingTypeHost.of(typeId, 1L, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED).persist();
+            MeetingTypeHost.of(typeId, cohost.id, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING).persist();
+        });
+
+        post(token, SLOT_09).then().statusCode(200).body(containsString("CALIT_HOST_PENDING"));
+        assertThat(invites.find(1L, token, Instant.now())).isNotNull();
+        assertThat(bookingCount()).isZero();
+    }
+
+    @Test
+    void inviteUsedBetweenFindAndBookShowsInvalidPage() {
+        var token = invites.issue(1L, seed(SLUG), Instant.now());
+        // The other request of a race commits its booking after this one's find succeeded.
+        doAnswer(call -> {
+            var found = (BookingInvite) call.callRealMethod();
+            QuarkusTransaction
+                .requiringNew()
+                .run(() -> BookingInvite.delete("id", found.id));
+            return found;
+        }).when(invites).find(eq(1L), anyString(), any(Instant.class));
+
+        invalidPage(post(token, SLOT_09));
+        assertThat(bookingCount()).isZero();
     }
 
     @Test
