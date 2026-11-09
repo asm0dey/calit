@@ -1,6 +1,5 @@
 package site.asm0dey.calit.google;
 
-import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;

@@ -1,6 +1,5 @@
 package site.asm0dey.calit.oidc;
 
-import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;

@@ -1,6 +1,5 @@
 package site.asm0dey.calit.privacy;
 
-import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.test.junit.QuarkusTest;
