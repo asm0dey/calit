@@ -26,6 +26,24 @@ Each meeting type has a **slug** — a short identifier that forms the public bo
 
 Your landing page at `/<username>` lists all of your **active, non-secret** meeting types. Secret meeting types are still bookable via their direct URL but do not appear on the listing.
 
+### Single-use invites
+
+A secret type's link works forever. To let exactly one person book, open the meeting type in `/me` and click **Generate single-use invite**. calit shows the full link once — copy it then:
+
+```
+/<username>?invite=<token>
+```
+
+- The link books once. After that booking it stops working, even if the booking is later cancelled.
+- An unused link expires after 30 days.
+- Opening the link does not use it up, so chat previews and mail scanners are safe. A booking that fails leaves it usable.
+- The page never shows the meeting type's slug and is not indexed by search engines.
+- A used, expired or unknown link shows a "no longer valid" page.
+
+:::caution[Name-derived slugs]
+The invite page shows the meeting type's name. If the slug was derived from that name, a recipient can guess `/<username>/<slug>` and book again. For a type that must stay one-shot, give it a slug unrelated to its name.
+:::
+
 ## Per-type settings
 
 | Setting | Description |

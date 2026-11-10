@@ -7,6 +7,17 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- "Generate single-use invite" on a meeting type gives a `/<username>?invite=` link that books once,
+  stays dead after cancellation, and expires unused after 30 days. ([#264](https://github.com/asm0dey/calit/pull/264))
+- `V39__booking_invite.sql` adds the `booking_invite` table; only SHA-256 token hashes are stored.
+  ([#264](https://github.com/asm0dey/calit/pull/264))
+
+Upgrade: nothing to do.
+
 ## 1.28.2
 
 Dependency security update.
