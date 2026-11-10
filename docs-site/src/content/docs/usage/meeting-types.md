@@ -30,6 +30,10 @@ Your landing page at `/<username>` lists all of your **active, non-secret** meet
 
 A secret type's link works forever. To let exactly one person book, open the meeting type in `/me` and click **Generate single-use invite**. calit shows the full link once — copy it then:
 
+![Generate single-use invite button on the meeting type page](/calit/img/single-use-invite-generate.png)
+
+![The generated single-use invite link](/calit/img/single-use-invite-link.png)
+
 ```
 /<username>?invite=<token>
 ```
