@@ -1,13 +1,13 @@
 ---
 # calit-vhsy
 title: Single-use booking links
-status: in-progress
+status: completed
 type: feature
 priority: normal
 tags:
     - competitor-parity
 created_at: 2026-10-16T22:05:41Z
-updated_at: 2026-11-09T17:47:23Z
+updated_at: 2026-11-10T08:59:15Z
 parent: calit-0arg
 ---
 
@@ -25,4 +25,4 @@ Owners generate a one-shot `/{user}?invite={token}` URL from a meeting type's de
 - `GET /{user}?invite=` renders the booking page with no slug and no preview card; new `POST /{user}?invite=` submits it. Any bad token shows one invalid-invite page.
 - `booking_invite` is classified in `PersonalData`.
 
-Still to do at merge: usage docs and the `## Unreleased` bullet on `docs-site`.
+Docs: "Single-use invites" section with screenshots on the meeting types page and an `## Unreleased` changelog entry, on `docs-site` (373746ad, 61e7ad7b).
