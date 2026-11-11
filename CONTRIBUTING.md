@@ -12,7 +12,8 @@ For the full architecture, see [`CLAUDE.md`](CLAUDE.md); for user-facing docs, s
 - **[mise](https://mise.jdx.dev)** for everything else — Bun, `beans`, `actionlint` from
   [`mise.toml`](mise.toml); CI reads both files. Hook mise into your shell once
   ([`mise activate`](https://mise.jdx.dev/getting-started.html#activate-mise)), then run
-  `mise trust && mise install` in a fresh clone. Without mise, install those versions yourself.
+  `mise trust && mise install` in a fresh clone; it also runs `bun install`, which wires the git hooks.
+  Without mise, install those versions yourself and run `bun install`.
 - **Maven** — the bundled wrapper `./mvnw` pins it; the commands below write `mvn`, either is fine.
 - **Docker** — **mandatory** for `quarkus:dev` and the test suite. Quarkus Dev Services starts a
   throwaway Postgres (and a mock mailer) in Docker; there is no embedded/H2 fallback.

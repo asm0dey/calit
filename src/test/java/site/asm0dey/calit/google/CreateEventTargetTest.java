@@ -2,6 +2,7 @@ package site.asm0dey.calit.google;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -11,9 +12,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.Event;
+import com.google.api.services.calendar.model.EventAttendee;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.calendar.SelectedCalendar;
@@ -97,6 +100,34 @@ class CreateEventTargetTest {
         );
 
         verify(events).insert(eqCalendar("default@example.com"), any());
+    }
+
+    @Test
+    @Transactional
+    void ownerAttendeeIsAcceptedOthersAreLeftToRsvp() throws Exception {
+        seedOwnerSettings();
+        seedWriteTarget("sub-create-rsvp", "default@example.com");
+        GoogleCalendarPort port = port();
+
+        port.createEvent(
+                1L,
+                null,
+                null,
+                "s",
+                "d",
+                Instant.parse("2026-01-01T10:00:00Z"),
+                Instant.parse("2026-01-01T10:30:00Z"),
+                List.of("invitee@example.com", "Owner@Example.com"),
+                false,
+                null
+        );
+
+        var captor = ArgumentCaptor.forClass(Event.class);
+        verify(events).insert(anyString(), captor.capture());
+        // The owner approved (or auto-confirmed) it in calit; Google must not ask them to RSVP their own booking.
+        assertThat(captor.getValue().getAttendees())
+            .extracting(EventAttendee::getEmail, EventAttendee::getResponseStatus)
+            .containsExactly(tuple("invitee@example.com", null), tuple("Owner@Example.com", "accepted"));
     }
 
     /**
