@@ -162,7 +162,7 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
             .setStart(startTime)
             .setEnd(endTime);
 
-        if (attendees != null) {
+        if (!attendees.isEmpty()) {
             event.setAttendees(attendees);
         }
 
@@ -402,13 +402,18 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
      * DST handling on Google's side. Each attendee's Google client still displays the event in
      * their own local zone automatically; the invitee's timezone is never stored.
      */
+    private EventDateTime eventTime(Long ownerId, Instant instant) {
+        String ownerZoneId = OwnerSettings.forOwner(ownerId).timezone;
+        return new EventDateTime().setDateTime(new DateTime(instant.toEpochMilli())).setTimeZone(ownerZoneId);
+    }
+
     /**
-     * Google attendees for these emails, or null when there are none. The owner's own entry is pre-accepted: they
+     * Google attendees for these emails, or an empty list when there are none. The owner's own entry is pre-accepted: they
      * approved (or auto-confirmed) the booking in calit, so Google must not ask them to RSVP it. Everyone else RSVPs.
      */
     private static List<EventAttendee> attendees(Long ownerId, List<String> emails) {
         if (emails == null || emails.isEmpty()) {
-            return null;
+            return List.of();
         }
         OwnerSettings owner = OwnerSettings.forOwner(ownerId);
         String ownerEmail = owner == null ? null : owner.ownerEmail;
@@ -416,11 +421,6 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
             var a = new EventAttendee().setEmail(email);
             return email.equalsIgnoreCase(ownerEmail) ? a.setResponseStatus("accepted") : a;
         }).toList();
-    }
-
-    private EventDateTime eventTime(Long ownerId, Instant instant) {
-        String ownerZoneId = OwnerSettings.forOwner(ownerId).timezone;
-        return new EventDateTime().setDateTime(new DateTime(instant.toEpochMilli())).setTimeZone(ownerZoneId);
     }
 
     /**

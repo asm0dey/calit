@@ -1,6 +1,8 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -9,9 +11,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import com.google.api.services.calendar.Calendar;
+import com.google.api.services.calendar.model.Event;
+import com.google.api.services.calendar.model.EventAttendee;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.user.AppUser;
@@ -162,6 +167,51 @@ class StoredCalendarAddressTest {
         );
 
         verify(events).patch(eq("stored@example.com"), eq("evt-upd-2"), any());
+    }
+
+    @Test
+    @Transactional
+    void reschedulePatchKeepsTheOwnerAccepted() throws Exception {
+        var credId = seedWriteTarget("sub-update-rsvp", "default@example.com");
+        seedOwnerSettings();
+        GoogleCalendarPort port = portForPatch();
+
+        port.updateEvent(
+                1L,
+                new CalendarRef(credId, "stored@example.com"),
+                "evt-rsvp",
+                Instant.parse("2026-01-01T10:00:00Z"),
+                Instant.parse("2026-01-01T10:30:00Z"),
+                List.of("invitee@example.com", "owner@example.com")
+        );
+        // The patch replaces the attendee list; without a status the owner would drop back to "awaiting".
+        assertThat(patchedAttendees())
+            .extracting(EventAttendee::getEmail, EventAttendee::getResponseStatus)
+            .containsExactly(tuple("invitee@example.com", null), tuple("owner@example.com", "accepted"));
+    }
+
+    @Test
+    @Transactional
+    void detailsPatchWithoutOwnerSettingsPreAcceptsNobody() throws Exception {
+        var credId = seedWriteTarget("sub-update-details-rsvp", "default@example.com");
+        GoogleCalendarPort port = portForPatch();
+
+        port.updateEventDetails(
+                1L,
+                new CalendarRef(credId, "stored@example.com"),
+                "evt-rsvp-2",
+                "s",
+                "d",
+                List.of("invitee@example.com", "owner@example.com")
+        );
+
+        assertThat(patchedAttendees()).extracting(EventAttendee::getResponseStatus).containsOnlyNulls();
+    }
+
+    private List<EventAttendee> patchedAttendees() throws IOException {
+        var captor = ArgumentCaptor.forClass(Event.class);
+        verify(events).patch(anyString(), anyString(), captor.capture());
+        return captor.getValue().getAttendees();
     }
 
     /**
