@@ -9,6 +9,11 @@ bun = "1.4.4"
 "github:hmans/beans" = "0.4.2"
 actionlint = "1.7.12"
 
+# `mise install` alone leaves a clone with lefthook + git hooks + pinned Prettier (bun install -> prepare ->
+# lefthook install). Skipped in CI: workflows run their own `bun install` (fork-ci with --ignore-scripts).
+[hooks]
+postinstall = '[ -n "$CI" ] || bun install'
+
 # Thin wrappers: the commands themselves live in package.json / mvnw (Dockerfiles call them without mise).
 [tasks.setup]
 description = "Install frontend deps + git hooks, restore agent skills"
