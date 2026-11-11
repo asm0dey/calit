@@ -7,9 +7,9 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.29.0
 
-Merged but not yet in a tagged release.
+Single-use booking invites, and approved bookings no longer wait on the owner's own Google RSVP.
 
 - "Generate single-use invite" on a meeting type gives a `/<username>?invite=` link that books once,
   stays dead after cancellation, and expires unused after 30 days. ([#264](https://github.com/asm0dey/calit/pull/264))
