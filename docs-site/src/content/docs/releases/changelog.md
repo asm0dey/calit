@@ -17,6 +17,9 @@ Merged but not yet in a tagged release.
   ([#264](https://github.com/asm0dey/calit/pull/264))
 - The owner is listed as accepted on the Google Calendar event calit creates or updates for a booking, so an
   approved booking no longer awaits their own RSVP. Existing events are unchanged. ([#268](https://github.com/asm0dey/calit/pull/268))
+- Dependencies: Quarkus 3.40.1.2, BouncyCastle 1.87, and a refreshed Alpaquita base-image digest.
+  ([#265](https://github.com/asm0dey/calit/pull/265), [#269](https://github.com/asm0dey/calit/pull/269),
+  [#267](https://github.com/asm0dey/calit/pull/267))
 
 Upgrade: nothing to do.
 
