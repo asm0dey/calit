@@ -15,6 +15,8 @@ Merged but not yet in a tagged release.
   stays dead after cancellation, and expires unused after 30 days. ([#264](https://github.com/asm0dey/calit/pull/264))
 - `V39__booking_invite.sql` adds the `booking_invite` table; only SHA-256 token hashes are stored.
   ([#264](https://github.com/asm0dey/calit/pull/264))
+- The owner is listed as accepted on the Google Calendar event calit creates or updates for a booking, so an
+  approved booking no longer awaits their own RSVP. Existing events are unchanged. ([#268](https://github.com/asm0dey/calit/pull/268))
 
 Upgrade: nothing to do.
 
