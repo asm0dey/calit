@@ -123,7 +123,7 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
                 description,
                 eventTime(ownerId, start),
                 eventTime(ownerId, end),
-                attendeeEmails,
+                attendees(ownerId, attendeeEmails),
                 createMeetLink,
                 locationText
         );
@@ -152,7 +152,7 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
             String description,
             EventDateTime startTime,
             EventDateTime endTime,
-            List<String> attendeeEmails,
+            List<EventAttendee> attendees,
             boolean createMeetLink,
             String locationText
     ) {
@@ -162,11 +162,8 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
             .setStart(startTime)
             .setEnd(endTime);
 
-        if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
-            event.setAttendees(attendeeEmails
-                .stream()
-                .map(email -> new EventAttendee().setEmail(email))
-                .toList());
+        if (attendees != null) {
+            event.setAttendees(attendees);
         }
 
         if (createMeetLink) {
@@ -271,10 +268,7 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
         var addr = writeAddress(ownerId, ref);
         Event patch = new Event().setStart(eventTime(ownerId, start)).setEnd(eventTime(ownerId, end));
         if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
-            patch.setAttendees(attendeeEmails
-                .stream()
-                .map(email -> new EventAttendee().setEmail(email))
-                .toList());
+            patch.setAttendees(attendees(ownerId, attendeeEmails));
         }
         try {
             // sendUpdates=all so Google emails attendees the new time and notifies anyone added/removed.
@@ -297,10 +291,7 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
         var addr = writeAddress(ownerId, ref);
         Event patch = new Event().setSummary(summary).setDescription(description);
         if (attendeeEmails != null && !attendeeEmails.isEmpty()) {
-            patch.setAttendees(attendeeEmails
-                .stream()
-                .map(email -> new EventAttendee().setEmail(email))
-                .toList());
+            patch.setAttendees(attendees(ownerId, attendeeEmails));
         }
         try {
             client(addr.cred()).events().patch(addr.calendarId(), eventId, patch).setSendUpdates("all").execute();
@@ -411,6 +402,22 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
      * DST handling on Google's side. Each attendee's Google client still displays the event in
      * their own local zone automatically; the invitee's timezone is never stored.
      */
+    /**
+     * Google attendees for these emails, or null when there are none. The owner's own entry is pre-accepted: they
+     * approved (or auto-confirmed) the booking in calit, so Google must not ask them to RSVP it. Everyone else RSVPs.
+     */
+    private static List<EventAttendee> attendees(Long ownerId, List<String> emails) {
+        if (emails == null || emails.isEmpty()) {
+            return null;
+        }
+        OwnerSettings owner = OwnerSettings.forOwner(ownerId);
+        String ownerEmail = owner == null ? null : owner.ownerEmail;
+        return emails.stream().map(email -> {
+            var a = new EventAttendee().setEmail(email);
+            return email.equalsIgnoreCase(ownerEmail) ? a.setResponseStatus("accepted") : a;
+        }).toList();
+    }
+
     private EventDateTime eventTime(Long ownerId, Instant instant) {
         String ownerZoneId = OwnerSettings.forOwner(ownerId).timezone;
         return new EventDateTime().setDateTime(new DateTime(instant.toEpochMilli())).setTimeZone(ownerZoneId);
