@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- cribro: diff coverage (JaCoCo) of the changed lines, printed before Maven's build summary. -->
+<extensions>
+  <extension>
+    <groupId>io.github.cribro-dev</groupId>
+    <artifactId>cribro-maven-plugin</artifactId>
+    <version>1.0.0</version>
+  </extension>
+</extensions>

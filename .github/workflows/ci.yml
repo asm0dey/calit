@@ -52,31 +52,19 @@ jobs:
           bun run css:build
           test -s src/main/resources/META-INF/resources/calit.css
 
-      # Diff coverage for pull requests. cribro has no release yet, so this builds a pinned commit.
-      # Best effort: if it fails, the tests below run without it. Only the verify step loads it.
-      - name: Build cribro
-        id: cribro
-        if: ${{ github.event_name == 'pull_request' }}
-        continue-on-error: true
-        run: |
-          git clone --quiet https://github.com/cribro-dev/cribro.git "$RUNNER_TEMP/cribro"
-          cd "$RUNNER_TEMP/cribro"
-          git checkout --quiet a4e546e958c3972eb8a6b37c9ced72c9014170f3
-          mise exec java@liberica-25.0.5+11 -- ./gradlew --quiet :cribro-maven-plugin:extensionJar
-          jar="$RUNNER_TEMP/cribro/cribro-maven-plugin/build/dist/cribro-maven.jar"
-          echo "args=-Dmaven.ext.class.path=$jar -Dcribro.diffBase=origin/$GITHUB_BASE_REF" >> "$GITHUB_OUTPUT"
-
+      # .mvn/extensions.xml loads cribro (diff coverage) into every build; on a pull request it diffs
+      # against the PR's base branch. It warns and goes on when that base does not resolve.
       - name: Build and run tests
         env:
-          CRIBRO_ARGS: ${{ steps.cribro.outputs.args }}
+          CRIBRO_ARGS: ${{ github.event_name == 'pull_request' && format('-Dcribro.diffBase=origin/{0}', github.base_ref) || '' }}
         run: |
-          # shellcheck disable=SC2086 # CRIBRO_ARGS holds two arguments, or none
+          # shellcheck disable=SC2086 # CRIBRO_ARGS holds one argument, or none
           ./mvnw --batch-mode --no-transfer-progress verify $CRIBRO_ARGS
 
       # cribro writes no report when the PR changed no Java lines it measures, and then nothing is
       # published.
       - name: Publish diff coverage to the job summary
-        if: ${{ !cancelled() && steps.cribro.outcome == 'success' && hashFiles('target/cribro/diff-coverage.txt') != '' }}
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && hashFiles('target/cribro/diff-coverage.txt') != '' }}
         run: |
           {
             echo '## Diff coverage'
@@ -87,7 +75,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload diff coverage for the PR comment
-        if: ${{ !cancelled() && steps.cribro.outcome == 'success' }}
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v7
         with:
           name: diff-coverage
