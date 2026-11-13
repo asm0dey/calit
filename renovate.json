@@ -45,6 +45,18 @@
       "datasourceTemplate": "maven"
     },
     {
+      "description": "Bump the Prince of Space formatter pinned inside Spotless's <princeOfSpace> step; the maven manager does not read versions nested in plugin configuration.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^pom\\.xml$/"
+      ],
+      "matchStrings": [
+        "<princeOfSpace>\\s*<version>(?<currentValue>[^<\\s]+)</version>"
+      ],
+      "depNameTemplate": "io.github.agustafson.princeofspace:prince-of-space-core",
+      "datasourceTemplate": "maven"
+    },
+    {
       "description": "Bump the Liberica JDK in .sdkmanrc (read by sdkman and mise) from sdkman's own identifier list, so proposed values are real sdkman ids.",
       "customType": "regex",
       "managerFilePatterns": [

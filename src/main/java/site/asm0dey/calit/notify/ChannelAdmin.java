@@ -175,7 +175,7 @@ public class ChannelAdmin {
      * legitimate channel a host must be able to save.
      */
     private static boolean looksRedacted(String url) {
-        return url.indexOf('\u2026') >= 0 || "<redacted>".equals(url) || "<none>".equals(url);
+        return url.indexOf('…') >= 0 || "<redacted>".equals(url) || "<none>".equals(url);
     }
 
     private static String value(List<String> list, int i) {

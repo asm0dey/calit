@@ -406,7 +406,7 @@
               </mutators>
             </cleanthat>
             <princeOfSpace>
-              <version>2.2.0</version>
+              <version>2.3.1</version>
               <lineLength>120</lineLength>
               <javaLanguageLevel>25</javaLanguageLevel>
             </princeOfSpace>
