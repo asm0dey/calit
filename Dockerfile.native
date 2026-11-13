@@ -63,7 +63,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken,--initialize-at-run-time=org.altcha.altcha.v1.Altcha,--initialize-at-build-time=java.awt.Color,--initialize-at-run-time=org.alexmond.notify4j.HttpClientConfig"
 
 # --- Runtime stage: Alpaquita musl base (~3.9MB) — no JDK, just the native binary ---
-FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:7bc1f71887bd25cd3b9c1626c272ce3b15c9dff832d07122b10cb06568e754ea AS runtime
+FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:f719fd35567878a01716b652f6a0eeb55945937dbbde3f5c48046c99105ce068 AS runtime
 WORKDIR /app
 # ca-certificates: outbound TLS to Google API + SMTP. zlib: the binary links libz.so.1.
 # freetype + fontconfig: required by quarkus-awt for native mode, per its own guide. The font
