@@ -31,8 +31,10 @@ public class CaptchaProviderConfig {
             @ConfigProperty(name = "calit.captcha.altcha.hmac-key") Optional<String> altchaHmacKey,
             @ConfigProperty(name = "calit.captcha.altcha.max-number", defaultValue = "100000") long altchaMaxNumber,
             @ConfigProperty(name = "calit.abuse.turnstile.secret") Optional<String> turnstileSecret,
-            @ConfigProperty(name = "calit.abuse.turnstile.verify-url", defaultValue = "https://challenges.cloudflare."
-            + "com/turnstile/v0/siteverify") String turnstileVerifyUrl,
+            @ConfigProperty(
+                    name = "calit.abuse.turnstile.verify-url",
+                    defaultValue = "https://challenges.cloudflare." + "com/turnstile/v0/siteverify"
+            ) String turnstileVerifyUrl,
             @ConfigProperty(name = "calit.turnstile.site-key") Optional<String> turnstileSiteKey
     ) {
         this.explicit = explicit;

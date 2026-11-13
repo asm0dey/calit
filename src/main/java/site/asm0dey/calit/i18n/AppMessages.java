@@ -67,8 +67,10 @@ public interface AppMessages {
     /**
      * Hero sub-heading, fragment before &lt;strong&gt;.
      */
-    @Message("calit gives every user their own scheduling space — a personal booking page, availability,"
-            + " and Google Calendar — running entirely on")
+    @Message(
+            "calit gives every user their own scheduling space — a personal booking page, availability,"
+            + " and Google Calendar — running entirely on"
+    )
     String pub_landing_hero_sub_pre();
 
     /**
@@ -107,8 +109,10 @@ public interface AppMessages {
     @Message("One app. Three surfaces.")
     String pub_landing_gallery_h2();
 
-    @Message("A public page for invitees, a personal landing for every user, and an owner console to "
-            + "run it all — each isolated to its owner, served from the same self-hosted instance.")
+    @Message(
+            "A public page for invitees, a personal landing for every user, and an owner console to "
+            + "run it all — each isolated to its owner, served from the same self-hosted instance."
+    )
     String pub_landing_gallery_lede();
 
     @Message("The owner console")
@@ -117,8 +121,10 @@ public interface AppMessages {
     /**
      * Gallery caption for the owner console card. Plain text — /me rendered separately.
      */
-    @Message("Manage meeting types, availability, booking fields, Google sync, and — for admins — the "
-            + "whole team's users at")
+    @Message(
+            "Manage meeting types, availability, booking fields, Google sync, and — for admins — the "
+            + "whole team's users at"
+    )
     String pub_landing_cap_console_desc_pre();
 
     /**
@@ -145,8 +151,10 @@ public interface AppMessages {
     @Message("Built to be run, not rented.")
     String pub_landing_features_h2();
 
-    @Message("Everything you expect from a scheduling tool — plus true multi-tenancy and the peace of "
-            + "mind of owning your data.")
+    @Message(
+            "Everything you expect from a scheduling tool — plus true multi-tenancy and the peace of "
+            + "mind of owning your data."
+    )
     String pub_landing_features_lede();
 
     @Message("Isolation")
@@ -155,8 +163,10 @@ public interface AppMessages {
     @Message("Per-user tenancy")
     String pub_landing_feat_isolation_h3();
 
-    @Message("Every meeting type, booking, and setting carries an owner. One user can never see or "
-            + "touch another's data.")
+    @Message(
+            "Every meeting type, booking, and setting carries an owner. One user can never see or "
+            + "touch another's data."
+    )
     String pub_landing_feat_isolation_p();
 
     @Message("Calendar")
@@ -165,8 +175,10 @@ public interface AppMessages {
     @Message("Google sync & Meet")
     String pub_landing_feat_calendar_h3();
 
-    @Message("Connect each user's own Google account. Bookings create events and auto-generate a Meet "
-            + "link — or run fully degraded.")
+    @Message(
+            "Connect each user's own Google account. Bookings create events and auto-generate a Meet "
+            + "link — or run fully degraded."
+    )
     String pub_landing_feat_calendar_p();
 
     @Message("Group meetings")
@@ -175,8 +187,10 @@ public interface AppMessages {
     @Message("Meetings that need everyone")
     String pub_landing_feat_multihost_h3();
 
-    @Message("A meeting type can require several hosts. calit only offers slots when every host is free,"
-            + " books one event on every calendar, and each co-host confirms before it goes live.")
+    @Message(
+            "A meeting type can require several hosts. calit only offers slots when every host is free,"
+            + " books one event on every calendar, and each co-host confirms before it goes live."
+    )
     String pub_landing_feat_multihost_p();
 
     @Message("Control")
@@ -194,8 +208,10 @@ public interface AppMessages {
     @Message("Real authentication")
     String pub_landing_feat_trust_h3();
 
-    @Message("Passwords hashed with argon2id, stateless encrypted cookies, instant lockout — no "
-            + "embedded admin password.")
+    @Message(
+            "Passwords hashed with argon2id, stateless encrypted cookies, instant lockout — no "
+            + "embedded admin password."
+    )
     String pub_landing_feat_trust_p();
 
     @Message("Defense")
@@ -204,8 +220,10 @@ public interface AppMessages {
     @Message("Abuse protection")
     String pub_landing_feat_defense_h3();
 
-    @Message("Cloudflare Turnstile, a honeypot, and a per-email daily cap guard every public booking "
-            + "form out of the box.")
+    @Message(
+            "Cloudflare Turnstile, a honeypot, and a per-email daily cap guard every public booking "
+            + "form out of the box."
+    )
     String pub_landing_feat_defense_p();
 
     @Message("Ops")
@@ -214,8 +232,10 @@ public interface AppMessages {
     @Message("One binary + Postgres")
     String pub_landing_feat_ops_h3();
 
-    @Message("A single Quarkus app and a database. Self-host it anywhere, invite your team, done. Opt-"
-            + "in public sign-up too.")
+    @Message(
+            "A single Quarkus app and a database. Self-host it anywhere, invite your team, done. Opt-"
+            + "in public sign-up too."
+    )
     String pub_landing_feat_ops_p();
 
     @Message("Get started")
@@ -224,8 +244,10 @@ public interface AppMessages {
     @Message("Spin up your own in minutes.")
     String pub_landing_close_h2();
 
-    @Message("Point it at a Postgres database and open the site — the first visit creates your admin "
-            + "account. No license, no waitlist, no seat math.")
+    @Message(
+            "Point it at a Postgres database and open the site — the first visit creates your admin "
+            + "account. No license, no waitlist, no seat math."
+    )
     String pub_landing_close_p();
 
     @Message("Open your dashboard")
@@ -337,8 +359,10 @@ public interface AppMessages {
     @Message("Request sent — pending owner approval")
     String pub_conf_h1_pending();
 
-    @Message("Thanks, {inviteeName}. Your requested time is held while {meetingTypeName}'s owner "
-            + "reviews it. You'll get an email once it's approved or declined.")
+    @Message(
+            "Thanks, {inviteeName}. Your requested time is held while {meetingTypeName}'s owner "
+            + "reviews it. You'll get an email once it's approved or declined."
+    )
     String pub_conf_pending_desc(String inviteeName, String meetingTypeName);
 
     @Message("You're booked, {inviteeName}!")
@@ -359,8 +383,10 @@ public interface AppMessages {
     @Message("A confirmation email is on its way to {inviteeEmail}.")
     String pub_conf_confirmed_email(String inviteeEmail);
 
-    @Message("We couldn't send the confirmation email to {inviteeEmail} yet — we'll keep trying. "
-            + "Nothing is lost: we have your booking and the details are on this page.")
+    @Message(
+            "We couldn't send the confirmation email to {inviteeEmail} yet — we'll keep trying. "
+            + "Nothing is lost: we have your booking and the details are on this page."
+    )
     String pub_conf_email_failed(String inviteeEmail);
 
     @Message("Add to your calendar (.ics)")
@@ -411,20 +437,26 @@ public interface AppMessages {
     @Message("Erase your data from this booking?")
     String pub_erase_confirm_h1();
 
-    @Message("This removes your name, email address, answers and guest list from this booking. "
+    @Message(
+            "This removes your name, email address, answers and guest list from this booking. "
             + "The host keeps a record that the slot was taken, with no personal details. "
-            + "It can't be undone.")
+            + "It can't be undone."
+    )
     String pub_erase_confirm_desc();
 
     @Message("An upcoming booking is cancelled first, so the host is notified and the slot is freed.")
     String pub_erase_confirm_cancels_first();
 
-    @Message("We don't link bookings to each other by email address, so this erases only this booking. "
-            + "To erase your other bookings, open the manage link in each one's confirmation email.")
+    @Message(
+            "We don't link bookings to each other by email address, so this erases only this booking. "
+            + "To erase your other bookings, open the manage link in each one's confirmation email."
+    )
     String pub_erase_not_linked();
 
-    @Message("Links for your bookings with this host stop working {days} days after the meeting ends, "
-            + "when their details are deleted automatically.")
+    @Message(
+            "Links for your bookings with this host stop working {days} days after the meeting ends, "
+            + "when their details are deleted automatically."
+    )
     String pub_erase_links_expire(int days);
 
     @Message("Those links keep working until the host or the site operator removes the booking.")
@@ -586,7 +618,9 @@ public interface AppMessages {
     @Message("Accept co-hosting \"{typeName}\" with {creatorName}?")
     String pub_consent_confirm_h1(String typeName, String creatorName);
 
-    @Message("Accepting adds you as a co-host: your own availability applies, and every booking needs both of you free.")
+    @Message(
+            "Accepting adds you as a co-host: your own availability applies, and every booking needs both of you free."
+    )
     String pub_consent_confirm_desc();
 
     @Message("Accept")
@@ -884,8 +918,10 @@ public interface AppMessages {
     @Message("Or paste this link into your browser:")
     String email_paste_link_hint();
 
-    @Message("This link expires in 30 minutes and can be used once. If you didn't request this, ignore "
-            + "this email — your password stays unchanged.")
+    @Message(
+            "This link expires in 30 minutes and can be used once. If you didn't request this, ignore "
+            + "this email — your password stays unchanged."
+    )
     String email_password_reset_expiry();
 
     // ---- Email body — invite ----
@@ -904,8 +940,10 @@ public interface AppMessages {
     @Message("Activate your account")
     String email_invite_btn();
 
-    @Message("This link expires in 48 hours and can be used once. If you didn't expect this invitation, "
-            + "you can safely ignore this email.")
+    @Message(
+            "This link expires in 48 hours and can be used once. If you didn't expect this invitation, "
+            + "you can safely ignore this email."
+    )
     String email_invite_expiry();
 
     // ---- Email body — Google disconnected ----
@@ -918,15 +956,19 @@ public interface AppMessages {
     @Message("calit can no longer access your Google Calendar account {accountEmail}.")
     String email_google_disconnected_body(String accountEmail);
 
-    @Message("While it stays disconnected, your booking page is paused — new bookings are blocked so "
-            + "nobody can book over events calit can't see.")
+    @Message(
+            "While it stays disconnected, your booking page is paused — new bookings are blocked so "
+            + "nobody can book over events calit can't see."
+    )
     String email_google_disconnected_paused();
 
     @Message("Reconnect Google Calendar")
     String email_google_disconnected_btn();
 
-    @Message("This usually happens when access was revoked, your password changed, or the connection "
-            + "sat unused for a long time. Reconnecting takes a few seconds.")
+    @Message(
+            "This usually happens when access was revoked, your password changed, or the connection "
+            + "sat unused for a long time. Reconnecting takes a few seconds."
+    )
     String email_google_disconnected_why();
 
     // ---- Email body — CalDAV disconnected (greeting/paused shared with the Google mail) ----
@@ -939,8 +981,10 @@ public interface AppMessages {
     @Message("Re-enter CalDAV password")
     String email_caldav_disconnected_btn();
 
-    @Message("This usually happens when the password was changed or the app password was revoked. "
-            + "Open Calendars and re-enter the password; it takes a few seconds.")
+    @Message(
+            "This usually happens when the password was changed or the app password was revoked. "
+            + "Open Calendars and re-enter the password; it takes a few seconds."
+    )
     String email_caldav_disconnected_why();
 
     // ---- Email body — host consent ----
@@ -950,8 +994,10 @@ public interface AppMessages {
     @Message("Hi {name},")
     String email_host_consent_greeting(String name);
 
-    @Message("{creatorName} invited you to co-host \\\"{meetingTypeName}\\\" on calit. Accept to start "
-            + "receiving bookings together.")
+    @Message(
+            "{creatorName} invited you to co-host \\\"{meetingTypeName}\\\" on calit. Accept to start "
+            + "receiving bookings together."
+    )
     String email_host_consent_body(String creatorName, String meetingTypeName);
 
     @Message("Accept co-host invitation")
@@ -1089,8 +1135,10 @@ public interface AppMessages {
     @Message("Username invalid, reserved, or taken — try another.")
     String auth_setup_error();
 
-    @Message("That username can't be used — it may be invalid, reserved, or already taken. Use 2–64 "
-            + "lowercase letters or digits, with single hyphens between.")
+    @Message(
+            "That username can't be used — it may be invalid, reserved, or already taken. Use 2–64 "
+            + "lowercase letters or digits, with single hyphens between."
+    )
     String auth_signup_error();
 
     @Message("Enter a password.")

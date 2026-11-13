@@ -193,8 +193,10 @@ public interface AdminMessages {
     @Message("Delete")
     String adm_meetingTypes_btn_delete();
 
-    @Message("This meeting type still has upcoming bookings. Cancel them first, then delete the meeting type. "
-            + "Deleting it also removes its past bookings.")
+    @Message(
+            "This meeting type still has upcoming bookings. Cancel them first, then delete the meeting type. "
+            + "Deleting it also removes its past bookings."
+    )
     String adm_meetingTypes_error_delete_upcoming();
 
     @Message("Create meeting type")
@@ -254,8 +256,10 @@ public interface AdminMessages {
     @Message("Location")
     String adm_meetingTypes_section_location();
 
-    @Message("Pick where the meeting happens. Google Meet generates a link after booking (requires "
-            + "Google connected); for the others, fill in the detail below.")
+    @Message(
+            "Pick where the meeting happens. Google Meet generates a link after booking (requires "
+            + "Google connected); for the others, fill in the detail below."
+    )
     String adm_meetingTypes_location_hint();
 
     @Message("Location detail (phone / address / custom; ignored for Google Meet)")
@@ -273,9 +277,11 @@ public interface AdminMessages {
     @Message("Working hours")
     String adm_meetingTypes_section_working_hours();
 
-    @Message("Weekly hours for this meeting type. Leave every day blank to inherit your global default "
+    @Message(
+            "Weekly hours for this meeting type. Leave every day blank to inherit your global default "
             + "hours; fill any day and these hours become the type's whole week, with the blank days not "
-            + "bookable.")
+            + "bookable."
+    )
     String adm_meetingTypes_working_hours_hint();
 
     @Message("to")
@@ -284,8 +290,10 @@ public interface AdminMessages {
     @Message("Date override")
     String adm_meetingTypes_section_date_override();
 
-    @Message("Optional. An override REPLACES this date's normal hours for this type. Set a date and "
-            + "leave the windows blank to mark it a day off; add windows to set the only bookable times.")
+    @Message(
+            "Optional. An override REPLACES this date's normal hours for this type. Set a date and "
+            + "leave the windows blank to mark it a day off; add windows to set the only bookable times."
+    )
     String adm_meetingTypes_date_override_hint();
 
     @Message("Date")
@@ -362,8 +370,10 @@ public interface AdminMessages {
     @Message("Buffers")
     String adm_shared_availability_section_buffers();
 
-    @Message("Your own buffer before/after this shared type overrides its default when set; leave blank "
-            + "to use the default.")
+    @Message(
+            "Your own buffer before/after this shared type overrides its default when set; leave blank "
+            + "to use the default."
+    )
     String adm_shared_availability_buffers_hint();
 
     @Message("Buffer before (minutes)")
@@ -378,8 +388,10 @@ public interface AdminMessages {
     @Message("Leave this meeting type")
     String adm_shared_availability_section_revoke();
 
-    @Message("You can stop co-hosting this meeting type at any time. Your own bookings and availability "
-            + "for it will be affected.")
+    @Message(
+            "You can stop co-hosting this meeting type at any time. Your own bookings and availability "
+            + "for it will be affected."
+    )
     String adm_shared_availability_revoke_hint();
 
     @Message("Stop co-hosting")
@@ -464,23 +476,31 @@ public interface AdminMessages {
     @Message("Calendar no longer available — using my write target")
     String adm_detail_write_calendar_missing();
 
-    @Message("The calendar this meeting type writes on is no longer available, so new bookings use your "
-            + "write target. Pick a calendar to fix it.")
+    @Message(
+            "The calendar this meeting type writes on is no longer available, so new bookings use your "
+            + "write target. Pick a calendar to fix it."
+    )
     String adm_detail_write_calendar_dangling();
 
-    @Message("This meeting type uses Google Meet, but it writes to a calendar that isn't Google, so its "
-            + "bookings get no Meet link. Add a link yourself, or pick a Google calendar.")
+    @Message(
+            "This meeting type uses Google Meet, but it writes to a calendar that isn't Google, so its "
+            + "bookings get no Meet link. Add a link yourself, or pick a Google calendar."
+    )
     String adm_detail_meet_unavailable();
 
-    @Message("Upcoming bookings that stay on the calendar they were created on: {count}. Only new "
-            + "bookings use the new calendar.")
+    @Message(
+            "Upcoming bookings that stay on the calendar they were created on: {count}. Only new "
+            + "bookings use the new calendar."
+    )
     String adm_detail_write_calendar_moved(long count);
 
     @Message("That calendar is not one of your selected Google calendars.")
     String adm_detail_error_write_calendar_unknown();
 
-    @Message("The calendar this meeting type writes on can't create Google Meet links. Pick another "
-            + "location, or another calendar.")
+    @Message(
+            "The calendar this meeting type writes on can't create Google Meet links. Pick another "
+            + "location, or another calendar."
+    )
     String adm_detail_error_location_meet_unsupported();
 
     @Message("Secret (hidden from public landing)")
@@ -495,8 +515,10 @@ public interface AdminMessages {
     @Message("Allowed durations")
     String adm_meetingTypeDetail_section_durations();
 
-    @Message("Every duration this meeting type may be booked at, in minutes. Default is what an invitee "
-            + "sees before choosing.")
+    @Message(
+            "Every duration this meeting type may be booked at, in minutes. Default is what an invitee "
+            + "sees before choosing."
+    )
     String adm_meetingTypeDetail_durations_hint();
 
     @Message("Duration (minutes)")
@@ -556,9 +578,11 @@ public interface AdminMessages {
     @Message("Working hours")
     String adm_detail_section_working_hours();
 
-    @Message("Weekly hours for this meeting type. These hours ARE its week: a day with no frames is not "
+    @Message(
+            "Weekly hours for this meeting type. These hours ARE its week: a day with no frames is not "
             + "bookable. Until you save them the grid shows your global default hours. Each day can hold "
-            + "several time frames; use the copy buttons to mirror one day, then Save.")
+            + "several time frames; use the copy buttons to mirror one day, then Save."
+    )
     String adm_detail_working_hours_hint();
 
     /**
@@ -594,8 +618,10 @@ public interface AdminMessages {
     @Message("Date overrides")
     String adm_detail_section_overrides();
 
-    @Message("An override REPLACES this date's normal hours for this meeting type. Leave the windows "
-            + "blank to mark the date as a day off.")
+    @Message(
+            "An override REPLACES this date's normal hours for this meeting type. Leave the windows "
+            + "blank to mark the date as a day off."
+    )
     String adm_detail_overrides_hint();
 
     @Message("day off")
@@ -641,8 +667,10 @@ public interface AdminMessages {
     @Message("accepted")
     String adm_hosts_status_accepted();
 
-    @Message("No eligible user with that username -- check spelling, or they may already be a host, "
-            + "disabled, or not yet fully set up.")
+    @Message(
+            "No eligible user with that username -- check spelling, or they may already be a host, "
+            + "disabled, or not yet fully set up."
+    )
     String adm_hosts_error_not_eligible();
 
     @Message("The creator cannot be removed from their own meeting type.")
@@ -683,8 +711,10 @@ public interface AdminMessages {
     @Message("Availability (work hours)")
     String adm_availability_h1();
 
-    @Message("Your default weekly schedule. Each day can hold several time frames. Use the copy buttons "
-            + "to mirror one day across the week, then Save.")
+    @Message(
+            "Your default weekly schedule. Each day can hold several time frames. Use the copy buttons "
+            + "to mirror one day across the week, then Save."
+    )
     String adm_availability_hint();
 
     @Message("Save schedule")
@@ -694,8 +724,10 @@ public interface AdminMessages {
     @Message("Date-specific overrides")
     String adm_dateOverrides_h1();
 
-    @Message("An override REPLACES that date's normal work hours. Adding windows sets the only bookable "
-            + "times; leaving the windows empty marks the whole date as a day off.")
+    @Message(
+            "An override REPLACES that date's normal work hours. Adding windows sets the only bookable "
+            + "times; leaving the windows empty marks the whole date as a day off."
+    )
     String adm_dateOverrides_hint();
 
     @Message("day off")
@@ -744,8 +776,10 @@ public interface AdminMessages {
     @Message("Default booking fields")
     String adm_bookingFields_h1();
 
-    @Message("Full name and email are always asked. These default extra fields apply to every meeting "
-            + "type that has no fields of its own. Set per-type fields from each meeting type's page.")
+    @Message(
+            "Full name and email are always asked. These default extra fields apply to every meeting "
+            + "type that has no fields of its own. Set per-type fields from each meeting type's page."
+    )
     String adm_bookingFields_hint();
 
     @Message("required")
@@ -757,9 +791,11 @@ public interface AdminMessages {
     @Message("Delete")
     String adm_bookingFields_btn_delete();
 
-    @Message("Answers are stored as plain text and shown to you and anyone with access to this site's database. "
+    @Message(
+            "Answers are stored as plain text and shown to you and anyone with access to this site's database. "
             + "Don't ask for health, biometric, religious, political or other sensitive details unless you have a "
-            + "lawful basis for holding them.")
+            + "lawful basis for holding them."
+    )
     String adm_fields_sensitive_warning();
 
     @Message("Add a field")
@@ -861,12 +897,16 @@ public interface AdminMessages {
     @Message("Delete booking details after (days)")
     String adm_settings_label_retention();
 
-    @Message("Leave blank to use the site default of {days} days. Invitee name, email and answers are "
-            + "removed; the time slot record stays.")
+    @Message(
+            "Leave blank to use the site default of {days} days. Invitee name, email and answers are "
+            + "removed; the time slot record stays."
+    )
     String adm_settings_retention_hint_with_default(int days);
 
-    @Message("Leave blank to keep bookings indefinitely. Invitee name, email and answers are removed; "
-            + "the time slot record stays.")
+    @Message(
+            "Leave blank to keep bookings indefinitely. Invitee name, email and answers are removed; "
+            + "the time slot record stays."
+    )
     String adm_settings_retention_hint_forever();
 
     @Message("Save")
@@ -945,8 +985,10 @@ public interface AdminMessages {
     @Message("Default")
     String adm_settings_channels_default_col();
 
-    @Message("Channels ticked below receive every booking. Untick one to keep it off by default, then"
-            + " enable it on the meeting types that should use it.")
+    @Message(
+            "Channels ticked below receive every booking. Untick one to keep it off by default, then"
+            + " enable it on the meeting types that should use it."
+    )
     String adm_settings_channels_hint();
 
     // ---- Owner data export (Task 8) ----
@@ -960,13 +1002,17 @@ public interface AdminMessages {
     @Message("Delete your account?")
     String adm_delete_account_title();
 
-    @Message("This permanently removes your account, your meeting types and availability, every booking "
+    @Message(
+            "This permanently removes your account, your meeting types and availability, every booking "
             + "on your calendar, your connected calendar accounts and your notification channels. "
-            + "It can't be undone.")
+            + "It can't be undone."
+    )
     String adm_delete_account_desc();
 
-    @Message("Deleting your account removes calit's copy of your Google tokens. Revoke calit's access "
-            + "in your Google account to withdraw the grant itself.")
+    @Message(
+            "Deleting your account removes calit's copy of your Google tokens. Revoke calit's access "
+            + "in your Google account to withdraw the grant itself."
+    )
     String adm_delete_account_google_note();
 
     @Message("Enter your password to confirm")
@@ -987,8 +1033,10 @@ public interface AdminMessages {
     @Message("You are the last enabled admin. Grant admin to another account first.")
     String adm_delete_account_error_last_admin();
 
-    @Message("Upcoming bookings on your meeting types are cancelled first, so invitees, guests and co-hosts "
-            + "get the usual cancellation email.")
+    @Message(
+            "Upcoming bookings on your meeting types are cancelled first, so invitees, guests and co-hosts "
+            + "get the usual cancellation email."
+    )
     String adm_delete_account_upcoming_note();
 
     // ---- Per-meeting-type channel routing ----
@@ -1023,15 +1071,19 @@ public interface AdminMessages {
     @Message("Calendars")
     String google_h1();
 
-    @Message("Connect Google or CalDAV accounts so calit can read your busy times and create events. Pick "
-            + "which calendars block availability, and one calendar to create booking events on.")
+    @Message(
+            "Connect Google or CalDAV accounts so calit can read your busy times and create events. Pick "
+            + "which calendars block availability, and one calendar to create booking events on."
+    )
     String google_hint();
 
     @Message("Connect a Google account")
     String google_btn_connect();
 
-    @Message("Couldn't reach the calendar server for one or more accounts. Reconnect the flagged account, then "
-            + "reload.")
+    @Message(
+            "Couldn't reach the calendar server for one or more accounts. Reconnect the flagged account, then "
+            + "reload."
+    )
     String google_load_error();
 
     @Message("No calendar accounts connected yet.")
@@ -1076,8 +1128,10 @@ public interface AdminMessages {
     @Message("CalDAV")
     String calendars_badge_caldav();
 
-    @Message("No calendar is selected for writing. Bookings are not added to any calendar; each booking "
-            + "arrives by email as an .ics file you can add to whichever calendar you like.")
+    @Message(
+            "No calendar is selected for writing. Bookings are not added to any calendar; each booking "
+            + "arrives by email as an .ics file you can add to whichever calendar you like."
+    )
     String calendars_no_write_target();
 
     @Message("That calendar's address is too long to store its events. Pick another calendar to write "
@@ -1087,8 +1141,10 @@ public interface AdminMessages {
     @Message("Connect a CalDAV calendar")
     String calendars_caldav_h2();
 
-    @Message("Nextcloud, Fastmail, iCloud, Radicale and other CalDAV servers. Use an app password where "
-            + "your provider offers one.")
+    @Message(
+            "Nextcloud, Fastmail, iCloud, Radicale and other CalDAV servers. Use an app password where "
+            + "your provider offers one."
+    )
     String calendars_caldav_hint();
 
     @Message("Server URL")
@@ -1206,13 +1262,17 @@ public interface AdminMessages {
     @Message("Delete this account?")
     String adm_users_delete_title();
 
-    @Message("This permanently removes the account {username}: its meeting types and availability, every "
+    @Message(
+            "This permanently removes the account {username}: its meeting types and availability, every "
             + "booking on its calendar, its connected calendar accounts and its notification channels. "
-            + "It can't be undone.")
+            + "It can't be undone."
+    )
     String adm_users_delete_desc(String username);
 
-    @Message("Upcoming bookings on the account's meeting types are cancelled first, so invitees, guests and "
-            + "co-hosts get the usual cancellation email.")
+    @Message(
+            "Upcoming bookings on the account's meeting types are cancelled first, so invitees, guests and "
+            + "co-hosts get the usual cancellation email."
+    )
     String adm_users_delete_upcoming_note();
 
     @Message("Type the account's username to confirm")
