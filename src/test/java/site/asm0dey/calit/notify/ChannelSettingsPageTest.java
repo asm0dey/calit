@@ -12,6 +12,8 @@ import io.quarkus.test.security.TestSecurity;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import site.asm0dey.calit.test.MultiHostFixtures;
 
 /**
@@ -294,16 +296,19 @@ class ChannelSettingsPageTest {
 
     /**
      * A mask PARSES as a channel (notify4j's {@code tryParse("telegram://…")} yields a
-     * ParsedChannel), so without the marker guard a pasted mask would store a dead channel.
+     * ParsedChannel), so without the marker guard a pasted mask would store a dead channel. Each
+     * marker {@code AbstractHttpNotifier.redact} emits is its own case: the ellipsis in place of a
+     * credential, and the sentinels for a hostless and an absent URL.
      */
-    @Test
+    @ParameterizedTest
+    @ValueSource(strings = {"telegram://…", "<redacted>", "<none>"})
     @TestSecurity(user = "admin", roles = {"user"})
-    void aPastedMaskIsRejectedInANewRow() {
+    void aPastedMaskIsRejectedInANewRow(String mask) {
         given()
             .contentType("application/x-www-form-urlencoded")
             .formParam("channelId", "")
             .formParam("channelLabel", "")
-            .formParam("channelUrl", "telegram://…")
+            .formParam("channelUrl", mask)
             .when()
             .post("/me/settings/channels")
             .then()
