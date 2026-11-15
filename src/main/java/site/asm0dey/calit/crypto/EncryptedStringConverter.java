@@ -11,8 +11,12 @@ import jakarta.persistence.Converter;
  */
 @Converter(autoApply = false)
 public class EncryptedStringConverter implements AttributeConverter<String, String> {
+    private final TokenCipher cipher;
+
     @Inject
-    TokenCipher cipher;
+    public EncryptedStringConverter(TokenCipher cipher) {
+        this.cipher = cipher;
+    }
 
     @Override
     public String convertToDatabaseColumn(String attribute) {

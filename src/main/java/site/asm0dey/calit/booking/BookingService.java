@@ -35,8 +35,7 @@ import site.asm0dey.calit.user.LoginTicketService;
 @ApplicationScoped
 public class BookingService {
     // Collaborators + config are constructor-injected (immutable, fail-fast, plain-unit testable,
-    // consistent with the Plan 2 google package). The six CDI Event<> emitters below stay as @Inject
-    // fields: they are framework plumbing and would otherwise bloat the constructor to ten args.
+    // consistent with the Plan 2 google package), including the CDI Event<> emitters.
     private final SlotService slotService;
     private final CalendarPort calendarPort;
     private final CaptchaVerifier captchaVerifier;
@@ -55,7 +54,17 @@ public class BookingService {
             CaptchaVerifier captchaVerifier,
             MeetingHosts meetingHosts,
             WriteTargetResolver writeTargets,
-            @ConfigProperty(name = "calit.abuse.per-email-daily-cap", defaultValue = "10") long perEmailDailyCap
+            @ConfigProperty(name = "calit.abuse.per-email-daily-cap", defaultValue = "10") long perEmailDailyCap,
+            Event<BookingRequested> bookingRequestedEvent,
+            Event<BookingConfirmed> bookingConfirmedEvent,
+            Event<BookingApproved> bookingApprovedEvent,
+            Event<BookingDeclined> bookingDeclinedEvent,
+            Event<BookingRescheduled> bookingRescheduledEvent,
+            Event<BookingCancelled> bookingCancelledEvent,
+            Event<BookingSetCancelled> bookingSetCancelledEvent,
+            Event<GuestDeclined> guestDeclinedEvent,
+            Event<GuestRemoved> guestRemovedEvent,
+            Event<BookingDetailsChanged> bookingDetailsChangedEvent
     ) {
         this.slotService = slotService;
         this.calendarPort = calendarPort;
@@ -63,28 +72,28 @@ public class BookingService {
         this.meetingHosts = meetingHosts;
         this.writeTargets = writeTargets;
         this.perEmailDailyCap = perEmailDailyCap;
+        this.bookingRequestedEvent = bookingRequestedEvent;
+        this.bookingConfirmedEvent = bookingConfirmedEvent;
+        this.bookingApprovedEvent = bookingApprovedEvent;
+        this.bookingDeclinedEvent = bookingDeclinedEvent;
+        this.bookingRescheduledEvent = bookingRescheduledEvent;
+        this.bookingCancelledEvent = bookingCancelledEvent;
+        this.bookingSetCancelledEvent = bookingSetCancelledEvent;
+        this.guestDeclinedEvent = guestDeclinedEvent;
+        this.guestRemovedEvent = guestRemovedEvent;
+        this.bookingDetailsChangedEvent = bookingDetailsChangedEvent;
     }
 
-    @Inject
-    Event<BookingRequested> bookingRequestedEvent;
-    @Inject
-    Event<BookingConfirmed> bookingConfirmedEvent;
-    @Inject
-    Event<BookingApproved> bookingApprovedEvent;
-    @Inject
-    Event<BookingDeclined> bookingDeclinedEvent;
-    @Inject
-    Event<BookingRescheduled> bookingRescheduledEvent;
-    @Inject
-    Event<BookingCancelled> bookingCancelledEvent;
-    @Inject
-    Event<BookingSetCancelled> bookingSetCancelledEvent;
-    @Inject
-    Event<GuestDeclined> guestDeclinedEvent;
-    @Inject
-    Event<GuestRemoved> guestRemovedEvent;
-    @Inject
-    Event<BookingDetailsChanged> bookingDetailsChangedEvent;
+    private final Event<BookingRequested> bookingRequestedEvent;
+    private final Event<BookingConfirmed> bookingConfirmedEvent;
+    private final Event<BookingApproved> bookingApprovedEvent;
+    private final Event<BookingDeclined> bookingDeclinedEvent;
+    private final Event<BookingRescheduled> bookingRescheduledEvent;
+    private final Event<BookingCancelled> bookingCancelledEvent;
+    private final Event<BookingSetCancelled> bookingSetCancelledEvent;
+    private final Event<GuestDeclined> guestDeclinedEvent;
+    private final Event<GuestRemoved> guestRemovedEvent;
+    private final Event<BookingDetailsChanged> bookingDetailsChangedEvent;
 
     public List<TimeSlot> availableSlots(MeetingType type, LocalDate from, LocalDate to) {
         return availableSlots(type, from, to, (Long) null);

@@ -20,12 +20,12 @@ import site.asm0dey.calit.user.AppUser;
 public class MeetingHosts {
     public static final int MAX_HOSTS = 10;
     private final CalendarPort calendarPort;
-    @Inject
-    Event<HostConsentRequested> consentEvent;
+    private final Event<HostConsentRequested> consentEvent;
 
     @Inject
-    public MeetingHosts(CalendarPort calendarPort) {
+    public MeetingHosts(CalendarPort calendarPort, Event<HostConsentRequested> consentEvent) {
         this.calendarPort = calendarPort;
+        this.consentEvent = consentEvent;
     }
 
     /**

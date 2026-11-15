@@ -3,6 +3,7 @@ package site.asm0dey.calit.web;
 import module java.base;
 import io.quarkus.vertx.web.RouteFilter;
 import io.vertx.ext.web.RoutingContext;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
@@ -40,8 +41,14 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 public class CardCsrfCookieFilter {
     private static final Pattern CARD_PATH =
             Pattern.compile("^/og\\.png$|^/og/[^/]+\\.png$|^/og/[^/]+/[^/]+\\." + "png$");
-    @ConfigProperty(name = "quarkus.rest-csrf.cookie-name", defaultValue = "csrf-token")
-    String csrfCookieName;
+    private final String csrfCookieName;
+
+    @Inject
+    public CardCsrfCookieFilter(
+            @ConfigProperty(name = "quarkus.rest-csrf.cookie-name", defaultValue = "csrf-token") String csrfCookieName
+    ) {
+        this.csrfCookieName = csrfCookieName;
+    }
 
     @RouteFilter
     void stripCsrfCookieOnCardResponses(RoutingContext rc) {
