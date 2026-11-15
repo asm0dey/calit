@@ -77,7 +77,7 @@ public final class SetDecisions {
             .forEach(r -> r.status = BookingStatus.DECLINED);
     }
 
-    static Stream<Booking> rowsOfBooking(List<Booking> setRows, Booking b) {
+    private static Stream<Booking> rowsOfBooking(List<Booking> setRows, Booking b) {
         return b.groupId == null ? Stream.of(b) : setRows.stream().filter(r -> b.groupId.equals(r.groupId));
     }
 }

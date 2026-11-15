@@ -73,6 +73,18 @@ class SetDecisionsTest {
     }
 
     @Test
+    void approveHostRowsLeavesTheHostsNonPendingRowsAlone() {
+        var rows = List.of(row(1, 1, null, PENDING), row(2, 1, null, CANCELLED), row(3, 1, null, CONFIRMED));
+        var undecided = SetDecisions.undecidedOfSet(rows, 1L);
+
+        SetDecisions.approveHostRows(rows, 1L, undecided);
+
+        assertThat(rows)
+            .extracting(b -> b.id, b -> b.status)
+            .containsExactly(tuple(1L, CONFIRMED), tuple(2L, CANCELLED), tuple(3L, CONFIRMED));
+    }
+
+    @Test
     void coHostedBookingStaysUndecidedUntilEveryHostApproves() {
         var rows = List.of(row(1, 1, null, PENDING), row(3, 1, G, PENDING), row(4, 2, G, PENDING));
         var undecided = SetDecisions.undecidedOfSet(rows, 1L);
