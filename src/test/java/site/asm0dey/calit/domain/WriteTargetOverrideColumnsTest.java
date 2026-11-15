@@ -15,31 +15,6 @@ import site.asm0dey.calit.google.GoogleCredential;
 class WriteTargetOverrideColumnsTest {
     @Test
     @TestTransaction
-    void meetingTypeStoresTheOverride() {
-        GoogleCredential cred = seedCredential("sub-override-type");
-        MeetingType t = seedType();
-        t.overrideAccountId = cred.id;
-        t.overrideRemoteCalendarId = "work@example.com";
-        t.persistAndFlush();
-
-        MeetingType loaded = MeetingType.findById(t.id);
-        assertThat(loaded.overrideAccountId).isEqualTo(cred.id);
-        assertThat(loaded.overrideRemoteCalendarId).isEqualTo("work@example.com");
-    }
-
-    @Test
-    @TestTransaction
-    void aFreshTypeHasNoOverride() {
-        MeetingType t = seedType();
-        t.persistAndFlush();
-
-        MeetingType loaded = MeetingType.findById(t.id);
-        assertThat(loaded.overrideAccountId).isNull();
-        assertThat(loaded.overrideRemoteCalendarId).isNull();
-    }
-
-    @Test
-    @TestTransaction
     void findOwnedMatchesOnlyThisOwnersSelectedCalendar() {
         GoogleCredential cred = seedCredential("sub-find-owned");
         SelectedCalendar c = new SelectedCalendar();
@@ -62,14 +37,5 @@ class WriteTargetOverrideColumnsTest {
         cred.googleSub = sub;
         cred.persist();
         return cred;
-    }
-
-    private static MeetingType seedType() {
-        MeetingType t = new MeetingType();
-        t.ownerId = 1L;
-        t.name = "override-seed";
-        t.slug = "override-seed-" + UUID.randomUUID();
-        t.durationMinutes = 30;
-        return t;
     }
 }

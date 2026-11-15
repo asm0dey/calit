@@ -10,22 +10,10 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class DeletedApiResourcesGoneTest {
     @Test
-    void meetingTypesCrudGone() {
+    void unauthenticatedCrudResourcesAreGone() {
         given().when().get("/api/meeting-types").then().statusCode(404);
-    }
-
-    @Test
-    void settingsCrudGone() {
         given().contentType("application/json").body("{}").when().put("/api/settings").then().statusCode(404);
-    }
-
-    @Test
-    void availabilityCrudGone() {
         given().contentType("application/json").body("{}").when().post("/api/availability").then().statusCode(404);
-    }
-
-    @Test
-    void bookingFieldsCrudGone() {
         given().contentType("application/json").body("{}").when().post("/api/booking-fields").then().statusCode(404);
     }
 }

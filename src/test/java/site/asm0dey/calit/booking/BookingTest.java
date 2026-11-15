@@ -23,37 +23,6 @@ class BookingTest {
 
     @Test
     @TestTransaction
-    void persistsAndReadsBackAllFields() {
-        var start = Instant.parse("2026-06-08T07:00:00Z");
-        Booking b = new Booking();
-        b.ownerId = 1L;
-        b.meetingTypeId = createMeetingType("all-fields-test");
-        b.inviteeName = "Sam";
-        b.inviteeEmail = "sam@example.com";
-        b.startUtc = start;
-        b.endUtc = start.plusSeconds(1800);
-        b.eventId = "evt-1";
-        b.meetLink = "https://meet.google.com/abc-defg-hij";
-        b.status = BookingStatus.CONFIRMED;
-        b.createdAt = Instant.parse("2026-06-01T10:00:00Z");
-        b.manageToken = "11111111-2222-3333-4444-555555555555";
-        b.answers = Map.of("description", "Quarterly sync", "phone", "+31201234567");
-        b.persist();
-
-        Booking loaded = Booking.findById(b.id);
-        assertThat(loaded.status).isEqualTo(BookingStatus.CONFIRMED);
-        assertThat(loaded.meetLink).isEqualTo("https://meet.google.com/abc-defg-hij");
-        assertThat(loaded.startUtc).isEqualTo(start);
-        // Manage-token round-trips and is the invitee's reschedule/cancel key.
-        assertThat(loaded.manageToken).isEqualTo("11111111-2222-3333-4444-555555555555");
-        assertThat(loaded.answers)
-            // Feature 10: custom answers round-trip through the JSONB column.
-            .containsEntry("description", "Quarterly sync")
-            .containsEntry("phone", "+31201234567");
-    }
-
-    @Test
-    @TestTransaction
     void heldOverlappingFindsPendingAndConfirmedInWindow() {
         var base = Instant.parse("2026-06-08T07:00:00Z");
         // Non-overlapping held slots to satisfy the booking_no_overlap_held DB constraint

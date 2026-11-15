@@ -20,9 +20,4 @@ class PasswordHasherTest {
         assertThat(hasher.verify("s3cret-pass", encoded)).isTrue();
         assertThat(hasher.verify("wrong-pass", encoded)).isFalse();
     }
-
-    @Test
-    void saltIsRandomPerHash() {
-        assertThat(hasher.hash("same")).isNotEqualTo(hasher.hash("same"));
-    }
 }

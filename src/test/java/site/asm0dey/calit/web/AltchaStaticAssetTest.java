@@ -11,16 +11,6 @@ class AltchaStaticAssetTest {
     // Proves the mvnpm jar is on the classpath AND quarkus-web-dependency-locator
     // serves it at the version-less /_static/... path. Guards the i18n build — the exact
     // bundle book.html loads — so a future mvnpm bump that drops/renames it fails here.
-    @Test
-    void altchaWidgetScriptIsServedVersionless() {
-        given()
-            .when()
-            .get("/webjars/altcha/dist/main/altcha.i18n.min.js")
-            .then()
-            .statusCode(200)
-            .body(containsString("altcha"));
-    }
-
     // Widget 3.4.0 shipped a v1-challenge detector that is always false, so the v1 challenges
     // AltchaResource mints were rejected with "Challenge validation failed." and nobody could book.
     @Test
@@ -30,6 +20,7 @@ class AltchaStaticAssetTest {
             .get("/webjars/altcha/dist/main/altcha.i18n.min.js")
             .then()
             .statusCode(200)
+            .body(containsString("altcha"))
             .body(not(containsString("typeof!!e&&\"object\"===e")));
     }
 }
