@@ -76,6 +76,19 @@ public class PublicResource {
 
         public static native TemplateInstance inviteInvalid(String title);
 
+        public static native TemplateInstance setConfirmation(
+                String title,
+                List<SetRow> rows,
+                MeetingType type,
+                String meetingName,
+                String ownerName,
+                boolean pending,
+                String tzBar,
+                String tzScript,
+                boolean mailUndelivered,
+                boolean googleConnected
+        );
+
         public static native TemplateInstance confirmation(
                 String title,
                 Booking booking,
@@ -264,6 +277,7 @@ public class PublicResource {
      * Step 1 of a multi-slot meeting type (null when multi-slot is off). {@code blockedBySlot} is keyed by
      * {@link SlotView#startUtc()} at the rendered duration; {@code rows} are the picks as the rail lists them;
      * {@code statusByCount} / {@code continueByCount} hold the rail sentence and button label for 0..max picks.
+     * {@code details} renders step 2 (the details form) instead of the slot grid.
      */
     public record SetPicker(
             int min,
@@ -277,7 +291,8 @@ public class PublicResource {
             List<String> continueByCount,
             String lengthsLine,
             String rulesLine,
-            boolean sameDay
+            boolean sameDay,
+            boolean details
     ) {
         public boolean checked(String startUtc, int minutes) {
             return picks
@@ -428,7 +443,16 @@ public class PublicResource {
         AppUser owner = resolveOwner(user);
         if (hasInvite(uriInfo)) {
             var q = uriInfo.getQueryParameters();
-            return invitePage(user, owner, q.getFirst(INVITE_PARAM), duration, q.get("pick"), q.getFirst("remove"), m);
+            return invitePage(
+                    user,
+                    owner,
+                    q.getFirst(INVITE_PARAM),
+                    duration,
+                    q.get("pick"),
+                    q.getFirst("remove"),
+                    q.getFirst("step"),
+                    m
+            );
         }
         OwnerSettings settings = OwnerSettings.forOwner(owner.id);
         if (settings == null) {
@@ -475,7 +499,8 @@ public class PublicResource {
             @PathParam("slug") String slug,
             @RestQuery String duration,
             @RestQuery List<String> pick,
-            @RestQuery String remove
+            @RestQuery String remove,
+            @RestQuery String step
     ) {
         var m = messages.forLocale(activeLocale.current());
         BookingTarget target = resolveBookingTarget(user, slug, m);
@@ -492,7 +517,8 @@ public class PublicResource {
                 new BookLinks(base, base + "?duration=", null),
                 ogCards.meetingType(user, type, target.settings().ownerName),
                 pick,
-                remove
+                remove,
+                step
         );
     }
 
@@ -511,6 +537,7 @@ public class PublicResource {
             String duration,
             List<String> pick,
             String remove,
+            String step,
             AppMessages m
     ) {
         var found = invites.find(owner.id, invite, Instant.now());
@@ -529,7 +556,8 @@ public class PublicResource {
                 inviteLinks(owner.username, invite),
                 null,
                 pick,
-                remove
+                remove,
+                step
         );
     }
 
@@ -550,6 +578,8 @@ public class PublicResource {
      * Slots for {@code durationChoice} plus the form furniture, rendered as the booking page.
      * Fail-closed: a calendar that can't be read gets the "unavailable" page instead of slots.
      */
+    // S107: step 1's query (picks, remove, step) rides alongside the page furniture.
+    @SuppressWarnings("java:S107")
     private TemplateInstance renderBook(
             AppMessages m,
             BookingTarget target,
@@ -557,8 +587,12 @@ public class PublicResource {
             BookLinks links,
             OgCard og,
             List<String> pick,
-            String remove
+            String remove,
+            String step
     ) {
+        if ("details".equals(step) && target.type().isMultiSlot()) {
+            return detailsStep(m, target, durationChoice, links, og, pick);
+        }
         List<DaySlots> byDate;
         try {
             byDate = daySlots(target.type(), durationChoice.chosen());
@@ -566,7 +600,141 @@ public class PublicResource {
             // Fail-closed: a busy calendar of the owner can't be read, so we cannot safely offer slots.
             return Templates.unavailable(m.pub_unavailable_title());
         }
-        return bookTemplate(m, target, durationChoice, byDate, null, links, og, pick, remove);
+        return bookTemplate(m, target, durationChoice, byDate, null, links, og, pick, remove, false);
+    }
+
+    /**
+     * {@code ?step=details}: step 2 when the picks make a bookable set, else step 1 again with the reason.
+     * Picks no longer offered (taken, or a length the type dropped) are removed and named.
+     */
+    private TemplateInstance detailsStep(
+            AppMessages m,
+            BookingTarget target,
+            DurationChoice durationChoice,
+            BookLinks links,
+            OgCard og,
+            List<String> pick
+    ) {
+        MeetingType type = target.type();
+        List<SlotPick> picks;
+        try {
+            picks = SlotPick.parseAll(pick);
+        } catch (BookingValidationException _) {
+            // Step 1 reports unreadable picks itself.
+            return renderBook(m, target, durationChoice, links, og, pick, null, null);
+        }
+        List<SlotPick> offered;
+        try {
+            offered = stillOffered(type, picks);
+        } catch (CalendarUnavailableException e) {
+            return Templates.unavailable(m.pub_unavailable_title());
+        }
+        if (offered.size() < picks.size()) {
+            return setStep(
+                    m,
+                    target,
+                    durationChoice,
+                    links,
+                    og,
+                    offered,
+                    droppedError(m, type, links, picks, offered),
+                    false
+            );
+        }
+        String invalid = setRuleError(m, type, picks);
+        return setStep(m, target, durationChoice, links, og, picks, invalid, invalid == null);
+    }
+
+    /**
+     * Step 1 ({@code details} false) or step 2 of a multi-slot type with these picks and an optional error.
+     */
+    // S107: the page furniture plus the picks, the error and the step.
+    @SuppressWarnings("java:S107")
+    private TemplateInstance setStep(
+            AppMessages m,
+            BookingTarget target,
+            DurationChoice durationChoice,
+            BookLinks links,
+            OgCard og,
+            List<SlotPick> picks,
+            String error,
+            boolean details
+    ) {
+        List<DaySlots> byDate;
+        try {
+            byDate = details ? List.of() : daySlots(target.type(), durationChoice.chosen());
+        } catch (CalendarUnavailableException e) {
+            return Templates.unavailable(m.pub_unavailable_title());
+        }
+        List<String> values = picks.stream().map(SlotPick::value).toList();
+        return bookTemplate(m, target, durationChoice, byDate, error, links, og, values, null, details);
+    }
+
+    /**
+     * The picks at a length the type offers whose start is still among that length's bookable slots.
+     */
+    private List<SlotPick> stillOffered(MeetingType type, List<SlotPick> picks) {
+        Map<Integer, Set<String>> starts = new HashMap<>();
+        return offeredLengths(type, picks)
+            .stream()
+            .filter(p -> starts
+                .computeIfAbsent(p.minutes(), d -> daySlots(type, d)
+                    .stream()
+                    .flatMap(day -> day.slots().stream())
+                    .map(SlotView::startUtc)
+                    .collect(Collectors.toSet()))
+                .contains(p.startUtc().toString()))
+            .toList();
+    }
+
+    private static List<SlotPick> offeredLengths(MeetingType type, List<SlotPick> picks) {
+        var allowed = MeetingTypeDuration.allowedDurations(type);
+        return picks
+            .stream()
+            .filter(p -> allowed.contains(p.minutes()))
+            .toList();
+    }
+
+    /**
+     * The alert naming the picks of {@code all} missing from {@code kept}. An invite's page keeps its
+     * generic wording (it never names the meeting type) and adds only the times.
+     */
+    private String droppedError(
+            AppMessages m,
+            MeetingType type,
+            BookLinks links,
+            List<SlotPick> all,
+            List<SlotPick> kept
+    ) {
+        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
+        String times =
+                all
+            .stream()
+            .filter(p -> !kept.contains(p))
+            .map(p -> pickLabel(p, zone))
+            .collect(Collectors.joining(", "));
+        return links.invite() != null ? m.pub_invite_slot_unavailable() + " " + times : m.pub_set_error_dropped(times);
+    }
+
+    /**
+     * Why these picks can't go to step 2, or null when they can.
+     */
+    private static String setRuleError(AppMessages m, MeetingType type, List<SlotPick> picks) {
+        int min = type.multiSlotMin == null ? 1 : type.multiSlotMin;
+        if (picks.size() < min) {
+            return m.pub_set_status_need(min);
+        }
+        try {
+            SetRules.validate(
+                    type,
+                    picks,
+                    MeetingTypeDuration.allowedDurations(type),
+                    ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone)
+            );
+            return null;
+        } catch (BookingValidationException e) {
+            return e.getMessage();
+        }
     }
 
     // S107: Qute @CheckedTemplate signatures pass one arg per template variable; param count is inherent.
@@ -580,7 +748,8 @@ public class PublicResource {
             BookLinks links,
             OgCard og,
             List<String> pick,
-            String remove
+            String remove,
+            boolean details
     ) {
         MeetingType type = target.type();
         SetPicker picker = null;
@@ -598,7 +767,7 @@ public class PublicResource {
                 picks = List.of();
                 error = m.pub_set_error_invalid();
             }
-            picker = setPicker(m, type, picks, durationChoice.chosen(), byDate);
+            picker = setPicker(m, type, picks, durationChoice.chosen(), byDate, details);
         }
         // Resolved EXTRA fields (per-type-else-global), already ordered by position.
         List<BookingField> fields = BookingField.formFor(type.ownerId, type.id);
@@ -629,7 +798,14 @@ public class PublicResource {
     /**
      * Step 1's view of the picks against the slots rendered at {@code chosen} minutes.
      */
-    private SetPicker setPicker(AppMessages m, MeetingType type, List<SlotPick> picks, int chosen, List<DaySlots> days) {
+    private SetPicker setPicker(
+            AppMessages m,
+            MeetingType type,
+            List<SlotPick> picks,
+            int chosen,
+            List<DaySlots> days,
+            boolean details
+    ) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         int min = type.multiSlotMin == null ? 1 : type.multiSlotMin;
         int max = type.multiSlotMax;
@@ -649,14 +825,12 @@ public class PublicResource {
             }
             reasons.put(day.isoDate(), dayBlocks);
         }
-        var dateFmt = DATE_FMT.withLocale(activeLocale.current());
         List<PickRow> rows = picks.stream().map(p -> {
             var start = p.startUtc().atZone(zone);
-            var label = start.format(dateFmt) + " · " + start.format(TIME_FMT);
             return new PickRow(
                     p.value(),
                     p.startUtc().toString(),
-                    label,
+                    pickLabel(p, zone),
                     p.minutes(),
                     !rendered.contains(p.value()),
                     start.toLocalDate().toString()
@@ -704,8 +878,17 @@ public class PublicResource {
                 labels,
                 lengths,
                 rules,
-                type.multiSlotSameDay
+                type.multiSlotSameDay,
+                details
         );
+    }
+
+    /**
+     * A pick as the rail and the error alerts name it, in the owner's zone.
+     */
+    private String pickLabel(SlotPick p, ZoneId zone) {
+        var start = p.startUtc().atZone(zone);
+        return start.format(DATE_FMT.withLocale(activeLocale.current())) + " · " + start.format(TIME_FMT);
     }
 
     private String turnstileSiteKey() {
@@ -957,6 +1140,24 @@ public class PublicResource {
             }
         }
 
+        List<String> rawPicks = form.get("pick");
+        if (type.isMultiSlot() && rawPicks != null && !rawPicks.isEmpty()) {
+            return submitSet(
+                    m,
+                    target,
+                    links,
+                    og,
+                    inviteToken,
+                    rawPicks,
+                    inviteeName,
+                    inviteeEmail,
+                    website,
+                    turnstileToken,
+                    altchaSolution,
+                    answers,
+                    parseGuests(form)
+            );
+        }
         Booking booking;
         try {
             // book(...) enforces required fields AND the abuse guards (Turnstile + honeypot +
@@ -996,10 +1197,128 @@ public class PublicResource {
                     links,
                     og,
                     List.of(),
-                    null
+                    null,
+                    false
             );
         }
         return confirmationPage(booking, type);
+    }
+
+    /**
+     * The set POST: books every pick, or bounces. A conflict goes back to step 1 with the picks still
+     * offered and the taken ones named; any other refusal goes back to step 2 with the same picks.
+     */
+    // S107: one param per booking input, as submit.
+    @SuppressWarnings("java:S107")
+    private TemplateInstance submitSet(
+            AppMessages m,
+            BookingTarget target,
+            BookLinks links,
+            OgCard og,
+            String inviteToken,
+            List<String> rawPicks,
+            String inviteeName,
+            String inviteeEmail,
+            String website,
+            String turnstileToken,
+            String altchaSolution,
+            Map<String, String> answers,
+            List<String> guests
+    ) {
+        MeetingType type = target.type();
+        var durationChoice = resolveDuration(type, null);
+        List<SlotPick> picks;
+        try {
+            picks = SlotPick.parseAll(rawPicks);
+        } catch (BookingValidationException _) {
+            return setStep(m, target, durationChoice, links, og, List.of(), m.pub_set_error_invalid(), false);
+        }
+        var offered = offeredLengths(type, picks);
+        if (offered.size() < picks.size()) {
+            return setStep(
+                    m,
+                    target,
+                    durationChoice,
+                    links,
+                    og,
+                    offered,
+                    droppedError(m, type, links, picks, offered),
+                    false
+            );
+        }
+        List<Booking> rows;
+        try {
+            rows = bookingService.bookSet(
+                    type.ownerId,
+                    type.slug,
+                    picks,
+                    inviteeName,
+                    inviteeEmail,
+                    answers,
+                    turnstileToken,
+                    altchaSolution,
+                    website,
+                    activeLocale.current().getLanguage(),
+                    guests,
+                    inviteToken
+            );
+        } catch (BookingConflictException e) {
+            List<SlotPick> kept;
+            try {
+                kept = stillOffered(type, picks);
+            } catch (CalendarUnavailableException _) {
+                return Templates.unavailable(m.pub_unavailable_title());
+            }
+            String error = kept.size() < picks.size()
+                    ? droppedError(m, type, links, picks, kept)
+                    : inviteToken != null ? m.pub_invite_slot_unavailable() : e.getMessage();
+            return setStep(m, target, durationChoice, links, og, kept, error, false);
+        } catch (BookingValidationException | AbuseException | RateLimitException e) {
+            return setStep(m, target, durationChoice, links, og, picks, e.getMessage(), true);
+        }
+        return rows.size() == 1 ? confirmationPage(rows.getFirst(), type) : setConfirmationPage(rows, type);
+    }
+
+    /**
+     * One row of the set confirmation: the Booking with its owner-zone fallback labels.
+     */
+    public record SetRow(Booking booking, String startLabel, String endLabel, int minutes) {}
+
+    /**
+     * The confirmation/request-sent page for a freshly booked set, one row per Booking.
+     */
+    private TemplateInstance setConfirmationPage(List<Booking> rows, MeetingType type) {
+        var m = messages.forLocale(activeLocale.current());
+        OwnerSettings settings = OwnerSettings.forOwner(type.ownerId);
+        ZoneId zone = ZoneId.of(settings.timezone);
+        var whenFmt = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm", activeLocale.current());
+        Booking first = rows.getFirst();
+        var pending = first.status == BookingStatus.PENDING;
+        List<SetRow> view = rows
+            .stream()
+            .map(b -> new SetRow(
+                    b,
+                    b.startUtc.atZone(zone).format(whenFmt),
+                    b.endUtc.atZone(zone).format(TIME_FMT),
+                    BookingService.lengthOf(b)
+            ))
+            .toList();
+        // Same offer rule as the single page: no .ics when Google owns the Mirror events.
+        boolean googleMirror = first.eventId != null
+                && calendarPort.isConnected(type.ownerId)
+                && MirrorProvider.of(type.ownerId, first.calendarRef()) == CalendarProvider.GOOGLE;
+        return Templates.setConfirmation(
+                pending ? m.pub_conf_title_pending() : m.pub_conf_title_confirmed(),
+                view,
+                type,
+                first.effectiveTitle(type),
+                settings.ownerName,
+                pending,
+                Layout.tzBar(m),
+                Layout.TZ_SCRIPT,
+                mailHealth.undeliveredFor(first.inviteeEmail),
+                googleMirror
+        );
     }
 
     /**

@@ -413,6 +413,61 @@ public interface AppMessages {
     @Message("Book {count} sessions at once{#if differentDays}, on different days{/if}.")
     String pub_set_rules_exact(int count, boolean differentDays);
 
+    // ---- Booking page, multi-slot step 2 + set confirmation (book.html details, setConfirmation.html) ----
+    @Message("{#if count == 1}1 session{#else}{count} sessions{/if}")
+    String pub_set_sessions(int count);
+
+    @Message("You're booking")
+    String pub_set_booking_lead();
+
+    @Message("They're confirmed together — if one of them was just taken, none are booked and you pick again.")
+    String pub_set_booking_together();
+
+    @Message("‹ Change sessions")
+    String pub_set_btn_change();
+
+    @Message("{#if count == 1}Confirm 1 session{#else}Confirm {count} sessions{/if}")
+    String pub_set_btn_confirm(int count);
+
+    @Message("{#if count == 1}Request 1 session{#else}Request {count} sessions{/if}")
+    String pub_set_btn_request(int count);
+
+    @Message("No longer available: {times}. Your other picks are kept — please pick again.")
+    String pub_set_error_dropped(String times);
+
+    @Message("You're booked:")
+    String pub_set_conf_h1_confirmed();
+
+    @Message("Requested, pending approval:")
+    String pub_set_conf_h1_pending();
+
+    @Message("{meetingName} with {ownerName}. One email with all of them is on its way to {email}.")
+    String pub_set_conf_confirmed_desc(String meetingName, String ownerName, String email);
+
+    @Message(
+            "{meetingName} with {ownerName}. Your requested times are held while the owner reviews them. "
+            + "One email with all of them is on its way to {email}."
+    )
+    String pub_set_conf_pending_desc(String meetingName, String ownerName, String email);
+
+    @Message("{k} of {n}")
+    String pub_set_k_of_n(int k, int n);
+
+    @Message("Join Meet")
+    String pub_set_join_meet();
+
+    @Message("Reschedule")
+    String pub_set_reschedule();
+
+    @Message("Cancel")
+    String pub_set_cancel();
+
+    @Message("Each session has its own reschedule and cancel link — changing one leaves the others alone.")
+    String pub_set_conf_each();
+
+    @Message("Add all to calendar (.ics)")
+    String pub_set_conf_ics();
+
     // ---- Confirmation page (confirmation.html) ----
     @Message("Request sent")
     String pub_conf_title_pending();

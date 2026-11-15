@@ -1,0 +1,54 @@
+{@java.lang.String title}
+{@java.util.List<site.asm0dey.calit.web.PublicResource$SetRow> rows}
+{@site.asm0dey.calit.domain.MeetingType type}
+{@java.lang.String meetingName}
+{@java.lang.String ownerName}
+{@java.lang.Boolean pending}
+{@java.lang.String tzBar}
+{@java.lang.String tzScript}
+{@java.lang.Boolean mailUndelivered}
+{@java.lang.Boolean googleConnected}
+{#include base title=title}
+  <div class="card bg-base-100 border border-base-300 shadow-sm max-w-2xl mx-auto">
+    <div class="card-body">
+      <span class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-success text-success-content mb-2">
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+      </span>
+      {#let first=rows.get(0).booking}
+      <h1 class="text-2xl font-bold">{#if pending}{msg:pub_set_conf_h1_pending}{#else}{msg:pub_set_conf_h1_confirmed}{/if} <span>{msg:pub_set_sessions(rows.size)}</span></h1>
+      {#if mailUndelivered}
+      <p class="alert alert-warning" data-mail-undelivered>{msg:pub_conf_email_failed(first.inviteeEmail)}</p>
+      {#else}
+      <p class="text-base-content/70">{#if pending}{msg:pub_set_conf_pending_desc(meetingName, ownerName, first.inviteeEmail)}{#else}{msg:pub_set_conf_confirmed_desc(meetingName, ownerName, first.inviteeEmail)}{/if}</p>
+      {/if}
+      {#if !pending && type.locationType.name != 'GOOGLE_MEET' && type.locationDetail}
+      <p><strong>{msg:pub_conf_location_label}</strong> {type.locationDetail}</p>
+      {/if}
+      {tzBar.raw}
+      <ol class="mt-4 divide-y divide-base-300 border border-base-300 rounded-box">
+        {#for r in rows}
+        <li class="flex flex-wrap items-center gap-x-4 gap-y-1 p-3">
+          <span class="badge badge-sm">{msg:pub_set_k_of_n(r_count, rows.size)}</span>
+          <span class="font-semibold"><time data-utc="{r.booking.startUtc}">{r.startLabel}</time>–<time data-utc="{r.booking.endUtc}" data-time-only="1">{r.endLabel}</time></span>
+          <span>{r.minutes} {msg:pub_book_minutes_short}</span>
+          <span class="ms-auto flex gap-3 text-sm">
+            {#if !pending && r.booking.meetLink}<a class="link" href="{r.booking.meetLink}">{msg:pub_set_join_meet}</a>{/if}
+            <a class="link" href="/booking/{r.booking.manageToken}/manage">{msg:pub_set_reschedule}</a>
+            <a class="link text-error" href="/booking/{r.booking.manageToken}/cancel">{msg:pub_set_cancel}</a>
+          </span>
+        </li>
+        {/for}
+      </ol>
+      <p class="text-sm text-base-content/70 mt-3">{msg:pub_set_conf_each}</p>
+      {! Same rule as confirmation.html: no .ics offer when Google owns the Mirror events. One file holds every session. !}
+      {#if !googleConnected}
+      <div class="divider my-2"></div>
+      <div class="flex flex-wrap items-center gap-3">
+        <a class="btn btn-outline btn-sm" href="/booking/{first.manageToken}/invite.ics">{msg:pub_set_conf_ics}</a>
+      </div>
+      {/if}
+      {/let}
+      {tzScript.raw}
+    </div>
+  </div>
+{/include}

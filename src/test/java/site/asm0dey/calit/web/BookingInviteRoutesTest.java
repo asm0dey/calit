@@ -143,6 +143,71 @@ class BookingInviteRoutesTest {
     }
 
     @Test
+    void inviteSetFlowHidesSlug() {
+        var typeId = seed(SLUG);
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = MeetingType.findById(typeId);
+            t.durationMinutes = 30;
+            t.multiSlotMin = 2;
+            t.multiSlotMax = 3;
+            t.multiSlotSameDay = true;
+        });
+        var token = invites.issue(1L, typeId, Instant.now());
+        var pick09 = SLOT_09 + "/30";
+        var pick10 = SLOT_10 + "/30";
+
+        given()
+            .when()
+            .get("/admin?invite=" + token + "&pick=" + pick09 + "&pick=" + pick10 + "&step=details")
+            .then()
+            .statusCode(200)
+            .body(containsString("action=\"/admin?invite=" + token + "\""))
+            .body(containsString("<input type=\"hidden\" name=\"invite\" value=\"" + token + "\">"))
+            .body(containsString("name=\"inviteeEmail\""))
+            .body(not(containsString(SLUG)));
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            var b = new Booking();
+            b.ownerId = 1L;
+            b.meetingTypeId = typeId;
+            b.inviteeName = "Other";
+            b.inviteeEmail = "other@x.com";
+            b.startUtc = SLOT_10;
+            b.endUtc = SLOT_10.plusSeconds(1800);
+            b.status = site.asm0dey.calit.booking.BookingStatus.CONFIRMED;
+            b.createdAt = Instant.now();
+            b.manageToken = UUID.randomUUID().toString();
+            b.persist();
+        });
+        setPost(token, pick09, pick10)
+            .then()
+            .statusCode(200)
+            .body(containsString("That time is no longer available. Please choose another."))
+            .body(containsString("<form method=\"get\" action=\"/admin\""))
+            .body(not(containsString(SLUG)));
+        assertThat(invites.find(1L, token, Instant.now())).isNotNull();
+
+        var pick1030 = SLOT_10.plusSeconds(1800) + "/30";
+        setPost(token, pick09, pick1030)
+            .then()
+            .statusCode(200)
+            .body(containsString("2 of 2"))
+            .body(containsString("/invite.ics"))
+            .body(not(containsString(SLUG)));
+        assertThat(invites.find(1L, token, Instant.now())).isNull();
+    }
+
+    private static io.restassured.response.Response setPost(String token, String... picks) {
+        return given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("pick", (Object[]) picks)
+            .formParam("inviteeName", "Sam Invitee")
+            .formParam("inviteeEmail", "sam@example.com")
+            .when()
+            .post("/admin?invite=" + token);
+    }
+
+    @Test
     void usedInviteShowsInvalidPage() {
         var token = invites.issue(1L, seed(SLUG), Instant.now());
         post(token, SLOT_09).then().statusCode(200);

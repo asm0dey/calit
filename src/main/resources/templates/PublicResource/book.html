@@ -79,7 +79,36 @@
           {/if}
         </div>
 
-        {#if picker}
+        {#if picker && picker.details}
+        <div>
+          <ul class="steps steps-horizontal w-full mb-5 text-sm">
+            <li class="step step-primary"><button type="submit" form="set-form" class="link">{msg:pub_set_step_pick}</button></li>
+            <li class="step step-primary">{msg:pub_set_step_details}</li>
+          </ul>
+          {#if error}<div role="alert" class="alert alert-error mb-4">{error}</div>{/if}
+          <div class="alert alert-info alert-soft mb-4 text-sm">
+            <span>{msg:pub_set_booking_lead} <strong>{msg:pub_set_sessions(picker.picks.size)}</strong>. {msg:pub_set_booking_together}</span>
+          </div>
+          {! "Change sessions", "Pick sessions" and the rail's ✕ submit this back to step 1 with every pick. !}
+          <form method="get" action="{links.pickAction}" id="set-form">
+            {#if links.invite}<input type="hidden" name="invite" value="{links.invite}">{/if}
+            {#for p in picker.rows}<input type="hidden" name="pick" value="{p.value}" data-date="{p.isoDate}">{/for}
+            <input type="hidden" name="duration" value="{duration.chosen}">
+          </form>
+          <form method="post" action="{links.action}" class="max-w-md">
+            <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+            {#for p in picker.rows}
+            <input type="hidden" name="pick" value="{p.value}">
+            {/for}
+{#include PublicResource/_bookfields /}
+            <div class="flex gap-3 mt-6">
+              <button type="submit" form="set-form" class="btn btn-ghost">{msg:pub_set_btn_change}</button>
+              <button type="submit" class="btn btn-primary flex-1">{#if type.requiresApproval}{msg:pub_set_btn_request(picker.picks.size)}{#else}{msg:pub_set_btn_confirm(picker.picks.size)}{/if}</button>
+            </div>
+          </form>
+          {chrome.tzScript.raw}
+        </div>
+        {#else if picker}
         <div>
           <ul class="steps steps-horizontal w-full mb-5 text-sm">
             <li class="step step-primary">{msg:pub_set_step_pick}</li>
@@ -237,40 +266,7 @@
                 </div>
               </div>
 
-              <fieldset class="fieldset">
-                {#if type.nameMode.name != 'HIDDEN'}
-                <label class="label" for="inviteeName">{msg:pub_book_your_name}</label>
-                <input id="inviteeName" class="input w-full" type="text" name="inviteeName"{#if type.nameMode.name == 'REQUIRED'} required{/if}>
-                {/if}
-                <label class="label" for="inviteeEmail">{msg:pub_book_your_email}</label>
-                <input id="inviteeEmail" class="input w-full" type="email" name="inviteeEmail" required>
-                {#if !type.hidesGuests}
-                {#include PublicResource/_guestschips initial=initialGuests /}
-                {/if}
-                {#for f in fields}
-                  <label class="label" for="f-{f.fieldKey}">{f.label}</label>
-                  {#if f.type.name == 'LONG_TEXT'}
-                    <textarea id="f-{f.fieldKey}" class="textarea w-full" name="answers.{f.fieldKey}" {#if f.required}required{/if}></textarea>
-                  {#else if f.type.name == 'EMAIL'}
-                    <input id="f-{f.fieldKey}" class="input w-full" type="email" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
-                  {#else if f.type.name == 'PHONE'}
-                    <input id="f-{f.fieldKey}" class="input w-full" type="tel" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
-                  {#else if f.type.name == 'NUMBER'}
-                    <input id="f-{f.fieldKey}" class="input w-full" type="number" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
-                  {#else}
-                    <input id="f-{f.fieldKey}" class="input w-full" type="text" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
-                  {/if}
-                {/for}
-              </fieldset>
-
-              {! Honeypot (always present + hidden). A non-empty `website` → rejected server-side. !}
-              <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off">
-
-              {#if captcha.provider == 'turnstile'}
-              <div class="cf-turnstile" data-sitekey="{captcha.siteKey}"></div>
-              {#else if captcha.provider == 'altcha'}
-              <altcha-widget challenge="/altcha/challenge" name="altcha" type="native" display="floating"></altcha-widget>
-              {/if}
+{#include PublicResource/_bookfields /}
 
               {#if type.requiresApproval}
                 <button type="submit" class="btn btn-primary btn-block">{msg:pub_book_btn_request}</button>
