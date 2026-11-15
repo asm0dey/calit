@@ -87,6 +87,19 @@ public class MeetingType extends PanacheEntityBase {
     @Enumerated(EnumType.STRING)
     @Column(name = "guests_mode", nullable = false, length = 16)
     public FieldMode guestsMode = FieldMode.OPTIONAL;
+    /**
+     * Multi-slot booking: how many slots an invitee may pick in one booking (both null = off).
+     */
+    @Column(name = "multi_slot_min")
+    public Integer multiSlotMin;
+    @Column(name = "multi_slot_max")
+    public Integer multiSlotMax;
+    @Column(name = "multi_slot_same_day", nullable = false)
+    public boolean multiSlotSameDay = false;
+
+    public boolean isMultiSlot() {
+        return multiSlotMax != null && multiSlotMax > 1;
+    }
 
     public boolean hidesGuests() {
         return guestsMode == FieldMode.HIDDEN;

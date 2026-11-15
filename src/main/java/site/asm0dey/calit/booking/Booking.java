@@ -113,6 +113,11 @@ public class Booking extends PanacheEntityBase {
      */
     @Column(name = "group_id")
     public UUID groupId;
+    /**
+     * Multi-slot booking: all rows of one booking set (every slot, every host) share this id; null otherwise.
+     */
+    @Column(name = "set_id")
+    public UUID setId;
 
     /**
      * This owner's HELD (PENDING or CONFIRMED) bookings whose [startUtc, endUtc) overlaps the
@@ -212,29 +217,41 @@ public class Booking extends PanacheEntityBase {
     }
 
     /**
-     * Counts one per conceptual booking: standalone rows + distinct group_id.
+     * Multi-slot: all rows sharing this set_id, in time order.
+     */
+    public static List<Booking> set(UUID setId) {
+        return list("setId = ?1 order by startUtc, id", setId);
+    }
+
+    /**
+     * The creator's earliest row in a set (the invitee-facing lead).
+     */
+    public static Booking leadOfSet(UUID setId, Long creatorOwnerId) {
+        return find("setId = ?1 and ownerId = ?2 order by startUtc, id", setId, creatorOwnerId).firstResult();
+    }
+
+    /**
+     * Counts one per conceptual booking: standalone rows + distinct group_id (outside sets) + distinct set_id.
      */
     public static long countDistinctBookingsByEmailBetween(String email, Instant dayStart, Instant dayEnd) {
-        Long singles = getEntityManager()
+        return countWhere(email, dayStart, dayEnd, "b.groupId is null and b.setId is null", "b")
+                + countWhere(email, dayStart, dayEnd, "b.groupId is not null and b.setId is null", "distinct b.groupId")
+                + countWhere(email, dayStart, dayEnd, "b.setId is not null", "distinct b.setId");
+    }
+
+    private static long countWhere(String email, Instant dayStart, Instant dayEnd, String where, String what) {
+        return getEntityManager()
             .createQuery(
-                    "select count(b) from Booking b where b.inviteeEmail = :e "
-                    + "and b.createdAt >= :s and b.createdAt < :d and b.groupId is null",
+                    "select count("
+                    + what
+                    + ") from Booking b where b.inviteeEmail = :e "
+                    + "and b.createdAt >= :s and b.createdAt < :d and "
+                    + where,
                     Long.class
             )
             .setParameter("e", email)
             .setParameter("s", dayStart)
             .setParameter("d", dayEnd)
             .getSingleResult();
-        Long groups = getEntityManager()
-            .createQuery(
-                    "select count(distinct b.groupId) from Booking b where b.inviteeEmail = :e "
-                    + "and b.createdAt >= :s and b.createdAt < :d and b.groupId is not null",
-                    Long.class
-            )
-            .setParameter("e", email)
-            .setParameter("s", dayStart)
-            .setParameter("d", dayEnd)
-            .getSingleResult();
-        return singles + groups;
     }
 }
