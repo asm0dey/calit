@@ -135,9 +135,13 @@ A meeting type can let one invitee book several sessions in a single visit — a
 
 The most a booking can hold is 5. The **Allow more than one session on the same day** toggle is off by default, so by default two picks cannot share a day.
 
+![The Several sessions per booking settings on a meeting type](/calit/img/multi-session-settings.png)
+
 ### What the invitee sees
 
 The booking page first lets the invitee tick the sessions they want, with a "Your sessions" box that counts picks against the maximum. Times that would break a rule (same day, overlap, over the maximum) are shown disabled. If the type offers [several lengths](#allowed-durations), each session can have its own. Only then does the page ask for name, email and answers — once, for the whole set. Without JavaScript the same steps work as plain page loads.
+
+![Picking sessions: two picked at different lengths, the rest of the day disabled](/calit/img/multi-session-picker.png)
 
 ### One set, booked together
 
@@ -146,9 +150,13 @@ The booking page first lets the invitee tick the sessions they want, with a "You
 - It works with co-hosts — every session must be free for every host — and with [single-use invites](#single-use-invites); the invite page never reveals the meeting type's URL.
 - The invitee gets one confirmation email for the whole set. When calit sends the calendar file, it is one file holding every session; when the events are on Google, Google sends its own invitation for each session instead.
 
+![The confirmation page for a booking of two sessions](/calit/img/multi-session-confirmation.png)
+
 ### Managing a set
 
 Each session is still a normal booking with its own manage link, so it can be rescheduled or cancelled on its own. The manage page lists the other sessions of the set and offers **Cancel all** for those still held. Your bookings dashboard labels each one "k of N".
+
+![The other sessions of the set, listed on a session's manage page](/calit/img/multi-session-manage.png)
 
 :::note[Upgrade]
 Migration `V40` adds nullable or defaulted columns and an index. Nothing to do on upgrade.
