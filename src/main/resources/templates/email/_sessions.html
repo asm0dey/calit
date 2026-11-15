@@ -1,0 +1,8 @@
+{@java.util.List<site.asm0dey.calit.email.EmailService$SessionLine> sessions}
+{#if sessions??}
+<ul>
+  {#for line in sessions}
+  <li>{msg:email_body_session_line(line.index, line.of, line.when, line.minutes)}</li>
+  {/for}
+</ul>
+{/if}

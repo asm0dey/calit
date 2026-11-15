@@ -10,7 +10,8 @@ import site.asm0dey.calit.domain.OwnerSettings;
  * Immutable bundle read once in one transaction, shared by {@link EmailService} and the outbound
  * notification path. {@code hostDeliveries} is empty for a single-host booking
  * ({@code booking.groupId == null}); for a group booking it holds one entry per accepted host
- * (their own {@link OwnerSettings} + their own row of the group).
+ * (their own {@link OwnerSettings} + their own row of the group). {@code setBookings} is empty unless the booking
+ * belongs to a Booking set; then it holds the set's Invitee-facing row of every Booking, in time order.
  */
 public record BookingSnapshot(
         Booking booking,
@@ -20,5 +21,6 @@ public record BookingSnapshot(
         List<EmailService.AnswerLine> answers,
         List<HostDelivery> hostDeliveries,
         // provider of the Mirror event the booking has, or last had before calit removed it; null when it never had one
-        CalendarProvider mirror
+        CalendarProvider mirror,
+        List<Booking> setBookings
 ) {}

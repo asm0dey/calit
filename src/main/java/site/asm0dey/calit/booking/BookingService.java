@@ -1813,18 +1813,66 @@ public class BookingService {
         if (guest == null) {
             throw new NotFoundException("No guest for that token");
         }
+        Booking booking = Booking.findById(guest.bookingId);
+        if (booking != null && booking.setId != null) {
+            declineSetGuest(booking, guest);
+            return;
+        }
         if (guest.status == GuestStatus.DECLINED) {
             // idempotent: a second decline click is a no-op
             return;
         }
         guest.status = GuestStatus.DECLINED;
-        // Re-sync the Google attendee list (now excludes this guest, since activeForBooking returns only INVITED).
-        // Google emails the removed guest a cancellation via sendUpdates=all.
-        Booking booking = Booking.findById(guest.bookingId);
-        if (booking != null && calendarPort.isConnected(guest.ownerId) && booking.eventId != null) {
-            OwnerSettings owner = OwnerSettings.forOwner(guest.ownerId);
+        resyncGuests(booking, guest.ownerId);
+        guestDeclinedEvent.fire(new GuestDeclined(guest.bookingId, guest.id));
+    }
+
+    /**
+     * A set guest leaves every Booking of the set: under the set lock (same order as approve/decline), the address
+     * is declined on each Invitee-facing row, each Mirror event re-synced, and one {@code GuestDeclined} fires on
+     * the lead row's guest.
+     */
+    private void declineSetGuest(Booking booking, BookingGuest guest) {
+        var em = Booking.getEntityManager();
+        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+        Booking lead = Booking.leadOfSet(booking.setId, creatorOwnerId);
+        em.refresh(lead, LockModeType.PESSIMISTIC_WRITE);
+        BookingGuest leadGuest = null;
+        boolean changed = false;
+        for (Booking row : Booking.<Booking>set(booking.setId)) {
+            if (row.groupId != null && !row.ownerId.equals(creatorOwnerId)) {
+                continue;
+            }
+            BookingGuest g = BookingGuest.findInBooking(row.id, guest.email);
+            if (g == null) {
+                continue;
+            }
+            // re-read under the lock: a concurrent click may have declined it since this context loaded it
+            em.refresh(g);
+            if (row.id.equals(lead.id)) {
+                leadGuest = g;
+            }
+            if (g.status != GuestStatus.DECLINED) {
+                g.status = GuestStatus.DECLINED;
+                changed = true;
+                resyncGuests(row, g.ownerId);
+            }
+        }
+        if (changed) {
+            var notified = leadGuest != null ? leadGuest : guest;
+            guestDeclinedEvent.fire(new GuestDeclined(notified.bookingId, notified.id));
+        }
+    }
+
+    /**
+     * Re-syncs the Mirror event's attendee list (activeForBooking returns only INVITED guests); Google emails a removed
+     * guest a cancellation via sendUpdates=all.
+     */
+    private void resyncGuests(Booking booking, Long ownerId) {
+        if (booking != null && calendarPort.isConnected(ownerId) && booking.eventId != null) {
+            OwnerSettings owner = OwnerSettings.forOwner(ownerId);
             calendarPort.updateEvent(
-                    guest.ownerId,
+                    ownerId,
                     booking.calendarRef(),
                     booking.eventId,
                     booking.startUtc,
@@ -1832,6 +1880,5 @@ public class BookingService {
                     attendeeEmails(booking, owner)
             );
         }
-        guestDeclinedEvent.fire(new GuestDeclined(guest.bookingId, guest.id));
     }
 }

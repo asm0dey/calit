@@ -1,3 +1,4 @@
+{@java.util.List<site.asm0dey.calit.email.EmailService$SessionLine> sessions}
 {@java.lang.String recipientRole}
 {@java.lang.String lang}
 {@java.lang.String greetingName}
@@ -26,6 +27,7 @@
   <li><strong>{msg:email_body_duration_label}</strong> {msg:email_body_duration_minutes(durationMinutes)}</li>
   {#include email/_location /}
 </ul>
+{#include email/_sessions /}
 {#include email/_answers /}
 {#if recipientRole == 'owner'}{#include email/_ownerlinks /}{#else}{#include email/_inviteelinks /}{/if}
 {/include}

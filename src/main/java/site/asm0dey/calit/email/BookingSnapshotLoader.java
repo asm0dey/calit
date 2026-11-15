@@ -56,7 +56,15 @@ public class BookingSnapshotLoader {
         List<HostDelivery> hostDeliveries =
                 booking.groupId == null ? List.of() : loadHostDeliveries(booking.groupId, type);
         List<Booking> rows = booking.groupId == null ? List.of(booking) : Booking.group(booking.groupId);
-        return new BookingSnapshot(booking, type, owner, zone, answers, hostDeliveries, mirror(rows));
+        // one row per Booking: a single row, or the Creator's row of a co-hosted group
+        List<Booking> setBookings = booking.setId == null
+                ? List.of()
+                : Booking
+            .<Booking>set(booking.setId)
+            .stream()
+            .filter(r -> r.groupId == null || r.ownerId.equals(type.ownerId))
+            .toList();
+        return new BookingSnapshot(booking, type, owner, zone, answers, hostDeliveries, mirror(rows), setBookings);
     }
 
     /**

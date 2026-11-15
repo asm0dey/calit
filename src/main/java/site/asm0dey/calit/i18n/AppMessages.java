@@ -745,6 +745,12 @@ public interface AppMessages {
     @Message("{minutes} minutes")
     String email_body_duration_minutes(int minutes);
 
+    /**
+     * One Booking of a set in a set mail: its position, the set size, its start and its length.
+     */
+    @Message("{index} of {of} · {when} · {minutes} min")
+    String email_body_session_line(int index, int of, String when, int minutes);
+
     @Message("Google Meet:")
     String email_body_meet_label();
 

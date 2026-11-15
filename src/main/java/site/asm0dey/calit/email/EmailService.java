@@ -193,7 +193,8 @@ public class EmailService {
                 String cancelUrl,
                 String approveUrl,
                 String declineUrl,
-                List<AnswerLine> answers
+                List<AnswerLine> answers,
+                List<SessionLine> sessions
         );
 
         static native TemplateInstance confirmation(
@@ -210,7 +211,8 @@ public class EmailService {
                 String manageUrl,
                 String ownerManageUrl,
                 String cancelUrl,
-                List<AnswerLine> answers
+                List<AnswerLine> answers,
+                List<SessionLine> sessions
         );
 
         static native TemplateInstance declined(
@@ -221,7 +223,8 @@ public class EmailService {
                 String inviteeEmail,
                 String meetingTypeName,
                 String startTime,
-                int durationMinutes
+                int durationMinutes,
+                List<SessionLine> sessions
         );
 
         static native TemplateInstance reschedule(
@@ -275,7 +278,8 @@ public class EmailService {
                 String greetingName,
                 String meetingTypeName,
                 String startTime,
-                int durationMinutes
+                int durationMinutes,
+                List<SessionLine> sessions
         );
 
         static native TemplateInstance guestInvite(
@@ -287,7 +291,8 @@ public class EmailService {
                 int durationMinutes,
                 String location,
                 boolean isMeetLink,
-                String declineGuestUrl
+                String declineGuestUrl,
+                List<SessionLine> sessions
         );
 
         static native TemplateInstance guestCancel(
@@ -398,8 +403,10 @@ public class EmailService {
             return;
         }
         var location = resolveLocation(l);
+        var events = setOrSelf(l);
         sendForKindLocaleAware(
                 l,
+                events,
                 location,
                 locale -> messages.forLocale(locale).email_requested_subject(label(l)),
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
@@ -418,7 +425,8 @@ public class EmailService {
                             cancelUrl(linkBooking),
                             approveUrl(linkBooking),
                             declineUrl(linkBooking),
-                            l.answers()
+                            l.answers(),
+                            sessions(events, zone, locale, hourCycle)
                     )
                     .setLocale(locale)
                     .render(),
@@ -458,8 +466,10 @@ public class EmailService {
     private void sendConfirmation(BookingSnapshot l, Function<Locale, String> subjectForLocale) {
         var location = resolveLocation(l);
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
+        var events = setOrSelf(l);
         sendForKindLocaleAware(
                 l,
+                events,
                 location,
                 subjectForLocale,
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
@@ -477,14 +487,15 @@ public class EmailService {
                             manageUrl(linkBooking),
                             ownerManageUrl(linkBooking),
                             cancelUrl(linkBooking),
-                            l.answers()
+                            l.answers(),
+                            sessions(events, zone, locale, hourCycle)
                     )
                     .setLocale(locale)
                     .render(),
                 IcsMethod.REQUEST,
                 false
         );
-        sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_confirmed_subject(label(l)));
+        sendGuestInvites(l, events, location, messages.forLocale(inviteeLocale).email_confirmed_subject(label(l)));
     }
 
     void handleDeclined(BookingDeclined e) {
@@ -509,8 +520,10 @@ public class EmailService {
      */
     private void deliverDeclined(BookingSnapshot l, MailSink sink) {
         // No Mirror event ever existed -> always notify the invitee. No answers, no location link.
+        var events = setOrSelf(l);
         sendForKindLocaleAware(
                 l,
+                events,
                 resolveLocation(l),
                 locale -> messages.forLocale(locale).email_declined_subject(label(l)),
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
@@ -522,7 +535,8 @@ public class EmailService {
                             l.booking().inviteeEmail,
                             label(l),
                             format(l.booking().startUtc, zone, locale, hourCycle),
-                            BookingService.lengthOf(l.booking())
+                            BookingService.lengthOf(l.booking()),
+                            sessions(events, zone, locale, hourCycle)
                     )
                     .setLocale(locale)
                     .render(),
@@ -552,6 +566,7 @@ public class EmailService {
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
         sendForKindLocaleAware(
                 l,
+                List.of(l.booking()),
                 location,
                 locale -> messages.forLocale(locale).email_rescheduled_subject(label(l)),
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
@@ -579,7 +594,12 @@ public class EmailService {
                 IcsMethod.REQUEST,
                 false
         );
-        sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_rescheduled_subject(label(l)));
+        sendGuestInvites(
+                l,
+                List.of(l.booking()),
+                location,
+                messages.forLocale(inviteeLocale).email_rescheduled_subject(label(l))
+        );
     }
 
     void handleDetailsChanged(BookingDetailsChanged e) {
@@ -592,6 +612,7 @@ public class EmailService {
         String desc = l.booking().effectiveDescription(l.meetingType());
         sendForKindLocaleAware(
                 l,
+                List.of(l.booking()),
                 location,
                 locale -> messages.forLocale(locale).email_updated_subject(label(l)),
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
@@ -620,7 +641,12 @@ public class EmailService {
                 false
         );
         // Re-send the (bumped-sequence) REQUEST .ics to every active guest so their calendar updates too.
-        sendGuestInvites(l, location, messages.forLocale(inviteeLocale).email_updated_subject(label(l)));
+        sendGuestInvites(
+                l,
+                List.of(l.booking()),
+                location,
+                messages.forLocale(inviteeLocale).email_updated_subject(label(l))
+        );
     }
 
     void handleCancelled(BookingCancelled e) {
@@ -632,6 +658,7 @@ public class EmailService {
         // No location/meet link in the cancellation body; .ics attached unless the Mirror event is on Google.
         sendForKindLocaleAware(
                 l,
+                List.of(l.booking()),
                 resolveLocation(l),
                 locale -> messages.forLocale(locale).email_cancelled_subject(label(l)),
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
@@ -646,7 +673,8 @@ public class EmailService {
                             greetingName,
                             label(l),
                             format(l.booking().startUtc, zone, locale, hourCycle),
-                            BookingService.lengthOf(l.booking())
+                            BookingService.lengthOf(l.booking()),
+                            List.of()
                     )
                     .setLocale(locale)
                     .render(),
@@ -676,6 +704,7 @@ public class EmailService {
         var location = resolveLocation(l);
         sendForKindLocaleAware(
                 l,
+                List.of(l.booking()),
                 location,
                 locale -> messages.forLocale(locale).email_reminder_subject(label(l)),
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
@@ -717,9 +746,10 @@ public class EmailService {
     // --- guest fan-out: guests always get a calit mail; .ics is attached unless the Mirror event is on Google
     //     (then guests are its attendees and Google sends the invite). ---
     /**
-     * REQUEST .ics + invite body to every active guest, in the booking (invitee's) locale.
+     * REQUEST .ics + invite body to every active guest, in the booking (invitee's) locale. For a set, {@code l} is its
+     * lead: the lead row's guests get one mail each, with one VEVENT per Booking and the lead row's decline link.
      */
-    private void sendGuestInvites(BookingSnapshot l, String location, String subject) {
+    private void sendGuestInvites(BookingSnapshot l, List<Booking> events, String location, String subject) {
         List<BookingGuest> guests =
                 QuarkusTransaction
             .requiringNew()
@@ -730,7 +760,7 @@ public class EmailService {
         Locale locale = AppLocales.pick(l.booking().locale);
         String start = format(l.booking().startUtc, l.zone(), locale);
         for (BookingGuest g : guests) {
-            byte[] ics = providerNotifies(l) ? null : guestIcs(l, g, location, IcsMethod.REQUEST);
+            byte[] ics = providerNotifies(l) ? null : guestIcs(l, events, g, location, IcsMethod.REQUEST);
             String body = Templates
                 .guestInvite(
                         locale.getLanguage(),
@@ -741,7 +771,8 @@ public class EmailService {
                         BookingService.lengthOf(l.booking()),
                         location,
                         isMeet(l),
-                        declineGuestUrl(g)
+                        declineGuestUrl(g),
+                        sessions(events, l.zone(), locale, "auto")
                 )
                 .setLocale(locale)
                 .render();
@@ -769,7 +800,7 @@ public class EmailService {
         }
         Locale locale = AppLocales.pick(l.booking().locale);
         for (BookingGuest g : guests) {
-            sendGuestCancelMail(l, g, subject, locale);
+            sendGuestCancelMail(l, List.of(l.booking()), g, subject, locale);
         }
     }
 
@@ -785,7 +816,13 @@ public class EmailService {
             return;
         }
         Locale locale = AppLocales.pick(l.booking().locale);
-        sendGuestCancelMail(l, guest, messages.forLocale(locale).email_cancelled_subject(label(l)), locale);
+        sendGuestCancelMail(
+                l,
+                List.of(l.booking()),
+                guest,
+                messages.forLocale(locale).email_cancelled_subject(label(l)),
+                locale
+        );
     }
 
     void handleGuestDeclined(GuestDeclined e) {
@@ -801,8 +838,14 @@ public class EmailService {
         }
         Locale locale = AppLocales.pick(l.booking().locale);
         String start = format(l.booking().startUtc, l.zone(), locale);
-        // 1) cancel .ics to the departing guest (omit .ics when Google natively notifies)
-        sendGuestCancelMail(l, guest, messages.forLocale(locale).email_cancelled_subject(label(l)), locale);
+        // 1) cancel .ics to the departing guest (omit .ics when Google natively notifies); a set guest left every Booking
+        sendGuestCancelMail(
+                l,
+                setOrSelf(l),
+                guest,
+                messages.forLocale(locale).email_cancelled_subject(label(l)),
+                locale
+        );
         // 2) notify the invitee so they can reschedule
         String inviteeBody = Templates
             .guestDeclinedNotice(
@@ -870,13 +913,19 @@ public class EmailService {
      * #handleGuestDeclined}). The .ics is omitted when Google notifies the guest natively (the
      * guest is already an attendee of a Google Mirror event); each caller supplies its own subject.
      */
-    private void sendGuestCancelMail(BookingSnapshot l, BookingGuest g, String subject, Locale locale) {
+    private void sendGuestCancelMail(
+            BookingSnapshot l,
+            List<Booking> events,
+            BookingGuest g,
+            String subject,
+            Locale locale
+    ) {
         mailSender.send(
                 fromName(l),
                 g.email,
                 subject,
                 guestCancelBody(l, g, locale),
-                providerNotifies(l) ? null : guestIcs(l, g, null, IcsMethod.CANCEL),
+                providerNotifies(l) ? null : guestIcs(l, events, g, null, IcsMethod.CANCEL),
                 MailTag.forBooking(l.booking().id, l.booking().ownerId)
         );
     }
@@ -896,22 +945,25 @@ public class EmailService {
      * attendeeRsvp=false suppresses the calendar Yes/No buttons — guests respond only via calit's decline
      * link (a calendar reply would go to the owner's mailbox and calit would never see it).
      */
-    private byte[] guestIcs(BookingSnapshot l, BookingGuest g, String location, IcsMethod method) {
+    private byte[] guestIcs(BookingSnapshot l, List<Booking> events, BookingGuest g, String location, IcsMethod method) {
         return IcsBuilder
-            .build(IcsEvent
-                .builder()
-                .uid(l.booking().manageToken)
-                .summary(label(l))
-                .description(l.booking().effectiveDescription(l.meetingType()))
-                .location(location)
-                .organizer(new IcsBuilder.Party(l.owner().ownerName, mailFrom))
-                .attendee(new IcsBuilder.Party(g.email, g.email))
-                .start(l.booking().startUtc)
-                .end(l.booking().endUtc)
-                .method(method)
-                .sequence(l.booking().icsSequence)
-                .attendeeRsvp(false)
-                .build()
+            .build(events
+                .stream()
+                .map(b -> IcsEvent
+                    .builder()
+                    .uid(b.manageToken)
+                    .summary(b.effectiveTitle(l.meetingType()))
+                    .description(b.effectiveDescription(l.meetingType()))
+                    .location(location == null ? null : locationOf(b, l.meetingType()))
+                    .organizer(new IcsBuilder.Party(l.owner().ownerName, mailFrom))
+                    .attendee(new IcsBuilder.Party(g.email, g.email))
+                    .start(b.startUtc)
+                    .end(b.endUtc)
+                    .method(method)
+                    .sequence(b.icsSequence)
+                    .attendeeRsvp(false)
+                    .build())
+                .toList()
             )
             .getBytes(StandardCharsets.UTF_8);
     }
@@ -948,6 +1000,7 @@ public class EmailService {
      */
     private void sendForKindLocaleAware(
             BookingSnapshot l,
+            List<Booking> events,
             String icsLocation,
             Function<Locale, String> subjectForLocale,
             RecipientBodyRenderer bodyForRecipient,
@@ -956,6 +1009,7 @@ public class EmailService {
     ) {
         sendForKindLocaleAware(
                 l,
+                events,
                 icsLocation,
                 subjectForLocale,
                 bodyForRecipient,
@@ -976,10 +1030,11 @@ public class EmailService {
      * approve/decline their row, or the whole group deadlocks. When the Mirror event is on Google it natively
      * notifies invitee + owner(s) (they are event attendees), so calit attaches NO .ics. On CalDAV everyone but
      * the Creator (whose calendar holds the event) gets calit's .ics; in degraded mode, or with no Mirror event, everyone does.
-     * A null {@code icsMethod} attaches nothing.
+     * A null {@code icsMethod} attaches nothing. The .ics holds one VEVENT per row of {@code events}.
      */
     private void sendForKindLocaleAware(
             BookingSnapshot l,
+            List<Booking> events,
             String icsLocation,
             Function<Locale, String> subjectForLocale,
             RecipientBodyRenderer bodyForRecipient,
@@ -988,10 +1043,9 @@ public class EmailService {
             boolean actionable
     ) {
         CalendarProvider mirror = mirror(l);
-        var ics =
-                mirror == CalendarProvider.GOOGLE || icsMethod == null
+        var ics = mirror == CalendarProvider.GOOGLE || icsMethod == null
                 ? null
-                : inviteeIcsBytes(l, icsLocation, icsMethod);
+                : inviteeIcsBytes(l, events, icsLocation, icsMethod);
         // a CalDAV Mirror event already sits on the Creator's calendar; a calit copy would duplicate it
         var creatorIcs = mirror == CalendarProvider.CALDAV ? null : ics;
         var from = fromName(l);
@@ -1144,30 +1198,65 @@ public class EmailService {
         if (l == null) {
             return Optional.empty();
         }
-        return Optional.of(inviteeIcsBytes(l, resolveLocation(l), IcsMethod.REQUEST));
+        return Optional.of(inviteeIcsBytes(l, List.of(l.booking()), resolveLocation(l), IcsMethod.REQUEST));
     }
 
     /**
      * The invitee's .ics (REQUEST or CANCEL, at the booking's current SEQUENCE) for one loaded booking. Shared by the mail attachment and the
      * guest download so the two can never drift into two different RFC-5545 events.
      */
-    private byte[] inviteeIcsBytes(BookingSnapshot l, String location, IcsMethod method) {
+    private byte[] inviteeIcsBytes(BookingSnapshot l, List<Booking> events, String location, IcsMethod method) {
         return IcsBuilder
-            .build(IcsEvent
-                .builder()
-                .uid(l.booking().manageToken)
-                .summary(label(l))
-                .description(l.booking().effectiveDescription(l.meetingType()))
-                .location(location)
-                .organizer(new IcsBuilder.Party(l.owner().ownerName, mailFrom))
-                .attendee(new IcsBuilder.Party(l.booking().inviteeName, l.booking().inviteeEmail))
-                .start(l.booking().startUtc)
-                .end(l.booking().endUtc)
-                .method(method)
-                .sequence(l.booking().icsSequence)
-                .build()
+            .build(events
+                .stream()
+                .map(b -> IcsEvent
+                    .builder()
+                    .uid(b.manageToken)
+                    .summary(b.effectiveTitle(l.meetingType()))
+                    .description(b.effectiveDescription(l.meetingType()))
+                    .location(location == null ? null : locationOf(b, l.meetingType()))
+                    .organizer(new IcsBuilder.Party(l.owner().ownerName, mailFrom))
+                    .attendee(new IcsBuilder.Party(l.booking().inviteeName, l.booking().inviteeEmail))
+                    .start(b.startUtc)
+                    .end(b.endUtc)
+                    .method(method)
+                    .sequence(b.icsSequence)
+                    .build())
+                .toList()
             )
             .getBytes(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * The Bookings one set-level mail covers: the set's Bookings in the lead's status (a Booking cancelled on its own
+     * before the set was decided is left out), or just this one booking when it is not in a set.
+     */
+    private static List<Booking> setOrSelf(BookingSnapshot l) {
+        var rows = l
+            .setBookings()
+            .stream()
+            .filter(b -> b.status == l.booking().status)
+            .toList();
+        return rows.isEmpty() ? List.of(l.booking()) : rows;
+    }
+
+    /**
+     * One "{k} of {n}" line per Booking in the recipient's zone and clock; empty for a lone booking, so its mail is
+     * unchanged.
+     */
+    private List<SessionLine> sessions(List<Booking> events, ZoneId zone, Locale locale, String hourCycle) {
+        if (events.size() < 2) {
+            return List.of();
+        }
+        return IntStream
+            .range(0, events.size())
+            .mapToObj(i -> new SessionLine(
+                    i + 1,
+                    events.size(),
+                    format(events.get(i).startUtc, zone, locale, hourCycle),
+                    BookingService.lengthOf(events.get(i))
+            ))
+            .toList();
     }
 
     /**
@@ -1175,7 +1264,11 @@ public class EmailService {
      * fallback for a GOOGLE_MEET type whose Creator is disconnected).
      */
     private static String resolveLocation(BookingSnapshot l) {
-        return l.booking().meetLink != null ? l.booking().meetLink : l.meetingType().locationDetail;
+        return locationOf(l.booking(), l.meetingType());
+    }
+
+    private static String locationOf(Booking b, MeetingType type) {
+        return b.meetLink != null ? b.meetLink : type.locationDetail;
     }
 
     private static boolean isMeet(BookingSnapshot l) {
@@ -1205,4 +1298,9 @@ public class EmailService {
      * One rendered custom-field answer: human label + submitted value. Public for Qute access.
      */
     public record AnswerLine(String label, String value) {}
+
+    /**
+     * One Booking of a set as listed in a set mail: {@code index} of {@code of}, its start, its length. Public for Qute.
+     */
+    public record SessionLine(int index, int of, String when, int minutes) {}
 }
