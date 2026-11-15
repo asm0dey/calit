@@ -41,7 +41,8 @@ class SetRulesTest {
     @Test
     void rejectsMalformedPick() {
         for (var bad : List.of("x/30", "2026-01-01T10:00:00Z/-5", "2026-01-01T10:00:00Z")) {
-            assertThatThrownBy(() -> SlotPick.parseAll(List.of(bad))).isInstanceOf(BookingValidationException.class);
+            var raw = List.of(bad);
+            assertThatThrownBy(() -> SlotPick.parseAll(raw)).isInstanceOf(BookingValidationException.class);
         }
     }
 
@@ -96,7 +97,8 @@ class SetRulesTest {
     void validateCountBounds() {
         var t = type(2, 3, true);
         var one = List.of(pick("2026-01-01T10:00:00Z", 30));
-        assertThatThrownBy(() -> SetRules.validate(t, one, List.of(30), AMS))
+        var allowed = List.of(30);
+        assertThatThrownBy(() -> SetRules.validate(t, one, allowed, AMS))
             .isInstanceOf(BookingValidationException.class)
             .hasMessageContaining("between 2 and 3");
         var four = List.of(
@@ -105,7 +107,7 @@ class SetRulesTest {
                 pick("2026-01-03T10:00:00Z", 30),
                 pick("2026-01-04T10:00:00Z", 30)
         );
-        assertThatThrownBy(() -> SetRules.validate(t, four, List.of(30), AMS)).isInstanceOf(
+        assertThatThrownBy(() -> SetRules.validate(t, four, allowed, AMS)).isInstanceOf(
                 BookingValidationException.class
         );
         SetRules.validate(t, four.subList(0, 2), List.of(30), AMS);
@@ -114,22 +116,28 @@ class SetRulesTest {
     @Test
     void validateRejectsDisallowedDuration() {
         var t = type(1, 3, true);
-        assertThatThrownBy(() -> SetRules.validate(t, List.of(pick("2026-01-01T10:00:00Z", 45)), List.of(30, 60), AMS))
-            .isInstanceOf(BookingValidationException.class);
+        var picks = List.of(pick("2026-01-01T10:00:00Z", 45));
+        var allowed = List.of(30, 60);
+        assertThatThrownBy(() -> SetRules.validate(t, picks, allowed, AMS)).isInstanceOf(
+                BookingValidationException.class
+        );
     }
 
     @Test
     void validateRejectsOverlapAmongPicks() {
         var t = type(1, 3, true);
         var picks = List.of(pick("2026-01-01T10:00:00Z", 60), pick("2026-01-01T10:30:00Z", 30));
-        assertThatThrownBy(() -> SetRules.validate(t, picks, List.of(30, 60), AMS))
-            .isInstanceOf(BookingValidationException.class);
+        var allowed = List.of(30, 60);
+        assertThatThrownBy(() -> SetRules.validate(t, picks, allowed, AMS)).isInstanceOf(
+                BookingValidationException.class
+        );
     }
 
     @Test
     void rejectsPickOutsideSaneWindow() {
         for (var bad : List.of("+1000000000-12-31T23:59:59Z/30", "1999-12-31T23:59:59Z/30", "2100-01-01T00:00:00Z/30")) {
-            assertThatThrownBy(() -> SlotPick.parseAll(List.of(bad))).isInstanceOf(BookingValidationException.class);
+            var raw = List.of(bad);
+            assertThatThrownBy(() -> SlotPick.parseAll(raw)).isInstanceOf(BookingValidationException.class);
         }
     }
 

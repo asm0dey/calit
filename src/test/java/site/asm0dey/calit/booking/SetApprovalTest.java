@@ -8,9 +8,9 @@ import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.events.BookingApproved;
@@ -43,30 +43,42 @@ class SetApprovalTest {
     @Inject
     MockMailbox mailbox;
 
-    @Singleton
+    @ApplicationScoped
     static class EventLog {
-        static final List<Long> APPROVED = new CopyOnWriteArrayList<>();
-        static final List<Long> CONFIRMED = new CopyOnWriteArrayList<>();
-        static final List<Long> DECLINED = new CopyOnWriteArrayList<>();
+        private static final List<Long> APPROVED = new CopyOnWriteArrayList<>();
+        private static final List<Long> CONFIRMED = new CopyOnWriteArrayList<>();
+        private static final List<Long> DECLINED = new CopyOnWriteArrayList<>();
 
-        void approved(@Observes BookingApproved e) {
+        void onApproved(@Observes BookingApproved e) {
             APPROVED.add(e.bookingId());
         }
 
-        void confirmed(@Observes BookingConfirmed e) {
+        void onConfirmed(@Observes BookingConfirmed e) {
             CONFIRMED.add(e.bookingId());
         }
 
-        void declined(@Observes BookingDeclined e) {
+        void onDeclined(@Observes BookingDeclined e) {
             DECLINED.add(e.bookingId());
+        }
+
+        static List<Long> approved() {
+            return APPROVED;
+        }
+
+        static List<Long> confirmed() {
+            return CONFIRMED;
+        }
+
+        static List<Long> declined() {
+            return DECLINED;
         }
     }
 
     @BeforeEach
     void setUp() {
-        EventLog.APPROVED.clear();
-        EventLog.CONFIRMED.clear();
-        EventLog.DECLINED.clear();
+        EventLog.approved().clear();
+        EventLog.confirmed().clear();
+        EventLog.declined().clear();
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(anyCreateEvent()).thenReturn(new CreatedEvent("evt", null, null, null));
     }
@@ -179,8 +191,8 @@ class SetApprovalTest {
             .containsOnly(BookingStatus.CONFIRMED);
         verify(calendarPort, times(3))
             .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
-        assertThat(EventLog.APPROVED).containsExactly(lead(rows));
-        assertThat(EventLog.CONFIRMED).isEmpty();
+        assertThat(EventLog.approved()).containsExactly(lead(rows));
+        assertThat(EventLog.confirmed()).isEmpty();
         assertThat(remindedRows()).containsExactlyElementsOf(rows.stream().map(b -> b.id).toList());
     }
 
@@ -208,8 +220,8 @@ class SetApprovalTest {
                 .isEqualTo(b.ownerId == 1L ? BookingStatus.CONFIRMED : BookingStatus.PENDING));
         verify(calendarPort, never())
             .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
-        assertThat(EventLog.CONFIRMED).isEmpty();
-        assertThat(EventLog.APPROVED).isEmpty();
+        assertThat(EventLog.confirmed()).isEmpty();
+        assertThat(EventLog.approved()).isEmpty();
 
         bookingService.approve(hostBRow);
 
@@ -218,8 +230,8 @@ class SetApprovalTest {
             .containsOnly(BookingStatus.CONFIRMED);
         verify(calendarPort, times(2))
             .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
-        assertThat(EventLog.CONFIRMED).containsExactly(lead(rows));
-        assertThat(EventLog.APPROVED).isEmpty();
+        assertThat(EventLog.confirmed()).containsExactly(lead(rows));
+        assertThat(EventLog.approved()).isEmpty();
         // one per Booking, on the creator's (group lead) row
         assertThat(remindedRows())
             .containsExactlyElementsOf(rows
@@ -240,7 +252,7 @@ class SetApprovalTest {
         assertThat(rows())
             .extracting(b -> b.status)
             .containsOnly(BookingStatus.DECLINED);
-        assertThat(EventLog.DECLINED).containsExactly(lead(rows));
+        assertThat(EventLog.declined()).containsExactly(lead(rows));
         verify(calendarPort, never())
             .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
     }
@@ -261,7 +273,7 @@ class SetApprovalTest {
         assertThat(rows())
             .extracting(b -> b.status)
             .containsOnly(BookingStatus.CONFIRMED);
-        assertThat(EventLog.APPROVED).containsExactly(lead(rows));
+        assertThat(EventLog.approved()).containsExactly(lead(rows));
     }
 
     private static List<BookingStatus> statuses(List<Booking> booked) {
@@ -282,9 +294,9 @@ class SetApprovalTest {
     private void forgetSoFar() {
         clearInvocations(calendarPort);
         mailbox.clear();
-        EventLog.APPROVED.clear();
-        EventLog.CONFIRMED.clear();
-        EventLog.DECLINED.clear();
+        EventLog.approved().clear();
+        EventLog.confirmed().clear();
+        EventLog.declined().clear();
     }
 
     private void verifyCreatedEvents(int n) {
@@ -330,7 +342,7 @@ class SetApprovalTest {
             .extracting(b -> b.status)
             .containsOnly(BookingStatus.CONFIRMED);
         verifyCreatedEvents(1);
-        assertThat(EventLog.APPROVED).containsExactly(moved);
+        assertThat(EventLog.approved()).containsExactly(moved);
         assertThat(inviteeMail()).contains("at 14:00").doesNotContain("at 10:00", "at 12:00", " of 3");
         assertThat(remindedRows()).hasSize(3);
     }
@@ -345,7 +357,7 @@ class SetApprovalTest {
             .allSatisfy(b -> assertThat(b.status)
                 .isEqualTo(b.id.equals(moved) ? BookingStatus.DECLINED : BookingStatus.CONFIRMED));
         verify(calendarPort, never()).deleteEvent(anyLong(), any(), any());
-        assertThat(EventLog.DECLINED).containsExactly(moved);
+        assertThat(EventLog.declined()).containsExactly(moved);
         assertThat(inviteeMail()).contains("at 14:00").doesNotContain("at 10:00", "at 12:00", " of 3");
         assertThat(remindedRows()).hasSize(2).doesNotContain(moved);
     }
@@ -373,7 +385,7 @@ class SetApprovalTest {
             .map(b -> b.id)
             .filter(id -> !id.equals(rows.get(cancelled).id))
             .toList();
-        assertThat(EventLog.APPROVED).containsExactly(confirmedIds.getFirst());
+        assertThat(EventLog.approved()).containsExactly(confirmedIds.getFirst());
         assertThat(inviteeMail())
             .contains(sessionTimes)
             .contains("1 of 2", "2 of 2")

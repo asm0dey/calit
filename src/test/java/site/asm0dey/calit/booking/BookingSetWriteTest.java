@@ -7,9 +7,9 @@ import static org.mockito.Mockito.*;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.events.BookingConfirmed;
@@ -42,24 +42,32 @@ class BookingSetWriteTest {
     /**
      * Collects fired booking events; synchronous, so it sees them inside the booking transaction.
      */
-    @Singleton
+    @ApplicationScoped
     static class EventLog {
-        static final List<Long> CONFIRMED = new CopyOnWriteArrayList<>();
-        static final List<Long> REQUESTED = new CopyOnWriteArrayList<>();
+        private static final List<Long> CONFIRMED = new CopyOnWriteArrayList<>();
+        private static final List<Long> REQUESTED = new CopyOnWriteArrayList<>();
 
-        void confirmed(@Observes BookingConfirmed e) {
+        void onConfirmed(@Observes BookingConfirmed e) {
             CONFIRMED.add(e.bookingId());
         }
 
-        void requested(@Observes BookingRequested e) {
+        void onRequested(@Observes BookingRequested e) {
             REQUESTED.add(e.bookingId());
+        }
+
+        static List<Long> confirmed() {
+            return CONFIRMED;
+        }
+
+        static List<Long> requested() {
+            return REQUESTED;
         }
     }
 
     @BeforeEach
     void clearEvents() {
-        EventLog.CONFIRMED.clear();
-        EventLog.REQUESTED.clear();
+        EventLog.confirmed().clear();
+        EventLog.requested().clear();
     }
 
     private static Instant at(int hour, int minute) {
@@ -180,8 +188,8 @@ class BookingSetWriteTest {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         occupy(at(13, 0), 30);
 
-        assertThatThrownBy(() -> bookSet("set", List.of(pick(10, 0, 30), pick(11, 0, 30), pick(13, 0, 30))))
-            .isInstanceOf(BookingConflictException.class);
+        var picks = List.of(pick(10, 0, 30), pick(11, 0, 30), pick(13, 0, 30));
+        assertThatThrownBy(() -> bookSet("set", picks)).isInstanceOf(BookingConflictException.class);
 
         assertThat(rowsFor(EMAIL)).isEmpty();
         verify(calendarPort, never())
@@ -197,7 +205,7 @@ class BookingSetWriteTest {
                     anyBoolean(),
                     any()
             );
-        assertThat(EventLog.CONFIRMED).isEmpty();
+        assertThat(EventLog.confirmed()).isEmpty();
     }
 
     @Test
@@ -219,8 +227,8 @@ class BookingSetWriteTest {
             .extracting(s -> s.start().toInstant())
             .contains(at(10, 40));
 
-        assertThatThrownBy(() -> bookSet("set", List.of(pick(10, 0, 30), pick(10, 40, 30))))
-            .isInstanceOf(BookingConflictException.class);
+        var picks = List.of(pick(10, 0, 30), pick(10, 40, 30));
+        assertThatThrownBy(() -> bookSet("set", picks)).isInstanceOf(BookingConflictException.class);
 
         assertThat(rowsFor(EMAIL)).isEmpty();
     }
@@ -232,8 +240,8 @@ class BookingSetWriteTest {
         var other = invites.issue(1L, typeId, Instant.now());
         occupy(at(14, 0), 30);
 
-        assertThatThrownBy(() -> bookSet("set", List.of(pick(10, 0, 30), pick(14, 0, 30)), other))
-            .isInstanceOf(BookingConflictException.class);
+        var picks = List.of(pick(10, 0, 30), pick(14, 0, 30));
+        assertThatThrownBy(() -> bookSet("set", picks, other)).isInstanceOf(BookingConflictException.class);
         assertThat(invites.find(1L, other, Instant.now())).isNotNull();
 
         assertThat(bookSet("set", List.of(pick(10, 0, 30), pick(11, 0, 30), pick(12, 0, 30)), token)).hasSize(3);
@@ -272,8 +280,8 @@ class BookingSetWriteTest {
 
         assertThat(bookSet("set", List.of(pick(9, 0, 30), pick(10, 0, 30), pick(11, 0, 30)))).hasSize(3);
         assertThat(bookSet("set", List.of(pick(12, 0, 30), pick(13, 0, 30)))).hasSize(2);
-        assertThatThrownBy(() -> bookSet("set", List.of(pick(14, 0, 30), pick(15, 0, 30))))
-            .isInstanceOf(RateLimitException.class);
+        var picks = List.of(pick(14, 0, 30), pick(15, 0, 30));
+        assertThatThrownBy(() -> bookSet("set", picks)).isInstanceOf(RateLimitException.class);
     }
 
     @Test
@@ -307,7 +315,7 @@ class BookingSetWriteTest {
             .extracting(b -> b.setId)
             .doesNotContainNull()
             .containsOnly(rows.getFirst().setId);
-        assertThat(EventLog.CONFIRMED).containsExactly(booked.getFirst().id);
+        assertThat(EventLog.confirmed()).containsExactly(booked.getFirst().id);
     }
 
     @Test
@@ -359,14 +367,14 @@ class BookingSetWriteTest {
             .thenReturn(new CreatedEvent("evt-1", null, null, null))
             .thenThrow(new UncheckedIOException(new IOException("calendar down")));
 
-        assertThatThrownBy(() -> bookSet("set", List.of(pick(10, 0, 30), pick(11, 0, 30), pick(12, 0, 30)), token))
-            .isInstanceOf(UncheckedIOException.class);
+        var picks = List.of(pick(10, 0, 30), pick(11, 0, 30), pick(12, 0, 30));
+        assertThatThrownBy(() -> bookSet("set", picks, token)).isInstanceOf(UncheckedIOException.class);
 
         assertThat(rowsFor(EMAIL)).isEmpty();
         assertThat(invites.find(1L, token, Instant.now())).isNotNull();
         verify(calendarPort, times(1)).deleteEvent(eq(1L), any(), eq("evt-1"));
         verify(calendarPort, times(1)).deleteEvent(any(), any(), any());
-        assertThat(EventLog.CONFIRMED).isEmpty();
+        assertThat(EventLog.confirmed()).isEmpty();
     }
 
     @Test
@@ -382,8 +390,8 @@ class BookingSetWriteTest {
         Long lead = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.leadOfSet(rows.getFirst().setId, 1L).id);
-        assertThat(EventLog.REQUESTED).containsExactly(lead);
-        assertThat(EventLog.CONFIRMED).isEmpty();
+        assertThat(EventLog.requested()).containsExactly(lead);
+        assertThat(EventLog.confirmed()).isEmpty();
         verify(calendarPort, never())
             .createEvent(
                     anyLong(),
@@ -409,8 +417,8 @@ class BookingSetWriteTest {
         Long lead = QuarkusTransaction
             .requiringNew()
             .call(() -> Booking.leadOfSet(setId, 1L).id);
-        assertThat(EventLog.CONFIRMED).containsExactly(lead);
-        assertThat(EventLog.REQUESTED).isEmpty();
+        assertThat(EventLog.confirmed()).containsExactly(lead);
+        assertThat(EventLog.requested()).isEmpty();
     }
 
     @Test
@@ -421,8 +429,8 @@ class BookingSetWriteTest {
             MultiHostFixtures.meetingType(1L, "plain", 30);
         });
 
-        assertThatThrownBy(() -> bookSet("plain", List.of(pick(10, 0, 30), pick(11, 0, 30))))
-            .isInstanceOf(BookingValidationException.class);
+        var picks = List.of(pick(10, 0, 30), pick(11, 0, 30));
+        assertThatThrownBy(() -> bookSet("plain", picks)).isInstanceOf(BookingValidationException.class);
         assertThat(rowsFor(EMAIL)).isEmpty();
     }
 
@@ -430,18 +438,21 @@ class BookingSetWriteTest {
     void singleSlotBookRefusedWhenMinAboveOne() {
         seedType("set", false);
 
+        var start = at(10, 0);
+        var noAnswers = Map.<String, String>of();
+        var noGuests = List.<String>of();
         assertThatThrownBy(() -> bookingService.book(
                 1L,
                 "set",
-                at(10, 0),
+                start,
                 "Sam",
                 EMAIL,
-                Map.of(),
+                noAnswers,
                 "tok",
                 null,
                 "",
                 "en",
-                List.of(),
+                noGuests,
                 30,
                 null
         ))

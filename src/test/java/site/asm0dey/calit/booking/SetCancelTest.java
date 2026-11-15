@@ -9,10 +9,10 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.mutiny.Multi;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.ObservesAsync;
 import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.events.BookingCancelled;
@@ -45,33 +45,45 @@ class SetCancelTest {
     @InjectMock
     CaptchaVerifier captchaVerifier;
 
-    @Singleton
+    @ApplicationScoped
     static class EventLog {
-        static final List<Long> CANCELLED = new CopyOnWriteArrayList<>();
-        static final List<BookingSetCancelled> SET_CANCELLED = new CopyOnWriteArrayList<>();
+        private static final List<Long> CANCELLED = new CopyOnWriteArrayList<>();
+        private static final List<BookingSetCancelled> SET_CANCELLED = new CopyOnWriteArrayList<>();
 
-        void cancelled(@Observes BookingCancelled e) {
+        void onCancelled(@Observes BookingCancelled e) {
             CANCELLED.add(e.bookingId());
         }
 
-        void setCancelled(@Observes BookingSetCancelled e) {
+        void onSetCancelled(@Observes BookingSetCancelled e) {
             SET_CANCELLED.add(e);
         }
 
-        static final List<String> CHANNEL_BODIES = new CopyOnWriteArrayList<>();
+        private static final List<String> CHANNEL_BODIES = new CopyOnWriteArrayList<>();
         static volatile CountDownLatch channelHit = new CountDownLatch(0);
 
-        void delivered(@ObservesAsync ChannelDelivery d) {
+        void onDelivered(@ObservesAsync ChannelDelivery d) {
             CHANNEL_BODIES.add(d.message().body());
             channelHit.countDown();
+        }
+
+        static List<Long> cancelled() {
+            return CANCELLED;
+        }
+
+        static List<BookingSetCancelled> setCancelled() {
+            return SET_CANCELLED;
+        }
+
+        static List<String> channelBodies() {
+            return CHANNEL_BODIES;
         }
     }
 
     @BeforeEach
     void setUp() {
-        EventLog.CANCELLED.clear();
-        EventLog.SET_CANCELLED.clear();
-        EventLog.CHANNEL_BODIES.clear();
+        EventLog.cancelled().clear();
+        EventLog.setCancelled().clear();
+        EventLog.channelBodies().clear();
         mailbox.clear();
         QuarkusTransaction.requiringNew().run(() -> {
             MultiHostFixtures.settings(1L, "pasha");
@@ -143,7 +155,7 @@ class SetCancelTest {
         connected();
         var rows = bookSet(List.of());
         bookingService.cancel(rows.getFirst().manageToken);
-        EventLog.CANCELLED.clear();
+        EventLog.cancelled().clear();
         clearInvocations(calendarPort);
 
         List<Booking> cancelled = bookingService.cancelSet(rows.get(1).manageToken, false);
@@ -156,8 +168,8 @@ class SetCancelTest {
             .containsOnly(BookingStatus.CANCELLED);
         assertThat(rows()).allSatisfy(b -> assertThat(b.eventId).isNull());
         verify(calendarPort, times(2)).deleteEvent(anyLong(), any(), any());
-        assertThat(EventLog.CANCELLED).isEmpty();
-        assertThat(EventLog.SET_CANCELLED)
+        assertThat(EventLog.cancelled()).isEmpty();
+        assertThat(EventLog.setCancelled())
             .singleElement()
             .satisfies(e -> {
                 assertThat(e.leadBookingId()).isEqualTo(rows.getFirst().id);
@@ -184,7 +196,7 @@ class SetCancelTest {
         assertThat(rows())
             .extracting(b -> b.status)
             .containsExactly(BookingStatus.CONFIRMED, BookingStatus.CANCELLED, BookingStatus.CANCELLED);
-        assertThat(EventLog.SET_CANCELLED)
+        assertThat(EventLog.setCancelled())
             .singleElement()
             .satisfies(e -> assertThat(e.byOwner()).isTrue());
     }
@@ -197,7 +209,7 @@ class SetCancelTest {
 
         assertThat(bookingService.cancelSet(rows.getFirst().manageToken, false)).isEmpty();
 
-        assertThat(EventLog.SET_CANCELLED).isEmpty();
+        assertThat(EventLog.setCancelled()).isEmpty();
         assertThat(mailbox.getTotalMessagesSent()).isZero();
     }
 
@@ -243,8 +255,8 @@ class SetCancelTest {
         assertThat(toInvitee).hasSize(1);
         assertThat(toInvitee.getFirst().getHtml()).contains("at 11:00").doesNotContain("1 of ");
         assertThat(count(ics(toInvitee.getFirst()), "BEGIN:VEVENT")).isEqualTo(1);
-        assertThat(EventLog.CANCELLED).containsExactly(rows.get(1).id);
-        assertThat(EventLog.SET_CANCELLED).isEmpty();
+        assertThat(EventLog.cancelled()).containsExactly(rows.get(1).id);
+        assertThat(EventLog.setCancelled()).isEmpty();
     }
 
     @Test
@@ -255,13 +267,13 @@ class SetCancelTest {
         QuarkusTransaction
             .requiringNew()
             .run(() -> MultiHostFixtures.channel(1L, "ntfy+http://localhost:9/calit", "Stub"));
-        EventLog.CHANNEL_BODIES.clear();
+        EventLog.channelBodies().clear();
         EventLog.channelHit = new CountDownLatch(1);
 
         bookingService.cancelSet(rows.get(1).manageToken, false);
 
         assertThat(EventLog.channelHit.await(10, TimeUnit.SECONDS)).as("no channel delivery").isTrue();
-        assertThat(EventLog.CHANNEL_BODIES)
+        assertThat(EventLog.channelBodies())
             .singleElement()
             .satisfies(body -> assertThat(body).contains("11:00").doesNotContain("10:00"));
     }

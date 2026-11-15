@@ -8,9 +8,9 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.mutiny.Multi;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
@@ -51,19 +51,23 @@ class EmailSetTest {
     @InjectMock
     CaptchaVerifier captchaVerifier;
 
-    @Singleton
+    @ApplicationScoped
     static class EventLog {
-        static final List<Long> GUEST_DECLINED = new CopyOnWriteArrayList<>();
+        private static final List<Long> GUEST_DECLINED = new CopyOnWriteArrayList<>();
 
-        void guestDeclined(@Observes GuestDeclined e) {
+        void onGuestDeclined(@Observes GuestDeclined e) {
             GUEST_DECLINED.add(e.guestId());
+        }
+
+        static List<Long> guestDeclined() {
+            return GUEST_DECLINED;
         }
     }
 
     @BeforeEach
     void setUp() {
         mailbox.clear();
-        EventLog.GUEST_DECLINED.clear();
+        EventLog.guestDeclined().clear();
     }
 
     private static Instant at(int hour) {
@@ -169,7 +173,7 @@ class EmailSetTest {
             .hasSize(3)
             .extracting(g -> g.status)
             .containsOnly(GuestStatus.DECLINED);
-        assertThat(EventLog.GUEST_DECLINED).hasSize(1);
+        assertThat(EventLog.guestDeclined()).hasSize(1);
     }
 
     @Test

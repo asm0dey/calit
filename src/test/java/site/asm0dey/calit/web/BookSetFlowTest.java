@@ -14,6 +14,7 @@ import io.restassured.specification.RequestSpecification;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingInviteService;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.domain.AvailabilityRule;
@@ -37,6 +38,8 @@ class BookSetFlowTest {
     private static final String PICK_B = B + "/60";
     @InjectMock
     CalendarPort calendarPort;
+    @jakarta.inject.Inject
+    BookingInviteService invites;
 
     @BeforeEach
     void seed() {
@@ -231,6 +234,53 @@ class BookSetFlowTest {
             .extract()
             .asString();
         assertThat(ics.split("BEGIN:VEVENT", -1)).hasSize(3);
+    }
+
+    @Test
+    void unreadablePickOnPostShowsStep1Error() {
+        post("not-a-pick", PICK_B)
+            .then()
+            .statusCode(200)
+            .body(containsString("Some of the sessions you picked could not be read. Please pick them again."))
+            .body(not(containsString("name=\"inviteeEmail\"")));
+        assertThat(bookingsOf(EMAIL)).isZero();
+    }
+
+    @Test
+    void pickAtUnofferedLengthIsDroppedAndNamed() {
+        post(PICK_A, B + "/45")
+            .then()
+            .statusCode(200)
+            .body(containsString("type=\"checkbox\" name=\"pick\" value=\"" + PICK_A + "\" checked"))
+            .body(containsString("No longer available: <time data-utc=\"" + B + "\">" + label(B) + "</time></div>"))
+            .body(not(containsString("name=\"inviteeEmail\"")));
+        assertThat(bookingsOf(EMAIL)).isZero();
+    }
+
+    @Test
+    void bufferConflictViaInviteShowsInviteWording() {
+        var typeId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                MeetingType t = MeetingType.findBySlug(1L, SLUG);
+                t.multiSlotSameDay = true;
+                t.bufferBeforeMinutes = 15;
+                t.bufferAfterMinutes = 15;
+                // a 10-minute lattice offers 9:40 on its own, so only the buffer between the picks refuses it
+                t.slotIntervalMinutes = 10;
+                return t.id;
+            });
+        var token = invites.issue(1L, typeId, Instant.now());
+        var close = A.plus(40, ChronoUnit.MINUTES) + "/30";
+
+        form(PICK_A, close)
+            .post("/admin?invite=" + token)
+            .then()
+            .statusCode(200)
+            .body(containsString("That time is no longer available. Please choose another."))
+            .body(containsString("type=\"checkbox\" name=\"pick\" value=\"" + PICK_A + "\" checked"))
+            .body(containsString("type=\"checkbox\" name=\"pick\" value=\"" + close + "\" checked"));
+        assertThat(bookingsOf(EMAIL)).isZero();
     }
 
     private static Instant at(LocalDate day, int hour) {
