@@ -29,8 +29,8 @@ public class EmailService {
     /**
      * Recipient-role values passed to the per-role body builder.
      */
-    private static final String INVITEE_ROLE = "invitee";
-    private static final String OWNER_ROLE = "owner";
+    static final String INVITEE_ROLE = "invitee";
+    static final String OWNER_ROLE = "owner";
     final MailSender mailSender;
     final AppMessageResolver messages;
     final CalendarPort calendarPort;
@@ -1084,66 +1084,22 @@ public class EmailService {
         var ics = mirror == CalendarProvider.GOOGLE || icsMethod == null
                 ? null
                 : inviteeIcsBytes(l, events, icsLocation, icsMethod);
-        // a CalDAV Mirror event already sits on the Creator's calendar; a calit copy would duplicate it
-        var creatorIcs = mirror == CalendarProvider.CALDAV ? null : ics;
         var from = fromName(l);
-
-        Locale inviteeLocale = AppLocales.pick(l.booking().locale);
-        sink.deliver(
-                from,
-                l.booking().inviteeEmail,
-                subjectForLocale.apply(inviteeLocale),
-                bodyForRecipient.render(
-                        INVITEE_ROLE,
-                        inviteeLocale,
-                        l.zone(),
-                        l.booking().inviteeName,
-                        l.booking(),
-                        "auto"
-                ),
-                ics,
-                MailTag.forBooking(l.booking().id, l.booking().ownerId)
-        );
-
-        if (l.booking().groupId != null) {
-            for (HostDelivery hd : l.hostDeliveries()) {
-                if (!actionable && !hd.settings().ownerNotificationsEnabled) {
-                    continue;
-                }
-                Locale hostLocale = AppLocales.pick(hd.settings().locale);
-                ZoneId hostZone = ZoneId.of(hd.settings().timezone);
-                sink.deliver(
-                        from,
-                        hd.settings().ownerEmail,
-                        subjectForLocale.apply(hostLocale),
-                        bodyForRecipient.render(
-                                OWNER_ROLE,
-                                hostLocale,
-                                hostZone,
-                                hd.settings().ownerName,
-                                hd.booking(),
-                                hd.settings().timeFormat
-                        ),
-                        hd.settings().ownerId.equals(l.meetingType().ownerId) ? creatorIcs : ics,
-                        MailTag.forBooking(hd.booking().id, hd.settings().ownerId)
-                );
-            }
-        } else if (l.owner().ownerNotificationsEnabled) {
-            Locale ownerLocale = AppLocales.pick(l.owner().locale);
+        for (var r : MailPlan.plan(l, mirror, icsMethod != null, actionable)) {
             sink.deliver(
                     from,
-                    l.owner().ownerEmail,
-                    subjectForLocale.apply(ownerLocale),
+                    r.email(),
+                    subjectForLocale.apply(r.locale()),
                     bodyForRecipient.render(
-                            OWNER_ROLE,
-                            ownerLocale,
-                            l.zone(),
-                            l.owner().ownerName,
-                            l.booking(),
-                            l.owner().timeFormat
+                            r.role(),
+                            r.locale(),
+                            r.zone(),
+                            r.greetingName(),
+                            r.linkBooking(),
+                            r.hourCycle()
                     ),
-                    creatorIcs,
-                    MailTag.forBooking(l.booking().id, l.owner().ownerId)
+                    r.attachIcs() ? ics : null,
+                    r.tag()
             );
         }
     }
@@ -1162,7 +1118,11 @@ public class EmailService {
      * invite would duplicate. In degraded mode calit's .ics is the only invite, so it is attached from the request on.
      */
     private boolean awaitingFirstInvite(BookingSnapshot l) {
-        return l.mirror() == null && l.booking().icsSequence == 0 && calendarPort.isConnected(l.owner().ownerId);
+        return MailPlan.awaitingFirstInvite(
+                l.mirror(),
+                l.booking().icsSequence,
+                calendarPort.isConnected(l.owner().ownerId)
+        );
     }
 
     /**

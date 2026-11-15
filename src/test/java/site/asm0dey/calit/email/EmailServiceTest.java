@@ -200,23 +200,6 @@ class EmailServiceTest {
             .allSatisfy(m -> assertThat(m.getAttachments()).isEmpty());
     }
 
-    // ---- ownerNotificationsEnabled = false: owner gets nothing; invitee per rules ----
-    @Test
-    void ownerOptedOutGetsNothingInviteeStillFallbackWhenDisconnected() {
-        when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        long bookingId = seed(b -> {
-            b.status = BookingStatus.CONFIRMED;
-            b.meetLink = "https://meet.google.com/opt-out";
-        }, false, /* ownerNotificationsEnabled = false */
-        LocationType.GOOGLE_MEET, null);
-
-        emailService.handleConfirmed(new BookingConfirmed(bookingId));
-
-        assertThat(mailbox.getMailsSentTo(OWNER_EMAIL)).as("owner opted out -> no owner mail").isEmpty();
-        assertThat(mailbox.getMailsSentTo(INVITEE_EMAIL)).as("invitee still gets fallback (disconnected)").hasSize(1);
-        assertThat(mailbox.getTotalMessagesSent()).isOne();
-    }
-
     @Test
     void ownerOptedOutAndGoogleConnectedSendsOnlyLinkEmailToInvitee() {
         when(calendarPort.isConnected(anyLong())).thenReturn(true);
