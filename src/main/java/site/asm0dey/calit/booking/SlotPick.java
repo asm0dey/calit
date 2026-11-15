@@ -56,7 +56,7 @@ public record SlotPick(Instant startUtc, int minutes) {
                 throw new IllegalArgumentException();
             }
             return new SlotPick(start, minutes);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException _) {
             throw new BookingValidationException("Invalid session: " + s);
         }
     }

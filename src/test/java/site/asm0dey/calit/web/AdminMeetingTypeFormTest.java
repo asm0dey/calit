@@ -497,8 +497,9 @@ class AdminMeetingTypeFormTest {
             .statusCode(200)
             .extract()
             .asString();
-        assertThat(html).containsPattern("value=\"range\"[^>]*checked");
-        assertThat(html).doesNotContainPattern("value=\"exact\"[^>]*checked");
+        assertThat(html).containsPattern("value=\"range\"[^>]*checked").doesNotContainPattern(
+                "value=\"exact\"[^>]*checked"
+        );
         edit(id, "range", "1", "1", "", false).then().statusCode(200).body(not(containsString("alert-error")));
         MeetingType t = reload(id);
         assertThat(t.multiSlotMin).isEqualTo(1);

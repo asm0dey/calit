@@ -233,6 +233,7 @@ public class PublicResource {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter LONG_WHEN = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)");
 
     /**
      * One selectable slot: human label + the UTC instant string used as the form value.
@@ -635,7 +636,7 @@ public class PublicResource {
         List<SlotPick> offered;
         try {
             offered = stillOffered(type, picks);
-        } catch (CalendarUnavailableException e) {
+        } catch (CalendarUnavailableException _) {
             return Templates.unavailable(m.pub_unavailable_title());
         }
         if (offered.size() < picks.size()) {
@@ -664,7 +665,7 @@ public class PublicResource {
         List<DaySlots> byDate;
         try {
             byDate = details ? List.of() : daySlots(target.type(), durationChoice.chosen());
-        } catch (CalendarUnavailableException e) {
+        } catch (CalendarUnavailableException _) {
             return Templates.unavailable(m.pub_unavailable_title());
         }
         List<String> values = picks.stream().map(SlotPick::value).toList();
@@ -822,6 +823,13 @@ public class PublicResource {
         );
     }
 
+    private static String setStatus(AppMessages m, int n, int min, int max) {
+        if (n < min) {
+            return m.pub_set_status_need(min);
+        }
+        return n < max ? m.pub_set_status_more(n, max - n) : m.pub_set_status_full(n);
+    }
+
     /**
      * Step 1's view of the picks against the slots rendered at {@code chosen} minutes.
      */
@@ -872,11 +880,7 @@ public class PublicResource {
         List<String> status = new ArrayList<>();
         List<String> labels = new ArrayList<>();
         for (int n = 0; n <= max; n++) {
-            status.add(
-                    n < min ? m.pub_set_status_need(min) : n < max
-                    ? m.pub_set_status_more(n, max - n)
-                    : m.pub_set_status_full(n)
-            );
+            status.add(setStatus(m, n, min, max));
             labels.add(n < min ? m.pub_set_btn_need(min) : m.pub_set_btn_continue(n));
         }
         var allowed = MeetingTypeDuration.allowedDurations(type);
@@ -1352,8 +1356,7 @@ public class PublicResource {
         // Server fallback label is owner-tz; the page also carries the booked instant as a
         // data-utc attribute so the shared script can relabel it to the viewer's zone.
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
-        String when =
-                booking.startUtc.atZone(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
+        String when = booking.startUtc.atZone(zone).format(LONG_WHEN);
         // absolute instant for data-utc
         String startUtcIso = booking.startUtc.toString();
         // Approval types come back PENDING → "request sent" page (no Meet link yet); auto types
@@ -1479,8 +1482,7 @@ public class PublicResource {
         } catch (CalendarUnavailableException e) {
             return Templates.unavailable(m.pub_unavailable_title());
         }
-        String current =
-                booking.startUtc.atZone(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)"));
+        String current = booking.startUtc.atZone(zone).format(LONG_WHEN);
         // absolute instant for data-utc
         String currentUtcIso = booking.startUtc.toString();
         String guestsCsv =
@@ -1540,7 +1542,7 @@ public class PublicResource {
                 return new SetSibling(
                         r,
                         i + 1,
-                        r.startUtc.atZone(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)")),
+                        r.startUtc.atZone(zone).format(LONG_WHEN),
                         // a co-host's own token lands on the group's Creator row in the list
                         r.groupId == null ? r.id.equals(booking.id) : r.groupId.equals(booking.groupId),
                         r.status == BookingStatus.CANCELLED || r.status == BookingStatus.DECLINED

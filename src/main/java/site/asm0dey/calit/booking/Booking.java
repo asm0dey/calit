@@ -234,21 +234,32 @@ public class Booking extends PanacheEntityBase {
      * Counts one per conceptual booking: standalone rows + distinct group_id (outside sets) + distinct set_id.
      */
     public static long countDistinctBookingsByEmailBetween(String email, Instant dayStart, Instant dayEnd) {
-        return countWhere(email, dayStart, dayEnd, "b.groupId is null and b.setId is null", "b")
-                + countWhere(email, dayStart, dayEnd, "b.groupId is not null and b.setId is null", "distinct b.groupId")
-                + countWhere(email, dayStart, dayEnd, "b.setId is not null", "distinct b.setId");
+        return countJpql(
+                "select count(b) from Booking b where b.inviteeEmail = :e and b.createdAt >= :s and b.createdAt < :d"
+                + " and b.groupId is null and b.setId is null",
+                email,
+                dayStart,
+                dayEnd
+        )
+                + countJpql(
+                        "select count(distinct b.groupId) from Booking b where b.inviteeEmail = :e"
+                        + " and b.createdAt >= :s and b.createdAt < :d and b.groupId is not null and b.setId is null",
+                        email,
+                        dayStart,
+                        dayEnd
+        )
+                + countJpql(
+                        "select count(distinct b.setId) from Booking b where b.inviteeEmail = :e"
+                        + " and b.createdAt >= :s and b.createdAt < :d and b.setId is not null",
+                        email,
+                        dayStart,
+                        dayEnd
+        );
     }
 
-    private static long countWhere(String email, Instant dayStart, Instant dayEnd, String where, String what) {
+    private static long countJpql(String jpql, String email, Instant dayStart, Instant dayEnd) {
         return getEntityManager()
-            .createQuery(
-                    "select count("
-                    + what
-                    + ") from Booking b where b.inviteeEmail = :e "
-                    + "and b.createdAt >= :s and b.createdAt < :d and "
-                    + where,
-                    Long.class
-            )
+            .createQuery(jpql, Long.class)
             .setParameter("e", email)
             .setParameter("s", dayStart)
             .setParameter("d", dayEnd)
