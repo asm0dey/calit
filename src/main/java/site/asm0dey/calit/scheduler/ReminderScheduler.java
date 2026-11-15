@@ -83,6 +83,13 @@ public class ReminderScheduler {
     }
 
     /**
+     * "Cancel all" on a set: every Booking it cancelled loses its reminder.
+     */
+    void onSetCancelled(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingSetCancelled e) {
+        e.cancelledIds().forEach(this::onCancelledOrDeclined);
+    }
+
+    /**
      * A booking (re-)entered the approval queue as PENDING — either a fresh approval-type request or
      * an approval-type reschedule (Plan 3 re-fires BookingRequested, NOT BookingRescheduled). A PENDING
      * booking must hold no reminder, so drop any unsent one left over from a prior CONFIRMED state;

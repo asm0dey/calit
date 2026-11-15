@@ -122,7 +122,9 @@ public class PublicResource {
                 boolean guestsHidden,
                 boolean erasureEnabled,
                 String contactEmail,
-                String detailsError
+                String detailsError,
+                List<SetSibling> siblings,
+                int cancelAllCount
         );
 
         public static native TemplateInstance guestDeclineConfirm(
@@ -144,7 +146,7 @@ public class PublicResource {
                 String tzScript
         );
 
-        public static native TemplateInstance cancelled(String title);
+        public static native TemplateInstance cancelled(String title, boolean nothingLeft);
 
         public static native TemplateInstance eraseConfirm(
                 String title,
@@ -1506,8 +1508,44 @@ public class PublicResource {
                 type.hidesGuests(),
                 privacyConfig.inviteeErasureEnabled(),
                 siteInfo.getContactEmail(),
-                detailsError
+                detailsError,
+                siblings(booking, type, zone),
+                booking.setId == null ? 0 : BookingService.cancellableOfSet(booking.setId, type.ownerId).size()
         );
+    }
+
+    /**
+     * One Booking of a set on the manage page: its "k" in the set, whether it is the page's own Booking, and whether
+     * it is cancelled or declined.
+     */
+    public record SetSibling(Booking booking, int k, String startLabel, boolean current, boolean gone) {}
+
+    /**
+     * The set's Bookings (one Invitee-facing row each, in time order) for a Booking in a set; empty otherwise.
+     */
+    private static List<SetSibling> siblings(Booking booking, MeetingType type, ZoneId zone) {
+        if (booking.setId == null) {
+            return List.of();
+        }
+        List<Booking> rows = Booking
+            .<Booking>set(booking.setId)
+            .stream()
+            .filter(r -> r.groupId == null || r.ownerId.equals(type.ownerId))
+            .toList();
+        return IntStream
+            .range(0, rows.size())
+            .mapToObj(i -> {
+                Booking r = rows.get(i);
+                return new SetSibling(
+                        r,
+                        i + 1,
+                        r.startUtc.atZone(zone).format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' HH:mm (z)")),
+                        // a co-host's own token lands on the group's Creator row in the list
+                        r.groupId == null ? r.id.equals(booking.id) : r.groupId.equals(booking.groupId),
+                        r.status == BookingStatus.CANCELLED || r.status == BookingStatus.DECLINED
+                );
+            })
+            .toList();
     }
 
     /**
@@ -1593,7 +1631,7 @@ public class PublicResource {
         }
         if (booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
             // Already gone -> the same terminal page the POST cancel renders.
-            return Templates.cancelled(m.pub_cancelled_title());
+            return Templates.cancelled(m.pub_cancelled_title(), false);
         }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         return Templates.cancelConfirm(
@@ -1617,7 +1655,21 @@ public class PublicResource {
         }
         // keyed by the token
         bookingService.cancel(manageToken);
-        return Templates.cancelled(m.pub_cancelled_title());
+        return Templates.cancelled(m.pub_cancelled_title(), false);
+    }
+
+    /**
+     * "Cancel all" from the manage page or the set confirmation: cancels every Booking of the token's set still held
+     * and in the future. Keyed by the token, like cancel.
+     */
+    @POST
+    @Path("/booking/{manageToken}/cancel-all")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance cancelAll(@PathParam("manageToken") String manageToken) {
+        var m = messages.forLocale(activeLocale.current());
+        boolean nothingLeft = bookingService.cancelSet(manageToken, false).isEmpty();
+        return Templates.cancelled(nothingLeft ? m.pub_cancel_all_nothing_h1() : m.pub_cancelled_title(), nothingLeft);
     }
 
     /**

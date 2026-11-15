@@ -16,6 +16,8 @@
 {@java.lang.Boolean erasureEnabled}
 {@java.lang.String contactEmail}
 {@java.lang.String detailsError}
+{@java.util.List<site.asm0dey.calit.web.PublicResource$SetSibling> siblings}
+{@java.lang.Integer cancelAllCount}
 {#include base title=title}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-2xl mx-auto">
     <div class="card-body">
@@ -25,6 +27,20 @@
         <p><strong>{msg:pub_manage_currently_label}</strong> <time data-utc="{currentUtcIso}">{currentLabel}</time></p>
         <p><strong>{msg:pub_manage_for_label}</strong> {booking.inviteeName} ({booking.inviteeEmail})</p>
       </div>
+
+      {#if !siblings.isEmpty()}
+      <h2 class="text-lg font-semibold mb-3">{msg:pub_manage_set_h2}</h2>
+      <ol class="mb-4 divide-y divide-base-300 border border-base-300 rounded-box">
+        {#for s in siblings}
+        <li class="flex flex-wrap items-center gap-x-4 gap-y-1 p-3">
+          <span class="badge badge-sm">{msg:pub_set_k_of_n(s.k, siblings.size)}</span>
+          <time class="{#if s.gone}line-through text-base-content/60{/if}" data-utc="{s.booking.startUtc}">{s.startLabel}</time>
+          {#if s.gone}<span class="badge badge-ghost badge-sm">{msg:pub_manage_set_cancelled}</span>{/if}
+          <span class="ms-auto text-sm">{#if s.current}{msg:pub_manage_set_this}{#else}<a class="link" href="/booking/{s.booking.manageToken}/manage">{msg:pub_manage_set_link}</a>{/if}</span>
+        </li>
+        {/for}
+      </ol>
+      {/if}
 
       {#if hostInactive}
         <div class="alert alert-warning" role="status">{msg:pub_manage_host_inactive}</div>
@@ -88,6 +104,12 @@
         <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
         <button type="submit" class="btn btn-error btn-outline">{msg:pub_manage_btn_cancel}</button>
       </form>
+      {#if cancelAllCount > 0}
+      <form method="post" action="/booking/{booking.manageToken}/cancel-all">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <button type="submit" class="btn btn-error btn-outline mt-2">{msg:pub_set_cancel_all(cancelAllCount)}</button>
+      </form>
+      {/if}
 
       {#if erasureEnabled}
       <a class="btn btn-ghost btn-sm text-error" href="/booking/{booking.manageToken}/erase">{msg:pub_erase_confirm_btn}</a>

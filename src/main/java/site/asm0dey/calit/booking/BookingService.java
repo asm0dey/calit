@@ -78,6 +78,8 @@ public class BookingService {
     @Inject
     Event<BookingCancelled> bookingCancelledEvent;
     @Inject
+    Event<BookingSetCancelled> bookingSetCancelledEvent;
+    @Inject
     Event<GuestDeclined> guestDeclinedEvent;
     @Inject
     Event<GuestRemoved> guestRemovedEvent;
@@ -1687,21 +1689,75 @@ public class BookingService {
         if (booking == null || booking.isErased()) {
             throw new NotFoundException("No booking for that token");
         }
-        if (booking.groupId == null) {
-            return cancelSingle(booking, byOwner, tolerateGoogleFailure);
+        boolean deleted = cancelRows(booking, tolerateGoogleFailure);
+        Long eventId = booking.groupId == null
+                ? booking.id
+                : Booking.leadOfGroup(booking.groupId, MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId).id;
+        bookingCancelledEvent.fire(new BookingCancelled(eventId, byOwner));
+        return deleted;
+    }
+
+    /**
+     * "Cancel all" for the set of the token's Booking: cancels its Bookings still held and in the future, through the
+     * same row cancel as {@link #cancel(String, boolean)}, and fires one {@link BookingSetCancelled} instead of one
+     * {@link BookingCancelled} each. Takes the set lock first, as approve/decline do. Nothing left to cancel is a
+     * no-op: no event, no mail.
+     *
+     * @return the Invitee-facing rows it cancelled, in time order
+     */
+    @Transactional
+    public List<Booking> cancelSet(String manageToken, boolean byOwner) {
+        Booking booking = Booking.findByManageToken(manageToken);
+        if (booking == null || booking.isErased() || booking.setId == null) {
+            throw new NotFoundException("No booking set for that token");
         }
-        MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        // one shared event
+        lockForDecision(booking.id);
+        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+        List<Booking> toCancel = cancellableOfSet(booking.setId, creatorOwnerId);
+        if (toCancel.isEmpty()) {
+            return List.of();
+        }
+        toCancel.forEach(b -> cancelRows(b, false));
+        bookingSetCancelledEvent.fire(
+                new BookingSetCancelled(
+                        Booking.leadOfSet(booking.setId, creatorOwnerId).id,
+                        toCancel.stream().map(b -> b.id).toList(),
+                        byOwner
+                )
+        );
+        return toCancel;
+    }
+
+    /**
+     * The set's Invitee-facing rows (one per Booking) still held and starting in the future: what "Cancel all" cancels.
+     */
+    public static List<Booking> cancellableOfSet(UUID setId, Long creatorOwnerId) {
+        Instant now = Instant.now();
+        return Booking
+            .<Booking>set(setId)
+            .stream()
+            .filter(r -> r.groupId == null || r.ownerId.equals(creatorOwnerId))
+            .filter(r -> r.status == BookingStatus.PENDING || r.status == BookingStatus.CONFIRMED)
+            .filter(r -> r.startUtc.isAfter(now))
+            .toList();
+    }
+
+    /**
+     * Cancels one Booking without firing an event: a lone row, or every Host's row of a group with its one shared
+     * Mirror event. Returns whether a Mirror event was deleted remotely.
+     */
+    private boolean cancelRows(Booking booking, boolean tolerateGoogleFailure) {
+        if (booking.groupId == null) {
+            return cancelSingle(booking, tolerateGoogleFailure);
+        }
         boolean deleted = deleteGroupGoogleEvent(booking.groupId, tolerateGoogleFailure);
         for (Booking r : Booking.<Booking>group(booking.groupId)) {
             r.status = BookingStatus.CANCELLED;
         }
-        Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
-        bookingCancelledEvent.fire(new BookingCancelled(lead.id, byOwner));
         return deleted;
     }
 
-    private boolean cancelSingle(Booking booking, boolean byOwner, boolean tolerateGoogleFailure) {
+    private boolean cancelSingle(Booking booking, boolean tolerateGoogleFailure) {
         booking.status = BookingStatus.CANCELLED;
         var deleted = false;
         if (booking.eventId != null) {
@@ -1715,7 +1771,6 @@ public class BookingService {
             booking.calendarRemoteId = null;
             booking.calendarAccountId = null;
         }
-        bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner));
         return deleted;
     }
 

@@ -41,6 +41,10 @@
         {/for}
       </ol>
       <p class="text-sm text-base-content/70 mt-3">{msg:pub_set_conf_each}</p>
+      <form method="post" action="/booking/{first.manageToken}/cancel-all">
+        <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+        <button type="submit" class="btn btn-error btn-outline btn-sm mt-3">{msg:pub_set_cancel_all(rows.size)}</button>
+      </form>
       {! Same rule as confirmation.html: no .ics offer when Google owns the Mirror events. One file holds every session. !}
       {#if !googleConnected}
       <div class="divider my-2"></div>

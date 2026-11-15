@@ -385,6 +385,10 @@ public class EmailService {
         handleCancelled(e);
     }
 
+    void onSetCancelled(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingSetCancelled e) {
+        handleSetCancelled(e);
+    }
+
     void onGuestDeclined(@Observes(during = TransactionPhase.AFTER_SUCCESS) GuestDeclined e) {
         handleGuestDeclined(e);
     }
@@ -511,6 +515,7 @@ public class EmailService {
         if (l.booking().icsSequence > 0) {
             sendGuestCancels(
                     l,
+                    List.of(l.booking()),
                     messages.forLocale(AppLocales.pick(l.booking().locale)).email_cancelled_subject(label(l))
             );
         }
@@ -655,18 +660,39 @@ public class EmailService {
         if (l == null) {
             return;
         }
+        sendCancelled(l, List.of(l.booking()), e.byOwner());
+    }
+
+    /**
+     * "Cancel all": one cancellation per recipient and per guest listing exactly the Bookings it cancelled, with one
+     * CANCEL .ics of those. Keyed on the first cancelled row, whose guests and removed Mirror event it carries.
+     */
+    void handleSetCancelled(BookingSetCancelled e) {
+        BookingSnapshot l = snapshots.load(e.cancelledIds().getFirst());
+        if (l == null) {
+            return;
+        }
+        var events = l
+            .setBookings()
+            .stream()
+            .filter(b -> e.cancelledIds().contains(b.id))
+            .toList();
+        sendCancelled(l, events.isEmpty() ? List.of(l.booking()) : events, e.byOwner());
+    }
+
+    private void sendCancelled(BookingSnapshot l, List<Booking> events, boolean byOwner) {
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
         // No location/meet link in the cancellation body; .ics attached unless the Mirror event is on Google.
         sendForKindLocaleAware(
                 l,
-                List.of(l.booking()),
+                events,
                 resolveLocation(l),
                 locale -> messages.forLocale(locale).email_cancelled_subject(label(l)),
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
                     .cancellation(
                             role,
-                            e.byOwner(),
-                            e.byOwner() && l.booking().groupId == null,
+                            byOwner,
+                            byOwner && l.booking().groupId == null,
                             locale.getLanguage(),
                             l.booking().inviteeName,
                             l.booking().inviteeEmail,
@@ -675,14 +701,14 @@ public class EmailService {
                             label(l),
                             format(l.booking().startUtc, zone, locale, hourCycle),
                             BookingService.lengthOf(l.booking()),
-                            List.of()
+                            sessions(l, events, zone, locale, hourCycle)
                     )
                     .setLocale(locale)
                     .render(),
                 IcsMethod.CANCEL,
                 false
         );
-        sendGuestCancels(l, messages.forLocale(inviteeLocale).email_cancelled_subject(label(l)));
+        sendGuestCancels(l, events, messages.forLocale(inviteeLocale).email_cancelled_subject(label(l)));
     }
 
     /**
@@ -791,7 +817,7 @@ public class EmailService {
     /**
      * CANCEL .ics + cancel body to every active guest.
      */
-    private void sendGuestCancels(BookingSnapshot l, String subject) {
+    private void sendGuestCancels(BookingSnapshot l, List<Booking> events, String subject) {
         List<BookingGuest> guests =
                 QuarkusTransaction
             .requiringNew()
@@ -801,7 +827,7 @@ public class EmailService {
         }
         Locale locale = AppLocales.pick(l.booking().locale);
         for (BookingGuest g : guests) {
-            sendGuestCancelMail(l, List.of(l.booking()), g, subject, locale);
+            sendGuestCancelMail(l, events, g, subject, locale);
         }
     }
 

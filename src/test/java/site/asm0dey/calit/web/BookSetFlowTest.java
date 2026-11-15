@@ -132,6 +132,9 @@ class BookSetFlowTest {
         assertThat(tokens)
             .hasSize(2)
             .allSatisfy(t -> assertThat(body).contains("/booking/" + t + "/manage", "/booking/" + t + "/cancel"));
+        assertThat(body)
+            .contains("<form method=\"post\" action=\"/booking/" + tokens.getFirst() + "/cancel-all\">")
+            .contains("Cancel all 2 sessions");
     }
 
     @Test

@@ -471,6 +471,28 @@ public interface AppMessages {
     @Message("Add all to calendar (.ics)")
     String pub_set_conf_ics();
 
+    @Message("{#if count == 1}Cancel the 1 remaining session{#else}Cancel all {count} sessions{/if}")
+    String pub_set_cancel_all(int count);
+
+    // ---- Manage page of a Booking in a set (manage.html) and "Cancel all" (cancelled.html) ----
+    @Message("Sessions in this booking")
+    String pub_manage_set_h2();
+
+    @Message("this one")
+    String pub_manage_set_this();
+
+    @Message("Manage")
+    String pub_manage_set_link();
+
+    @Message("Cancelled")
+    String pub_manage_set_cancelled();
+
+    @Message("Nothing left to cancel")
+    String pub_cancel_all_nothing_h1();
+
+    @Message("Every session of this booking is already cancelled or over.")
+    String pub_cancel_all_nothing_desc();
+
     // ---- Confirmation page (confirmation.html) ----
     @Message("Request sent")
     String pub_conf_title_pending();

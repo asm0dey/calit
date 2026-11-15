@@ -52,7 +52,8 @@ public class AdminResource {
                 boolean isAdmin,
                 String title,
                 String zone,
-                MailHealth.Status mailHealth
+                MailHealth.Status mailHealth,
+                Map<Long, String> setTags
         );
 
         public static native TemplateInstance meetingTypes(
@@ -170,7 +171,8 @@ public class AdminResource {
                 String titlePlaceholder,
                 String descPlaceholder,
                 boolean guestsHidden,
-                String detailsError
+                String detailsError,
+                int cancelAllCount
         );
 
         public static native TemplateInstance approvalResult(
@@ -432,8 +434,34 @@ public class AdminResource {
                 isAdmin(),
                 m().adm_dashboard_title(),
                 ownerZone(),
-                mailHealth.status()
+                mailHealth.status(),
+                setTags(upcoming)
         );
+    }
+
+    /**
+     * "k of N" for each upcoming row that belongs to a Booking set, counted over this owner's rows of that set.
+     */
+    private Map<Long, String> setTags(List<Booking> upcoming) {
+        var m = appMsgs.forLocale(activeLocale.current());
+        Map<Long, String> tags = new HashMap<>();
+        upcoming
+            .stream()
+            .map(b -> b.setId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .forEach(setId -> {
+                List<Booking> mine =
+                        Booking
+                    .<Booking>set(setId)
+                    .stream()
+                    .filter(r -> r.ownerId.equals(currentOwner.id()))
+                    .toList();
+                for (int i = 0; i < mine.size(); i++) {
+                    tags.put(mine.get(i).id, m.pub_set_k_of_n(i + 1, mine.size()));
+                }
+            });
+        return tags;
     }
 
     /**
@@ -2317,7 +2345,8 @@ public class AdminResource {
                     type.name,
                     type.description == null ? "" : type.description,
                     type.hidesGuests(),
-                    detailsError
+                    detailsError,
+                    b.setId == null ? 0 : BookingService.cancellableOfSet(b.setId, type.ownerId).size()
             );
     }
 
@@ -2345,6 +2374,17 @@ public class AdminResource {
         // host-initiated; keyed by the booking's own token
         bookingService.cancel(b.manageToken, true);
         // re-render /me; the cancelled booking drops off the upcoming list
+        return dashboard();
+    }
+
+    @POST
+    @Path("/bookings/{id}/cancel-all")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance ownerCancelAll(@PathParam("id") Long id) {
+        Booking b = requireOwnedBooking(id);
+        // host-initiated "Cancel all" for the booking's set; keyed by its own token like ownerCancel
+        bookingService.cancelSet(b.manageToken, true);
         return dashboard();
     }
 
