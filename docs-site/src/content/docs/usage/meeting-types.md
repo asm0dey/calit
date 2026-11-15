@@ -125,6 +125,35 @@ On a shared type, a co-host sets their own buffer in **Buffers** on their shared
 
 Switching between lengths does not move the start times already on offer — a longer pick simply drops the starts that no longer leave enough room, since every length shares the same underlying lattice.
 
+## Several sessions per booking
+
+A meeting type can let one invitee book several sessions in a single visit — a coaching package, a block of tutoring — instead of coming back to the page once per session. In the type's **Several sessions per booking** section choose:
+
+- **Off** — one session per booking (the default; the page and emails stay exactly as they were).
+- **Invitee picks between *min* and *max* sessions** — the invitee books anything in that range.
+- **Exactly *N* sessions** — a fixed package.
+
+The most a booking can hold is 5. The **Allow more than one session on the same day** toggle is off by default, so by default two picks cannot share a day.
+
+### What the invitee sees
+
+The booking page first lets the invitee tick the sessions they want, with a "Your sessions" box that counts picks against the maximum. Times that would break a rule (same day, overlap, over the maximum) are shown disabled. If the type offers [several lengths](#allowed-durations), each session can have its own. Only then does the page ask for name, email and answers — once, for the whole set. Without JavaScript the same steps work as plain page loads.
+
+### One set, booked together
+
+- The set is **all or nothing**. If any chosen time was just taken, nothing is booked and the invitee picks again, keeping the rest of their picks.
+- With **Requires approval**, you approve or decline the set once, and a pending set expires as a unit.
+- It works with co-hosts — every session must be free for every host — and with [single-use invites](#single-use-invites); the invite page never reveals the meeting type's URL.
+- The invitee gets one confirmation email and one calendar file for the whole set.
+
+### Managing a set
+
+Each session is still a normal booking with its own manage link, so it can be rescheduled or cancelled on its own. The manage page lists the other sessions of the set and offers **Cancel all** for those still held. Your bookings dashboard labels each one "k of N".
+
+:::note[Upgrade]
+Migration `V40` adds nullable columns only. Nothing to do on upgrade.
+:::
+
 ## Google account
 
 Connect a Google account in your account settings to enable Google Meet links and Google Calendar sync for your bookings.
