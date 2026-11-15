@@ -484,4 +484,24 @@ class AdminMeetingTypeFormTest {
             .body(containsString("name=\"multiSlotSameDay\""))
             .body(containsString("class=\"toggle"));
     }
+
+    @Test
+    void rangeOneToOneReloadsAsRangeAndResaves() {
+        var id = newType();
+        edit(id, "range", "1", "1", "", false).then().statusCode(200);
+        var html = given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types/" + id)
+            .then()
+            .statusCode(200)
+            .extract()
+            .asString();
+        assertThat(html).containsPattern("value=\"range\"[^>]*checked");
+        assertThat(html).doesNotContainPattern("value=\"exact\"[^>]*checked");
+        edit(id, "range", "1", "1", "", false).then().statusCode(200).body(not(containsString("alert-error")));
+        MeetingType t = reload(id);
+        assertThat(t.multiSlotMin).isEqualTo(1);
+        assertThat(t.multiSlotMax).isEqualTo(1);
+    }
 }

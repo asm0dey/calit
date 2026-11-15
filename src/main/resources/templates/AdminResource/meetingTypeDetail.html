@@ -92,13 +92,13 @@
           <fieldset class="fieldset" data-multi-slot>
             <legend class="fieldset-legend">{adm:adm_detail_multi_slot_legend}</legend>
             <label class="label cursor-pointer justify-start gap-2"><input type="radio" name="multiSlotMode" value="off" class="radio radio-sm"{#if type.multiSlotMax == null} checked{/if}> {adm:adm_detail_multi_slot_off}</label>
-            <label class="label cursor-pointer justify-start gap-2"><input type="radio" name="multiSlotMode" value="range" class="radio radio-sm"{#if type.multiSlotMax != null && type.multiSlotMin != type.multiSlotMax} checked{/if}> {adm:adm_detail_multi_slot_range_before}
-              <input type="number" name="multiSlotMin" min="1" max="5" class="input input-sm w-16" aria-label="{adm:adm_detail_multi_slot_range_before}" value="{#if type.multiSlotMax != null && type.multiSlotMin != type.multiSlotMax}{type.multiSlotMin}{#else}2{/if}">
+            <label class="label cursor-pointer justify-start gap-2"><input type="radio" name="multiSlotMode" value="range" class="radio radio-sm"{#if type.multiSlotMax != null && (type.multiSlotMin != type.multiSlotMax || type.multiSlotMax < 2)} checked{/if}> {adm:adm_detail_multi_slot_range_before}
+              <input type="number" name="multiSlotMin" min="1" max="5" class="input input-sm w-16" aria-label="{adm:adm_detail_multi_slot_range_before}" value="{#if type.multiSlotMax != null && (type.multiSlotMin != type.multiSlotMax || type.multiSlotMax < 2)}{type.multiSlotMin}{#else}2{/if}">
               {adm:adm_detail_multi_slot_range_and}
-              <input type="number" name="multiSlotMax" min="1" max="5" class="input input-sm w-16" aria-label="{adm:adm_detail_multi_slot_range_and}" value="{#if type.multiSlotMax != null && type.multiSlotMin != type.multiSlotMax}{type.multiSlotMax}{#else}3{/if}">
+              <input type="number" name="multiSlotMax" min="1" max="5" class="input input-sm w-16" aria-label="{adm:adm_detail_multi_slot_range_and}" value="{#if type.multiSlotMax != null && (type.multiSlotMin != type.multiSlotMax || type.multiSlotMax < 2)}{type.multiSlotMax}{#else}3{/if}">
               {adm:adm_detail_multi_slot_range_after}</label>
-            <label class="label cursor-pointer justify-start gap-2"><input type="radio" name="multiSlotMode" value="exact" class="radio radio-sm"{#if type.multiSlotMax != null && type.multiSlotMin == type.multiSlotMax} checked{/if}> {adm:adm_detail_multi_slot_exact_before}
-              <input type="number" name="multiSlotExact" min="2" max="5" class="input input-sm w-16" aria-label="{adm:adm_detail_multi_slot_exact_before}" value="{#if type.multiSlotMax != null && type.multiSlotMin == type.multiSlotMax}{type.multiSlotMax}{#else}3{/if}">
+            <label class="label cursor-pointer justify-start gap-2"><input type="radio" name="multiSlotMode" value="exact" class="radio radio-sm"{#if type.multiSlotMax != null && type.multiSlotMin == type.multiSlotMax && type.multiSlotMax >= 2} checked{/if}> {adm:adm_detail_multi_slot_exact_before}
+              <input type="number" name="multiSlotExact" min="2" max="5" class="input input-sm w-16" aria-label="{adm:adm_detail_multi_slot_exact_before}" value="{#if type.multiSlotMax != null && type.multiSlotMin == type.multiSlotMax && type.multiSlotMax >= 2}{type.multiSlotMax}{#else}3{/if}">
               {adm:adm_detail_multi_slot_exact_after}</label>
             {#if type.multiSlotMax != null}
             <div class="divider my-1"></div>
