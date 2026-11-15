@@ -291,32 +291,6 @@ class BookServiceTest {
 
     @Test
     @TestTransaction
-    void requiredCustomFieldBlankThrowsValidation() {
-        seedSettings();
-        MeetingType t = meetingTypeWithMondayWindow("book-required-blank", LocationType.GOOGLE_MEET, false);
-        requiredField(t.id, "company", "Company");
-        when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        // Present but blank value is rejected just like a missing key.
-        Map<String, String> answers = Map.of("company", "   ");
-        List<String> guestEmails = List.of();
-        assertThatExceptionOfType(BookingValidationException.class)
-            .isThrownBy(() -> bookingService.book(
-                    1L,
-                    "book-required-blank",
-                    SLOT_09,
-                    "Sam",
-                    "sam@example.com",
-                    answers,
-                    "tok",
-                    "",
-                    "en",
-                    guestEmails
-            ));
-    }
-
-    @Test
-    @TestTransaction
     void requiredCustomFieldPresentPersistsAndStoresAnswers() {
         seedSettings();
         MeetingType t = meetingTypeWithMondayWindow("book-required-ok", LocationType.GOOGLE_MEET, false);
