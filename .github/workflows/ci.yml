@@ -409,8 +409,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { variant: jvm, suffix: "" }
-          - { variant: native, suffix: "-native" }
+          - { variant: jvm, suffix: "", kind: "JVM (JIT-compiled) on a hardened distroless Liberica JRE (musl)" }
+          - { variant: native, suffix: "-native", kind: "native (AOT-compiled with Liberica Native Image Kit, no JVM) on Alpaquita Linux (musl)" }
     steps:
       - name: Download digests
         uses: actions/download-artifact@v8
@@ -438,6 +438,8 @@ jobs:
       - name: Extract metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v6
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
         with:
           # Same tags on both registries; imagetools copies the GHCR digests to Docker Hub, no rebuild.
           images: |
@@ -449,6 +451,9 @@ jobs:
           # suffix too: jvm => :latest, native => :latest-native. Without it both variants would
           # push a bare ":latest" and race/clobber each other.
           flavor: suffix=${{ matrix.suffix }},onlatest=true
+          # Multi-arch manifest lists carry the description as an index annotation (GHCR reads it there).
+          annotations: |
+            org.opencontainers.image.description=calit: self-hosted, multi-user Calendly alternative (Quarkus, Postgres). ${{ matrix.kind }} build.
           tags: |
             type=edge,branch=main
             type=semver,pattern={{version}}
@@ -458,8 +463,10 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
+          # Annotations contain spaces, so build them as an array rather than word-splitting jq output.
+          mapfile -t annotations < <(jq -r '.annotations[] | "--annotation", .' <<< "$DOCKER_METADATA_OUTPUT_JSON")
           # shellcheck disable=SC2046
-          docker buildx imagetools create \
+          docker buildx imagetools create "${annotations[@]}" \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf 'ghcr.io/${{ github.repository }}@sha256:%s ' *)
 
