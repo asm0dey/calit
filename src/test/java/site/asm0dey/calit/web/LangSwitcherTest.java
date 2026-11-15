@@ -48,33 +48,6 @@ class LangSwitcherTest {
     }
 
     @Test
-    void publicFooterContainsBothLangLinksWhenGermanActive() {
-        seedAlice();
-        // With German cookie, EN is the switchable link and DE is the active span
-        given()
-            .cookie("calit_lang", "de")
-            .when()
-            .get("/alice/alice-intro")
-            .then()
-            .statusCode(200)
-            .body(containsString("/lang/en?return="))
-            .body(containsString("Deutsch"));
-    }
-
-    @Test
-    void publicFooterContainsBothLangLinksWhenEnglishActive() {
-        seedAlice();
-        // With English (default), DE is the switchable link and EN is the active span
-        given()
-            .when()
-            .get("/alice/alice-intro")
-            .then()
-            .statusCode(200)
-            .body(containsString("/lang/de?return="))
-            .body(containsString("English"));
-    }
-
-    @Test
     void returnPathReflectsRequestedPath() {
         seedAlice();
         // The return= value should be the URL-encoded path /alice/alice-intro

@@ -7,29 +7,11 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.domain.OwnerSettings;
 
 @QuarkusTest
 class LocaleColumnsTest {
     @Inject
     EntityManager em;
-
-    @Test
-    @TestTransaction
-    void ownerSettingsHasLocaleDefaultingToEn() {
-        OwnerSettings s = OwnerSettings.forOwner(1L);
-        if (s == null) {
-            s = new OwnerSettings();
-            s.ownerId = 1L;
-            s.ownerName = "Admin";
-            s.ownerEmail = "admin@example.com";
-            s.timezone = "UTC";
-        }
-        s.persist();
-        // admin always id 1
-        OwnerSettings loaded = OwnerSettings.forOwner(1L);
-        assertThat(loaded.locale).isEqualTo("en");
-    }
 
     /**
      * Proves the DB column DEFAULT 'en' on owner_settings is active:

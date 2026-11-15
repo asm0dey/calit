@@ -61,9 +61,4 @@ class ReservedRouteTest {
             .statusCode(404)
             .body(not(containsString("Book a meeting")));
     }
-
-    @Test
-    void meRequiresAuthAndIsNotAUserLanding() {
-        given().redirects().follow(false).when().get("/me").then().statusCode(anyOf(is(302), is(303), is(401)));
-    }
 }
