@@ -123,9 +123,10 @@ public class ReminderScheduler {
                         return;
                     }
                 }
-                Instant sendAt = booking.startUtc.minus(leadMinutes, ChronoUnit.MINUTES);
                 // Booking made inside the lead window: nothing to remind about ahead of time.
-                if (!sendAt.isAfter(Instant.now())) {
+                Instant sendAt =
+                        reminderSendAt(booking.startUtc, Duration.ofMinutes(leadMinutes), Instant.now()).orElse(null);
+                if (sendAt == null) {
                     return;
                 }
                 // Never double-schedule (re-confirm / reschedule recompute).
@@ -137,6 +138,14 @@ public class ReminderScheduler {
                 r.sentAt = null;
                 r.persist();
             });
+    }
+
+    /**
+     * When to send: {@code start - lead}, or empty if that instant is not after {@code now}.
+     */
+    static Optional<Instant> reminderSendAt(Instant start, Duration lead, Instant now) {
+        Instant sendAt = start.minus(lead);
+        return sendAt.isAfter(now) ? Optional.of(sendAt) : Optional.empty();
     }
 
     /**
