@@ -10,8 +10,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.booking.Booking;
-import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.booking.SetDecisions;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.email.EmailService;
 import site.asm0dey.calit.notify.NotificationDispatcher;
@@ -266,12 +266,12 @@ public class PendingExpiryScheduler {
         em.refresh(lead, LockModeType.PESSIMISTIC_WRITE);
         List<Booking> rows = Booking.set(b.setId);
         rows.forEach(em::refresh);
-        List<Booking> undecided = BookingService.undecidedOfSet(rows, creatorOwnerId);
+        List<Booking> undecided = SetDecisions.undecidedOfSet(rows, creatorOwnerId);
         // Idempotency: declined, or approved by every host, meanwhile -- nothing left to expire.
         if (undecided.isEmpty()) {
             return;
         }
-        BookingService.declineBookings(rows, undecided);
+        SetDecisions.declineBookings(rows, undecided);
         List<Long> ids = undecided.stream().map(u -> u.id).toList();
         ids.forEach(Reminder::deleteUnsentFor);
         Long first = ids.getFirst();
