@@ -386,6 +386,150 @@ public class BookingService {
             int durationMinutes,
             String inviteToken
     ) {
+        Prechecked p = precheck(
+                ownerId,
+                meetingTypeSlug,
+                inviteeName,
+                inviteeEmail,
+                answers,
+                turnstileToken,
+                altchaSolution,
+                honeypot,
+                guestEmails,
+                List.of(durationMinutes)
+        );
+        MeetingType type = p.type();
+        // A set-only type (min > 1) never takes a single booking; also guards the JSON API.
+        if (type.multiSlotMin != null && type.multiSlotMin > 1) {
+            throw new BookingValidationException("Pick at least " + type.multiSlotMin + " sessions.");
+        }
+        // App-level availability re-check: nice errors + buffer/min-notice/horizon enforcement
+        // (the DB constraint only guards raw-time overlap, not buffers).
+        assertSlotAvailable(type, startUtc, Set.of(), durationMinutes);
+        // Consume only once the slot is known free; the delete is the atomic claim, and it rolls back
+        // with this transaction if the booking later fails. A committed booking keeps it deleted.
+        consumeInvite(inviteToken, type);
+        return writeOne(type, startUtc, durationMinutes, inviteeEmail, p, locale, null, true);
+    }
+
+    /**
+     * Books every pick of a Booking set in this one transaction: any conflict rolls back the whole set.
+     * Per-form checks (captcha, honeypot, cap, fields) run once; Mirror events and the one
+     * {@code BookingRequested}/{@code BookingConfirmed} (on {@link Booking#leadOfSet}) follow all writes.
+     * A single pick is a plain Booking (no {@code set_id}). Returns the Invitee-facing row per pick, by start.
+     */
+    // S107: one param per booking input, as book() above.
+    @SuppressWarnings("java:S107")
+    @Transactional
+    public List<Booking> bookSet(
+            Long ownerId,
+            String meetingTypeSlug,
+            List<SlotPick> picks,
+            String inviteeName,
+            String inviteeEmail,
+            Map<String, String> answers,
+            String turnstileToken,
+            String altchaSolution,
+            String honeypot,
+            String locale,
+            List<String> guestEmails,
+            String inviteToken
+    ) {
+        MeetingType found = MeetingType.findBySlug(ownerId, meetingTypeSlug);
+        if (found == null || !found.active) {
+            throw new NotFoundException("No meeting type with slug " + meetingTypeSlug + " for owner " + ownerId);
+        }
+        List<SlotPick> sorted = picks.stream().sorted(Comparator.comparing(SlotPick::startUtc)).toList();
+        SetRules.validate(
+                found,
+                sorted,
+                MeetingTypeDuration.allowedDurations(found),
+                ZoneId.of(OwnerSettings.forOwner(found.ownerId).timezone)
+        );
+        if (sorted.size() == 1) {
+            SlotPick only = sorted.getFirst();
+            return List.of(
+                    book(
+                            ownerId,
+                            meetingTypeSlug,
+                            only.startUtc(),
+                            inviteeName,
+                            inviteeEmail,
+                            answers,
+                            turnstileToken,
+                            altchaSolution,
+                            honeypot,
+                            locale,
+                            guestEmails,
+                            only.minutes(),
+                            inviteToken
+                    )
+            );
+        }
+        Prechecked p = precheck(
+                ownerId,
+                meetingTypeSlug,
+                inviteeName,
+                inviteeEmail,
+                answers,
+                turnstileToken,
+                altchaSolution,
+                honeypot,
+                guestEmails,
+                sorted.stream().map(SlotPick::minutes).toList()
+        );
+        MeetingType type = p.type();
+        var setId = UUID.randomUUID();
+        List<Booking> rows = new ArrayList<>();
+        for (SlotPick pick : sorted) {
+            // each write flushes, so this re-check already sees the earlier picks and their buffers
+            assertSlotAvailable(type, pick.startUtc(), Set.of(), pick.minutes());
+            rows.add(writeOne(type, pick.startUtc(), pick.minutes(), inviteeEmail, p, locale, setId, false));
+        }
+        consumeInvite(inviteToken, type);
+        if (!type.requiresApproval) {
+            boolean multiHost = MeetingTypeHost.isMultiHost(type.id);
+            for (Booking row : rows) {
+                if (multiHost) {
+                    createGroupGoogleEvent(type, row.groupId);
+                } else if (calendarPort.isConnected(type.ownerId)) {
+                    createGoogleEvent(type, row);
+                }
+            }
+        }
+        Long leadId = Booking.leadOfSet(setId, type.ownerId).id;
+        if (type.requiresApproval) {
+            bookingRequestedEvent.fire(new BookingRequested(leadId));
+        } else {
+            bookingConfirmedEvent.fire(new BookingConfirmed(leadId));
+        }
+        return rows;
+    }
+
+    /**
+     * The booking form, checked and normalised once per submit (a set submits once for all its picks).
+     */
+    private record Prechecked(
+            MeetingType type,
+            String inviteeName,
+            Map<String, String> answers,
+            List<String> guestEmails
+    ) {}
+
+    // S107: the per-form booking inputs.
+    @SuppressWarnings("java:S107")
+    private Prechecked precheck(
+            Long ownerId,
+            String meetingTypeSlug,
+            String inviteeName,
+            String inviteeEmail,
+            Map<String, String> answers,
+            String turnstileToken,
+            String altchaSolution,
+            String honeypot,
+            List<String> guestEmails,
+            List<Integer> durations
+    ) {
         validateInviteeEmail(inviteeEmail);
         validateInputBounds(inviteeName, answers);
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
@@ -396,7 +540,9 @@ public class BookingService {
         // Both form and JSON API land here, so the type's field policy (GH #130) is enforced once.
         inviteeName = resolveInviteeName(type, inviteeName, inviteeEmail);
         guestEmails = guestsFor(type, guestEmails);
-        assertDurationAllowed(type, durationMinutes);
+        for (int duration : durations) {
+            assertDurationAllowed(type, duration);
+        }
         // Feature 16: all three abuse guards run first, inside book(). The Plan 5 web layer
         // just forwards the cf-turnstile-response (turnstileToken) and website (honeypot) form values.
         // -> AbuseException (400) on invalid CAPTCHA
@@ -413,30 +559,54 @@ public class BookingService {
         // Feature 10: every required custom field must have a non-blank value. Built-in
         // name/email are method params, not BookingField rows, so they are not in this loop.
         validateRequiredFields(type, submitted);
+        return new Prechecked(type, inviteeName, submitted, guestEmails);
+    }
 
+    /**
+     * Writes one Booking (one row, or one row per Host) and returns its Invitee-facing row. With
+     * {@code fireEvents} false it never touches the calendar nor fires events: {@link #bookSet} does that
+     * once every pick is written.
+     */
+    // S107: one param per booking input.
+    @SuppressWarnings("java:S107")
+    private Booking writeOne(
+            MeetingType type,
+            Instant startUtc,
+            int durationMinutes,
+            String inviteeEmail,
+            Prechecked p,
+            String locale,
+            UUID setId,
+            boolean fireEvents
+    ) {
         var endUtc = startUtc.plus(durationMinutes, ChronoUnit.MINUTES);
-        // App-level availability re-check: nice errors + buffer/min-notice/horizon enforcement
-        // (the DB constraint only guards raw-time overlap, not buffers).
-        assertSlotAvailable(type, startUtc, Set.of(), durationMinutes);
-        // Consume only once the slot is known free; the delete is the atomic claim, and it rolls back
-        // with this transaction if the booking later fails. A committed booking keeps it deleted.
-        consumeInvite(inviteToken, type);
-
         if (MeetingTypeHost.isMultiHost(type.id)) {
-            return bookGroup(type, startUtc, endUtc, inviteeName, inviteeEmail, submitted, locale, guestEmails);
+            return bookGroup(
+                    type,
+                    startUtc,
+                    endUtc,
+                    p.inviteeName(),
+                    inviteeEmail,
+                    p.answers(),
+                    locale,
+                    p.guestEmails(),
+                    setId,
+                    fireEvents
+            );
         }
 
         Booking booking = new Booking();
         booking.ownerId = type.ownerId;
         booking.meetingTypeId = type.id;
-        booking.inviteeName = inviteeName;
+        booking.inviteeName = p.inviteeName();
         booking.inviteeEmail = inviteeEmail;
         booking.startUtc = startUtc;
         booking.endUtc = endUtc;
         booking.createdAt = Instant.now();
         booking.manageToken = UUID.randomUUID().toString();
-        booking.answers = submitted;
+        booking.answers = p.answers();
         booking.locale = AppLocales.isSupported(locale) ? locale : "en";
+        booking.setId = setId;
         // Feature 14: approval types hold the slot as PENDING; auto types are CONFIRMED immediately.
         booking.status = type.requiresApproval ? BookingStatus.PENDING : BookingStatus.CONFIRMED;
         // Approval-required bookings carry an unguessable token used as a CSRF nonce on the owner's
@@ -456,8 +626,11 @@ public class BookingService {
             throw ex;
         }
 
-        persistGuests(booking, guestEmails);
+        persistGuests(booking, p.guestEmails());
 
+        if (!fireEvents) {
+            return booking;
+        }
         if (type.requiresApproval) {
             // Feature 14: PENDING request — NO Mirror event yet; the owner approves/declines later.
             bookingRequestedEvent.fire(new BookingRequested(booking.id));
@@ -482,6 +655,7 @@ public class BookingService {
      * PENDING rows (each with its own approvalToken) and fire one {@code BookingRequested(leadId)}; auto
      * types insert N CONFIRMED rows and create exactly one Mirror event on the Creator's lead row.
      */
+    @SuppressWarnings("java:S107")
     private Booking bookGroup(
             MeetingType type,
             Instant startUtc,
@@ -490,7 +664,9 @@ public class BookingService {
             String inviteeEmail,
             Map<String, String> answers,
             String locale,
-            List<String> guestEmails
+            List<String> guestEmails,
+            UUID setId,
+            boolean fireEvents
     ) {
         var groupId = UUID.randomUUID();
         List<Long> hostIds = meetingHosts.hostOwnerIds(type);
@@ -514,6 +690,7 @@ public class BookingService {
                     b.approvalToken = UUID.randomUUID().toString();
                 }
                 b.groupId = groupId;
+                b.setId = setId;
                 b.persist();
                 if (hostId.equals(type.ownerId)) {
                     lead = b;
@@ -530,6 +707,9 @@ public class BookingService {
         // guests attach to the lead row only
         persistGuests(lead, guestEmails);
 
+        if (!fireEvents) {
+            return lead;
+        }
         if (approval) {
             bookingRequestedEvent.fire(new BookingRequested(lead.id));
             return lead;
