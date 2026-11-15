@@ -12,6 +12,7 @@ import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,8 @@ import site.asm0dey.calit.booking.CaptchaVerifier;
 import site.asm0dey.calit.booking.SlotPick;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.test.MultiHostFixtures;
 
 /**
@@ -229,5 +232,31 @@ class ManageSetTest {
             .isNotEmpty()
             .extracting(Mail::getHtml)
             .allSatisfy(html -> assertThat(html).doesNotContain(SLUG));
+    }
+
+    @Test
+    @TestSecurity(user = "bob", roles = {"user"})
+    void otherOwnerCannotCancelAll() {
+        var rows = bookSet(null);
+        QuarkusTransaction.requiringNew().run(() -> {
+            AppUser bob = AppUser.create("bob", "x", false);
+            bob.settingsComplete = true;
+            bob.persist();
+            OwnerSettings.seed(bob.id, "bob@example.com");
+        });
+
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .when()
+            .post("/me/bookings/" + rows.getFirst().id + "/cancel-all")
+            .then()
+            .statusCode(404);
+
+        assertThat(QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>list("inviteeEmail", EMAIL)))
+            .hasSize(3)
+            .extracting(b -> b.status)
+            .containsOnly(BookingStatus.CONFIRMED);
     }
 }

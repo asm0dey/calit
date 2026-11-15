@@ -78,8 +78,12 @@ public class NotificationDispatcher {
         dispatch(e.bookingId(), (s, h) -> new HostNotification.Cancelled(s, h, e.byOwner()));
     }
 
+    /**
+     * Keyed on the first Booking this cancel-all cancelled, like its mail: the lead may have been cancelled (and
+     * announced) on its own earlier.
+     */
     void onSetCancelled(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingSetCancelled e) {
-        dispatch(e.leadBookingId(), (s, h) -> new HostNotification.Cancelled(s, h, e.byOwner()));
+        dispatch(e.cancelledIds().getFirst(), (s, h) -> new HostNotification.Cancelled(s, h, e.byOwner()));
     }
 
     void onRescheduled(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingRescheduled e) {

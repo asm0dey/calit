@@ -10,6 +10,7 @@ import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.mutiny.Multi;
 import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.event.ObservesAsync;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,7 @@ import site.asm0dey.calit.booking.events.BookingSetCancelled;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.notify.ChannelDelivery;
 import site.asm0dey.calit.scheduler.Reminder;
 import site.asm0dey.calit.test.MultiHostFixtures;
 
@@ -55,12 +57,21 @@ class SetCancelTest {
         void setCancelled(@Observes BookingSetCancelled e) {
             SET_CANCELLED.add(e);
         }
+
+        static final List<String> CHANNEL_BODIES = new CopyOnWriteArrayList<>();
+        static volatile CountDownLatch channelHit = new CountDownLatch(0);
+
+        void delivered(@ObservesAsync ChannelDelivery d) {
+            CHANNEL_BODIES.add(d.message().body());
+            channelHit.countDown();
+        }
     }
 
     @BeforeEach
     void setUp() {
         EventLog.CANCELLED.clear();
         EventLog.SET_CANCELLED.clear();
+        EventLog.CHANNEL_BODIES.clear();
         mailbox.clear();
         QuarkusTransaction.requiringNew().run(() -> {
             MultiHostFixtures.settings(1L, "pasha");
@@ -234,5 +245,24 @@ class SetCancelTest {
         assertThat(count(ics(toInvitee.getFirst()), "BEGIN:VEVENT")).isEqualTo(1);
         assertThat(EventLog.CANCELLED).containsExactly(rows.get(1).id);
         assertThat(EventLog.SET_CANCELLED).isEmpty();
+    }
+
+    @Test
+    void cancelSetChannelNoticeNamesACancelledSession() throws InterruptedException {
+        var rows = bookSet(List.of());
+        bookingService.cancel(rows.getFirst().manageToken);
+        // a closed port: the async send fails harmlessly; the delivery event is what we capture
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> MultiHostFixtures.channel(1L, "ntfy+http://localhost:9/calit", "Stub"));
+        EventLog.CHANNEL_BODIES.clear();
+        EventLog.channelHit = new CountDownLatch(1);
+
+        bookingService.cancelSet(rows.get(1).manageToken, false);
+
+        assertThat(EventLog.channelHit.await(10, TimeUnit.SECONDS)).as("no channel delivery").isTrue();
+        assertThat(EventLog.CHANNEL_BODIES)
+            .singleElement()
+            .satisfies(body -> assertThat(body).contains("11:00").doesNotContain("10:00"));
     }
 }
