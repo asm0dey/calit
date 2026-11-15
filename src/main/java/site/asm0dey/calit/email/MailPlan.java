@@ -18,13 +18,21 @@ final class MailPlan {
             String email,
             String role,
             Locale locale,
-            ZoneId zone,
+            String zoneId,
             String greetingName,
             Booking linkBooking,
             String hourCycle,
             boolean attachIcs,
             MailTag tag
-    ) {}
+    ) {
+        /**
+         * Parsed at delivery, not when planning: a corrupt host timezone must not stop the invitee's mail, which is
+         * delivered first.
+         */
+        ZoneId zone() {
+            return ZoneId.of(zoneId);
+        }
+    }
 
     private MailPlan() {
     }
@@ -56,7 +64,7 @@ final class MailPlan {
                         b.inviteeEmail,
                         EmailService.INVITEE_ROLE,
                         AppLocales.pick(b.locale, supported),
-                        l.zone(),
+                        l.zone().getId(),
                         b.inviteeName,
                         b,
                         "auto",
@@ -75,7 +83,7 @@ final class MailPlan {
                                 s.ownerEmail,
                                 EmailService.OWNER_ROLE,
                                 AppLocales.pick(s.locale, supported),
-                                ZoneId.of(s.timezone),
+                                s.timezone,
                                 s.ownerName,
                                 hd.booking(),
                                 s.timeFormat,
@@ -91,7 +99,7 @@ final class MailPlan {
                             o.ownerEmail,
                             EmailService.OWNER_ROLE,
                             AppLocales.pick(o.locale, supported),
-                            l.zone(),
+                            l.zone().getId(),
                             o.ownerName,
                             b,
                             o.timeFormat,

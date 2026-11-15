@@ -1086,6 +1086,7 @@ public class EmailService {
                 : inviteeIcsBytes(l, events, icsLocation, icsMethod);
         var from = fromName(l);
         for (var r : MailPlan.plan(l, mirror, icsMethod != null, actionable)) {
+            var zone = r.zone();
             sink.deliver(
                     from,
                     r.email(),
@@ -1093,7 +1094,7 @@ public class EmailService {
                     bodyForRecipient.render(
                             r.role(),
                             r.locale(),
-                            r.zone(),
+                            zone,
                             r.greetingName(),
                             r.linkBooking(),
                             r.hourCycle()

@@ -1,6 +1,7 @@
 package site.asm0dey.calit.email;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static site.asm0dey.calit.calendar.CalendarProvider.CALDAV;
 import static site.asm0dey.calit.calendar.CalendarProvider.GOOGLE;
@@ -171,6 +172,20 @@ class MailPlanTest {
                     "h23",
                     MailTag.forBooking(11L, 2L)
             );
+    }
+
+    @Test
+    void invalidHostTimezoneDoesNotStopTheInviteeCopy() {
+        var l = group();
+        l.hostDeliveries().get(1).settings().timezone = "Not/AZone";
+
+        var recipients = plan(l, null, true, false);
+
+        assertThat(recipients.getFirst())
+            .extracting(Recipient::email, Recipient::zone)
+            .containsExactly("ivy@example.com", ZONE);
+        // the throw comes only when that host's copy is delivered, after the invitee's
+        assertThatThrownBy(() -> recipients.get(2).zone()).isInstanceOf(DateTimeException.class);
     }
 
     @Test
