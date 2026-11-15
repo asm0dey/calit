@@ -32,8 +32,6 @@ class EmailRoleCopyTest {
             .data("inviteeName", "Sam Invitee")
             .data("inviteeEmail", "sam@example.com")
             .data("ownerName", "Olivia Owner")
-            .data("byOwner", false)
-            .data("hostSelfCancel", false)
             .data("headline", EmailHeadline.PASSIVE)
             .data("meetingTypeName", "Intro call")
             .data("startTime", "Wed, 1 Jul 2026, 09:00")
@@ -80,9 +78,41 @@ class EmailRoleCopyTest {
     }
 
     @Test
+    void confirmationOwnerCopyNamesInviteeAndHasOwnerManageLink() {
+        String body = base(confirmation, "owner").render();
+        assertThat(body)
+            .as("owner body names the invitee")
+            .contains("Sam Invitee booked")
+            .as("owner copy links to owner manage page")
+            .contains("/me/bookings/42/manage")
+            .as("owner copy must NOT contain the invitee manage link")
+            .doesNotContain("/booking/tok/manage");
+    }
+
+    @Test
+    void confirmationOwnerCopyShowsInviteeAddressAsMailto() {
+        String body = base(confirmation, "owner").render();
+        assertThat(body)
+            .as("owner copy carries the invitee label")
+            .contains("Invitee:")
+            .as("owner copy shows the address, mailto-linked, beside the name")
+            .contains("Sam Invitee (<a href=\"mailto:sam@example.com\">sam@example.com</a>)");
+    }
+
+    @Test
     void confirmationInviteeCopyDoesNotEchoTheirOwnAddress() {
         String body = base(confirmation, "invitee").render();
         assertThat(body).as("invitee copy must not gain an Invitee: line").doesNotContain("sam@example.com");
+    }
+
+    @Test
+    void requestedOwnerCopyShowsInviteeAddressAsMailto() {
+        String body = base(requested, "owner").render();
+        assertThat(body)
+            .as("owner copy carries the invitee label")
+            .contains("Invitee:")
+            .as("owner copy shows the address, mailto-linked, beside the name")
+            .contains("Sam Invitee (<a href=\"mailto:sam@example.com\">sam@example.com</a>)");
     }
 
     @Test

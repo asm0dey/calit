@@ -152,9 +152,8 @@ public class EmailService {
     // EmailService/reminder instead of email/reminder.html.
     /**
      * Typed bindings for the email templates. Non-obvious shared params: {@code greetingName} is
-     * role-aware (invitee name on the invitee copy, owner name on the owner copy); {@code byOwner}
-     * says the host — not the invitee — drove the change, which flips the reschedule/cancel/update
-     * wording; {@code approveUrl}/{@code declineUrl}/{@code ownerManageUrl} are owner-only and passed
+     * role-aware (invitee name on the invitee copy, owner name on the owner copy); {@code headline}
+     * ({@link EmailHeadline}) picks the reschedule/cancel/update wording per recipient; {@code approveUrl}/{@code declineUrl}/{@code ownerManageUrl} are owner-only and passed
      * null for the invitee copy (the template renders them only for the owner).
      */
     @CheckedTemplate(basePath = "email")
@@ -230,7 +229,6 @@ public class EmailService {
 
         static native TemplateInstance reschedule(
                 String recipientRole,
-                boolean byOwner,
                 EmailHeadline headline,
                 String lang,
                 String inviteeName,
@@ -251,7 +249,6 @@ public class EmailService {
 
         static native TemplateInstance updated(
                 String recipientRole,
-                boolean byOwner,
                 EmailHeadline headline,
                 String description,
                 String lang,
@@ -272,9 +269,7 @@ public class EmailService {
 
         static native TemplateInstance cancellation(
                 String recipientRole,
-                boolean byOwner,
                 EmailHeadline headline,
-                boolean hostSelfCancel,
                 String lang,
                 String inviteeName,
                 String inviteeEmail,
@@ -592,7 +587,6 @@ public class EmailService {
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
                     .reschedule(
                             role,
-                            e.byOwner(),
                             EmailHeadline.of(e.byOwner(), OWNER_ROLE.equals(role), false),
                             locale.getLanguage(),
                             l.booking().inviteeName,
@@ -639,7 +633,6 @@ public class EmailService {
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
                     .updated(
                             role,
-                            e.byOwner(),
                             EmailHeadline.of(e.byOwner(), OWNER_ROLE.equals(role), false),
                             desc,
                             locale.getLanguage(),
@@ -707,10 +700,8 @@ public class EmailService {
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
                     .cancellation(
                             role,
-                            byOwner,
                             EmailHeadline.of(byOwner, OWNER_ROLE.equals(role), byOwner
                             && l.booking().groupId == null),
-                            byOwner && l.booking().groupId == null,
                             locale.getLanguage(),
                             l.booking().inviteeName,
                             l.booking().inviteeEmail,
