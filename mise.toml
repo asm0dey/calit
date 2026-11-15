@@ -6,7 +6,6 @@ idiomatic_version_file_enable_tools = ["java"]
 
 [tools]
 bun = "1.4.4"
-"github:hmans/beans" = "0.4.2"
 actionlint = "1.7.12"
 
 # `mise install` alone leaves a clone with lefthook + git hooks + pinned Prettier (bun install -> prepare ->

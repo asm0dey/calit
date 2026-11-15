@@ -8,7 +8,7 @@ on:
 
 # Cancel superseded PR runs; never cancel an in-flight main/tag publish.
 # Push runs get a per-SHA group so they never share a queue: GitHub keeps only ONE pending run
-# per group and cancels the previously pending one, so a docs/beans-only push landing while main
+# per group and cancels the previously pending one, so a docs-only push landing while main
 # CI is busy used to evict the queued run that was supposed to publish `edge` (cancel-in-progress
 # does not protect a run that has not started yet). Per-SHA means push runs neither queue nor
 # evict each other. PRs keep one group per ref so a new push still cancels the superseded run.
@@ -188,7 +188,7 @@ jobs:
             exit 0
           fi
           changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA" -- . \
-            ':(exclude).beans/**' ':(exclude,glob)*.md' ':(exclude)docs/**' \
+            ':(exclude,glob)*.md' ':(exclude)docs/**' \
             ':(exclude).agents/**' ':(exclude).claude/**' ':(exclude)LICENSE') || {
             echo "git diff failed -> code=true"
             echo "code=true" >> "$GITHUB_OUTPUT"

@@ -1,15 +1,5 @@
 {
     "hooks": {
-        "SessionStart": [
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "beans prime"
-                    }
-                ]
-            }
-        ],
         "PostToolUse": [
             {
                 "matcher": "Write|Edit",
