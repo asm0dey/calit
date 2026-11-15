@@ -48,8 +48,11 @@ public final class SetRules {
     public static void validate(MeetingType type, List<SlotPick> picks, List<Integer> allowed, ZoneId ownerZone) {
         int min = type.multiSlotMin == null ? 1 : type.multiSlotMin;
         int max = type.multiSlotMax == null ? 1 : type.multiSlotMax;
-        if (picks.size() < min || picks.size() > max) {
-            throw new BookingValidationException("Pick between " + min + " and " + max + " sessions.");
+        if (picks.size() < min) {
+            throw new SetRuleException("Pick between " + min + " and " + max + " sessions.", "pub_set_status_need", min);
+        }
+        if (picks.size() > max) {
+            throw new SetRuleException("Pick between " + min + " and " + max + " sessions.", "pub_set_reason_max", max);
         }
         for (var p : picks) {
             if (!allowed.contains(p.minutes())) {
@@ -57,8 +60,11 @@ public final class SetRules {
             }
             var others = picks.stream().filter(o -> o != p).toList();
             var b = blocked(type, others, p, ownerZone);
-            if (b == Blocked.OVERLAP || b == Blocked.SAME_DAY) {
-                throw new BookingValidationException("Sessions conflict (" + b + "): " + p.value());
+            if (b == Blocked.OVERLAP) {
+                throw new SetRuleException("Sessions conflict (" + b + "): " + p.value(), "pub_set_reason_overlap", 0);
+            }
+            if (b == Blocked.SAME_DAY) {
+                throw new SetRuleException("Sessions conflict (" + b + "): " + p.value(), "pub_set_reason_same_day", 0);
             }
         }
     }

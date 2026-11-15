@@ -11,7 +11,6 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.booking.Booking;
-import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.booking.events.*;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.email.EmailService;
@@ -45,34 +44,22 @@ public class ReminderScheduler {
      * Auto-confirmed at book time.
      */
     void onConfirmed(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingConfirmed e) {
-        scheduleReminders(e.bookingId());
+        covered(e.bookingId(), e.setBookingIds()).forEach(this::scheduleReminder);
     }
 
     /**
      * PENDING -> CONFIRMED via owner approval.
      */
     void onApproved(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingApproved e) {
-        scheduleReminders(e.bookingId());
+        covered(e.bookingId(), e.setBookingIds()).forEach(this::scheduleReminder);
     }
 
     /**
-     * A set fires one event on its lead, but reminders stay per Booking: schedule one for every CONFIRMED
-     * row of the set. {@link #scheduleReminder} already skips a co-hosted group's non-lead rows.
+     * A set fires one event naming the Bookings it decided, but reminders stay per Booking: exactly those, or the
+     * event's own booking. {@link #scheduleReminder} already skips a co-hosted group's non-lead rows.
      */
-    private void scheduleReminders(Long bookingId) {
-        List<Long> ids = QuarkusTransaction.requiringNew().call(() -> {
-            Booking b = Booking.findById(bookingId);
-            if (b == null || b.setId == null) {
-                return List.of(bookingId);
-            }
-            return Booking
-                .<Booking>set(b.setId)
-                .stream()
-                .filter(r -> r.status == BookingStatus.CONFIRMED)
-                .map(r -> r.id)
-                .toList();
-        });
-        ids.forEach(this::scheduleReminder);
+    private static List<Long> covered(Long bookingId, List<Long> setBookingIds) {
+        return setBookingIds.isEmpty() ? List.of(bookingId) : setBookingIds;
     }
 
     /**
@@ -96,14 +83,14 @@ public class ReminderScheduler {
      * the eventual BookingApproved reschedules it at the new time.
      */
     void onRequested(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingRequested e) {
-        onCancelledOrDeclined(e.bookingId());
+        covered(e.bookingId(), e.setBookingIds()).forEach(this::onCancelledOrDeclined);
     }
 
     /**
      * Declined by owner OR auto-expired (Plan 6 expiry tick fires BookingDeclined).
      */
     void onDeclined(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingDeclined e) {
-        onCancelledOrDeclined(e.bookingId());
+        covered(e.bookingId(), e.setBookingIds()).forEach(this::onCancelledOrDeclined);
     }
 
     /**

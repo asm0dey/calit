@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.specification.RequestSpecification;
@@ -259,5 +260,72 @@ class ApprovalLinkTest {
             .get("/me/bookings/" + b.id + "/decline?t=" + b.approvalToken)
             .then()
             .statusCode(404);
+    }
+
+    /**
+     * The Owner's mail links point at the set's lead; when the Invitee cancelled that session on its own, the link
+     * still decides the rest of the set instead of saying the request is gone.
+     */
+    @Test
+    void approveLinkOfCancelledSetLeadConfirmsTheRest() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var ids = QuarkusTransaction.requiringNew().call(() -> {
+            OwnerSettings s = OwnerSettings.forOwner(1L);
+            if (s == null) {
+                s = new OwnerSettings();
+                s.ownerId = 1L;
+            }
+            s.ownerName = "Owner";
+            s.ownerEmail = "owner@example.com";
+            s.timezone = "Europe/Amsterdam";
+            s.persist();
+            MeetingType t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "Set";
+            t.slug = "approval-link-set";
+            t.durationMinutes = 30;
+            t.requiresApproval = true;
+            t.persist();
+            var setId = UUID.randomUUID();
+            var first = Instant.now().plus(3, ChronoUnit.DAYS).truncatedTo(ChronoUnit.HOURS);
+            List<Long> made = new ArrayList<>();
+            for (int i = 0; i < 3; i++) {
+                var b = new Booking();
+                b.ownerId = 1L;
+                b.meetingTypeId = t.id;
+                b.inviteeName = "Sam";
+                b.inviteeEmail = "sam@x.com";
+                b.startUtc = first.plus(i, ChronoUnit.HOURS);
+                b.endUtc = b.startUtc.plus(30, ChronoUnit.MINUTES);
+                b.status = i == 0 ? BookingStatus.CANCELLED : BookingStatus.PENDING;
+                b.setId = setId;
+                b.createdAt = Instant.now();
+                b.manageToken = UUID.randomUUID().toString();
+                b.approvalToken = UUID.randomUUID().toString();
+                b.persist();
+                made.add(b.id);
+            }
+            return made;
+        });
+        String leadToken =
+                QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(ids.getFirst()).approvalToken);
+
+        given()
+            .spec(authedAdmin())
+            .when()
+            .get("/me/bookings/" + ids.getFirst() + "/approve?t=" + leadToken)
+            .then()
+            .statusCode(200)
+            .body(containsString("Booking approved"));
+
+        var statuses = QuarkusTransaction
+            .requiringNew()
+            .call(() -> ids
+                .stream()
+                .map(id -> Booking.<Booking>findById(id).status)
+                .toList());
+        assertThat(statuses).containsExactly(BookingStatus.CANCELLED, BookingStatus.CONFIRMED, BookingStatus.CONFIRMED);
     }
 }

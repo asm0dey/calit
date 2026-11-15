@@ -222,8 +222,8 @@ class EmailSetTest {
             }
         });
         mailbox.clear();
-
-        emailService.handleConfirmed(new BookingConfirmed(rows.getFirst().id));
+        // as bookSet fires it: naming every Booking of the set
+        emailService.handleConfirmed(new BookingConfirmed(rows.getFirst().id, rows.stream().map(b -> b.id).toList()));
 
         String html = mailbox.getMailsSentTo(EMAIL).getFirst().getHtml();
         assertThat(html).contains("room-0", "room-1", "room-2");

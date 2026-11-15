@@ -2480,7 +2480,7 @@ public class AdminResource {
      * Authenticated one-click approve/decline from the owner's email. Owner-scoped via
      * {@link #requireOwnedBooking} (404 if not theirs); the {@code token} query param is the CSRF
      * nonce (GET is not guarded by quarkus-rest-csrf) and must equal {@code approvalToken} (404 on
-     * mismatch, no info leak). Acts only while PENDING, else renders the "already handled" result.
+     * mismatch, no info leak). Acts only while the decision is open, else renders the "already handled" result.
      */
     private TemplateInstance actFromEmail(Long id, String token, boolean approve) {
         Booking b = requireOwnedBooking(id);
@@ -2489,7 +2489,8 @@ public class AdminResource {
         }
         String h1;
         String desc;
-        if (b.status != BookingStatus.PENDING) {
+        // a set row acts while this Host still has a PENDING row in the set, even if this row was cancelled
+        if (!BookingService.decisionOpen(b)) {
             h1 = m().adm_approve_gone_h1();
             desc = m().adm_approve_gone_desc();
         } else if (approve) {

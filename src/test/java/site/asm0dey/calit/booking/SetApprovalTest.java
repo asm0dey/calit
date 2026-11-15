@@ -3,6 +3,8 @@ package site.asm0dey.calit.booking;
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
+import io.quarkus.mailer.Mail;
+import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -38,6 +40,8 @@ class SetApprovalTest {
     CalendarPort calendarPort;
     @InjectMock
     CaptchaVerifier captchaVerifier;
+    @Inject
+    MockMailbox mailbox;
 
     @Singleton
     static class EventLog {
@@ -258,5 +262,162 @@ class SetApprovalTest {
             .extracting(b -> b.status)
             .containsOnly(BookingStatus.CONFIRMED);
         assertThat(EventLog.APPROVED).containsExactly(lead(rows));
+    }
+
+    private static List<BookingStatus> statuses(List<Booking> booked) {
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> booked
+                .stream()
+                .map(b -> Booking.<Booking>findById(b.id).status)
+                .toList());
+    }
+
+    private static Booking reload(Long id) {
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(id));
+    }
+
+    private void forgetSoFar() {
+        clearInvocations(calendarPort);
+        mailbox.clear();
+        EventLog.APPROVED.clear();
+        EventLog.CONFIRMED.clear();
+        EventLog.DECLINED.clear();
+    }
+
+    private void verifyCreatedEvents(int n) {
+        verify(calendarPort, times(n))
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+    }
+
+    /**
+     * The one mail the Invitee got since {@link #forgetSoFar}.
+     */
+    private String inviteeMail() {
+        List<Mail> mails = mailbox.getMailsSentTo(EMAIL);
+        assertThat(mails).hasSize(1);
+        return mails.getFirst().getHtml();
+    }
+
+    /**
+     * Books 10/11/12, approves the set, then the Invitee moves the 11:00 session to 14:00, which puts that one Booking
+     * back to PENDING. Returns its id.
+     */
+    private Long rescheduledSessionOfApprovedSet() {
+        singleHostType();
+        bookSet(10, 11, 12);
+        var rows = rows();
+        bookingService.approve(rows.getFirst().id);
+        bookingService.reschedule(rows.get(1).manageToken, at(14));
+        assertThat(statuses(rows)).containsExactly(
+                BookingStatus.CONFIRMED,
+                BookingStatus.PENDING,
+                BookingStatus.CONFIRMED
+        );
+        forgetSoFar();
+        return rows.get(1).id;
+    }
+
+    @Test
+    void approvingRescheduledSessionLeavesTheOthersAlone() {
+        Long moved = rescheduledSessionOfApprovedSet();
+
+        bookingService.approve(moved);
+
+        assertThat(rows())
+            .extracting(b -> b.status)
+            .containsOnly(BookingStatus.CONFIRMED);
+        verifyCreatedEvents(1);
+        assertThat(EventLog.APPROVED).containsExactly(moved);
+        assertThat(inviteeMail()).contains("at 14:00").doesNotContain("at 10:00", "at 12:00", " of 3");
+        assertThat(remindedRows()).hasSize(3);
+    }
+
+    @Test
+    void decliningRescheduledSessionDeclinesOnlyIt() {
+        Long moved = rescheduledSessionOfApprovedSet();
+
+        bookingService.decline(moved);
+
+        assertThat(rows())
+            .allSatisfy(b -> assertThat(b.status)
+                .isEqualTo(b.id.equals(moved) ? BookingStatus.DECLINED : BookingStatus.CONFIRMED));
+        verify(calendarPort, never()).deleteEvent(anyLong(), any(), any());
+        assertThat(EventLog.DECLINED).containsExactly(moved);
+        assertThat(inviteeMail()).contains("at 14:00").doesNotContain("at 10:00", "at 12:00", " of 3");
+        assertThat(remindedRows()).hasSize(2).doesNotContain(moved);
+    }
+
+    /**
+     * Books a pending 10/11/12 set and has the Invitee cancel session {@code cancelled} on its own.
+     */
+    private List<Booking> pendingSetWithCancelled(int cancelled) {
+        singleHostType();
+        bookSet(10, 11, 12);
+        var rows = rows();
+        bookingService.cancel(rows.get(cancelled).manageToken);
+        forgetSoFar();
+        return rows;
+    }
+
+    private void assertConfirmedAllBut(List<Booking> rows, int cancelled, String... sessionTimes) {
+        var expected = new ArrayList<>(Collections.nCopies(3, BookingStatus.CONFIRMED));
+        expected.set(cancelled, BookingStatus.CANCELLED);
+        assertThat(statuses(rows)).containsExactlyElementsOf(expected);
+        verifyCreatedEvents(2);
+        assertThat(reload(rows.get(cancelled).id).eventId).isNull();
+        var confirmedIds = rows
+            .stream()
+            .map(b -> b.id)
+            .filter(id -> !id.equals(rows.get(cancelled).id))
+            .toList();
+        assertThat(EventLog.APPROVED).containsExactly(confirmedIds.getFirst());
+        assertThat(inviteeMail())
+            .contains(sessionTimes)
+            .contains("1 of 2", "2 of 2")
+            .doesNotContain("at " + (10 + cancelled) + ":00");
+    }
+
+    @Test
+    void approvingViaCancelledLeadConfirmsTheRest() {
+        var rows = pendingSetWithCancelled(0);
+
+        bookingService.approve(rows.getFirst().id);
+
+        assertConfirmedAllBut(rows, 0, "at 11:00", "at 12:00");
+    }
+
+    @Test
+    void approvingViaSiblingOfCancelledLeadConfirmsTheRest() {
+        var rows = pendingSetWithCancelled(0);
+
+        bookingService.approve(rows.getLast().id);
+
+        assertConfirmedAllBut(rows, 0, "at 11:00", "at 12:00");
+    }
+
+    @Test
+    void approvingSetWithCancelledSessionConfirmsTheRest() {
+        var rows = pendingSetWithCancelled(1);
+
+        bookingService.approve(rows.getFirst().id);
+
+        assertConfirmedAllBut(rows, 1, "at 10:00", "at 12:00");
+    }
+
+    @Test
+    void decliningSetWithCancelledSessionKeepsItCancelled() {
+        var rows = pendingSetWithCancelled(1);
+
+        bookingService.decline(rows.getFirst().id);
+
+        assertThat(statuses(rows)).containsExactly(
+                BookingStatus.DECLINED,
+                BookingStatus.CANCELLED,
+                BookingStatus.DECLINED
+        );
+        assertThat(inviteeMail()).contains("at 10:00", "at 12:00", "1 of 2").doesNotContain("at 11:00");
     }
 }

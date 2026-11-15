@@ -102,6 +102,38 @@ class BookSetFlowTest {
     }
 
     @Test
+    void overTickedWithoutJsShowsTranslatedMaximum() {
+        String[] four = {PICK_A, PICK_B, at(DAY1, 10) + "/30", at(DAY2, 11) + "/30"};
+        details(four)
+            .body(
+                    containsString(
+                            "<div role=\"alert\" class=\"alert alert-error mb-4\">You have the maximum of 3</div>"
+                    )
+            )
+            .body(not(containsString("name=\"inviteeEmail\"")));
+        detailsIn("de", four)
+            .body(
+                    containsString(
+                            "<div role=\"alert\" class=\"alert alert-error mb-4\">Sie haben das Maximum von 3 erreicht</div>"
+                    )
+            );
+    }
+
+    @Test
+    void twoPicksOnOneDayWithoutJsShowTranslatedSameDay() {
+        String sameDay = at(DAY1, 10) + "/30";
+        details(PICK_A, sameDay)
+            .body(
+                    containsString(
+                            "<div role=\"alert\" class=\"alert alert-error mb-4\">You already have a session this day</div>"
+                    )
+            )
+            .body(not(containsString("name=\"inviteeEmail\"")));
+        detailsIn("he", PICK_A, sameDay)
+            .body(containsString("<div role=\"alert\" class=\"alert alert-error mb-4\">כבר יש לך מפגש ביום הזה</div>"));
+    }
+
+    @Test
     void stalePickIsDroppedAndNamedOnDetails() {
         occupy(B, 60);
 
@@ -176,7 +208,7 @@ class BookSetFlowTest {
             .post("/admin/" + SLUG)
             .then()
             .statusCode(200)
-            .body(containsString("<div role=\"alert\" class=\"alert alert-error mb-4\">"))
+            .body(containsString("<div role=\"alert\" class=\"alert alert-error mb-4\">Email is required.</div>"))
             .body(containsString("<input type=\"hidden\" name=\"pick\" value=\"" + PICK_A + "\">"))
             .body(containsString("<input type=\"hidden\" name=\"pick\" value=\"" + PICK_B + "\">"))
             .body(containsString("name=\"inviteeEmail\""));
@@ -199,6 +231,21 @@ class BookSetFlowTest {
             .extract()
             .asString();
         assertThat(ics.split("BEGIN:VEVENT", -1)).hasSize(3);
+    }
+
+    private static Instant at(LocalDate day, int hour) {
+        return day.atTime(hour, 0).atZone(ZONE).toInstant();
+    }
+
+    private static io.restassured.response.ValidatableResponse detailsIn(String lang, String... picks) {
+        return given()
+            .queryParam("lang", lang)
+            .queryParam("pick", (Object[]) picks)
+            .queryParam("step", "details")
+            .when()
+            .get("/admin/" + SLUG)
+            .then()
+            .statusCode(200);
     }
 
     private static io.restassured.response.ValidatableResponse details(String... picks) {

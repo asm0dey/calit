@@ -492,11 +492,11 @@ public class BookingService {
         if (!type.requiresApproval) {
             createMirrorEventsOrCompensate(type, rows);
         }
-        Long leadId = Booking.leadOfSet(setId, type.ownerId).id;
+        List<Long> ids = rows.stream().map(b -> b.id).toList();
         if (type.requiresApproval) {
-            bookingRequestedEvent.fire(new BookingRequested(leadId));
+            bookingRequestedEvent.fire(new BookingRequested(ids.getFirst(), ids));
         } else {
-            bookingConfirmedEvent.fire(new BookingConfirmed(leadId));
+            bookingConfirmedEvent.fire(new BookingConfirmed(ids.getFirst(), ids));
         }
         return rows;
     }
@@ -1093,6 +1093,13 @@ public class BookingService {
             approveSet(booking);
             return;
         }
+        approveOne(booking);
+    }
+
+    /**
+     * Approves one Booking through this Host's row: a lone row, or one Host's row of a co-hosted group.
+     */
+    private void approveOne(Booking booking) {
         // Only a PENDING request can be approved (UC-014 BR-006). Covers double-submits (no second
         // Mirror event / BookingConfirmed) and stale tabs acting on a cancelled or declined booking.
         if (booking.status != BookingStatus.PENDING) {
@@ -1106,7 +1113,7 @@ public class BookingService {
             if (calendarPort.isConnected(type.ownerId)) {
                 createGoogleEvent(type, booking);
             }
-            bookingApprovedEvent.fire(new BookingApproved(bookingId));
+            bookingApprovedEvent.fire(new BookingApproved(booking.id));
             return;
         }
         // Group: row-status is the source of truth for "all approved" -- no extra group-state
@@ -1132,6 +1139,13 @@ public class BookingService {
             declineSet(booking);
             return;
         }
+        declineOne(booking);
+    }
+
+    /**
+     * Declines one Booking through this Host's row: a lone row, or (declining it for every Host) a co-hosted group.
+     */
+    private void declineOne(Booking booking) {
         // Only a PENDING request can be declined (UC-014 BR-006): a confirmed booking is cancelled,
         // never declined, and a cancelled/declined one is already settled. Also absorbs double-submits.
         if (booking.status != BookingStatus.PENDING) {
@@ -1141,7 +1155,7 @@ public class BookingService {
             // Single-host: unchanged. DECLINED leaves the PENDING|CONFIRMED partial constraint ->
             // frees the slot. A PENDING request has no Mirror event, so nothing to delete.
             booking.status = BookingStatus.DECLINED;
-            bookingDeclinedEvent.fire(new BookingDeclined(bookingId));
+            bookingDeclinedEvent.fire(new BookingDeclined(booking.id));
             return;
         }
         // Group: any single host declining kills the whole group -- no event was created
@@ -1178,51 +1192,108 @@ public class BookingService {
     }
 
     /**
-     * Approves this Host's rows of a set (the caller holds the set lock). Once no row is PENDING, creates
-     * every Booking's Mirror event and fires one event on the set's lead.
+     * Approves this Host's rows of the set's undecided Bookings (the caller holds the set lock). Acts while the Host
+     * still has a PENDING row in the set, whichever row was clicked (it may have been cancelled on its own). One
+     * undecided Booking takes the per-Booking path and its single-Booking mail. Otherwise the Bookings this call fully
+     * confirmed, and only those, get their Mirror events and are named by the one event.
      */
     private void approveSet(Booking booking) {
-        if (booking.status != BookingStatus.PENDING) {
-            return;
-        }
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         List<Booking> rows = Booking.set(booking.setId);
+        Optional<Booking> hostPending = pendingRowOf(rows, booking.ownerId);
+        if (hostPending.isEmpty()) {
+            return;
+        }
+        List<Booking> undecided = undecidedOfSet(rows, type.ownerId);
+        if (undecided.size() == 1) {
+            approveOne(hostPending.get());
+            return;
+        }
         for (Booking row : rows) {
             if (row.ownerId.equals(booking.ownerId) && row.status == BookingStatus.PENDING) {
                 row.status = BookingStatus.CONFIRMED;
             }
         }
-        if (rows
+        // a co-hosted Booking stays undecided until every Host has approved it
+        List<Booking> confirmed = undecided
             .stream()
-            .anyMatch(r -> r.status == BookingStatus.PENDING)) {
+            .filter(b -> rowsOfBooking(rows, b).noneMatch(r -> r.status == BookingStatus.PENDING))
+            .toList();
+        if (confirmed.isEmpty()) {
             return;
         }
-        // one row per Booking: the creator's (a co-hosted Booking's group lead)
-        List<Booking> perBooking = rows
-            .stream()
-            .filter(r -> r.ownerId.equals(type.ownerId))
-            .toList();
-        createMirrorEventsOrCompensate(type, perBooking);
-        Booking lead = perBooking.getFirst();
-        if (lead.groupId == null) {
-            bookingApprovedEvent.fire(new BookingApproved(lead.id));
+        createMirrorEventsOrCompensate(type, confirmed);
+        List<Long> ids = confirmed.stream().map(b -> b.id).toList();
+        if (confirmed.getFirst().groupId == null) {
+            bookingApprovedEvent.fire(new BookingApproved(ids.getFirst(), ids));
         } else {
-            bookingConfirmedEvent.fire(new BookingConfirmed(lead.id));
+            bookingConfirmedEvent.fire(new BookingConfirmed(ids.getFirst(), ids));
         }
     }
 
     /**
-     * Declines every row of a set (the caller holds the set lock); one event on the set's lead.
+     * Declines the set's undecided Bookings (the caller holds the set lock), on the same terms as {@link #approveSet}:
+     * confirmed, cancelled and declined Bookings are left alone, one undecided Booking takes the per-Booking path, and
+     * the one event names exactly the Bookings declined.
      */
     private void declineSet(Booking booking) {
-        if (booking.status != BookingStatus.PENDING) {
+        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+        List<Booking> rows = Booking.set(booking.setId);
+        Optional<Booking> hostPending = pendingRowOf(rows, booking.ownerId);
+        if (hostPending.isEmpty()) {
             return;
         }
-        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
-        for (Booking row : Booking.<Booking>set(booking.setId)) {
-            row.status = BookingStatus.DECLINED;
+        List<Booking> undecided = undecidedOfSet(rows, creatorOwnerId);
+        if (undecided.size() == 1) {
+            declineOne(hostPending.get());
+            return;
         }
-        bookingDeclinedEvent.fire(new BookingDeclined(Booking.leadOfSet(booking.setId, creatorOwnerId).id));
+        declineBookings(rows, undecided);
+        List<Long> ids = undecided.stream().map(b -> b.id).toList();
+        bookingDeclinedEvent.fire(new BookingDeclined(ids.getFirst(), ids));
+    }
+
+    private static Optional<Booking> pendingRowOf(List<Booking> setRows, Long hostOwnerId) {
+        return setRows
+            .stream()
+            .filter(r -> r.ownerId.equals(hostOwnerId) && r.status == BookingStatus.PENDING)
+            .findFirst();
+    }
+
+    /**
+     * Whether a decision through {@code b} can still act: it is PENDING, or it is a set row and its Host still has a
+     * PENDING row in that set (approve/decline re-check this under the set lock).
+     */
+    public static boolean decisionOpen(Booking b) {
+        return b.status == BookingStatus.PENDING
+                || b.setId != null && pendingRowOf(Booking.set(b.setId), b.ownerId).isPresent();
+    }
+
+    /**
+     * The Invitee-facing row (a lone row, or the Creator's row of a co-hosted group) of every Booking among
+     * {@code setRows} still undecided, meaning it has a PENDING row; in time order.
+     */
+    public static List<Booking> undecidedOfSet(List<Booking> setRows, Long creatorOwnerId) {
+        return setRows
+            .stream()
+            .filter(r -> r.groupId == null || r.ownerId.equals(creatorOwnerId))
+            .filter(b -> rowsOfBooking(setRows, b).anyMatch(r -> r.status == BookingStatus.PENDING))
+            .toList();
+    }
+
+    /**
+     * Declines every held row of the given undecided Bookings (Invitee-facing rows, from {@link #undecidedOfSet}).
+     */
+    public static void declineBookings(List<Booking> setRows, List<Booking> undecided) {
+        undecided
+            .stream()
+            .flatMap(b -> rowsOfBooking(setRows, b))
+            .filter(r -> r.status == BookingStatus.PENDING || r.status == BookingStatus.CONFIRMED)
+            .forEach(r -> r.status = BookingStatus.DECLINED);
+    }
+
+    private static Stream<Booking> rowsOfBooking(List<Booking> setRows, Booking b) {
+        return b.groupId == null ? Stream.of(b) : setRows.stream().filter(r -> b.groupId.equals(r.groupId));
     }
 
     @Transactional

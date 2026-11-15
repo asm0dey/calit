@@ -12,6 +12,9 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.booking.CaptchaVerifier;
+import site.asm0dey.calit.booking.SlotPick;
+import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.email.EmailService;
@@ -30,6 +33,8 @@ class SetPendingExpiryTest {
     EmailService emailService;
     @InjectMock
     CalendarPort calendarPort;
+    @InjectMock
+    CaptchaVerifier captchaVerifier;
 
     /**
      * Three PENDING rows of one set, created an hour ago (inside the hold): the first starts inside the
@@ -78,8 +83,8 @@ class SetPendingExpiryTest {
         scheduler.expirePendingBookings();
 
         assertThat(statuses(ids)).containsOnly(BookingStatus.DECLINED);
-        verify(emailService, times(1)).enqueueDeclined(anyLong());
-        verify(emailService).enqueueDeclined(ids.getFirst());
+        verify(emailService, times(1)).enqueueDeclined(anyLong(), anyList());
+        verify(emailService).enqueueDeclined(ids.getFirst(), ids);
     }
 
     @Test
@@ -93,5 +98,89 @@ class SetPendingExpiryTest {
         assertThat(statuses(ids)).containsOnly(BookingStatus.DECLINED);
         verify(calendarPort, never())
             .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+    }
+
+    /**
+     * An approved 10/11/12 set whose 11:00 session the Invitee moved to 14:00 (back to PENDING) long after booking:
+     * expiry declines that one Booking and leaves the confirmed ones, their Mirror events and reminders alone.
+     */
+    @Test
+    void expiryDeclinesOnlyRescheduledSessionOfApprovedSet() {
+        var zone = ZoneId.of("Europe/Amsterdam");
+        var monday = LocalDate.now(zone).plusDays(2).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+        when(calendarPort.isConnected(1L)).thenReturn(true);
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyList(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt", null, null, null));
+        QuarkusTransaction.requiringNew().run(() -> {
+            MultiHostFixtures.settings(1L, "pasha");
+            MultiHostFixtures.rule(1L, DayOfWeek.MONDAY, 9, 17);
+            MeetingType t = MultiHostFixtures.meetingType(1L, "set", 30);
+            t.requiresApproval = true;
+            t.multiSlotMin = 2;
+            t.multiSlotMax = 3;
+            t.multiSlotSameDay = true;
+        });
+        var picks =
+                Stream
+            .of(10, 11, 12)
+            .map(h -> new SlotPick(monday.atTime(h, 0).atZone(zone).toInstant(), 30))
+            .toList();
+        var rows = bookingService.bookSet(
+                1L,
+                "set",
+                picks,
+                "Sam",
+                "sam@x.com",
+                Map.of(),
+                "tok",
+                null,
+                "",
+                "en",
+                List.of(),
+                null
+        );
+        bookingService.approve(rows.getFirst().id);
+        bookingService.reschedule(rows.get(1).manageToken, monday.atTime(14, 0).atZone(zone).toInstant());
+        var ids = rows.stream().map(b -> b.id).toList();
+        // booked a month ago: the rescheduled request is past its hold
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> Booking.update("createdAt = ?1 where id in ?2", Instant.now().minus(30, ChronoUnit.DAYS), ids));
+        clearInvocations(emailService);
+
+        scheduler.expirePendingBookings();
+
+        assertThat(statuses(ids)).containsExactly(
+                BookingStatus.CONFIRMED,
+                BookingStatus.DECLINED,
+                BookingStatus.CONFIRMED
+        );
+        verify(emailService, times(1)).enqueueDeclined(anyLong(), anyList());
+        verify(emailService).enqueueDeclined(ids.get(1), List.of(ids.get(1)));
+        var kept = List.of(ids.getFirst(), ids.getLast());
+        assertThat(QuarkusTransaction
+            .requiringNew()
+            .call(() -> kept
+                .stream()
+                .map(id -> Booking.<Booking>findById(id).eventId)
+                .toList())
+        )
+            .containsOnly("evt");
+        assertThat(QuarkusTransaction
+            .requiringNew()
+            .call(() -> Reminder.count("bookingId in ?1 and sentAt is null", kept))
+        )
+            .isEqualTo(2);
     }
 }

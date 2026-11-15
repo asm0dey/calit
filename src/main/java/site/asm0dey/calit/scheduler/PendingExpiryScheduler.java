@@ -10,6 +10,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.email.EmailService;
@@ -25,7 +26,9 @@ import site.asm0dey.calit.notify.NotificationDispatcher;
  * touches rows it has exclusively "won" the advisory lock for, and a losing tick
  * skips the candidate outright rather than waiting -- so no wait-for cycle, and
  * therefore no deadlock, can ever form, even across two ticks whose candidate
- * batches straddle two different groups. Flipping PENDING -> DECLINED drops the
+ * batches straddle two different groups. One exception: a set's decline then waits on the
+ * set's lead row lock, which an owner's approve/decline of that set holds (across its calendar
+ * calls), so a tick may wait on a request, never on another tick. Flipping PENDING -> DECLINED drops the
  * row from the booking_no_overlap_held guard (partial on PENDING/CONFIRMED),
  * which immediately frees the held slot for a new booking.
  *
@@ -95,8 +98,9 @@ public class PendingExpiryScheduler {
      * Reads candidate expired PENDING bookings with a plain (lock-free) SELECT and, per candidate,
      * tries a NON-BLOCKING Postgres advisory lock keyed by group (multi-host) or by booking id
      * (single-host) before touching it. A tick that loses the try-lock skips the candidate
-     * outright -- never waits -- so no tick can ever hold a row lock that another tick needs,
-     * which is what made the deadlock possible in the FOR-UPDATE-based version. Winning the lock
+     * outright -- never waits on another tick -- so no tick can ever hold a row lock that another
+     * tick needs, which is what made the deadlock possible in the FOR-UPDATE-based version. (A
+     * won set candidate may still wait on its lead row lock held by an owner's approve/decline.) Winning the lock
      * makes a tick the sole owner of that group/booking for the round; only then does it flip
      * PENDING -> DECLINED, delete any unsent reminder, and enqueue the declined email, all in the
      * SAME tx (crash-safe: a node dying mid-tick loses nothing, everything commits together or not
@@ -157,8 +161,9 @@ public class PendingExpiryScheduler {
      * for a single-host booking.
      */
     private void processCandidate(Long id, UUID groupId, UUID setId, List<Long> declined) {
-        // Non-blocking: two ticks racing on the same group/booking never wait on each
-        // other, so no wait-for cycle -- and thus no deadlock -- can ever form. The prefix
+        // Non-blocking: two ticks racing on the same group/booking/set never wait on each
+        // other (a won set may then wait on its lead row lock, held only by an owner's
+        // approve/decline, which takes no advisory lock), so no wait-for cycle -- and thus no deadlock -- can ever form. The prefix
         // keeps the group and single-booking key spaces disjoint (a group_id and a booking
         // id could otherwise theoretically collide once hashed).
         String lockKey;
@@ -248,33 +253,34 @@ public class PendingExpiryScheduler {
         }
     }
 
+    /**
+     * Expires the set's undecided Bookings only: confirmed ones (e.g. siblings of a session rescheduled back to
+     * PENDING) keep their status, Mirror events and reminders; cancelled ones stay cancelled. One declined mail names
+     * exactly the Bookings declined, keyed on the first.
+     */
     private void declineSet(Booking b, List<Long> declined) {
         Long creatorOwnerId = MeetingType.<MeetingType>findById(b.meetingTypeId).ownerId;
         // Same lead-row lock as BookingService.approve/decline of a set row, so a host's click and this
-        // tick serialise; rows are re-read under it (refresh, not the possibly stale managed copies).
+        // tick serialise (the tick may wait here on an in-flight approve); rows are re-read under it.
         Booking lead = Booking.leadOfSet(b.setId, creatorOwnerId);
         em.refresh(lead, LockModeType.PESSIMISTIC_WRITE);
         List<Booking> rows = Booking.set(b.setId);
         rows.forEach(em::refresh);
-        // Idempotency: already declined, or approved by every host meanwhile -- nothing left to expire.
-        if (lead.status == BookingStatus.DECLINED || rows.stream().noneMatch(r -> r.status == BookingStatus.PENDING)) {
+        List<Booking> undecided = BookingService.undecidedOfSet(rows, creatorOwnerId);
+        // Idempotency: declined, or approved by every host, meanwhile -- nothing left to expire.
+        if (undecided.isEmpty()) {
             return;
         }
-        for (Booking r : rows) {
-            r.status = BookingStatus.DECLINED;
-            Reminder.deleteUnsentFor(r.id);
-        }
-        declined.add(lead.id);
+        BookingService.declineBookings(rows, undecided);
+        List<Long> ids = undecided.stream().map(u -> u.id).toList();
+        ids.forEach(Reminder::deleteUnsentFor);
+        Long first = ids.getFirst();
+        declined.add(first);
         // Same guard as declineGroup: a render failure drops the mail, the decline still commits.
         try {
-            emailService.enqueueDeclined(lead.id);
+            emailService.enqueueDeclined(first, ids);
         } catch (Exception ex) {
-            Log.errorf(
-                    ex,
-                    "declined enqueue failed for set %s lead booking %d (declined, mail dropped)",
-                    b.setId,
-                    lead.id
-            );
+            Log.errorf(ex, "declined enqueue failed for set %s booking %d (declined, mail dropped)", b.setId, first);
         }
     }
 

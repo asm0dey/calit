@@ -408,7 +408,7 @@ public class EmailService {
             return;
         }
         var location = resolveLocation(l);
-        var events = setOrSelf(l);
+        var events = setOrSelf(l, e.setBookingIds());
         sendForKindLocaleAware(
                 l,
                 events,
@@ -447,7 +447,7 @@ public class EmailService {
         if (l == null) {
             return;
         }
-        sendConfirmation(l, locale -> messages.forLocale(locale).email_confirmed_subject(label(l)));
+        sendConfirmation(l, e.setBookingIds(), locale -> messages.forLocale(locale).email_confirmed_subject(label(l)));
     }
 
     void handleApproved(BookingApproved e) {
@@ -458,7 +458,7 @@ public class EmailService {
         // Same body as confirmed (now confirmed after approval); only subject differs. (Group
         // bookings never fire BookingApproved -- the last host's approval fires BookingConfirmed
         // instead -- so this handler is single-host only; the fan-out branch never triggers here.)
-        sendConfirmation(l, locale -> messages.forLocale(locale).email_approved_subject(label(l)));
+        sendConfirmation(l, e.setBookingIds(), locale -> messages.forLocale(locale).email_approved_subject(label(l)));
     }
 
     /**
@@ -468,10 +468,14 @@ public class EmailService {
      * between the two callers. The guest invite deliberately keeps the confirmed subject in both
      * cases: guests never see an "approved" wording, only invitees/owners do.
      */
-    private void sendConfirmation(BookingSnapshot l, Function<Locale, String> subjectForLocale) {
+    private void sendConfirmation(
+            BookingSnapshot l,
+            List<Long> setBookingIds,
+            Function<Locale, String> subjectForLocale
+    ) {
         var location = resolveLocation(l);
         Locale inviteeLocale = AppLocales.pick(l.booking().locale);
-        var events = setOrSelf(l);
+        var events = setOrSelf(l, setBookingIds);
         sendForKindLocaleAware(
                 l,
                 events,
@@ -508,7 +512,7 @@ public class EmailService {
         if (l == null) {
             return;
         }
-        deliverDeclined(l, mailSender::send);
+        deliverDeclined(l, setOrSelf(l, e.setBookingIds()), mailSender::send);
         // Guests of an approval booking that was confirmed/approved then rescheduled back to PENDING
         // (icsSequence>0) hold a stale calendar event; a now-declined re-approval must cancel it for
         // them. A never-confirmed PENDING booking (icsSequence==0) never sent guest invites -> no cancel.
@@ -524,9 +528,8 @@ public class EmailService {
     /**
      * Renders + delivers the declined email through the given sink (direct or outbox).
      */
-    private void deliverDeclined(BookingSnapshot l, MailSink sink) {
+    private void deliverDeclined(BookingSnapshot l, List<Booking> events, MailSink sink) {
         // No Mirror event ever existed -> always notify the invitee. No answers, no location link.
-        var events = setOrSelf(l);
         sendForKindLocaleAware(
                 l,
                 events,
@@ -556,11 +559,19 @@ public class EmailService {
      * Renders the declined email and enqueues it in the CALLER's transaction (atomic with the claim).
      */
     public void enqueueDeclined(Long bookingId) {
+        enqueueDeclined(bookingId, List.of());
+    }
+
+    /**
+     * As {@link #enqueueDeclined(Long)} for a set: one mail naming exactly {@code setBookingIds} (see
+     * {@link BookingDeclined#setBookingIds}).
+     */
+    public void enqueueDeclined(Long bookingId, List<Long> setBookingIds) {
         var l = snapshots.read(bookingId);
         if (l == null) {
             return;
         }
-        deliverDeclined(l, EmailService::enqueueToOutbox);
+        deliverDeclined(l, setOrSelf(l, setBookingIds), EmailService::enqueueToOutbox);
     }
 
     void handleRescheduled(BookingRescheduled e) {
@@ -1255,14 +1266,14 @@ public class EmailService {
     }
 
     /**
-     * The Bookings one set-level mail covers: the set's Bookings in the lead's status (a Booking cancelled on its own
-     * before the set was decided is left out), or just this one booking when it is not in a set.
+     * The Bookings one set-level mail covers: exactly the ones its event names ({@code setBookingIds}, the Bookings that
+     * event decided), or just this one booking when the event names none.
      */
-    private static List<Booking> setOrSelf(BookingSnapshot l) {
+    private static List<Booking> setOrSelf(BookingSnapshot l, List<Long> setBookingIds) {
         var rows = l
             .setBookings()
             .stream()
-            .filter(b -> b.status == l.booking().status)
+            .filter(b -> setBookingIds.contains(b.id))
             .toList();
         return rows.isEmpty() ? List.of(l.booking()) : rows;
     }

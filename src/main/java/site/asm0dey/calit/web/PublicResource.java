@@ -759,7 +759,7 @@ public class PublicResource {
             );
             return null;
         } catch (BookingValidationException e) {
-            return e.getMessage();
+            return localized(e, m);
         }
     }
 
@@ -1296,7 +1296,8 @@ public class PublicResource {
             String error = inviteToken != null ? m.pub_invite_slot_unavailable() : e.getMessage();
             return setStep(m, target, durationChoice, links, og, kept, error, false);
         } catch (BookingValidationException | AbuseException | RateLimitException e) {
-            return setStep(m, target, durationChoice, links, og, picks, e.getMessage(), true);
+            String error = e instanceof BookingValidationException bve ? localized(bve, m) : e.getMessage();
+            return setStep(m, target, durationChoice, links, og, picks, error, true);
         }
         return rows.size() == 1 ? confirmationPage(rows.getFirst(), type) : setConfirmationPage(rows, type);
     }
@@ -1825,9 +1826,14 @@ public class PublicResource {
      * The invitee's language when the service attached a message key, else its English text.
      */
     static String localized(BookingValidationException e, AppMessages m) {
+        int limit = e instanceof SetRuleException s ? s.limit : 0;
         return switch (e.messageKey) {
             case "pub_edit_error_title_too_long" -> m.pub_edit_error_title_too_long();
             case "pub_edit_error_description_too_long" -> m.pub_edit_error_description_too_long();
+            case "pub_set_status_need" -> m.pub_set_status_need(limit);
+            case "pub_set_reason_max" -> m.pub_set_reason_max(limit);
+            case "pub_set_reason_same_day" -> m.pub_set_reason_same_day();
+            case "pub_set_reason_overlap" -> m.pub_set_reason_overlap();
             case null, default -> e.getMessage();
         };
     }
