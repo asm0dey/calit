@@ -227,16 +227,7 @@ public class BookingService {
         Map<Instant, TimeSlot> hostFree = new LinkedHashMap<>();
         for (TimeSlot slot : slotService.generateRawSlots(type, hostId, from, to, latticeZone, durationMinutes)) {
             Instant slotStart = slot.start().toInstant();
-            // Feature 11: drop too-soon (before now+minNotice) and too-far (after now+horizon) slots.
-            if (slotStart.isBefore(earliest) || slotStart.isAfter(latest)) {
-                continue;
-            }
-            Interval buffered =
-                    new Interval(
-                            slotStart.minusSeconds(60L * bufBefore),
-                            slot.end().toInstant().plusSeconds(60L * bufAfter)
-            );
-            if (!buffered.overlapsAny(busy)) {
+            if (SlotFit.fits(slotStart, slot.end().toInstant(), earliest, latest, bufBefore, bufAfter, busy)) {
                 hostFree.put(slotStart, slot);
             }
         }
@@ -1256,7 +1247,7 @@ public class BookingService {
         // Deliberate behavior change (Task 11): an owner-initiated reschedule of an approval type no
         // longer reverts to PENDING -- only an invitee-initiated one does. A host already knows their
         // own slot is free (they just picked it), so re-approving themselves would be theater.
-        var reApproval = type.requiresApproval && !byOwner;
+        var reApproval = SlotFit.needsReApproval(type.requiresApproval, byOwner, false);
         String priorEventId = booking.eventId;
         CalendarRef priorRef = booking.calendarRef();
         if (reApproval) {
@@ -1363,7 +1354,7 @@ public class BookingService {
             .collect(Collectors.toSet());
         assertSlotAvailable(type, newStartUtc, groupRowIds, bookedLength);
 
-        boolean reApproval = type.requiresApproval;
+        boolean reApproval = SlotFit.needsReApproval(type.requiresApproval, byOwner, true);
         var initiator = byOwner ? initiatorOwnerId : null;
         // drop the one event; recreated below only on full re-confirm
         deleteGroupGoogleEvent(row.groupId);
@@ -1392,12 +1383,9 @@ public class BookingService {
             r.startUtc = newStartUtc;
             r.endUtc = newEnd;
             r.icsSequence = r.icsSequence + 1;
-            if (reApproval) {
-                var keepsApproval = initiator != null && initiator.equals(r.ownerId);
-                r.status = keepsApproval ? BookingStatus.CONFIRMED : BookingStatus.PENDING;
-                if (!keepsApproval && r.approvalToken == null) {
-                    r.approvalToken = UUID.randomUUID().toString();
-                }
+            r.status = SlotFit.groupRowStatusAfterMove(reApproval, r.ownerId, initiator, r.status);
+            if (reApproval && r.status == BookingStatus.PENDING && r.approvalToken == null) {
+                r.approvalToken = UUID.randomUUID().toString();
             }
         }
     }
