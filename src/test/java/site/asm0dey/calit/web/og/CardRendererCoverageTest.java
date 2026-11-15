@@ -4,23 +4,15 @@ import module java.base;
 import module java.desktop;
 import static org.assertj.core.api.Assertions.assertThat;
 import static site.asm0dey.calit.web.og.TextRuns.width;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 /**
  * White-box coverage for {@link CardRenderer}'s fit ladder and {@code renderable()} boundaries,
- * split out from {@link CardRendererTest} because it needs {@code @QuarkusTest}: quarkus-jacoco
- * only instruments code reached through a booted Quarkus application, and {@link CardRendererTest}
- * deliberately stays a plain unit test (fast, no container) for its black-box PNG assertions. A
- * CDI-injected {@link CardRenderer} here is the same production bean {@code OgImageResource} calls,
- * just invoked directly instead of through HTTP, so these package-private calls are as real as
- * {@link CardRendererTest}'s -- they just also count towards the coverage report.
+ * split out from {@link CardRendererTest}, which sticks to black-box PNG assertions. These call the
+ * package-private fit-ladder methods directly on the same bean {@code OgImageResource} uses.
  */
-@QuarkusTest
 class CardRendererCoverageTest {
-    @Inject
-    CardRenderer renderer;
+    final CardRenderer renderer = new CardRenderer(new CardFonts());
 
     @Test
     void headlineShrinksToFitBeforeWrapping() {

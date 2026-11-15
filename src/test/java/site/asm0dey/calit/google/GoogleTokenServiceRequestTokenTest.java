@@ -10,17 +10,12 @@ import com.google.api.client.http.LowLevelHttpResponse;
 import com.google.api.client.testing.http.MockHttpTransport;
 import com.google.api.client.testing.http.MockLowLevelHttpRequest;
 import com.google.api.client.testing.http.MockLowLevelHttpResponse;
-import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
 /**
  * Drives the REAL requestToken body (which every other test stubs out) against an in-memory
  * transport, so Google's error payloads are mapped by production code, not by a stub.
- *
- * <p>@QuarkusTest is required for the coverage to count: quarkus-jacoco only records what executes
- * inside the Quarkus test run, so a plain JUnit class would pass while reporting zero coverage.
  */
-@QuarkusTest
 class GoogleTokenServiceRequestTokenTest {
     private static final Instant NOW = Instant.parse("2026-01-01T00:00:00Z");
 

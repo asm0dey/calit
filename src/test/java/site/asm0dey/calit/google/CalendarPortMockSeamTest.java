@@ -4,20 +4,15 @@ import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import io.quarkus.test.InjectMock;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.calendar.BusyInterval;
 import site.asm0dey.calit.calendar.CalendarPort;
 
-@QuarkusTest
 class CalendarPortMockSeamTest {
-    @InjectMock
-    CalendarPort calendarPort;
-    @Inject
-    BusySummaryService service;
+    final CalendarPort calendarPort = mock(CalendarPort.class);
+    final BusySummaryService service = new BusySummaryService(calendarPort);
 
     @Test
     void consumerSeesMockedBusyIntervals() {

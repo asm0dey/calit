@@ -2,15 +2,11 @@ package site.asm0dey.calit.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
 import jakarta.ws.rs.WebApplicationException;
 import org.junit.jupiter.api.Test;
 
-@QuarkusTest
 class CurrentOwnerTest {
-    @Inject
-    CurrentOwner currentOwner;
+    final CurrentOwner currentOwner = new CurrentOwner();
 
     @Test
     void unsetByDefaultAndRequireThrows401() {
