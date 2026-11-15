@@ -231,6 +231,7 @@ public class EmailService {
         static native TemplateInstance reschedule(
                 String recipientRole,
                 boolean byOwner,
+                EmailHeadline headline,
                 String lang,
                 String inviteeName,
                 String inviteeEmail,
@@ -251,6 +252,7 @@ public class EmailService {
         static native TemplateInstance updated(
                 String recipientRole,
                 boolean byOwner,
+                EmailHeadline headline,
                 String description,
                 String lang,
                 String inviteeName,
@@ -271,6 +273,7 @@ public class EmailService {
         static native TemplateInstance cancellation(
                 String recipientRole,
                 boolean byOwner,
+                EmailHeadline headline,
                 boolean hostSelfCancel,
                 String lang,
                 String inviteeName,
@@ -590,6 +593,7 @@ public class EmailService {
                     .reschedule(
                             role,
                             e.byOwner(),
+                            EmailHeadline.of(e.byOwner(), OWNER_ROLE.equals(role), false),
                             locale.getLanguage(),
                             l.booking().inviteeName,
                             l.booking().inviteeEmail,
@@ -636,6 +640,7 @@ public class EmailService {
                     .updated(
                             role,
                             e.byOwner(),
+                            EmailHeadline.of(e.byOwner(), OWNER_ROLE.equals(role), false),
                             desc,
                             locale.getLanguage(),
                             l.booking().inviteeName,
@@ -703,6 +708,8 @@ public class EmailService {
                     .cancellation(
                             role,
                             byOwner,
+                            EmailHeadline.of(byOwner, OWNER_ROLE.equals(role), byOwner
+                            && l.booking().groupId == null),
                             byOwner && l.booking().groupId == null,
                             locale.getLanguage(),
                             l.booking().inviteeName,
