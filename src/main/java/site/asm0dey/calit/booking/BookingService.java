@@ -488,14 +488,7 @@ public class BookingService {
         }
         consumeInvite(inviteToken, type);
         if (!type.requiresApproval) {
-            boolean multiHost = MeetingTypeHost.isMultiHost(type.id);
-            for (Booking row : rows) {
-                if (multiHost) {
-                    createGroupGoogleEvent(type, row.groupId);
-                } else if (calendarPort.isConnected(type.ownerId)) {
-                    createGoogleEvent(type, row);
-                }
-            }
+            createMirrorEventsOrCompensate(type, rows);
         }
         Long leadId = Booking.leadOfSet(setId, type.ownerId).id;
         if (type.requiresApproval) {
@@ -504,6 +497,35 @@ public class BookingService {
             bookingConfirmedEvent.fire(new BookingConfirmed(leadId));
         }
         return rows;
+    }
+
+    /**
+     * Creates the Mirror event of every Booking in {@code rows} (one per row; per group on its lead row).
+     * The DB rolls back on failure but the calendar does not, so a failed create best-effort deletes the
+     * events this call already made, then rethrows the original exception.
+     */
+    private void createMirrorEventsOrCompensate(MeetingType type, List<Booking> rows) {
+        boolean multiHost = MeetingTypeHost.isMultiHost(type.id);
+        List<Booking> created = new ArrayList<>();
+        try {
+            for (Booking row : rows) {
+                Booking holder = row;
+                if (multiHost) {
+                    createGroupGoogleEvent(type, row.groupId);
+                    holder = Booking.leadOfGroup(row.groupId, type.ownerId);
+                } else if (calendarPort.isConnected(type.ownerId)) {
+                    createGoogleEvent(type, row);
+                }
+                if (holder.eventId != null) {
+                    created.add(holder);
+                }
+            }
+        } catch (RuntimeException e) {
+            for (Booking holder : created) {
+                deleteRemoteEvent(holder, true);
+            }
+            throw e;
+        }
     }
 
     /**

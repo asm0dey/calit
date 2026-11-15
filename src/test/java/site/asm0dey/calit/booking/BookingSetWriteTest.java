@@ -352,6 +352,24 @@ class BookingSetWriteTest {
     }
 
     @Test
+    void failedMirrorEventMidSetDeletesTheEventsAlreadyCreated() {
+        var token = invites.issue(1L, seedType("set", false).id, Instant.now());
+        when(calendarPort.isConnected(1L)).thenReturn(true);
+        when(anyCreateEvent(calendarPort))
+            .thenReturn(new CreatedEvent("evt-1", null, null, null))
+            .thenThrow(new UncheckedIOException(new IOException("calendar down")));
+
+        assertThatThrownBy(() -> bookSet("set", List.of(pick(10, 0, 30), pick(11, 0, 30), pick(12, 0, 30)), token))
+            .isInstanceOf(UncheckedIOException.class);
+
+        assertThat(rowsFor(EMAIL)).isEmpty();
+        assertThat(invites.find(1L, token, Instant.now())).isNotNull();
+        verify(calendarPort, times(1)).deleteEvent(eq(1L), any(), eq("evt-1"));
+        verify(calendarPort, times(1)).deleteEvent(any(), any(), any());
+        assertThat(EventLog.CONFIRMED).isEmpty();
+    }
+
+    @Test
     void oneRequestedEventForApprovalSet() {
         seedType("set", true);
 
