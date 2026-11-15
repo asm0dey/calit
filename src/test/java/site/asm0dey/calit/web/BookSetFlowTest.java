@@ -1,0 +1,355 @@
+package site.asm0dey.calit.web;
+
+import module java.base;
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.specification.RequestSpecification;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.booking.BookingInviteService;
+import site.asm0dey.calit.booking.BookingStatus;
+import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.domain.AvailabilityRule;
+import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.domain.MeetingTypeDuration;
+import site.asm0dey.calit.domain.OwnerSettings;
+
+/**
+ * Step 2 of a multi-slot booking: the details form, the set POST, the conflict bounce and the set confirmation.
+ */
+@QuarkusTest
+class BookSetFlowTest {
+    private static final String SLUG = "set-flow";
+    private static final String EMAIL = "sam@example.com";
+    private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
+    private static final LocalDate DAY1 = LocalDate.now(ZONE).plusDays(7);
+    private static final LocalDate DAY2 = DAY1.plusDays(1);
+    private static final Instant A = DAY1.atTime(9, 0).atZone(ZONE).toInstant();
+    private static final Instant B = DAY2.atTime(10, 0).atZone(ZONE).toInstant();
+    private static final String PICK_A = A + "/30";
+    private static final String PICK_B = B + "/60";
+    @InjectMock
+    CalendarPort calendarPort;
+    @jakarta.inject.Inject
+    BookingInviteService invites;
+
+    @BeforeEach
+    void seed() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        QuarkusTransaction.requiringNew().run(() -> {
+            var s = OwnerSettings.forOwner(1L);
+            if (s == null) {
+                s = new OwnerSettings();
+                s.ownerId = 1L;
+            }
+            s.ownerName = "Owner";
+            s.ownerEmail = "owner@example.com";
+            s.timezone = ZONE.getId();
+            s.persist();
+            var t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "Coaching";
+            t.slug = SLUG;
+            t.durationMinutes = 30;
+            t.minNoticeMinutes = 0;
+            t.horizonDays = 30;
+            t.multiSlotMin = 2;
+            t.multiSlotMax = 3;
+            t.multiSlotSameDay = false;
+            t.persist();
+            var d = new MeetingTypeDuration();
+            d.meetingTypeId = t.id;
+            d.durationMinutes = 60;
+            d.persist();
+            for (var day : List.of(DAY1.getDayOfWeek(), DAY2.getDayOfWeek())) {
+                var r = new AvailabilityRule();
+                r.ownerId = 1L;
+                r.dayOfWeek = day;
+                r.startTime = LocalTime.of(9, 0);
+                r.endTime = LocalTime.of(12, 0);
+                r.persist();
+            }
+        });
+    }
+
+    @Test
+    void detailsStepCarriesPicksAsHiddenInputs() {
+        details(PICK_A, PICK_B)
+            .body(containsString("<form method=\"post\" action=\"/admin/" + SLUG + "\""))
+            .body(containsString("<input type=\"hidden\" name=\"pick\" value=\"" + PICK_A + "\">"))
+            .body(containsString("<input type=\"hidden\" name=\"pick\" value=\"" + PICK_B + "\">"))
+            .body(containsString("You&#39;re booking <strong>2 sessions</strong>"))
+            .body(containsString("Confirm 2 sessions"))
+            .body(containsString("name=\"inviteeEmail\""))
+            .body(not(containsString("type=\"checkbox\" name=\"pick\"")));
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> MeetingType.findBySlug(1L, SLUG).requiresApproval = true);
+        details(PICK_A, PICK_B).body(containsString("Request 2 sessions"));
+    }
+
+    @Test
+    void belowMinStaysOnStep1() {
+        details(PICK_A)
+            .body(containsString("type=\"checkbox\" name=\"pick\""))
+            .body(containsString("<div role=\"alert\" class=\"alert alert-error mb-4\">Pick at least 2.</div>"))
+            .body(not(containsString("name=\"inviteeEmail\"")));
+    }
+
+    @Test
+    void overTickedWithoutJsShowsTranslatedMaximum() {
+        String[] four = {PICK_A, PICK_B, at(DAY1, 10) + "/30", at(DAY2, 11) + "/30"};
+        details(four)
+            .body(
+                    containsString(
+                            "<div role=\"alert\" class=\"alert alert-error mb-4\">You have the maximum of 3</div>"
+                    )
+            )
+            .body(not(containsString("name=\"inviteeEmail\"")));
+        detailsIn("de", four)
+            .body(
+                    containsString(
+                            "<div role=\"alert\" class=\"alert alert-error mb-4\">Sie haben das Maximum von 3 erreicht</div>"
+                    )
+            );
+    }
+
+    @Test
+    void twoPicksOnOneDayWithoutJsShowTranslatedSameDay() {
+        String sameDay = at(DAY1, 10) + "/30";
+        details(PICK_A, sameDay)
+            .body(
+                    containsString(
+                            "<div role=\"alert\" class=\"alert alert-error mb-4\">You already have a session this day</div>"
+                    )
+            )
+            .body(not(containsString("name=\"inviteeEmail\"")));
+        detailsIn("he", PICK_A, sameDay)
+            .body(containsString("<div role=\"alert\" class=\"alert alert-error mb-4\">כבר יש לך מפגש ביום הזה</div>"));
+    }
+
+    @Test
+    void stalePickIsDroppedAndNamedOnDetails() {
+        occupy(B, 60);
+
+        details(PICK_A, PICK_B)
+            .body(containsString("type=\"checkbox\" name=\"pick\" value=\"" + PICK_A + "\" checked"))
+            .body(not(containsString("value=\"" + PICK_B + "\"")))
+            .body(containsString("No longer available: <time data-utc=\"" + B + "\">" + label(B) + "</time></div>"))
+            .body(not(containsString("name=\"inviteeEmail\"")));
+    }
+
+    @Test
+    void postBooksSetAndShowsRows() {
+        var body = post(PICK_A, PICK_B)
+            .then()
+            .statusCode(200)
+            .body(containsString("You&#39;re booked: <span>2 sessions</span>"))
+            .body(containsString("1 of 2"))
+            .body(containsString("2 of 2"))
+            .body(containsString("One email with all of them (and one calendar file) is on its way to " + EMAIL))
+            .extract()
+            .asString();
+        var tokens = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>list("inviteeEmail = ?1 order by startUtc", EMAIL))
+            .stream()
+            .map(b -> b.manageToken)
+            .toList();
+        assertThat(tokens)
+            .hasSize(2)
+            .allSatisfy(t -> assertThat(body).contains("/booking/" + t + "/manage", "/booking/" + t + "/cancel"));
+        assertThat(body)
+            .contains("<form method=\"post\" action=\"/booking/" + tokens.getFirst() + "/cancel-all\">")
+            .contains("Cancel all 2 sessions");
+    }
+
+    @Test
+    void singlePickOnMinOneTypeShowsSingleConfirmation() {
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> MeetingType.findBySlug(1L, SLUG).multiSlotMin = 1);
+
+        post(PICK_A)
+            .then()
+            .statusCode(200)
+            .body(containsString("You&#39;re booked, Sam!"))
+            .body(not(containsString("1 of 1")));
+    }
+
+    @Test
+    void conflictBouncesToStep1KeepingFreePicks() {
+        var spec = form(PICK_A, PICK_B);
+        occupy(B, 60);
+
+        spec
+            .post("/admin/" + SLUG)
+            .then()
+            .statusCode(200)
+            .body(containsString("type=\"checkbox\" name=\"pick\" value=\"" + PICK_A + "\" checked"))
+            .body(not(containsString("value=\"" + PICK_B + "\"")))
+            .body(containsString("No longer available: <time data-utc=\"" + B + "\">" + label(B) + "</time></div>"))
+            .body(not(containsString("name=\"inviteeEmail\"")));
+        assertThat(bookingsOf(EMAIL)).isZero();
+    }
+
+    @Test
+    void validationErrorKeepsPicksOnStep2() {
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("pick", PICK_A, PICK_B)
+            .formParam("inviteeName", "Sam")
+            .when()
+            .post("/admin/" + SLUG)
+            .then()
+            .statusCode(200)
+            .body(containsString("<div role=\"alert\" class=\"alert alert-error mb-4\">Email is required.</div>"))
+            .body(containsString("<input type=\"hidden\" name=\"pick\" value=\"" + PICK_A + "\">"))
+            .body(containsString("<input type=\"hidden\" name=\"pick\" value=\"" + PICK_B + "\">"))
+            .body(containsString("name=\"inviteeEmail\""));
+        assertThat(bookingsOf(EMAIL)).isZero();
+    }
+
+    @Test
+    void setIcsDownloadHoldsEverySession() {
+        var body = post(PICK_A, PICK_B).then().statusCode(200).extract().asString();
+        var lead = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>find("inviteeEmail = ?1 order by startUtc", EMAIL).firstResult().manageToken);
+
+        assertThat(body).contains("href=\"/booking/" + lead + "/invite.ics\"", "Add all to calendar (.ics)");
+        var ics = given()
+            .when()
+            .get("/booking/" + lead + "/invite.ics")
+            .then()
+            .statusCode(200)
+            .extract()
+            .asString();
+        assertThat(ics.split("BEGIN:VEVENT", -1)).hasSize(3);
+    }
+
+    @Test
+    void unreadablePickOnPostShowsStep1Error() {
+        post("not-a-pick", PICK_B)
+            .then()
+            .statusCode(200)
+            .body(containsString("Some of the sessions you picked could not be read. Please pick them again."))
+            .body(not(containsString("name=\"inviteeEmail\"")));
+        assertThat(bookingsOf(EMAIL)).isZero();
+    }
+
+    @Test
+    void pickAtUnofferedLengthIsDroppedAndNamed() {
+        post(PICK_A, B + "/45")
+            .then()
+            .statusCode(200)
+            .body(containsString("type=\"checkbox\" name=\"pick\" value=\"" + PICK_A + "\" checked"))
+            .body(containsString("No longer available: <time data-utc=\"" + B + "\">" + label(B) + "</time></div>"))
+            .body(not(containsString("name=\"inviteeEmail\"")));
+        assertThat(bookingsOf(EMAIL)).isZero();
+    }
+
+    @Test
+    void bufferConflictViaInviteShowsInviteWording() {
+        var typeId = QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                MeetingType t = MeetingType.findBySlug(1L, SLUG);
+                t.multiSlotSameDay = true;
+                t.bufferBeforeMinutes = 15;
+                t.bufferAfterMinutes = 15;
+                // a 10-minute lattice offers 9:40 on its own, so only the buffer between the picks refuses it
+                t.slotIntervalMinutes = 10;
+                return t.id;
+            });
+        var token = invites.issue(1L, typeId, Instant.now());
+        var close = A.plus(40, ChronoUnit.MINUTES) + "/30";
+
+        form(PICK_A, close)
+            .post("/admin?invite=" + token)
+            .then()
+            .statusCode(200)
+            .body(containsString("That time is no longer available. Please choose another."))
+            .body(containsString("type=\"checkbox\" name=\"pick\" value=\"" + PICK_A + "\" checked"))
+            .body(containsString("type=\"checkbox\" name=\"pick\" value=\"" + close + "\" checked"));
+        assertThat(bookingsOf(EMAIL)).isZero();
+    }
+
+    private static Instant at(LocalDate day, int hour) {
+        return day.atTime(hour, 0).atZone(ZONE).toInstant();
+    }
+
+    private static io.restassured.response.ValidatableResponse detailsIn(String lang, String... picks) {
+        return given()
+            .queryParam("lang", lang)
+            .queryParam("pick", (Object[]) picks)
+            .queryParam("step", "details")
+            .when()
+            .get("/admin/" + SLUG)
+            .then()
+            .statusCode(200);
+    }
+
+    private static io.restassured.response.ValidatableResponse details(String... picks) {
+        return given()
+            .queryParam("pick", (Object[]) picks)
+            .queryParam("step", "details")
+            .when()
+            .get("/admin/" + SLUG)
+            .then()
+            .statusCode(200);
+    }
+
+    private static RequestSpecification form(String... picks) {
+        return given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("pick", (Object[]) picks)
+            .formParam("inviteeName", "Sam")
+            .formParam("inviteeEmail", EMAIL)
+            .when();
+    }
+
+    private static io.restassured.response.Response post(String... picks) {
+        return form(picks).post("/admin/" + SLUG);
+    }
+
+    /**
+     * The owner-zone fallback label, zone included, the error names a dropped pick by.
+     */
+    private static String label(Instant start) {
+        var z = start.atZone(ZONE);
+        return z.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.ENGLISH))
+                + " · "
+                + z.format(DateTimeFormatter.ofPattern("HH:mm (z)", Locale.ENGLISH));
+    }
+
+    private static long bookingsOf(String email) {
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.count("inviteeEmail", email));
+    }
+
+    static void occupy(Instant start, int minutes) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            var b = new Booking();
+            b.ownerId = 1L;
+            b.meetingTypeId = MeetingType.findBySlug(1L, SLUG).id;
+            b.inviteeName = "Other";
+            b.inviteeEmail = "other@x.com";
+            b.startUtc = start;
+            b.endUtc = start.plus(minutes, ChronoUnit.MINUTES);
+            b.status = BookingStatus.CONFIRMED;
+            b.createdAt = Instant.now();
+            b.manageToken = UUID.randomUUID().toString();
+            b.persist();
+        });
+    }
+}

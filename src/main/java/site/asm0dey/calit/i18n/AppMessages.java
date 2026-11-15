@@ -349,6 +349,150 @@ public interface AppMessages {
     @Message("Confirm booking")
     String pub_book_btn_confirm();
 
+    // ---- Booking page, multi-slot step 1 (book.html with a SetPicker) ----
+    @Message("Pick sessions")
+    String pub_set_step_pick();
+
+    @Message("Your details")
+    String pub_set_step_details();
+
+    @Message("Length of the next session")
+    String pub_set_duration_label();
+
+    @Message("Each session can have its own length. Switching keeps what you already picked.")
+    String pub_set_duration_hint();
+
+    @Message("Your sessions")
+    String pub_set_rail_title();
+
+    @Message("Pick at least {min}.")
+    String pub_set_status_need(int min);
+
+    @Message("{#if count == 1}1 session picked.{#else}{count} sessions picked.{/if} You can add up to {more} more.")
+    String pub_set_status_more(int count, int more);
+
+    @Message("{count} sessions picked. That's the maximum.")
+    String pub_set_status_full(int count);
+
+    @Message("{#if min == 1}Pick at least 1 session{#else}Pick at least {min} sessions{/if}")
+    String pub_set_btn_need(int min);
+
+    @Message("{#if count == 1}Continue with 1 session{#else}Continue with {count} sessions{/if}")
+    String pub_set_btn_continue(int count);
+
+    @Message("Continue")
+    String pub_set_btn_continue_nojs();
+
+    @Message("You already have a session this day")
+    String pub_set_reason_same_day();
+
+    @Message("Overlaps a session you picked")
+    String pub_set_reason_overlap();
+
+    @Message("You have the maximum of {max}")
+    String pub_set_reason_max(int max);
+
+    @Message("{minutes}m")
+    String pub_set_badge_minutes(int minutes);
+
+    @Message("Remove this session")
+    String pub_set_remove();
+
+    @Message("Some of the sessions you picked could not be read. Please pick them again.")
+    String pub_set_error_invalid();
+
+    @Message("{lengths} min each")
+    String pub_set_lengths_each(String lengths);
+
+    @Message("or")
+    String pub_set_or();
+
+    @Message("Book {min} to {max} sessions at once{#if differentDays}, on different days{/if}.")
+    String pub_set_rules_range(int min, int max, boolean differentDays);
+
+    @Message("Book {count} sessions at once{#if differentDays}, on different days{/if}.")
+    String pub_set_rules_exact(int count, boolean differentDays);
+
+    // ---- Booking page, multi-slot step 2 + set confirmation (book.html details, setConfirmation.html) ----
+    @Message("{#if count == 1}1 session{#else}{count} sessions{/if}")
+    String pub_set_sessions(int count);
+
+    @Message("You're booking")
+    String pub_set_booking_lead();
+
+    @Message("They're confirmed together — if one of them was just taken, none are booked and you pick again.")
+    String pub_set_booking_together();
+
+    @Message("‹ Change sessions")
+    String pub_set_btn_change();
+
+    @Message("{#if count == 1}Confirm 1 session{#else}Confirm {count} sessions{/if}")
+    String pub_set_btn_confirm(int count);
+
+    @Message("{#if count == 1}Request 1 session{#else}Request {count} sessions{/if}")
+    String pub_set_btn_request(int count);
+
+    @Message("Your other picks are kept — please pick again. No longer available:")
+    String pub_set_error_dropped();
+
+    @Message("You're booked:")
+    String pub_set_conf_h1_confirmed();
+
+    @Message("Requested, pending approval:")
+    String pub_set_conf_h1_pending();
+
+    @Message(
+            "{meetingName} with {ownerName}. One email with all of them{#if ics} (and one calendar "
+            + "file){/if} is on its way to {email}."
+    )
+    String pub_set_conf_confirmed_desc(String meetingName, String ownerName, String email, boolean ics);
+
+    @Message(
+            "{meetingName} with {ownerName}. Your requested times are held while the owner reviews them. "
+            + "One email with all of them{#if ics} (and one calendar file){/if} is on its way to {email}."
+    )
+    String pub_set_conf_pending_desc(String meetingName, String ownerName, String email, boolean ics);
+
+    @Message("{k} of {n}")
+    String pub_set_k_of_n(int k, int n);
+
+    @Message("Join Meet")
+    String pub_set_join_meet();
+
+    @Message("Reschedule")
+    String pub_set_reschedule();
+
+    @Message("Cancel")
+    String pub_set_cancel();
+
+    @Message("Each session has its own reschedule and cancel link — changing one leaves the others alone.")
+    String pub_set_conf_each();
+
+    @Message("Add all to calendar (.ics)")
+    String pub_set_conf_ics();
+
+    @Message("{#if count == 1}Cancel the 1 remaining session{#else}Cancel all {count} sessions{/if}")
+    String pub_set_cancel_all(int count);
+
+    // ---- Manage page of a Booking in a set (manage.html) and "Cancel all" (cancelled.html) ----
+    @Message("Sessions in this booking")
+    String pub_manage_set_h2();
+
+    @Message("this one")
+    String pub_manage_set_this();
+
+    @Message("Manage")
+    String pub_manage_set_link();
+
+    @Message("Cancelled")
+    String pub_manage_set_cancelled();
+
+    @Message("Nothing left to cancel")
+    String pub_cancel_all_nothing_h1();
+
+    @Message("Every session of this booking is already cancelled or over.")
+    String pub_cancel_all_nothing_desc();
+
     // ---- Confirmation page (confirmation.html) ----
     @Message("Request sent")
     String pub_conf_title_pending();
@@ -744,6 +888,12 @@ public interface AppMessages {
 
     @Message("{minutes} minutes")
     String email_body_duration_minutes(int minutes);
+
+    /**
+     * One Booking of a set in a set mail: its position, the set size, its start and its length.
+     */
+    @Message("{index} of {of} · {when} · {minutes} min")
+    String email_body_session_line(int index, int of, String when, int minutes);
 
     @Message("Google Meet:")
     String email_body_meet_label();

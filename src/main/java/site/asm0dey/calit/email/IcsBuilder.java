@@ -31,7 +31,17 @@ public final class IcsBuilder {
      * @param e the event descriptor; method defaults to "REQUEST", sequence to 0, attendeeRsvp to true
      */
     public static String build(IcsEvent e) {
-        return render(e, false);
+        return build(List.of(e));
+    }
+
+    /**
+     * One VCALENDAR holding one VEVENT per event (a Booking set), each with its own UID and SEQUENCE. The METHOD is
+     * the first event's: every event of one calendar shares it.
+     */
+    public static String build(List<IcsEvent> events) {
+        var sb = new StringBuilder(header(events.getFirst(), false));
+        events.forEach(e -> vevent(sb, e, false));
+        return sb.append("END:VCALENDAR\r\n").toString();
     }
 
     /**
@@ -39,11 +49,12 @@ public final class IcsBuilder {
      * doing implicit scheduling (RFC 6638) has nobody to invite. Organizer and attendee are ignored.
      */
     public static String buildResource(IcsEvent e) {
-        return render(e, true);
+        var sb = new StringBuilder(header(e, true));
+        vevent(sb, e, true);
+        return sb.append("END:VCALENDAR\r\n").toString();
     }
 
-    private static String render(IcsEvent e, boolean resource) {
-        var cancel = e.method() == IcsMethod.CANCEL;
+    private static String header(IcsEvent e, boolean resource) {
         var sb = new StringBuilder();
         sb.append("BEGIN:VCALENDAR\r\n");
         sb.append("VERSION:2.0\r\n");
@@ -51,6 +62,11 @@ public final class IcsBuilder {
         if (!resource) {
             sb.append("METHOD:").append(e.method().name()).append("\r\n");
         }
+        return sb.toString();
+    }
+
+    private static void vevent(StringBuilder sb, IcsEvent e, boolean resource) {
+        var cancel = e.method() == IcsMethod.CANCEL;
         sb.append("BEGIN:VEVENT\r\n");
         sb.append("UID:").append(escape(e.uid())).append("\r\n");
         sb.append("SEQUENCE:").append(e.sequence()).append("\r\n");
@@ -66,7 +82,8 @@ public final class IcsBuilder {
             sb.append("LOCATION:").append(escape(e.location())).append("\r\n");
         }
         if (resource) {
-            return sb.append("END:VEVENT\r\nEND:VCALENDAR\r\n").toString();
+            sb.append("END:VEVENT\r\n");
+            return;
         }
         sb
             .append("ORGANIZER;CN=")
@@ -83,8 +100,6 @@ public final class IcsBuilder {
             .append(escape(e.attendee().email()))
             .append("\r\n");
         sb.append("END:VEVENT\r\n");
-        sb.append("END:VCALENDAR\r\n");
-        return sb.toString();
     }
 
     /**

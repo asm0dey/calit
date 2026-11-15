@@ -44,14 +44,22 @@ public class ReminderScheduler {
      * Auto-confirmed at book time.
      */
     void onConfirmed(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingConfirmed e) {
-        scheduleReminder(e.bookingId());
+        covered(e.bookingId(), e.setBookingIds()).forEach(this::scheduleReminder);
     }
 
     /**
      * PENDING -> CONFIRMED via owner approval.
      */
     void onApproved(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingApproved e) {
-        scheduleReminder(e.bookingId());
+        covered(e.bookingId(), e.setBookingIds()).forEach(this::scheduleReminder);
+    }
+
+    /**
+     * A set fires one event naming the Bookings it decided, but reminders stay per Booking: exactly those, or the
+     * event's own booking. {@link #scheduleReminder} already skips a co-hosted group's non-lead rows.
+     */
+    private static List<Long> covered(Long bookingId, List<Long> setBookingIds) {
+        return setBookingIds.isEmpty() ? List.of(bookingId) : setBookingIds;
     }
 
     /**
@@ -62,20 +70,27 @@ public class ReminderScheduler {
     }
 
     /**
+     * "Cancel all" on a set: every Booking it cancelled loses its reminder.
+     */
+    void onSetCancelled(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingSetCancelled e) {
+        e.cancelledIds().forEach(this::onCancelledOrDeclined);
+    }
+
+    /**
      * A booking (re-)entered the approval queue as PENDING — either a fresh approval-type request or
      * an approval-type reschedule (Plan 3 re-fires BookingRequested, NOT BookingRescheduled). A PENDING
      * booking must hold no reminder, so drop any unsent one left over from a prior CONFIRMED state;
      * the eventual BookingApproved reschedules it at the new time.
      */
     void onRequested(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingRequested e) {
-        onCancelledOrDeclined(e.bookingId());
+        covered(e.bookingId(), e.setBookingIds()).forEach(this::onCancelledOrDeclined);
     }
 
     /**
      * Declined by owner OR auto-expired (Plan 6 expiry tick fires BookingDeclined).
      */
     void onDeclined(@Observes(during = TransactionPhase.AFTER_SUCCESS) BookingDeclined e) {
-        onCancelledOrDeclined(e.bookingId());
+        covered(e.bookingId(), e.setBookingIds()).forEach(this::onCancelledOrDeclined);
     }
 
     /**

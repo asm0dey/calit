@@ -52,7 +52,8 @@ public class AdminResource {
                 boolean isAdmin,
                 String title,
                 String zone,
-                MailHealth.Status mailHealth
+                MailHealth.Status mailHealth,
+                Map<Long, String> setTags
         );
 
         public static native TemplateInstance meetingTypes(
@@ -170,7 +171,8 @@ public class AdminResource {
                 String titlePlaceholder,
                 String descPlaceholder,
                 boolean guestsHidden,
-                String detailsError
+                String detailsError,
+                int cancelAllCount
         );
 
         public static native TemplateInstance approvalResult(
@@ -323,6 +325,7 @@ public class AdminResource {
                     .adm_hosts_error_slug_cohosts((String) hre.args[0], (String) hre.args[1]);
                 case "adm_hosts_error_slug_across" -> m().adm_hosts_error_slug_across((String) hre.args[0]);
                 case "adm_detail_error_duration_positive" -> m().adm_detail_error_duration_positive();
+                case "adm_detail_error_multi_slot_range" -> m().adm_detail_error_multi_slot_range();
                 case "adm_detail_error_range" -> m()
                     .adm_detail_error_range((String) hre.args[0], (int) hre.args[1], (int) hre.args[2]);
                 default -> e.getMessage();
@@ -431,8 +434,34 @@ public class AdminResource {
                 isAdmin(),
                 m().adm_dashboard_title(),
                 ownerZone(),
-                mailHealth.status()
+                mailHealth.status(),
+                setTags(upcoming)
         );
+    }
+
+    /**
+     * "k of N" for each upcoming row that belongs to a Booking set, counted over this owner's rows of that set.
+     */
+    private Map<Long, String> setTags(List<Booking> upcoming) {
+        var m = appMsgs.forLocale(activeLocale.current());
+        Map<Long, String> tags = new HashMap<>();
+        upcoming
+            .stream()
+            .map(b -> b.setId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .forEach(setId -> {
+                List<Booking> mine =
+                        Booking
+                    .<Booking>set(setId)
+                    .stream()
+                    .filter(r -> r.ownerId.equals(currentOwner.id()))
+                    .toList();
+                for (int i = 0; i < mine.size(); i++) {
+                    tags.put(mine.get(i).id, m.pub_set_k_of_n(i + 1, mine.size()));
+                }
+            });
+        return tags;
     }
 
     /**
@@ -574,6 +603,11 @@ public class AdminResource {
             @RestForm String requiresApproval,
             @RestForm @DefaultValue("REQUIRED") String nameMode,
             @RestForm @DefaultValue("OPTIONAL") String guestsMode,
+            @RestForm String multiSlotMode,
+            @RestForm String multiSlotMin,
+            @RestForm String multiSlotMax,
+            @RestForm String multiSlotExact,
+            @RestForm String multiSlotSameDay,
             @RestForm String writeCalendar,
             MultivaluedMap<String, String> form
     ) {
@@ -612,7 +646,12 @@ public class AdminResource {
                             slotIntervalMinutes,
                             requiresApproval,
                             nameMode,
-                            guestsMode
+                            guestsMode,
+                            multiSlotMode,
+                            multiSlotMin,
+                            multiSlotMax,
+                            multiSlotExact,
+                            multiSlotSameDay
                     );
                     // need the generated id before scoping child rules/overrides to it
                     t.persist();
@@ -663,7 +702,12 @@ public class AdminResource {
             String slotIntervalMinutes,
             String requiresApproval,
             String nameMode,
-            String guestsMode
+            String guestsMode,
+            String multiSlotMode,
+            String multiSlotMin,
+            String multiSlotMax,
+            String multiSlotExact,
+            String multiSlotSameDay
     ) {
         // A zero or negative duration is not a cosmetic error: the slot cadence falls back to the
         // shortest allowed length, so it makes the step zero and SlotService's loops never advance --
@@ -707,6 +751,40 @@ public class AdminResource {
         t.guestsMode = fieldMode(guestsMode, FieldMode.OPTIONAL) == FieldMode.HIDDEN
                 ? FieldMode.HIDDEN
                 : FieldMode.OPTIONAL;
+        applyMultiSlot(t, multiSlotMode, multiSlotMin, multiSlotMax, multiSlotExact, multiSlotSameDay);
+    }
+
+    /**
+     * Several sessions per booking: blank/unknown mode is Off (both bounds null, same-day cleared);
+     * a range is 1 &le; min &le; max &le; 5; an exact package stores min = max = N with 2 &le; N &le; 5.
+     */
+    private static void applyMultiSlot(MeetingType t, String mode, String min, String max, String exact, String sameDay) {
+        int lo;
+        int hi;
+        switch (mode == null ? "off" : mode) {
+            case "range" -> {
+                lo = parseIntOr(min == null ? "" : min, 0);
+                hi = parseIntOr(max == null ? "" : max, 0);
+                if (lo < 1 || hi > 5 || lo > hi) {
+                    throw new HostRuleException("adm_detail_error_multi_slot_range");
+                }
+            }
+            case "exact" -> {
+                lo = hi = parseIntOr(exact == null ? "" : exact, 0);
+                if (lo < 2 || lo > 5) {
+                    throw new HostRuleException("adm_detail_error_multi_slot_range");
+                }
+            }
+            default -> {
+                t.multiSlotMin = null;
+                t.multiSlotMax = null;
+                t.multiSlotSameDay = false;
+                return;
+            }
+        }
+        t.multiSlotMin = lo;
+        t.multiSlotMax = hi;
+        t.multiSlotSameDay = "on".equals(sameDay);
     }
 
     /**
@@ -1184,6 +1262,11 @@ public class AdminResource {
             @RestForm String requiresApproval,
             @RestForm @DefaultValue("REQUIRED") String nameMode,
             @RestForm @DefaultValue("OPTIONAL") String guestsMode,
+            @RestForm String multiSlotMode,
+            @RestForm String multiSlotMin,
+            @RestForm String multiSlotMax,
+            @RestForm String multiSlotExact,
+            @RestForm String multiSlotSameDay,
             @RestForm String writeCalendar
     ) {
         // Load + mutate + flush in one tx that commits before the detail render (issue #75). Slug
@@ -1214,7 +1297,12 @@ public class AdminResource {
                         slotIntervalMinutes,
                         requiresApproval,
                         nameMode,
-                        guestsMode
+                        guestsMode,
+                        multiSlotMode,
+                        multiSlotMin,
+                        multiSlotMax,
+                        multiSlotExact,
+                        multiSlotSameDay
                 );
             });
             // managed entity flushes on commit
@@ -2257,7 +2345,8 @@ public class AdminResource {
                     type.name,
                     type.description == null ? "" : type.description,
                     type.hidesGuests(),
-                    detailsError
+                    detailsError,
+                    b.setId == null ? 0 : BookingService.cancellableOfSet(b.setId, type.ownerId).size()
             );
     }
 
@@ -2285,6 +2374,17 @@ public class AdminResource {
         // host-initiated; keyed by the booking's own token
         bookingService.cancel(b.manageToken, true);
         // re-render /me; the cancelled booking drops off the upcoming list
+        return dashboard();
+    }
+
+    @POST
+    @Path("/bookings/{id}/cancel-all")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance ownerCancelAll(@PathParam("id") Long id) {
+        Booking b = requireOwnedBooking(id);
+        // host-initiated "Cancel all" for the booking's set; keyed by its own token like ownerCancel
+        bookingService.cancelSet(b.manageToken, true);
         return dashboard();
     }
 
@@ -2380,7 +2480,7 @@ public class AdminResource {
      * Authenticated one-click approve/decline from the owner's email. Owner-scoped via
      * {@link #requireOwnedBooking} (404 if not theirs); the {@code token} query param is the CSRF
      * nonce (GET is not guarded by quarkus-rest-csrf) and must equal {@code approvalToken} (404 on
-     * mismatch, no info leak). Acts only while PENDING, else renders the "already handled" result.
+     * mismatch, no info leak). Acts only while the decision is open, else renders the "already handled" result.
      */
     private TemplateInstance actFromEmail(Long id, String token, boolean approve) {
         Booking b = requireOwnedBooking(id);
@@ -2389,7 +2489,8 @@ public class AdminResource {
         }
         String h1;
         String desc;
-        if (b.status != BookingStatus.PENDING) {
+        // a set row acts while this Host still has a PENDING row in the set, even if this row was cancelled
+        if (!BookingService.decisionOpen(b)) {
             h1 = m().adm_approve_gone_h1();
             desc = m().adm_approve_gone_desc();
         } else if (approve) {

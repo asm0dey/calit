@@ -1,0 +1,34 @@
+              <fieldset class="fieldset">
+                {#if type.nameMode.name != 'HIDDEN'}
+                <label class="label" for="inviteeName">{msg:pub_book_your_name}</label>
+                <input id="inviteeName" class="input w-full" type="text" name="inviteeName"{#if type.nameMode.name == 'REQUIRED'} required{/if}>
+                {/if}
+                <label class="label" for="inviteeEmail">{msg:pub_book_your_email}</label>
+                <input id="inviteeEmail" class="input w-full" type="email" name="inviteeEmail" required>
+                {#if !type.hidesGuests}
+                {#include PublicResource/_guestschips initial=initialGuests /}
+                {/if}
+                {#for f in fields}
+                  <label class="label" for="f-{f.fieldKey}">{f.label}</label>
+                  {#if f.type.name == 'LONG_TEXT'}
+                    <textarea id="f-{f.fieldKey}" class="textarea w-full" name="answers.{f.fieldKey}" {#if f.required}required{/if}></textarea>
+                  {#else if f.type.name == 'EMAIL'}
+                    <input id="f-{f.fieldKey}" class="input w-full" type="email" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
+                  {#else if f.type.name == 'PHONE'}
+                    <input id="f-{f.fieldKey}" class="input w-full" type="tel" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
+                  {#else if f.type.name == 'NUMBER'}
+                    <input id="f-{f.fieldKey}" class="input w-full" type="number" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
+                  {#else}
+                    <input id="f-{f.fieldKey}" class="input w-full" type="text" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
+                  {/if}
+                {/for}
+              </fieldset>
+
+              {! Honeypot (always present + hidden). A non-empty `website` → rejected server-side. !}
+              <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off">
+
+              {#if captcha.provider == 'turnstile'}
+              <div class="cf-turnstile" data-sitekey="{captcha.siteKey}"></div>
+              {#else if captcha.provider == 'altcha'}
+              <altcha-widget challenge="/altcha/challenge" name="altcha" type="native" display="floating"></altcha-widget>
+              {/if}

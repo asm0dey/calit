@@ -114,6 +114,7 @@ public final class PersonalData {
                                 "meeting_type_id",
                                 "owner_id",
                                 "removed_mirror_provider",
+                                "set_id",
                                 "start_utc",
                                 "status",
                                 "title"
@@ -312,6 +313,9 @@ public final class PersonalData {
                                 "location_detail",
                                 "location_type",
                                 "min_notice_minutes",
+                                "multi_slot_max",
+                                "multi_slot_min",
+                                "multi_slot_same_day",
                                 "name",
                                 "name_mode",
                                 "override_account_id",

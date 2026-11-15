@@ -204,4 +204,29 @@ class IcsBuilderTest {
         );
         assertThat(ics).contains("BEGIN:VEVENT", "UID:tok-res").doesNotContain("METHOD:", "ORGANIZER", "ATTENDEE");
     }
+
+    @Test
+    void buildsOneCalendarWithThreeEvents() {
+        var start = Instant.parse("2026-06-08T09:00:00Z");
+        var events = IntStream
+            .range(0, 3)
+            .mapToObj(i -> IcsEvent
+                .builder()
+                .uid("tok-" + i)
+                .summary("Session")
+                .organizer(new IcsBuilder.Party("Owner Name", "owner@example.com"))
+                .attendee(new IcsBuilder.Party("Invitee Name", "invitee@example.com"))
+                .start(start.plus(i, ChronoUnit.HOURS))
+                .end(start.plus(i, ChronoUnit.HOURS).plus(30, ChronoUnit.MINUTES))
+                .sequence(i)
+                .build())
+            .toList();
+
+        String ics = IcsBuilder.build(events);
+
+        assertThat(ics.split("BEGIN:VCALENDAR", -1)).hasSize(2);
+        assertThat(ics.split("METHOD:", -1)).hasSize(2);
+        assertThat(ics.split("BEGIN:VEVENT", -1)).hasSize(4);
+        assertThat(ics).contains("UID:tok-0", "UID:tok-1", "UID:tok-2", "SEQUENCE:2").endsWith("END:VCALENDAR\r\n");
+    }
 }

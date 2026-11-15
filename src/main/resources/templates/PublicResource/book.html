@@ -12,6 +12,7 @@
 {@java.lang.String initialGuests}
 {@site.asm0dey.calit.web.OgCard og}
 {@site.asm0dey.calit.web.PublicResource$BookLinks links}
+{@site.asm0dey.calit.web.PublicResource$SetPicker picker}
 {#include base title=title og=og bodyClass="book-page"}
   {#head}
     {#if captcha.provider == 'turnstile'}
@@ -35,8 +36,15 @@
           <h1 class="text-2xl font-bold mb-3">{type.name}</h1>
           <p class="flex items-center gap-2 font-semibold mb-3">
             <svg class="h-5 w-5 text-base-content/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            {#if picker && picker.lengthsLine}
+            {picker.lengthsLine}
+            {#else}
             {duration.chosen} {msg:pub_book_minutes_short}
+            {/if}
           </p>
+          {#if picker}
+          <p class="text-sm text-base-content/70 mb-3">{picker.rulesLine}</p>
+          {/if}
           {#if type.description}<p class="text-sm text-base-content/70 mb-3">{type.description}</p>{/if}
           {#if type.locationType.name == 'GOOGLE_MEET'}
             {#if meetLink}<p class="text-sm mb-2"><strong>{msg:pub_book_location_label}</strong> {msg:pub_book_meet_hint}</p>{/if}
@@ -51,8 +59,175 @@
             <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
             <span data-summary-text></span>
           </p>
+          {#if picker}
+          <section class="mt-5 rounded-box border border-base-300 bg-base-200/60 p-4" aria-labelledby="picks-h">
+            <div class="flex items-baseline justify-between gap-2 mb-2">
+              <h2 id="picks-h" class="font-semibold">{msg:pub_set_rail_title}</h2>
+              <span class="badge badge-sm" data-count-badge>{picker.picks.size} / {picker.max}</span>
+            </div>
+            <p role="status" aria-atomic="true" class="text-sm text-base-content/70 mb-3"{#for st in picker.statusByCount} data-s{st_index}="{st}"{/for} data-status>{picker.status}</p>
+            <ol class="space-y-2">
+              {#for p in picker.rows}
+              <li class="flex items-center gap-2 text-sm">
+                <time class="flex-1" data-utc="{p.startUtc}">{p.label}</time>
+                <span class="badge badge-sm badge-accent">{msg:pub_set_badge_minutes(p.minutes)}</span>
+                <button type="submit" form="set-form" name="remove" value="{p.value}" class="btn btn-ghost btn-xs" aria-label="{msg:pub_set_remove}" title="{msg:pub_set_remove}">✕</button>
+              </li>
+              {/for}
+            </ol>
+          </section>
+          {/if}
         </div>
 
+        {#if picker && picker.details}
+        <div>
+          <ul class="steps steps-horizontal w-full mb-5 text-sm">
+            <li class="step step-primary"><button type="submit" form="set-form" class="link">{msg:pub_set_step_pick}</button></li>
+            <li class="step step-primary">{msg:pub_set_step_details}</li>
+          </ul>
+          {#if error}<div role="alert" class="alert alert-error mb-4">{error}</div>{/if}
+          <div class="alert alert-info alert-soft mb-4 text-sm">
+            <span>{msg:pub_set_booking_lead} <strong>{msg:pub_set_sessions(picker.picks.size)}</strong>. {msg:pub_set_booking_together}</span>
+          </div>
+          {! "Change sessions", "Pick sessions" and the rail's ✕ submit this back to step 1 with every pick. !}
+          <form method="get" action="{links.pickAction}" id="set-form">
+            {#if links.invite}<input type="hidden" name="invite" value="{links.invite}">{/if}
+            {#for p in picker.rows}<input type="hidden" name="pick" value="{p.value}" data-date="{p.isoDate}">{/for}
+            <input type="hidden" name="duration" value="{duration.chosen}">
+          </form>
+          <form method="post" action="{links.action}" class="max-w-md">
+            <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
+            {#for p in picker.rows}
+            <input type="hidden" name="pick" value="{p.value}">
+            {/for}
+{#include PublicResource/_bookfields /}
+            <div class="flex gap-3 mt-6">
+              <button type="submit" form="set-form" class="btn btn-ghost">{msg:pub_set_btn_change}</button>
+              <button type="submit" class="btn btn-primary flex-1">{#if type.requiresApproval}{msg:pub_set_btn_request(picker.picks.size)}{#else}{msg:pub_set_btn_confirm(picker.picks.size)}{/if}</button>
+            </div>
+          </form>
+          {chrome.tzScript.raw}
+        </div>
+        {#else if picker}
+        <div>
+          <ul class="steps steps-horizontal w-full mb-5 text-sm">
+            <li class="step step-primary">{msg:pub_set_step_pick}</li>
+            <li class="step">{msg:pub_set_step_details}</li>
+          </ul>
+          {#if error}<div role="alert" class="alert alert-error mb-4">{error}{#for d in picker.dropped} <time data-utc="{d.startUtc}">{d.label}</time>{#if d_hasNext},{/if}{/for}</div>{/if}
+          <form method="get" action="{links.pickAction}" id="set-form" data-same-day="{#if picker.sameDay}1{#else}0{/if}">
+            {#if links.invite}<input type="hidden" name="invite" value="{links.invite}">{/if}
+            {#for p in picker.rows}{#if p.hidden}
+            <input type="hidden" name="pick" value="{p.value}" data-date="{p.isoDate}">
+            {/if}{/for}
+            {#if duration.multiple}
+              <p class="label mb-2">{msg:pub_set_duration_label}</p>
+              <nav class="join mb-4">
+                {#for d in duration.allowed}
+                  <button type="submit" name="duration" value="{d}" class="join-item btn btn-sm{#if d == duration.chosen} btn-active{/if}"{#if d == duration.chosen} aria-pressed="true"{/if}>{d} {msg:pub_book_minutes_short}</button>
+                {/for}
+              </nav>
+              <p class="text-xs text-base-content/60 -mt-2 mb-4">{msg:pub_set_duration_hint}</p>
+            {/if}
+            {#if days.isEmpty()}
+              <p>{msg:pub_book_no_times}</p>
+            {#else}
+              {chrome.tzBar.raw}
+              <div class="booking-grid">
+                <div id="calendar" class="calendar"></div>
+                <div class="time-column">
+                  <div class="slots-scroll">
+                  {#for day in days}
+                    <section class="day-slots{#if picker.pickedOn(day.isoDate)} day-slots--picked{/if}" data-date="{day.isoDate}">
+                      <h3>{day.label}</h3>
+                      {#for slot in day.slots}
+                        <label class="slot{#if picker.disabled(slot.startUtc)} slot-disabled{/if}">
+                          <input type="checkbox" name="pick" value="{slot.startUtc}/{duration.chosen}"{#if picker.checked(slot.startUtc, duration.chosen)} checked{/if}{#if picker.disabled(slot.startUtc)} disabled{/if}>
+                          <time data-utc="{slot.startUtc}" data-time-only="1">{slot.label}</time>{#let other=picker.otherLength(slot.startUtc, duration.chosen)}{#if other}<span class="slot-badge badge badge-xs badge-accent">{msg:pub_set_badge_minutes(other)}</span>{/if}{/let}
+                        </label>
+                      {/for}
+                      {! All three reasons are rendered; the server unhides the ones that apply, the script re-toggles them live. !}
+                      <p class="slot-reason" data-reason="SAME_DAY"{#if !picker.shows(day.isoDate, 'SAME_DAY')} hidden{/if}>{msg:pub_set_reason_same_day}</p>
+                      <p class="slot-reason" data-reason="OVERLAP"{#if !picker.shows(day.isoDate, 'OVERLAP')} hidden{/if}>{msg:pub_set_reason_overlap}</p>
+                      <p class="slot-reason" data-reason="MAX"{#if !picker.shows(day.isoDate, 'MAX')} hidden{/if}>{msg:pub_set_reason_max(picker.max)}</p>
+                    </section>
+                  {/for}
+                  </div>
+                </div>
+              </div>
+            {/if}
+            {! Live button: JS keeps its label and disabled state in step with the ticks. Without JS the
+               ticks are invisible to the server until a submit, so the noscript Continue replaces it. !}
+            <button type="submit" name="step" value="details" class="btn btn-primary btn-block mt-6"{#for l in picker.continueByCount} data-l{l_index}="{l}"{/for} data-min="{picker.min}" data-max="{picker.max}" data-continue{#if picker.belowMin} disabled{/if}>{picker.continueLabel}</button>
+            <noscript>
+              <style>[data-continue] { display: none; }</style>
+              <button type="submit" name="step" value="details" class="btn btn-primary btn-block mt-6">{msg:pub_set_btn_continue_nojs}</button>
+            </noscript>
+            {! Last in the form: a duration button, earlier in tree order, is the first value and wins. !}
+            <input type="hidden" name="duration" value="{duration.chosen}">
+          </form>
+          {chrome.tzScript.raw}
+          {chrome.calScript.raw}
+          <script>
+          /* CALIT_SET_PICKER — mirrors the server's set rules live (JS-only): count, rail sentence, Continue,
+             MAX / overlap / same-day disabling with the day's reason lines, and calendar dots. */
+          (function () {
+            var form = document.getElementById('set-form');
+            var btn = form && form.querySelector('[data-continue]');
+            if (!btn) { return; }
+            var status = document.querySelector('[data-status]');
+            var badge = document.querySelector('[data-count-badge]');
+            var min = +btn.dataset.min, max = +btn.dataset.max, sameDayOk = form.dataset.sameDay === '1';
+            var boxes = Array.prototype.slice.call(form.querySelectorAll('input[type=checkbox][name=pick]'));
+            var sections = Array.prototype.slice.call(form.querySelectorAll('.day-slots'));
+            function span(v, date) {
+              var i = v.lastIndexOf('/'), s = Date.parse(v.slice(0, i));
+              return { s: s, e: s + v.slice(i + 1) * 60000, date: date };
+            }
+            function update() {
+              var picks = Array.prototype.map.call(form.querySelectorAll('input[type=hidden][name=pick]'),
+                function (h) { return span(h.value, h.dataset.date); });
+              boxes.forEach(function (b) { if (b.checked) { picks.push(span(b.value, b.closest('.day-slots').dataset.date)); } });
+              var n = picks.length, k = Math.min(n, max), shown = {};
+              badge.textContent = n + ' / ' + max;
+              status.textContent = status.dataset['s' + k];
+              btn.textContent = btn.dataset['l' + k];
+              btn.disabled = n < min || n > max;
+              boxes.forEach(function (b) {
+                var date = b.closest('.day-slots').dataset.date, c = span(b.value, date), why = '';
+                if (!b.checked) {
+                  /* Same order as SetRules.blocked; half-open intervals, so touching is not overlap. */
+                  if (n >= max) { why = 'MAX'; }
+                  else if (picks.some(function (p) { return c.s < p.e && p.s < c.e; })) { why = 'OVERLAP'; }
+                  else if (!sameDayOk && picks.some(function (p) { return p.date === date; })) { why = 'SAME_DAY'; }
+                }
+                b.disabled = !!why;
+                b.closest('.slot').classList.toggle('slot-disabled', !!why);
+                if (why) { shown[date + why] = true; }
+              });
+              sections.forEach(function (s) {
+                var date = s.dataset.date;
+                s.classList.toggle('day-slots--picked', picks.some(function (p) { return p.date === date; }));
+                s.querySelectorAll('[data-reason]').forEach(function (r) { r.hidden = !shown[date + r.dataset.reason]; });
+              });
+              dots();
+            }
+            var cal = document.getElementById('calendar');
+            function dots() {
+              if (!cal) { return; }
+              sections.forEach(function (s) {
+                var d = cal.querySelector('.calendar__day[data-date="' + s.dataset.date + '"]');
+                if (d) { d.classList.toggle('calendar__day--picked', s.classList.contains('day-slots--picked')); }
+              });
+            }
+            form.addEventListener('change', function (e) { if (e.target.name === 'pick') { update(); } });
+            if (cal) { new MutationObserver(dots).observe(cal, { childList: true }); }
+            /* Once on load too: back/forward cache restores ticks the server never saw. */
+            update();
+          })();
+          </script>
+        </div>
+        {#else}
         <div>
           <h2 class="text-lg font-semibold mb-4">{msg:pub_book_select_datetime}</h2>
           {#if duration.multiple}
@@ -91,40 +266,7 @@
                 </div>
               </div>
 
-              <fieldset class="fieldset">
-                {#if type.nameMode.name != 'HIDDEN'}
-                <label class="label" for="inviteeName">{msg:pub_book_your_name}</label>
-                <input id="inviteeName" class="input w-full" type="text" name="inviteeName"{#if type.nameMode.name == 'REQUIRED'} required{/if}>
-                {/if}
-                <label class="label" for="inviteeEmail">{msg:pub_book_your_email}</label>
-                <input id="inviteeEmail" class="input w-full" type="email" name="inviteeEmail" required>
-                {#if !type.hidesGuests}
-                {#include PublicResource/_guestschips initial=initialGuests /}
-                {/if}
-                {#for f in fields}
-                  <label class="label" for="f-{f.fieldKey}">{f.label}</label>
-                  {#if f.type.name == 'LONG_TEXT'}
-                    <textarea id="f-{f.fieldKey}" class="textarea w-full" name="answers.{f.fieldKey}" {#if f.required}required{/if}></textarea>
-                  {#else if f.type.name == 'EMAIL'}
-                    <input id="f-{f.fieldKey}" class="input w-full" type="email" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
-                  {#else if f.type.name == 'PHONE'}
-                    <input id="f-{f.fieldKey}" class="input w-full" type="tel" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
-                  {#else if f.type.name == 'NUMBER'}
-                    <input id="f-{f.fieldKey}" class="input w-full" type="number" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
-                  {#else}
-                    <input id="f-{f.fieldKey}" class="input w-full" type="text" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
-                  {/if}
-                {/for}
-              </fieldset>
-
-              {! Honeypot (always present + hidden). A non-empty `website` → rejected server-side. !}
-              <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off">
-
-              {#if captcha.provider == 'turnstile'}
-              <div class="cf-turnstile" data-sitekey="{captcha.siteKey}"></div>
-              {#else if captcha.provider == 'altcha'}
-              <altcha-widget challenge="/altcha/challenge" name="altcha" type="native" display="floating"></altcha-widget>
-              {/if}
+{#include PublicResource/_bookfields /}
 
               {#if type.requiresApproval}
                 <button type="submit" class="btn btn-primary btn-block">{msg:pub_book_btn_request}</button>
@@ -152,6 +294,7 @@
           })();
           </script>
         </div>
+        {/if}
       </div>
     </div>
   </div>

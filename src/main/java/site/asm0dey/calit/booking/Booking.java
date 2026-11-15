@@ -113,6 +113,11 @@ public class Booking extends PanacheEntityBase {
      */
     @Column(name = "group_id")
     public UUID groupId;
+    /**
+     * Multi-slot booking: all rows of one booking set (every slot, every host) share this id; null otherwise.
+     */
+    @Column(name = "set_id")
+    public UUID setId;
 
     /**
      * This owner's HELD (PENDING or CONFIRMED) bookings whose [startUtc, endUtc) overlaps the
@@ -212,29 +217,52 @@ public class Booking extends PanacheEntityBase {
     }
 
     /**
-     * Counts one per conceptual booking: standalone rows + distinct group_id.
+     * Multi-slot: all rows sharing this set_id, in time order.
+     */
+    public static List<Booking> set(UUID setId) {
+        return list("setId = ?1 order by startUtc, id", setId);
+    }
+
+    /**
+     * The creator's earliest row in a set (the invitee-facing lead).
+     */
+    public static Booking leadOfSet(UUID setId, Long creatorOwnerId) {
+        return find("setId = ?1 and ownerId = ?2 order by startUtc, id", setId, creatorOwnerId).firstResult();
+    }
+
+    /**
+     * Counts one per conceptual booking: standalone rows + distinct group_id (outside sets) + distinct set_id.
      */
     public static long countDistinctBookingsByEmailBetween(String email, Instant dayStart, Instant dayEnd) {
-        Long singles = getEntityManager()
-            .createQuery(
-                    "select count(b) from Booking b where b.inviteeEmail = :e "
-                    + "and b.createdAt >= :s and b.createdAt < :d and b.groupId is null",
-                    Long.class
-            )
+        return countJpql(
+                "select count(b) from Booking b where b.inviteeEmail = :e and b.createdAt >= :s and b.createdAt < :d"
+                + " and b.groupId is null and b.setId is null",
+                email,
+                dayStart,
+                dayEnd
+        )
+                + countJpql(
+                        "select count(distinct b.groupId) from Booking b where b.inviteeEmail = :e"
+                        + " and b.createdAt >= :s and b.createdAt < :d and b.groupId is not null and b.setId is null",
+                        email,
+                        dayStart,
+                        dayEnd
+        )
+                + countJpql(
+                        "select count(distinct b.setId) from Booking b where b.inviteeEmail = :e"
+                        + " and b.createdAt >= :s and b.createdAt < :d and b.setId is not null",
+                        email,
+                        dayStart,
+                        dayEnd
+        );
+    }
+
+    private static long countJpql(String jpql, String email, Instant dayStart, Instant dayEnd) {
+        return getEntityManager()
+            .createQuery(jpql, Long.class)
             .setParameter("e", email)
             .setParameter("s", dayStart)
             .setParameter("d", dayEnd)
             .getSingleResult();
-        Long groups = getEntityManager()
-            .createQuery(
-                    "select count(distinct b.groupId) from Booking b where b.inviteeEmail = :e "
-                    + "and b.createdAt >= :s and b.createdAt < :d and b.groupId is not null",
-                    Long.class
-            )
-            .setParameter("e", email)
-            .setParameter("s", dayStart)
-            .setParameter("d", dayEnd)
-            .getSingleResult();
-        return singles + groups;
     }
 }

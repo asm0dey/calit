@@ -78,6 +78,8 @@ public class BookingService {
     @Inject
     Event<BookingCancelled> bookingCancelledEvent;
     @Inject
+    Event<BookingSetCancelled> bookingSetCancelledEvent;
+    @Inject
     Event<GuestDeclined> guestDeclinedEvent;
     @Inject
     Event<GuestRemoved> guestRemovedEvent;
@@ -386,6 +388,172 @@ public class BookingService {
             int durationMinutes,
             String inviteToken
     ) {
+        Prechecked p = precheck(
+                ownerId,
+                meetingTypeSlug,
+                inviteeName,
+                inviteeEmail,
+                answers,
+                turnstileToken,
+                altchaSolution,
+                honeypot,
+                guestEmails,
+                List.of(durationMinutes)
+        );
+        MeetingType type = p.type();
+        // A set-only type (min > 1) never takes a single booking; also guards the JSON API.
+        if (type.multiSlotMin != null && type.multiSlotMin > 1) {
+            throw new BookingValidationException("Pick at least " + type.multiSlotMin + " sessions.");
+        }
+        // App-level availability re-check: nice errors + buffer/min-notice/horizon enforcement
+        // (the DB constraint only guards raw-time overlap, not buffers).
+        assertSlotAvailable(type, startUtc, Set.of(), durationMinutes);
+        // Consume only once the slot is known free; the delete is the atomic claim, and it rolls back
+        // with this transaction if the booking later fails. A committed booking keeps it deleted.
+        consumeInvite(inviteToken, type);
+        return writeOne(type, startUtc, durationMinutes, inviteeEmail, p, locale, null, true);
+    }
+
+    /**
+     * Books every pick of a Booking set in this one transaction: any conflict rolls back the whole set.
+     * Per-form checks (captcha, honeypot, cap, fields) run once; Mirror events and the one
+     * {@code BookingRequested}/{@code BookingConfirmed} (on {@link Booking#leadOfSet}) follow all writes.
+     * A single pick is a plain Booking (no {@code set_id}). Returns the Invitee-facing row per pick, by start.
+     */
+    // S107: one param per booking input, as book() above.
+    @SuppressWarnings("java:S107")
+    @Transactional
+    public List<Booking> bookSet(
+            Long ownerId,
+            String meetingTypeSlug,
+            List<SlotPick> picks,
+            String inviteeName,
+            String inviteeEmail,
+            Map<String, String> answers,
+            String turnstileToken,
+            String altchaSolution,
+            String honeypot,
+            String locale,
+            List<String> guestEmails,
+            String inviteToken
+    ) {
+        MeetingType found = MeetingType.findBySlug(ownerId, meetingTypeSlug);
+        if (found == null || !found.active) {
+            throw new NotFoundException("No meeting type with slug " + meetingTypeSlug + " for owner " + ownerId);
+        }
+        List<SlotPick> sorted = picks.stream().sorted(Comparator.comparing(SlotPick::startUtc)).toList();
+        SetRules.validate(
+                found,
+                sorted,
+                MeetingTypeDuration.allowedDurations(found),
+                ZoneId.of(OwnerSettings.forOwner(found.ownerId).timezone)
+        );
+        if (sorted.size() == 1) {
+            SlotPick only = sorted.getFirst();
+            return List.of(
+                    book(
+                            ownerId,
+                            meetingTypeSlug,
+                            only.startUtc(),
+                            inviteeName,
+                            inviteeEmail,
+                            answers,
+                            turnstileToken,
+                            altchaSolution,
+                            honeypot,
+                            locale,
+                            guestEmails,
+                            only.minutes(),
+                            inviteToken
+                    )
+            );
+        }
+        Prechecked p = precheck(
+                ownerId,
+                meetingTypeSlug,
+                inviteeName,
+                inviteeEmail,
+                answers,
+                turnstileToken,
+                altchaSolution,
+                honeypot,
+                guestEmails,
+                sorted.stream().map(SlotPick::minutes).toList()
+        );
+        MeetingType type = p.type();
+        var setId = UUID.randomUUID();
+        List<Booking> rows = new ArrayList<>();
+        for (SlotPick pick : sorted) {
+            // each write flushes, so this re-check already sees the earlier picks and their buffers
+            assertSlotAvailable(type, pick.startUtc(), Set.of(), pick.minutes());
+            rows.add(writeOne(type, pick.startUtc(), pick.minutes(), inviteeEmail, p, locale, setId, false));
+        }
+        consumeInvite(inviteToken, type);
+        if (!type.requiresApproval) {
+            createMirrorEventsOrCompensate(type, rows);
+        }
+        List<Long> ids = rows.stream().map(b -> b.id).toList();
+        if (type.requiresApproval) {
+            bookingRequestedEvent.fire(new BookingRequested(ids.getFirst(), ids));
+        } else {
+            bookingConfirmedEvent.fire(new BookingConfirmed(ids.getFirst(), ids));
+        }
+        return rows;
+    }
+
+    /**
+     * Creates the Mirror event of every Booking in {@code rows} (one per row; per group on its lead row).
+     * The DB rolls back on failure but the calendar does not, so a failed create best-effort deletes the
+     * events this call already made, then rethrows the original exception.
+     */
+    private void createMirrorEventsOrCompensate(MeetingType type, List<Booking> rows) {
+        List<Booking> created = new ArrayList<>();
+        try {
+            for (Booking row : rows) {
+                Booking holder = row;
+                // keyed on the row, not the type's current hosts, which may have changed since booking
+                if (row.groupId != null) {
+                    createGroupGoogleEvent(type, row.groupId);
+                    holder = Booking.leadOfGroup(row.groupId, type.ownerId);
+                } else if (calendarPort.isConnected(type.ownerId)) {
+                    createGoogleEvent(type, row);
+                }
+                if (holder.eventId != null) {
+                    created.add(holder);
+                }
+            }
+        } catch (RuntimeException e) {
+            for (Booking holder : created) {
+                deleteRemoteEvent(holder, true);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * The booking form, checked and normalised once per submit (a set submits once for all its picks).
+     */
+    private record Prechecked(
+            MeetingType type,
+            String inviteeName,
+            Map<String, String> answers,
+            List<String> guestEmails
+    ) {}
+
+    // S107: the per-form booking inputs.
+    @SuppressWarnings("java:S107")
+    private Prechecked precheck(
+            Long ownerId,
+            String meetingTypeSlug,
+            String inviteeName,
+            String inviteeEmail,
+            Map<String, String> answers,
+            String turnstileToken,
+            String altchaSolution,
+            String honeypot,
+            List<String> guestEmails,
+            List<Integer> durations
+    ) {
         validateInviteeEmail(inviteeEmail);
         validateInputBounds(inviteeName, answers);
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
@@ -396,7 +564,9 @@ public class BookingService {
         // Both form and JSON API land here, so the type's field policy (GH #130) is enforced once.
         inviteeName = resolveInviteeName(type, inviteeName, inviteeEmail);
         guestEmails = guestsFor(type, guestEmails);
-        assertDurationAllowed(type, durationMinutes);
+        for (int duration : durations) {
+            assertDurationAllowed(type, duration);
+        }
         // Feature 16: all three abuse guards run first, inside book(). The Plan 5 web layer
         // just forwards the cf-turnstile-response (turnstileToken) and website (honeypot) form values.
         // -> AbuseException (400) on invalid CAPTCHA
@@ -413,30 +583,54 @@ public class BookingService {
         // Feature 10: every required custom field must have a non-blank value. Built-in
         // name/email are method params, not BookingField rows, so they are not in this loop.
         validateRequiredFields(type, submitted);
+        return new Prechecked(type, inviteeName, submitted, guestEmails);
+    }
 
+    /**
+     * Writes one Booking (one row, or one row per Host) and returns its Invitee-facing row. With
+     * {@code fireEvents} false it never touches the calendar nor fires events: {@link #bookSet} does that
+     * once every pick is written.
+     */
+    // S107: one param per booking input.
+    @SuppressWarnings("java:S107")
+    private Booking writeOne(
+            MeetingType type,
+            Instant startUtc,
+            int durationMinutes,
+            String inviteeEmail,
+            Prechecked p,
+            String locale,
+            UUID setId,
+            boolean fireEvents
+    ) {
         var endUtc = startUtc.plus(durationMinutes, ChronoUnit.MINUTES);
-        // App-level availability re-check: nice errors + buffer/min-notice/horizon enforcement
-        // (the DB constraint only guards raw-time overlap, not buffers).
-        assertSlotAvailable(type, startUtc, Set.of(), durationMinutes);
-        // Consume only once the slot is known free; the delete is the atomic claim, and it rolls back
-        // with this transaction if the booking later fails. A committed booking keeps it deleted.
-        consumeInvite(inviteToken, type);
-
         if (MeetingTypeHost.isMultiHost(type.id)) {
-            return bookGroup(type, startUtc, endUtc, inviteeName, inviteeEmail, submitted, locale, guestEmails);
+            return bookGroup(
+                    type,
+                    startUtc,
+                    endUtc,
+                    p.inviteeName(),
+                    inviteeEmail,
+                    p.answers(),
+                    locale,
+                    p.guestEmails(),
+                    setId,
+                    fireEvents
+            );
         }
 
         Booking booking = new Booking();
         booking.ownerId = type.ownerId;
         booking.meetingTypeId = type.id;
-        booking.inviteeName = inviteeName;
+        booking.inviteeName = p.inviteeName();
         booking.inviteeEmail = inviteeEmail;
         booking.startUtc = startUtc;
         booking.endUtc = endUtc;
         booking.createdAt = Instant.now();
         booking.manageToken = UUID.randomUUID().toString();
-        booking.answers = submitted;
+        booking.answers = p.answers();
         booking.locale = AppLocales.isSupported(locale) ? locale : "en";
+        booking.setId = setId;
         // Feature 14: approval types hold the slot as PENDING; auto types are CONFIRMED immediately.
         booking.status = type.requiresApproval ? BookingStatus.PENDING : BookingStatus.CONFIRMED;
         // Approval-required bookings carry an unguessable token used as a CSRF nonce on the owner's
@@ -456,8 +650,11 @@ public class BookingService {
             throw ex;
         }
 
-        persistGuests(booking, guestEmails);
+        persistGuests(booking, p.guestEmails());
 
+        if (!fireEvents) {
+            return booking;
+        }
         if (type.requiresApproval) {
             // Feature 14: PENDING request — NO Mirror event yet; the owner approves/declines later.
             bookingRequestedEvent.fire(new BookingRequested(booking.id));
@@ -482,6 +679,7 @@ public class BookingService {
      * PENDING rows (each with its own approvalToken) and fire one {@code BookingRequested(leadId)}; auto
      * types insert N CONFIRMED rows and create exactly one Mirror event on the Creator's lead row.
      */
+    @SuppressWarnings("java:S107")
     private Booking bookGroup(
             MeetingType type,
             Instant startUtc,
@@ -490,7 +688,9 @@ public class BookingService {
             String inviteeEmail,
             Map<String, String> answers,
             String locale,
-            List<String> guestEmails
+            List<String> guestEmails,
+            UUID setId,
+            boolean fireEvents
     ) {
         var groupId = UUID.randomUUID();
         List<Long> hostIds = meetingHosts.hostOwnerIds(type);
@@ -514,6 +714,7 @@ public class BookingService {
                     b.approvalToken = UUID.randomUUID().toString();
                 }
                 b.groupId = groupId;
+                b.setId = setId;
                 b.persist();
                 if (hostId.equals(type.ownerId)) {
                     lead = b;
@@ -530,6 +731,9 @@ public class BookingService {
         // guests attach to the lead row only
         persistGuests(lead, guestEmails);
 
+        if (!fireEvents) {
+            return lead;
+        }
         if (approval) {
             bookingRequestedEvent.fire(new BookingRequested(lead.id));
             return lead;
@@ -884,11 +1088,18 @@ public class BookingService {
 
     @Transactional
     public void approve(Long bookingId) {
-        // Row lock: an overlapping second click waits for this commit, then sees the settled status below.
-        Booking booking = Booking.findById(bookingId, LockModeType.PESSIMISTIC_WRITE);
-        if (booking == null) {
-            throw new NotFoundException("No booking " + bookingId);
+        Booking booking = lockForDecision(bookingId);
+        if (booking.setId != null) {
+            approveSet(booking);
+            return;
         }
+        approveOne(booking);
+    }
+
+    /**
+     * Approves one Booking through this Host's row: a lone row, or one Host's row of a co-hosted group.
+     */
+    private void approveOne(Booking booking) {
         // Only a PENDING request can be approved (UC-014 BR-006). Covers double-submits (no second
         // Mirror event / BookingConfirmed) and stale tabs acting on a cancelled or declined booking.
         if (booking.status != BookingStatus.PENDING) {
@@ -902,7 +1113,7 @@ public class BookingService {
             if (calendarPort.isConnected(type.ownerId)) {
                 createGoogleEvent(type, booking);
             }
-            bookingApprovedEvent.fire(new BookingApproved(bookingId));
+            bookingApprovedEvent.fire(new BookingApproved(booking.id));
             return;
         }
         // Group: row-status is the source of truth for "all approved" -- no extra group-state
@@ -923,11 +1134,18 @@ public class BookingService {
 
     @Transactional
     public void decline(Long bookingId) {
-        // Row lock: an overlapping second click waits for this commit, then sees the settled status below.
-        Booking booking = Booking.findById(bookingId, LockModeType.PESSIMISTIC_WRITE);
-        if (booking == null) {
-            throw new NotFoundException("No booking " + bookingId);
+        Booking booking = lockForDecision(bookingId);
+        if (booking.setId != null) {
+            declineSet(booking);
+            return;
         }
+        declineOne(booking);
+    }
+
+    /**
+     * Declines one Booking through this Host's row: a lone row, or (declining it for every Host) a co-hosted group.
+     */
+    private void declineOne(Booking booking) {
         // Only a PENDING request can be declined (UC-014 BR-006): a confirmed booking is cancelled,
         // never declined, and a cancelled/declined one is already settled. Also absorbs double-submits.
         if (booking.status != BookingStatus.PENDING) {
@@ -937,7 +1155,7 @@ public class BookingService {
             // Single-host: unchanged. DECLINED leaves the PENDING|CONFIRMED partial constraint ->
             // frees the slot. A PENDING request has no Mirror event, so nothing to delete.
             booking.status = BookingStatus.DECLINED;
-            bookingDeclinedEvent.fire(new BookingDeclined(bookingId));
+            bookingDeclinedEvent.fire(new BookingDeclined(booking.id));
             return;
         }
         // Group: any single host declining kills the whole group -- no event was created
@@ -948,6 +1166,134 @@ public class BookingService {
         }
         Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
         bookingDeclinedEvent.fire(new BookingDeclined(lead.id));
+    }
+
+    /**
+     * Loads a booking for approve/decline under a row lock, so an overlapping second click waits for this
+     * commit and then sees the settled status. A set row locks its set's lead instead (before any other
+     * row), so clicks on different rows of one set serialise on one lock; every row is then re-read.
+     */
+    private Booking lockForDecision(Long bookingId) {
+        Booking booking = Booking.findById(bookingId);
+        if (booking == null) {
+            throw new NotFoundException("No booking " + bookingId);
+        }
+        var em = Booking.getEntityManager();
+        // refresh re-reads the DB and would discard this transaction's unflushed changes
+        em.flush();
+        if (booking.setId == null) {
+            em.refresh(booking, LockModeType.PESSIMISTIC_WRITE);
+            return booking;
+        }
+        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+        em.refresh(Booking.leadOfSet(booking.setId, creatorOwnerId), LockModeType.PESSIMISTIC_WRITE);
+        Booking.<Booking>set(booking.setId).forEach(em::refresh);
+        return booking;
+    }
+
+    /**
+     * Approves this Host's rows of the set's undecided Bookings (the caller holds the set lock). Acts while the Host
+     * still has a PENDING row in the set, whichever row was clicked (it may have been cancelled on its own). One
+     * undecided Booking takes the per-Booking path and its single-Booking mail. Otherwise the Bookings this call fully
+     * confirmed, and only those, get their Mirror events and are named by the one event.
+     */
+    private void approveSet(Booking booking) {
+        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        List<Booking> rows = Booking.set(booking.setId);
+        Optional<Booking> hostPending = pendingRowOf(rows, booking.ownerId);
+        if (hostPending.isEmpty()) {
+            return;
+        }
+        List<Booking> undecided = undecidedOfSet(rows, type.ownerId);
+        if (undecided.size() == 1) {
+            approveOne(hostPending.get());
+            return;
+        }
+        for (Booking row : rows) {
+            if (row.ownerId.equals(booking.ownerId) && row.status == BookingStatus.PENDING) {
+                row.status = BookingStatus.CONFIRMED;
+            }
+        }
+        // a co-hosted Booking stays undecided until every Host has approved it
+        List<Booking> confirmed = undecided
+            .stream()
+            .filter(b -> rowsOfBooking(rows, b).noneMatch(r -> r.status == BookingStatus.PENDING))
+            .toList();
+        if (confirmed.isEmpty()) {
+            return;
+        }
+        createMirrorEventsOrCompensate(type, confirmed);
+        List<Long> ids = confirmed.stream().map(b -> b.id).toList();
+        if (confirmed.getFirst().groupId == null) {
+            bookingApprovedEvent.fire(new BookingApproved(ids.getFirst(), ids));
+        } else {
+            bookingConfirmedEvent.fire(new BookingConfirmed(ids.getFirst(), ids));
+        }
+    }
+
+    /**
+     * Declines the set's undecided Bookings (the caller holds the set lock), on the same terms as {@link #approveSet}:
+     * confirmed, cancelled and declined Bookings are left alone, one undecided Booking takes the per-Booking path, and
+     * the one event names exactly the Bookings declined.
+     */
+    private void declineSet(Booking booking) {
+        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+        List<Booking> rows = Booking.set(booking.setId);
+        Optional<Booking> hostPending = pendingRowOf(rows, booking.ownerId);
+        if (hostPending.isEmpty()) {
+            return;
+        }
+        List<Booking> undecided = undecidedOfSet(rows, creatorOwnerId);
+        if (undecided.size() == 1) {
+            declineOne(hostPending.get());
+            return;
+        }
+        declineBookings(rows, undecided);
+        List<Long> ids = undecided.stream().map(b -> b.id).toList();
+        bookingDeclinedEvent.fire(new BookingDeclined(ids.getFirst(), ids));
+    }
+
+    private static Optional<Booking> pendingRowOf(List<Booking> setRows, Long hostOwnerId) {
+        return setRows
+            .stream()
+            .filter(r -> r.ownerId.equals(hostOwnerId) && r.status == BookingStatus.PENDING)
+            .findFirst();
+    }
+
+    /**
+     * Whether a decision through {@code b} can still act: it is PENDING, or it is a set row and its Host still has a
+     * PENDING row in that set (approve/decline re-check this under the set lock).
+     */
+    public static boolean decisionOpen(Booking b) {
+        return b.status == BookingStatus.PENDING
+                || b.setId != null && pendingRowOf(Booking.set(b.setId), b.ownerId).isPresent();
+    }
+
+    /**
+     * The Invitee-facing row (a lone row, or the Creator's row of a co-hosted group) of every Booking among
+     * {@code setRows} still undecided, meaning it has a PENDING row; in time order.
+     */
+    public static List<Booking> undecidedOfSet(List<Booking> setRows, Long creatorOwnerId) {
+        return setRows
+            .stream()
+            .filter(r -> r.groupId == null || r.ownerId.equals(creatorOwnerId))
+            .filter(b -> rowsOfBooking(setRows, b).anyMatch(r -> r.status == BookingStatus.PENDING))
+            .toList();
+    }
+
+    /**
+     * Declines every held row of the given undecided Bookings (Invitee-facing rows, from {@link #undecidedOfSet}).
+     */
+    public static void declineBookings(List<Booking> setRows, List<Booking> undecided) {
+        undecided
+            .stream()
+            .flatMap(b -> rowsOfBooking(setRows, b))
+            .filter(r -> r.status == BookingStatus.PENDING || r.status == BookingStatus.CONFIRMED)
+            .forEach(r -> r.status = BookingStatus.DECLINED);
+    }
+
+    private static Stream<Booking> rowsOfBooking(List<Booking> setRows, Booking b) {
+        return b.groupId == null ? Stream.of(b) : setRows.stream().filter(r -> b.groupId.equals(r.groupId));
     }
 
     @Transactional
@@ -1414,21 +1760,75 @@ public class BookingService {
         if (booking == null || booking.isErased()) {
             throw new NotFoundException("No booking for that token");
         }
-        if (booking.groupId == null) {
-            return cancelSingle(booking, byOwner, tolerateGoogleFailure);
+        boolean deleted = cancelRows(booking, tolerateGoogleFailure);
+        Long eventId = booking.groupId == null
+                ? booking.id
+                : Booking.leadOfGroup(booking.groupId, MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId).id;
+        bookingCancelledEvent.fire(new BookingCancelled(eventId, byOwner));
+        return deleted;
+    }
+
+    /**
+     * "Cancel all" for the set of the token's Booking: cancels its Bookings still held and in the future, through the
+     * same row cancel as {@link #cancel(String, boolean)}, and fires one {@link BookingSetCancelled} instead of one
+     * {@link BookingCancelled} each. Takes the set lock first, as approve/decline do. Nothing left to cancel is a
+     * no-op: no event, no mail.
+     *
+     * @return the Invitee-facing rows it cancelled, in time order
+     */
+    @Transactional
+    public List<Booking> cancelSet(String manageToken, boolean byOwner) {
+        Booking booking = Booking.findByManageToken(manageToken);
+        if (booking == null || booking.isErased() || booking.setId == null) {
+            throw new NotFoundException("No booking set for that token");
         }
-        MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        // one shared event
+        lockForDecision(booking.id);
+        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+        List<Booking> toCancel = cancellableOfSet(booking.setId, creatorOwnerId);
+        if (toCancel.isEmpty()) {
+            return List.of();
+        }
+        toCancel.forEach(b -> cancelRows(b, false));
+        bookingSetCancelledEvent.fire(
+                new BookingSetCancelled(
+                        Booking.leadOfSet(booking.setId, creatorOwnerId).id,
+                        toCancel.stream().map(b -> b.id).toList(),
+                        byOwner
+                )
+        );
+        return toCancel;
+    }
+
+    /**
+     * The set's Invitee-facing rows (one per Booking) still held and starting in the future: what "Cancel all" cancels.
+     */
+    public static List<Booking> cancellableOfSet(UUID setId, Long creatorOwnerId) {
+        Instant now = Instant.now();
+        return Booking
+            .<Booking>set(setId)
+            .stream()
+            .filter(r -> r.groupId == null || r.ownerId.equals(creatorOwnerId))
+            .filter(r -> r.status == BookingStatus.PENDING || r.status == BookingStatus.CONFIRMED)
+            .filter(r -> r.startUtc.isAfter(now))
+            .toList();
+    }
+
+    /**
+     * Cancels one Booking without firing an event: a lone row, or every Host's row of a group with its one shared
+     * Mirror event. Returns whether a Mirror event was deleted remotely.
+     */
+    private boolean cancelRows(Booking booking, boolean tolerateGoogleFailure) {
+        if (booking.groupId == null) {
+            return cancelSingle(booking, tolerateGoogleFailure);
+        }
         boolean deleted = deleteGroupGoogleEvent(booking.groupId, tolerateGoogleFailure);
         for (Booking r : Booking.<Booking>group(booking.groupId)) {
             r.status = BookingStatus.CANCELLED;
         }
-        Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
-        bookingCancelledEvent.fire(new BookingCancelled(lead.id, byOwner));
         return deleted;
     }
 
-    private boolean cancelSingle(Booking booking, boolean byOwner, boolean tolerateGoogleFailure) {
+    private boolean cancelSingle(Booking booking, boolean tolerateGoogleFailure) {
         booking.status = BookingStatus.CANCELLED;
         var deleted = false;
         if (booking.eventId != null) {
@@ -1442,7 +1842,6 @@ public class BookingService {
             booking.calendarRemoteId = null;
             booking.calendarAccountId = null;
         }
-        bookingCancelledEvent.fire(new BookingCancelled(booking.id, byOwner));
         return deleted;
     }
 
@@ -1540,18 +1939,66 @@ public class BookingService {
         if (guest == null) {
             throw new NotFoundException("No guest for that token");
         }
+        Booking booking = Booking.findById(guest.bookingId);
+        if (booking != null && booking.setId != null) {
+            declineSetGuest(booking, guest);
+            return;
+        }
         if (guest.status == GuestStatus.DECLINED) {
             // idempotent: a second decline click is a no-op
             return;
         }
         guest.status = GuestStatus.DECLINED;
-        // Re-sync the Google attendee list (now excludes this guest, since activeForBooking returns only INVITED).
-        // Google emails the removed guest a cancellation via sendUpdates=all.
-        Booking booking = Booking.findById(guest.bookingId);
-        if (booking != null && calendarPort.isConnected(guest.ownerId) && booking.eventId != null) {
-            OwnerSettings owner = OwnerSettings.forOwner(guest.ownerId);
+        resyncGuests(booking, guest.ownerId);
+        guestDeclinedEvent.fire(new GuestDeclined(guest.bookingId, guest.id));
+    }
+
+    /**
+     * A set guest leaves every Booking of the set: under the set lock (same order as approve/decline), the address
+     * is declined on each Invitee-facing row, each Mirror event re-synced, and one {@code GuestDeclined} fires on
+     * the lead row's guest.
+     */
+    private void declineSetGuest(Booking booking, BookingGuest guest) {
+        var em = Booking.getEntityManager();
+        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+        Booking lead = Booking.leadOfSet(booking.setId, creatorOwnerId);
+        em.refresh(lead, LockModeType.PESSIMISTIC_WRITE);
+        BookingGuest leadGuest = null;
+        boolean changed = false;
+        for (Booking row : Booking.<Booking>set(booking.setId)) {
+            if (row.groupId != null && !row.ownerId.equals(creatorOwnerId)) {
+                continue;
+            }
+            BookingGuest g = BookingGuest.findInBooking(row.id, guest.email);
+            if (g == null) {
+                continue;
+            }
+            // re-read under the lock: a concurrent click may have declined it since this context loaded it
+            em.refresh(g);
+            if (row.id.equals(lead.id)) {
+                leadGuest = g;
+            }
+            if (g.status != GuestStatus.DECLINED) {
+                g.status = GuestStatus.DECLINED;
+                changed = true;
+                resyncGuests(row, g.ownerId);
+            }
+        }
+        if (changed) {
+            var notified = leadGuest != null ? leadGuest : guest;
+            guestDeclinedEvent.fire(new GuestDeclined(notified.bookingId, notified.id));
+        }
+    }
+
+    /**
+     * Re-syncs the Mirror event's attendee list (activeForBooking returns only INVITED guests); Google emails a removed
+     * guest a cancellation via sendUpdates=all.
+     */
+    private void resyncGuests(Booking booking, Long ownerId) {
+        if (booking != null && calendarPort.isConnected(ownerId) && booking.eventId != null) {
+            OwnerSettings owner = OwnerSettings.forOwner(ownerId);
             calendarPort.updateEvent(
-                    guest.ownerId,
+                    ownerId,
                     booking.calendarRef(),
                     booking.eventId,
                     booking.startUtc,
@@ -1559,6 +2006,5 @@ public class BookingService {
                     attendeeEmails(booking, owner)
             );
         }
-        guestDeclinedEvent.fire(new GuestDeclined(guest.bookingId, guest.id));
     }
 }

@@ -75,9 +75,24 @@ itself rather than re-reading from the meeting type. calit's sole source of trut
 meeting exists. Rescheduling moves it, never resizes it.
 _Avoid_: appointment, meeting (the real-world encounter), reservation, event (a Mirror event)
 
+**Booking set**:
+The Bookings one Invitee made of one meeting type in a single submit, on a meeting type that allows
+several per booking. Booked, approved, declined and expired as one; each Booking in it is still
+rescheduled and cancelled on its own. Always two or more — a single pick is a plain Booking.
+Distinct from the per-Host rows of one Booking on a meeting type with Co-hosts. Invitee-facing copy
+calls each Booking in a set a "session".
+_Avoid_: package, bundle, series, recurring booking (a fixed cadence from one pick — not this)
+
+**Proposal**:
+Several times one Invitee offers for one meeting type, of which a Host confirms one; confirming
+creates the Booking. Until then it holds nothing — the times stay bookable by others and are checked
+again on confirm. Not a Booking and never a pending Booking.
+_Avoid_: request (that is a pending Booking awaiting approval), poll, tentative booking
+
 **Invite**:
 A single-use URL, valid 30 days, that lets one person book one meeting type; the first committed
-booking consumes it for good, even if that booking is later cancelled. Distinct from inviting a
+booking — or the first Proposal sent through it — consumes it for good, even if that booking is
+later cancelled or that Proposal declined. Distinct from inviting a
 Co-host and from the `.ics` invitation.
 _Avoid_: link (ambiguous with a Booking's manage link), ticket
 
