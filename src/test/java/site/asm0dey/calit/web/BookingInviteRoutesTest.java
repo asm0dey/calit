@@ -111,6 +111,38 @@ class BookingInviteRoutesTest {
     }
 
     @Test
+    void invitePickerHidesSlug() {
+        var typeId = seed(SLUG);
+        addDurations(typeId, 30);
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = MeetingType.findById(typeId);
+            t.multiSlotMin = 2;
+            t.multiSlotMax = 3;
+        });
+        var token = invites.issue(1L, typeId, Instant.now());
+        var pick09 = SLOT_09 + "/60";
+        var pick10 = SLOT_10 + "/60";
+
+        for (var query :
+                List.of(
+                        "",
+                        "&pick=" + pick09 + "&duration=30",
+                        "&pick=" + pick09 + "&pick=" + pick10 + "&remove=" + pick09,
+                        "&pick=" + pick09 + "&step=details"
+        )) {
+            given()
+                .when()
+                .get("/admin?invite=" + token + query)
+                .then()
+                .statusCode(200)
+                .body(not(containsString(SLUG)))
+                .body(containsString("<form method=\"get\" action=\"/admin\""))
+                .body(containsString("<input type=\"hidden\" name=\"invite\" value=\"" + token + "\">"))
+                .body(containsString("type=\"checkbox\" name=\"pick\""));
+        }
+    }
+
+    @Test
     void usedInviteShowsInvalidPage() {
         var token = invites.issue(1L, seed(SLUG), Instant.now());
         post(token, SLOT_09).then().statusCode(200);

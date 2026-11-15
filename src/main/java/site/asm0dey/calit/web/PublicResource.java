@@ -70,7 +70,8 @@ public class PublicResource {
                 String ownerName,
                 String initialGuests,
                 OgCard og,
-                BookLinks links
+                BookLinks links,
+                SetPicker picker
         );
 
         public static native TemplateInstance inviteInvalid(String title);
@@ -249,7 +250,79 @@ public class PublicResource {
      * Where the booking page posts and how its duration picker links: {@code durationPrefix} is
      * completed with the chosen length. The slug page and the invite page differ only in these.
      */
-    public record BookLinks(String action, String durationPrefix) {}
+    public record BookLinks(String action, String durationPrefix, String invite) {
+        /**
+         * Step 1's GET form target: {@code action} without its query; the invite rides as a hidden input.
+         */
+        public String pickAction() {
+            int q = action.indexOf('?');
+            return q < 0 ? action : action.substring(0, q);
+        }
+    }
+
+    /**
+     * Step 1 of a multi-slot meeting type (null when multi-slot is off). {@code blockedBySlot} is keyed by
+     * {@link SlotView#startUtc()} at the rendered duration; {@code rows} are the picks as the rail lists them;
+     * {@code statusByCount} / {@code continueByCount} hold the rail sentence and button label for 0..max picks.
+     */
+    public record SetPicker(
+            int min,
+            int max,
+            List<SlotPick> picks,
+            Map<String, SetRules.Blocked> blockedBySlot,
+            List<PickRow> rows,
+            Set<String> pickedDates,
+            Map<String, List<String>> reasonsByDay,
+            List<String> statusByCount,
+            List<String> continueByCount
+    ) {
+        public boolean checked(String startUtc, int minutes) {
+            return picks
+                .stream()
+                .anyMatch(p -> p.minutes() == minutes && p.startUtc().toString().equals(startUtc));
+        }
+
+        public boolean disabled(String startUtc) {
+            return blockedBySlot.getOrDefault(startUtc, SetRules.Blocked.NONE) != SetRules.Blocked.NONE;
+        }
+
+        /**
+         * The length of a pick starting at {@code startUtc} at another duration than {@code chosen}, else null.
+         */
+        public Integer otherLength(String startUtc, int chosen) {
+            return picks
+                .stream()
+                .filter(p -> p.minutes() != chosen && p.startUtc().toString().equals(startUtc))
+                .map(SlotPick::minutes)
+                .findFirst()
+                .orElse(null);
+        }
+
+        public boolean pickedOn(String isoDate) {
+            return pickedDates.contains(isoDate);
+        }
+
+        public List<String> reasons(String isoDate) {
+            return reasonsByDay.getOrDefault(isoDate, List.of());
+        }
+
+        public boolean belowMin() {
+            return picks.size() < min;
+        }
+
+        public String status() {
+            return statusByCount.get(Math.min(picks.size(), max));
+        }
+
+        public String continueLabel() {
+            return continueByCount.get(Math.min(picks.size(), max));
+        }
+    }
+
+    /**
+     * One pick in the rail; {@code hidden} when no rendered checkbox carries it (another length, or gone).
+     */
+    public record PickRow(String value, String startUtc, String label, int minutes, boolean hidden) {}
 
     /**
      * The lengths this type offers and the one currently rendered.
@@ -348,7 +421,8 @@ public class PublicResource {
         var m = messages.forLocale(activeLocale.current());
         AppUser owner = resolveOwner(user);
         if (hasInvite(uriInfo)) {
-            return invitePage(user, owner, uriInfo.getQueryParameters().getFirst(INVITE_PARAM), duration, m);
+            var q = uriInfo.getQueryParameters();
+            return invitePage(user, owner, q.getFirst(INVITE_PARAM), duration, q.get("pick"), q.getFirst("remove"), m);
         }
         OwnerSettings settings = OwnerSettings.forOwner(owner.id);
         if (settings == null) {
@@ -393,7 +467,9 @@ public class PublicResource {
     public TemplateInstance book(
             @PathParam("user") String user,
             @PathParam("slug") String slug,
-            @RestQuery String duration
+            @RestQuery String duration,
+            @RestQuery List<String> pick,
+            @RestQuery String remove
     ) {
         var m = messages.forLocale(activeLocale.current());
         BookingTarget target = resolveBookingTarget(user, slug, m);
@@ -407,8 +483,10 @@ public class PublicResource {
                 m,
                 target,
                 durationChoice,
-                new BookLinks(base, base + "?duration="),
-                ogCards.meetingType(user, type, target.settings().ownerName)
+                new BookLinks(base, base + "?duration=", null),
+                ogCards.meetingType(user, type, target.settings().ownerName),
+                pick,
+                remove
         );
     }
 
@@ -418,7 +496,17 @@ public class PublicResource {
      * carries no social card. An invite that is blank, unknown, used, expired or another owner's
      * renders the invalid page.
      */
-    private TemplateInstance invitePage(String user, AppUser owner, String invite, String duration, AppMessages m) {
+    // S107: the invite page forwards the step-1 query (picks, remove) alongside the invite itself.
+    @SuppressWarnings("java:S107")
+    private TemplateInstance invitePage(
+            String user,
+            AppUser owner,
+            String invite,
+            String duration,
+            List<String> pick,
+            String remove,
+            AppMessages m
+    ) {
         var found = invites.find(owner.id, invite, Instant.now());
         MeetingType invited = found == null ? null : MeetingType.findById(found.meetingTypeId);
         if (invited == null) {
@@ -433,7 +521,9 @@ public class PublicResource {
                 target,
                 resolveDuration(target.type(), duration),
                 inviteLinks(owner.username, invite),
-                null
+                null,
+                pick,
+                remove
         );
     }
 
@@ -447,7 +537,7 @@ public class PublicResource {
 
     private static BookLinks inviteLinks(String username, String invite) {
         var base = "/" + username + "?invite=" + invite;
-        return new BookLinks(base, base + "&duration=");
+        return new BookLinks(base, base + "&duration=", invite);
     }
 
     /**
@@ -459,7 +549,9 @@ public class PublicResource {
             BookingTarget target,
             DurationChoice durationChoice,
             BookLinks links,
-            OgCard og
+            OgCard og,
+            List<String> pick,
+            String remove
     ) {
         List<DaySlots> byDate;
         try {
@@ -468,7 +560,7 @@ public class PublicResource {
             // Fail-closed: a busy calendar of the owner can't be read, so we cannot safely offer slots.
             return Templates.unavailable(m.pub_unavailable_title());
         }
-        return bookTemplate(m, target, durationChoice, byDate, null, links, og);
+        return bookTemplate(m, target, durationChoice, byDate, null, links, og, pick, remove);
     }
 
     // S107: Qute @CheckedTemplate signatures pass one arg per template variable; param count is inherent.
@@ -480,9 +572,28 @@ public class PublicResource {
             List<DaySlots> byDate,
             String error,
             BookLinks links,
-            OgCard og
+            OgCard og,
+            List<String> pick,
+            String remove
     ) {
         MeetingType type = target.type();
+        SetPicker picker = null;
+        if (type.isMultiSlot()) {
+            List<SlotPick> picks;
+            try {
+                String dropped = remove == null ? null : remove.trim();
+                picks = SlotPick
+                    .parseAll(pick)
+                    .stream()
+                    .filter(p -> !p.value().equals(dropped))
+                    .toList();
+            } catch (BookingValidationException _) {
+                // Tampered or stale ?pick= values: start step 1 over rather than 500.
+                picks = List.of();
+                error = m.pub_set_error_invalid();
+            }
+            picker = setPicker(m, type, picks, durationChoice.chosen(), byDate);
+        }
         // Resolved EXTRA fields (per-type-else-global), already ordered by position.
         List<BookingField> fields = BookingField.formFor(type.ownerId, type.id);
         // turnstileEnabled drives the widget; site key is public (rendered). The approval
@@ -504,8 +615,67 @@ public class PublicResource {
                 target.settings().ownerName,
                 "",
                 og,
-                links
+                links,
+                picker
         );
+    }
+
+    /**
+     * Step 1's view of the picks against the slots rendered at {@code chosen} minutes.
+     */
+    private SetPicker setPicker(AppMessages m, MeetingType type, List<SlotPick> picks, int chosen, List<DaySlots> days) {
+        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
+        int min = type.multiSlotMin == null ? 1 : type.multiSlotMin;
+        int max = type.multiSlotMax;
+        Map<String, SetRules.Blocked> blocked = new HashMap<>();
+        Map<String, List<String>> reasons = new HashMap<>();
+        Set<String> rendered = new HashSet<>();
+        for (DaySlots day : days) {
+            var dayBlocks = EnumSet.noneOf(SetRules.Blocked.class);
+            for (SlotView slot : day.slots()) {
+                var candidate = new SlotPick(Instant.parse(slot.startUtc()), chosen);
+                rendered.add(candidate.value());
+                var b = SetRules.blocked(type, picks, candidate, zone);
+                blocked.put(slot.startUtc(), b);
+                if (b != SetRules.Blocked.NONE) {
+                    dayBlocks.add(b);
+                }
+            }
+            reasons.put(
+                    day.isoDate(),
+                    dayBlocks
+                        .stream()
+                        .map(b -> switch (b) {
+                            case SAME_DAY -> m.pub_set_reason_same_day();
+                            case OVERLAP -> m.pub_set_reason_overlap();
+                            case MAX -> m.pub_set_reason_max(max);
+                            case NONE -> throw new IllegalStateException();
+                        })
+                        .toList()
+            );
+        }
+        var dateFmt = DATE_FMT.withLocale(activeLocale.current());
+        List<PickRow> rows = picks.stream().map(p -> {
+            var start = p.startUtc().atZone(zone);
+            var label = start.format(dateFmt) + " · " + start.format(TIME_FMT);
+            return new PickRow(p.value(), p.startUtc().toString(), label, p.minutes(), !rendered.contains(p.value()));
+        }).toList();
+        Set<String> pickedDates =
+                picks
+            .stream()
+            .map(p -> p.startUtc().atZone(zone).toLocalDate().toString())
+            .collect(Collectors.toSet());
+        List<String> status = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+        for (int n = 0; n <= max; n++) {
+            status.add(
+                    n < min ? m.pub_set_status_need(min) : n < max
+                    ? m.pub_set_status_more(n, max - n)
+                    : m.pub_set_status_full(n)
+            );
+            labels.add(n < min ? m.pub_set_btn_need(min) : m.pub_set_btn_continue(n));
+        }
+        return new SetPicker(min, max, picks, blocked, rows, pickedDates, reasons, status, labels);
     }
 
     private String turnstileSiteKey() {
@@ -647,7 +817,7 @@ public class PublicResource {
         return submit(
                 m,
                 target,
-                new BookLinks(base, base + "?duration="),
+                new BookLinks(base, base + "?duration=", null),
                 ogCards.meetingType(user, target.type(), target.settings().ownerName),
                 null,
                 startUtc,
@@ -787,7 +957,17 @@ public class PublicResource {
             String error = inviteToken != null && be instanceof BookingConflictException
                     ? m.pub_invite_slot_unavailable()
                     : be.getMessage();
-            return bookTemplate(m, target, durationChoice, daySlots(type, submittedDuration), error, links, og);
+            return bookTemplate(
+                    m,
+                    target,
+                    durationChoice,
+                    daySlots(type, submittedDuration),
+                    error,
+                    links,
+                    og,
+                    List.of(),
+                    null
+            );
         }
         return confirmationPage(booking, type);
     }

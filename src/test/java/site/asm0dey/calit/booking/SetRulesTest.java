@@ -125,4 +125,16 @@ class SetRulesTest {
         assertThatThrownBy(() -> SetRules.validate(t, picks, List.of(30, 60), AMS))
             .isInstanceOf(BookingValidationException.class);
     }
+
+    @Test
+    void rejectsPickOutsideSaneWindow() {
+        for (var bad : List.of("+1000000000-12-31T23:59:59Z/30", "1999-12-31T23:59:59Z/30", "2100-01-01T00:00:00Z/30")) {
+            assertThatThrownBy(() -> SlotPick.parseAll(List.of(bad))).isInstanceOf(BookingValidationException.class);
+        }
+    }
+
+    @Test
+    void missingPicksParseToEmpty() {
+        assertThat(SlotPick.parseAll(null)).isEmpty();
+    }
 }

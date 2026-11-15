@@ -349,6 +349,58 @@ public interface AppMessages {
     @Message("Confirm booking")
     String pub_book_btn_confirm();
 
+    // ---- Booking page, multi-slot step 1 (book.html with a SetPicker) ----
+    @Message("Pick sessions")
+    String pub_set_step_pick();
+
+    @Message("Your details")
+    String pub_set_step_details();
+
+    @Message("Length of the next session")
+    String pub_set_duration_label();
+
+    @Message("Each session can have its own length. Switching keeps what you already picked.")
+    String pub_set_duration_hint();
+
+    @Message("Your sessions")
+    String pub_set_rail_title();
+
+    @Message("Pick at least {min}.")
+    String pub_set_status_need(int min);
+
+    @Message("{#if count == 1}1 session picked.{#else}{count} sessions picked.{/if} You can add up to {more} more.")
+    String pub_set_status_more(int count, int more);
+
+    @Message("{count} sessions picked. That's the maximum.")
+    String pub_set_status_full(int count);
+
+    @Message("{#if min == 1}Pick at least 1 session{#else}Pick at least {min} sessions{/if}")
+    String pub_set_btn_need(int min);
+
+    @Message("{#if count == 1}Continue with 1 session{#else}Continue with {count} sessions{/if}")
+    String pub_set_btn_continue(int count);
+
+    @Message("Continue")
+    String pub_set_btn_continue_nojs();
+
+    @Message("You already have a session this day")
+    String pub_set_reason_same_day();
+
+    @Message("Overlaps a session you picked")
+    String pub_set_reason_overlap();
+
+    @Message("You have the maximum of {max}")
+    String pub_set_reason_max(int max);
+
+    @Message("{minutes}m")
+    String pub_set_badge_minutes(int minutes);
+
+    @Message("Remove this session")
+    String pub_set_remove();
+
+    @Message("Some of the sessions you picked could not be read. Please pick them again.")
+    String pub_set_error_invalid();
+
     // ---- Confirmation page (confirmation.html) ----
     @Message("Request sent")
     String pub_conf_title_pending();

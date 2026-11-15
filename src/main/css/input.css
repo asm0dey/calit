@@ -229,8 +229,10 @@
   }
   .slot {
     margin: 0;
+    position: relative;
   }
-  .slot input[type="radio"] {
+  /* Radio (one slot) and checkbox (multi-slot step 1) pills share every rule below. */
+  .slot input:is([type="radio"], [type="checkbox"]) {
     position: absolute;
     opacity: 0;
   }
@@ -244,13 +246,46 @@
     color: var(--color-primary);
     cursor: pointer;
   }
-  .slot input[type="radio"]:checked + time {
+  .slot input:is([type="radio"], [type="checkbox"]):checked + time {
     background: var(--color-primary);
     color: var(--color-primary-content);
   }
-  .slot input[type="radio"]:focus-visible + time {
+  .slot input:is([type="radio"], [type="checkbox"]):focus-visible + time {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
+  }
+  /* A slot the set rules rule out (same day, overlap, maximum reached). */
+  .slot-disabled time {
+    border-style: dashed;
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  /* "30m": this time is already picked at another length. */
+  .slot-badge {
+    position: absolute;
+    top: -0.45rem;
+    inset-inline-end: -0.35rem;
+  }
+  .slot-reason {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 0.8rem;
+    color: color-mix(in oklch, var(--color-base-content) 65%, transparent);
+  }
+  /* Accent dot under a calendar day that holds a pick. */
+  .calendar__day--picked {
+    position: relative;
+  }
+  .calendar__day--picked::after {
+    content: "";
+    position: absolute;
+    bottom: 12%;
+    left: 50%;
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 50%;
+    background: var(--color-accent);
+    transform: translateX(-50%);
   }
   /* Cap the invitee fields so name/email/guests read as a form, not full-card-width bars. */
   .book-page .fieldset {
