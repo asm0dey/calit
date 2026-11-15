@@ -1317,4 +1317,37 @@ public interface AdminMessages {
 
     @Message("Enter your name.")
     String owner_error_name_blank();
+
+    @Message("Several sessions per booking")
+    String adm_detail_multi_slot_legend();
+
+    @Message("Off — one session per booking")
+    String adm_detail_multi_slot_off();
+
+    @Message("Invitee picks between")
+    String adm_detail_multi_slot_range_before();
+
+    @Message("and")
+    String adm_detail_multi_slot_range_and();
+
+    @Message("sessions")
+    String adm_detail_multi_slot_range_after();
+
+    @Message("Exactly")
+    String adm_detail_multi_slot_exact_before();
+
+    @Message("sessions (a package)")
+    String adm_detail_multi_slot_exact_after();
+
+    @Message("Allow more than one session on the same day")
+    String adm_detail_multi_slot_same_day();
+
+    @Message("Up to 5. Approval, co-hosts and invites apply to the whole set.")
+    String adm_detail_multi_slot_help();
+
+    @Message(
+            "Sessions per booking: a range needs 1 to 5 with the minimum not above the maximum; an "
+            + "exact count needs 2 to 5."
+    )
+    String adm_detail_error_multi_slot_range();
 }

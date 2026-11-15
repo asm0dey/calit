@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.*;
 
@@ -366,5 +369,119 @@ class AdminMeetingTypeFormTest {
         MeetingType t = MeetingType.findBySlug(1L, slug);
         assertThat(t).isNotNull();
         assertThat(AvailabilityRule.count("meetingTypeId = ?1", t.id)).isZero();
+    }
+
+    @Inject
+    EntityManager em;
+
+    @Transactional
+    MeetingType reload(Long id) {
+        // the edit commits in its own request tx; drop the test thread's stale first-level cache
+        em.clear();
+        return MeetingType.findById(id);
+    }
+
+    private String slugOfNewType;
+
+    private Long newType() {
+        var slug = slugOfNewType = "ms-" + System.nanoTime();
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Multi")
+            .formParam("slug", slug)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "GOOGLE_MEET")
+            .formParam("slotIntervalMinutes", "")
+            .when()
+            .post("/me/meeting-types")
+            .then()
+            .statusCode(200);
+        return MeetingType.findBySlug(1L, slug).id;
+    }
+
+    private io.restassured.response.Response edit(
+            Long id,
+            String mode,
+            String min,
+            String max,
+            String exact,
+            boolean sameDay
+    ) {
+        var req = given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("name", "Multi")
+            .formParam("slug", slugOfNewType)
+            .formParam("durationMinutes", "30")
+            .formParam("minNoticeMinutes", "0")
+            .formParam("horizonDays", "60")
+            .formParam("locationType", "GOOGLE_MEET")
+            .formParam("slotIntervalMinutes", "")
+            .formParam("multiSlotMode", mode)
+            .formParam("multiSlotMin", min)
+            .formParam("multiSlotMax", max)
+            .formParam("multiSlotExact", exact);
+        if (sameDay) {
+            req = req.formParam("multiSlotSameDay", "on");
+        }
+        return req.when().post("/me/meeting-types/" + id + "/edit");
+    }
+
+    @Test
+    void multiSlotRangeIsStored() {
+        var id = newType();
+        edit(id, "range", "2", "4", "", true).then().statusCode(200);
+        MeetingType t = reload(id);
+        assertThat(t.multiSlotMin).isEqualTo(2);
+        assertThat(t.multiSlotMax).isEqualTo(4);
+        assertThat(t.multiSlotSameDay).isTrue();
+    }
+
+    @Test
+    void multiSlotExactStoresMinEqualsMax() {
+        var id = newType();
+        edit(id, "exact", "", "", "3", false).then().statusCode(200);
+        MeetingType t = reload(id);
+        assertThat(t.multiSlotMin).isEqualTo(3);
+        assertThat(t.multiSlotMax).isEqualTo(3);
+    }
+
+    @Test
+    void multiSlotOffClearsBoth() {
+        var id = newType();
+        edit(id, "range", "2", "4", "", true).then().statusCode(200);
+        edit(id, "off", "2", "4", "", true).then().statusCode(200);
+        MeetingType t = reload(id);
+        assertThat(t.multiSlotMin).isNull();
+        assertThat(t.multiSlotMax).isNull();
+        assertThat(t.multiSlotSameDay).isFalse();
+    }
+
+    @Test
+    void multiSlotOutOfRangeIsRefused() {
+        var id = newType();
+        edit(id, "range", "0", "6", "", false).then().statusCode(200).body(containsString("alert-error"));
+        edit(id, "range", "4", "2", "", false).then().statusCode(200).body(containsString("alert-error"));
+        edit(id, "exact", "", "", "1", false).then().statusCode(200).body(containsString("alert-error"));
+        MeetingType t = reload(id);
+        assertThat(t.multiSlotMin).isNull();
+        assertThat(t.multiSlotMax).isNull();
+    }
+
+    @Test
+    void editPageRendersToggleNotCheckbox() {
+        var id = newType();
+        edit(id, "range", "2", "4", "", true).then().statusCode(200);
+        given()
+            .cookie("quarkus-credential", FormAuth.login())
+            .when()
+            .get("/me/meeting-types/" + id)
+            .then()
+            .statusCode(200)
+            .body(containsString("name=\"multiSlotSameDay\""))
+            .body(containsString("class=\"toggle"));
     }
 }

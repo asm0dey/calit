@@ -323,6 +323,7 @@ public class AdminResource {
                     .adm_hosts_error_slug_cohosts((String) hre.args[0], (String) hre.args[1]);
                 case "adm_hosts_error_slug_across" -> m().adm_hosts_error_slug_across((String) hre.args[0]);
                 case "adm_detail_error_duration_positive" -> m().adm_detail_error_duration_positive();
+                case "adm_detail_error_multi_slot_range" -> m().adm_detail_error_multi_slot_range();
                 case "adm_detail_error_range" -> m()
                     .adm_detail_error_range((String) hre.args[0], (int) hre.args[1], (int) hre.args[2]);
                 default -> e.getMessage();
@@ -574,6 +575,11 @@ public class AdminResource {
             @RestForm String requiresApproval,
             @RestForm @DefaultValue("REQUIRED") String nameMode,
             @RestForm @DefaultValue("OPTIONAL") String guestsMode,
+            @RestForm String multiSlotMode,
+            @RestForm String multiSlotMin,
+            @RestForm String multiSlotMax,
+            @RestForm String multiSlotExact,
+            @RestForm String multiSlotSameDay,
             @RestForm String writeCalendar,
             MultivaluedMap<String, String> form
     ) {
@@ -612,7 +618,12 @@ public class AdminResource {
                             slotIntervalMinutes,
                             requiresApproval,
                             nameMode,
-                            guestsMode
+                            guestsMode,
+                            multiSlotMode,
+                            multiSlotMin,
+                            multiSlotMax,
+                            multiSlotExact,
+                            multiSlotSameDay
                     );
                     // need the generated id before scoping child rules/overrides to it
                     t.persist();
@@ -663,7 +674,12 @@ public class AdminResource {
             String slotIntervalMinutes,
             String requiresApproval,
             String nameMode,
-            String guestsMode
+            String guestsMode,
+            String multiSlotMode,
+            String multiSlotMin,
+            String multiSlotMax,
+            String multiSlotExact,
+            String multiSlotSameDay
     ) {
         // A zero or negative duration is not a cosmetic error: the slot cadence falls back to the
         // shortest allowed length, so it makes the step zero and SlotService's loops never advance --
@@ -707,6 +723,40 @@ public class AdminResource {
         t.guestsMode = fieldMode(guestsMode, FieldMode.OPTIONAL) == FieldMode.HIDDEN
                 ? FieldMode.HIDDEN
                 : FieldMode.OPTIONAL;
+        applyMultiSlot(t, multiSlotMode, multiSlotMin, multiSlotMax, multiSlotExact, multiSlotSameDay);
+    }
+
+    /**
+     * Several sessions per booking: blank/unknown mode is Off (both bounds null, same-day cleared);
+     * a range is 1 &le; min &le; max &le; 5; an exact package stores min = max = N with 2 &le; N &le; 5.
+     */
+    private static void applyMultiSlot(MeetingType t, String mode, String min, String max, String exact, String sameDay) {
+        int lo;
+        int hi;
+        switch (mode == null ? "off" : mode) {
+            case "range" -> {
+                lo = parseIntOr(min == null ? "" : min, 0);
+                hi = parseIntOr(max == null ? "" : max, 0);
+                if (lo < 1 || hi > 5 || lo > hi) {
+                    throw new HostRuleException("adm_detail_error_multi_slot_range");
+                }
+            }
+            case "exact" -> {
+                lo = hi = parseIntOr(exact == null ? "" : exact, 0);
+                if (lo < 2 || lo > 5) {
+                    throw new HostRuleException("adm_detail_error_multi_slot_range");
+                }
+            }
+            default -> {
+                t.multiSlotMin = null;
+                t.multiSlotMax = null;
+                t.multiSlotSameDay = false;
+                return;
+            }
+        }
+        t.multiSlotMin = lo;
+        t.multiSlotMax = hi;
+        t.multiSlotSameDay = "on".equals(sameDay);
     }
 
     /**
@@ -1184,6 +1234,11 @@ public class AdminResource {
             @RestForm String requiresApproval,
             @RestForm @DefaultValue("REQUIRED") String nameMode,
             @RestForm @DefaultValue("OPTIONAL") String guestsMode,
+            @RestForm String multiSlotMode,
+            @RestForm String multiSlotMin,
+            @RestForm String multiSlotMax,
+            @RestForm String multiSlotExact,
+            @RestForm String multiSlotSameDay,
             @RestForm String writeCalendar
     ) {
         // Load + mutate + flush in one tx that commits before the detail render (issue #75). Slug
@@ -1214,7 +1269,12 @@ public class AdminResource {
                         slotIntervalMinutes,
                         requiresApproval,
                         nameMode,
-                        guestsMode
+                        guestsMode,
+                        multiSlotMode,
+                        multiSlotMin,
+                        multiSlotMax,
+                        multiSlotExact,
+                        multiSlotSameDay
                 );
             });
             // managed entity flushes on commit
