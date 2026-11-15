@@ -432,8 +432,8 @@ public interface AppMessages {
     @Message("{#if count == 1}Request 1 session{#else}Request {count} sessions{/if}")
     String pub_set_btn_request(int count);
 
-    @Message("No longer available: {times}. Your other picks are kept — please pick again.")
-    String pub_set_error_dropped(String times);
+    @Message("Your other picks are kept — please pick again. No longer available:")
+    String pub_set_error_dropped();
 
     @Message("You're booked:")
     String pub_set_conf_h1_confirmed();
@@ -441,14 +441,17 @@ public interface AppMessages {
     @Message("Requested, pending approval:")
     String pub_set_conf_h1_pending();
 
-    @Message("{meetingName} with {ownerName}. One email with all of them is on its way to {email}.")
-    String pub_set_conf_confirmed_desc(String meetingName, String ownerName, String email);
+    @Message(
+            "{meetingName} with {ownerName}. One email with all of them{#if ics} (and one calendar "
+            + "file){/if} is on its way to {email}."
+    )
+    String pub_set_conf_confirmed_desc(String meetingName, String ownerName, String email, boolean ics);
 
     @Message(
             "{meetingName} with {ownerName}. Your requested times are held while the owner reviews them. "
-            + "One email with all of them is on its way to {email}."
+            + "One email with all of them{#if ics} (and one calendar file){/if} is on its way to {email}."
     )
-    String pub_set_conf_pending_desc(String meetingName, String ownerName, String email);
+    String pub_set_conf_pending_desc(String meetingName, String ownerName, String email, boolean ics);
 
     @Message("{k} of {n}")
     String pub_set_k_of_n(int k, int n);

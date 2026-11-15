@@ -277,7 +277,8 @@ public class PublicResource {
      * Step 1 of a multi-slot meeting type (null when multi-slot is off). {@code blockedBySlot} is keyed by
      * {@link SlotView#startUtc()} at the rendered duration; {@code rows} are the picks as the rail lists them;
      * {@code statusByCount} / {@code continueByCount} hold the rail sentence and button label for 0..max picks.
-     * {@code details} renders step 2 (the details form) instead of the slot grid.
+     * {@code details} renders step 2 (the details form) instead of the slot grid; {@code dropped} are the
+     * picks step 1's error alert names as gone.
      */
     public record SetPicker(
             int min,
@@ -292,7 +293,8 @@ public class PublicResource {
             String lengthsLine,
             String rulesLine,
             boolean sameDay,
-            boolean details
+            boolean details,
+            List<DroppedTime> dropped
     ) {
         public boolean checked(String startUtc, int minutes) {
             return picks
@@ -339,6 +341,11 @@ public class PublicResource {
             return continueByCount.get(Math.min(picks.size(), max));
         }
     }
+
+    /**
+     * A pick the error alert names as gone: its instant (relabelled client-side) and the owner-zone fallback.
+     */
+    public record DroppedTime(String startUtc, String label) {}
 
     /**
      * One pick in the rail; {@code hidden} when no rendered checkbox carries it (another length, or gone).
@@ -600,7 +607,7 @@ public class PublicResource {
             // Fail-closed: a busy calendar of the owner can't be read, so we cannot safely offer slots.
             return Templates.unavailable(m.pub_unavailable_title());
         }
-        return bookTemplate(m, target, durationChoice, byDate, null, links, og, pick, remove, false);
+        return bookTemplate(m, target, durationChoice, byDate, null, links, og, pick, remove, false, List.of());
     }
 
     /**
@@ -630,16 +637,7 @@ public class PublicResource {
             return Templates.unavailable(m.pub_unavailable_title());
         }
         if (offered.size() < picks.size()) {
-            return setStep(
-                    m,
-                    target,
-                    durationChoice,
-                    links,
-                    og,
-                    offered,
-                    droppedError(m, type, links, picks, offered),
-                    false
-            );
+            return droppedStep(m, target, durationChoice, links, og, picks, offered);
         }
         String invalid = setRuleError(m, type, picks);
         return setStep(m, target, durationChoice, links, og, picks, invalid, invalid == null);
@@ -658,7 +656,8 @@ public class PublicResource {
             OgCard og,
             List<SlotPick> picks,
             String error,
-            boolean details
+            boolean details,
+            List<DroppedTime> dropped
     ) {
         List<DaySlots> byDate;
         try {
@@ -667,7 +666,53 @@ public class PublicResource {
             return Templates.unavailable(m.pub_unavailable_title());
         }
         List<String> values = picks.stream().map(SlotPick::value).toList();
-        return bookTemplate(m, target, durationChoice, byDate, error, links, og, values, null, details);
+        return bookTemplate(m, target, durationChoice, byDate, error, links, og, values, null, details, dropped);
+    }
+
+    // S107: the page furniture plus the picks, the error and the step.
+    @SuppressWarnings("java:S107")
+    private TemplateInstance setStep(
+            AppMessages m,
+            BookingTarget target,
+            DurationChoice durationChoice,
+            BookLinks links,
+            OgCard og,
+            List<SlotPick> picks,
+            String error,
+            boolean details
+    ) {
+        return setStep(m, target, durationChoice, links, og, picks, error, details, List.of());
+    }
+
+    /**
+     * Step 1 with {@code kept} and an alert naming the picks of {@code all} that are gone. An invite's
+     * page keeps its generic wording (it never names the meeting type) and adds only the times.
+     */
+    // S107: the page furniture plus both pick lists.
+    @SuppressWarnings("java:S107")
+    private TemplateInstance droppedStep(
+            AppMessages m,
+            BookingTarget target,
+            DurationChoice durationChoice,
+            BookLinks links,
+            OgCard og,
+            List<SlotPick> all,
+            List<SlotPick> kept
+    ) {
+        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(target.type().ownerId).timezone);
+        var dateFmt = DATE_FMT.withLocale(activeLocale.current());
+        var timeFmt = DateTimeFormatter.ofPattern("HH:mm (z)", activeLocale.current());
+        // The no-JS fallback names the owner's zone; the tz script relabels it to the viewer's.
+        List<DroppedTime> dropped = all
+            .stream()
+            .filter(p -> !kept.contains(p))
+            .map(p -> {
+                var start = p.startUtc().atZone(zone);
+                return new DroppedTime(p.startUtc().toString(), start.format(dateFmt) + " · " + start.format(timeFmt));
+            })
+            .toList();
+        String error = links.invite() != null ? m.pub_invite_slot_unavailable() : m.pub_set_error_dropped();
+        return setStep(m, target, durationChoice, links, og, kept, error, false, dropped);
     }
 
     /**
@@ -693,27 +738,6 @@ public class PublicResource {
             .stream()
             .filter(p -> allowed.contains(p.minutes()))
             .toList();
-    }
-
-    /**
-     * The alert naming the picks of {@code all} missing from {@code kept}. An invite's page keeps its
-     * generic wording (it never names the meeting type) and adds only the times.
-     */
-    private String droppedError(
-            AppMessages m,
-            MeetingType type,
-            BookLinks links,
-            List<SlotPick> all,
-            List<SlotPick> kept
-    ) {
-        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
-        String times =
-                all
-            .stream()
-            .filter(p -> !kept.contains(p))
-            .map(p -> pickLabel(p, zone))
-            .collect(Collectors.joining(", "));
-        return links.invite() != null ? m.pub_invite_slot_unavailable() + " " + times : m.pub_set_error_dropped(times);
     }
 
     /**
@@ -749,25 +773,26 @@ public class PublicResource {
             OgCard og,
             List<String> pick,
             String remove,
-            boolean details
+            boolean details,
+            List<DroppedTime> dropped
     ) {
         MeetingType type = target.type();
         SetPicker picker = null;
         if (type.isMultiSlot()) {
             List<SlotPick> picks;
             try {
-                String dropped = remove == null ? null : remove.trim();
+                String removed = remove == null ? null : remove.trim();
                 picks = SlotPick
                     .parseAll(pick)
                     .stream()
-                    .filter(p -> !p.value().equals(dropped))
+                    .filter(p -> !p.value().equals(removed))
                     .toList();
             } catch (BookingValidationException _) {
                 // Tampered or stale ?pick= values: start step 1 over rather than 500.
                 picks = List.of();
                 error = m.pub_set_error_invalid();
             }
-            picker = setPicker(m, type, picks, durationChoice.chosen(), byDate, details);
+            picker = setPicker(m, type, picks, durationChoice.chosen(), byDate, details, dropped);
         }
         // Resolved EXTRA fields (per-type-else-global), already ordered by position.
         List<BookingField> fields = BookingField.formFor(type.ownerId, type.id);
@@ -804,7 +829,8 @@ public class PublicResource {
             List<SlotPick> picks,
             int chosen,
             List<DaySlots> days,
-            boolean details
+            boolean details,
+            List<DroppedTime> dropped
     ) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         int min = type.multiSlotMin == null ? 1 : type.multiSlotMin;
@@ -879,7 +905,8 @@ public class PublicResource {
                 lengths,
                 rules,
                 type.multiSlotSameDay,
-                details
+                details,
+                dropped
         );
     }
 
@@ -1198,7 +1225,8 @@ public class PublicResource {
                     og,
                     List.of(),
                     null,
-                    false
+                    false,
+                    List.of()
             );
         }
         return confirmationPage(booking, type);
@@ -1235,16 +1263,7 @@ public class PublicResource {
         }
         var offered = offeredLengths(type, picks);
         if (offered.size() < picks.size()) {
-            return setStep(
-                    m,
-                    target,
-                    durationChoice,
-                    links,
-                    og,
-                    offered,
-                    droppedError(m, type, links, picks, offered),
-                    false
-            );
+            return droppedStep(m, target, durationChoice, links, og, picks, offered);
         }
         List<Booking> rows;
         try {
@@ -1269,9 +1288,10 @@ public class PublicResource {
             } catch (CalendarUnavailableException _) {
                 return Templates.unavailable(m.pub_unavailable_title());
             }
-            String error = kept.size() < picks.size()
-                    ? droppedError(m, type, links, picks, kept)
-                    : inviteToken != null ? m.pub_invite_slot_unavailable() : e.getMessage();
+            if (kept.size() < picks.size()) {
+                return droppedStep(m, target, durationChoice, links, og, picks, kept);
+            }
+            String error = inviteToken != null ? m.pub_invite_slot_unavailable() : e.getMessage();
             return setStep(m, target, durationChoice, links, og, kept, error, false);
         } catch (BookingValidationException | AbuseException | RateLimitException e) {
             return setStep(m, target, durationChoice, links, og, picks, e.getMessage(), true);

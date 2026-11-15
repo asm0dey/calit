@@ -114,7 +114,7 @@
             <li class="step step-primary">{msg:pub_set_step_pick}</li>
             <li class="step">{msg:pub_set_step_details}</li>
           </ul>
-          {#if error}<div role="alert" class="alert alert-error mb-4">{error}</div>{/if}
+          {#if error}<div role="alert" class="alert alert-error mb-4">{error}{#for d in picker.dropped} <time data-utc="{d.startUtc}">{d.label}</time>{#if d_hasNext},{/if}{/for}</div>{/if}
           <form method="get" action="{links.pickAction}" id="set-form" data-same-day="{#if picker.sameDay}1{#else}0{/if}">
             {#if links.invite}<input type="hidden" name="invite" value="{links.invite}">{/if}
             {#for p in picker.rows}{#if p.hidden}

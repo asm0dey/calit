@@ -108,7 +108,7 @@ class BookSetFlowTest {
         details(PICK_A, PICK_B)
             .body(containsString("type=\"checkbox\" name=\"pick\" value=\"" + PICK_A + "\" checked"))
             .body(not(containsString("value=\"" + PICK_B + "\"")))
-            .body(containsString("No longer available: " + label(B)))
+            .body(containsString("No longer available: <time data-utc=\"" + B + "\">" + label(B) + "</time></div>"))
             .body(not(containsString("name=\"inviteeEmail\"")));
     }
 
@@ -120,6 +120,7 @@ class BookSetFlowTest {
             .body(containsString("You&#39;re booked: <span>2 sessions</span>"))
             .body(containsString("1 of 2"))
             .body(containsString("2 of 2"))
+            .body(containsString("One email with all of them (and one calendar file) is on its way to " + EMAIL))
             .extract()
             .asString();
         var tokens = QuarkusTransaction
@@ -157,7 +158,7 @@ class BookSetFlowTest {
             .statusCode(200)
             .body(containsString("type=\"checkbox\" name=\"pick\" value=\"" + PICK_A + "\" checked"))
             .body(not(containsString("value=\"" + PICK_B + "\"")))
-            .body(containsString("No longer available: " + label(B)))
+            .body(containsString("No longer available: <time data-utc=\"" + B + "\">" + label(B) + "</time></div>"))
             .body(not(containsString("name=\"inviteeEmail\"")));
         assertThat(bookingsOf(EMAIL)).isZero();
     }
@@ -221,13 +222,13 @@ class BookSetFlowTest {
     }
 
     /**
-     * The owner-zone label the error names a dropped pick by.
+     * The owner-zone fallback label, zone included, the error names a dropped pick by.
      */
     private static String label(Instant start) {
         var z = start.atZone(ZONE);
         return z.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.ENGLISH))
                 + " · "
-                + z.format(DateTimeFormatter.ofPattern("HH:mm"));
+                + z.format(DateTimeFormatter.ofPattern("HH:mm (z)", Locale.ENGLISH));
     }
 
     private static long bookingsOf(String email) {

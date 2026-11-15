@@ -19,7 +19,8 @@
       {#if mailUndelivered}
       <p class="alert alert-warning" data-mail-undelivered>{msg:pub_conf_email_failed(first.inviteeEmail)}</p>
       {#else}
-      <p class="text-base-content/70">{#if pending}{msg:pub_set_conf_pending_desc(meetingName, ownerName, first.inviteeEmail)}{#else}{msg:pub_set_conf_confirmed_desc(meetingName, ownerName, first.inviteeEmail)}{/if}</p>
+      {! "(and one calendar file)" only when calit sends the .ics, i.e. Google doesn't own the Mirror events. !}
+      <p class="text-base-content/70">{#if pending && googleConnected}{msg:pub_set_conf_pending_desc(meetingName, ownerName, first.inviteeEmail, false)}{#else if pending}{msg:pub_set_conf_pending_desc(meetingName, ownerName, first.inviteeEmail, true)}{#else if googleConnected}{msg:pub_set_conf_confirmed_desc(meetingName, ownerName, first.inviteeEmail, false)}{#else}{msg:pub_set_conf_confirmed_desc(meetingName, ownerName, first.inviteeEmail, true)}{/if}</p>
       {/if}
       {#if !pending && type.locationType.name != 'GOOGLE_MEET' && type.locationDetail}
       <p><strong>{msg:pub_conf_location_label}</strong> {type.locationDetail}</p>

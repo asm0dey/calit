@@ -182,7 +182,11 @@ class BookingInviteRoutesTest {
         setPost(token, pick09, pick10)
             .then()
             .statusCode(200)
-            .body(containsString("That time is no longer available. Please choose another."))
+            .body(
+                    containsString(
+                            "That time is no longer available. Please choose another. <time data-utc=\"" + SLOT_10 + "\">"
+                    )
+            )
             .body(containsString("<form method=\"get\" action=\"/admin\""))
             .body(not(containsString(SLUG)));
         assertThat(invites.find(1L, token, Instant.now())).isNotNull();
