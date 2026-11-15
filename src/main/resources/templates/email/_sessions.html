@@ -2,7 +2,7 @@
 {#if sessions??}
 <ul>
   {#for line in sessions}
-  <li>{msg:email_body_session_line(line.index, line.of, line.when, line.minutes)}</li>
+  <li>{msg:email_body_session_line(line.index, line.of, line.when, line.minutes)}{#if line.meetLink} &middot; <strong>{msg:email_body_meet_label}</strong> <a href="{line.meetLink}">{line.meetLink}</a>{/if}</li>
   {/for}
 </ul>
 {/if}

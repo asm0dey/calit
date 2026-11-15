@@ -12,6 +12,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingGuest;
 import site.asm0dey.calit.booking.BookingService;
+import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.booking.events.*;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
@@ -419,14 +420,14 @@ public class EmailService {
                             label(l),
                             format(l.booking().startUtc, zone, locale, hourCycle),
                             BookingService.lengthOf(l.booking()),
-                            location,
+                            topLocation(l, events, location),
                             isMeet(l),
                             manageUrl(linkBooking),
                             cancelUrl(linkBooking),
                             approveUrl(linkBooking),
                             declineUrl(linkBooking),
                             l.answers(),
-                            sessions(events, zone, locale, hourCycle)
+                            sessions(l, events, zone, locale, hourCycle)
                     )
                     .setLocale(locale)
                     .render(),
@@ -482,13 +483,13 @@ public class EmailService {
                             label(l),
                             format(l.booking().startUtc, zone, locale, hourCycle),
                             BookingService.lengthOf(l.booking()),
-                            location,
+                            topLocation(l, events, location),
                             isMeet(l),
                             manageUrl(linkBooking),
                             ownerManageUrl(linkBooking),
                             cancelUrl(linkBooking),
                             l.answers(),
-                            sessions(events, zone, locale, hourCycle)
+                            sessions(l, events, zone, locale, hourCycle)
                     )
                     .setLocale(locale)
                     .render(),
@@ -536,7 +537,7 @@ public class EmailService {
                             label(l),
                             format(l.booking().startUtc, zone, locale, hourCycle),
                             BookingService.lengthOf(l.booking()),
-                            sessions(events, zone, locale, hourCycle)
+                            sessions(l, events, zone, locale, hourCycle)
                     )
                     .setLocale(locale)
                     .render(),
@@ -769,10 +770,10 @@ public class EmailService {
                         label(l),
                         start,
                         BookingService.lengthOf(l.booking()),
-                        location,
+                        topLocation(l, events, location),
                         isMeet(l),
                         declineGuestUrl(g),
-                        sessions(events, l.zone(), locale, "auto")
+                        sessions(l, events, l.zone(), locale, "auto")
                 )
                 .setLocale(locale)
                 .render();
@@ -841,7 +842,7 @@ public class EmailService {
         // 1) cancel .ics to the departing guest (omit .ics when Google natively notifies); a set guest left every Booking
         sendGuestCancelMail(
                 l,
-                setOrSelf(l),
+                heldOrSelf(l),
                 guest,
                 messages.forLocale(locale).email_cancelled_subject(label(l)),
                 locale
@@ -1198,7 +1199,7 @@ public class EmailService {
         if (l == null) {
             return Optional.empty();
         }
-        return Optional.of(inviteeIcsBytes(l, List.of(l.booking()), resolveLocation(l), IcsMethod.REQUEST));
+        return Optional.of(inviteeIcsBytes(l, heldOrSelf(l), resolveLocation(l), IcsMethod.REQUEST));
     }
 
     /**
@@ -1244,7 +1245,13 @@ public class EmailService {
      * One "{k} of {n}" line per Booking in the recipient's zone and clock; empty for a lone booking, so its mail is
      * unchanged.
      */
-    private List<SessionLine> sessions(List<Booking> events, ZoneId zone, Locale locale, String hourCycle) {
+    private List<SessionLine> sessions(
+            BookingSnapshot l,
+            List<Booking> events,
+            ZoneId zone,
+            Locale locale,
+            String hourCycle
+    ) {
         if (events.size() < 2) {
             return List.of();
         }
@@ -1254,9 +1261,31 @@ public class EmailService {
                     i + 1,
                     events.size(),
                     format(events.get(i).startUtc, zone, locale, hourCycle),
-                    BookingService.lengthOf(events.get(i))
+                    BookingService.lengthOf(events.get(i)),
+                    isMeet(l) ? locationOf(events.get(i), l.meetingType()) : null
             ))
             .toList();
+    }
+
+    /**
+     * The set's Bookings still held (neither cancelled nor declined), or just this booking when none are: what a
+     * departing guest must drop and what the invitee's calendar download holds.
+     */
+    private static List<Booking> heldOrSelf(BookingSnapshot l) {
+        var rows = l
+            .setBookings()
+            .stream()
+            .filter(b -> b.status == BookingStatus.PENDING || b.status == BookingStatus.CONFIRMED)
+            .toList();
+        return rows.isEmpty() ? List.of(l.booking()) : rows;
+    }
+
+    /**
+     * The body's single location line: a set of Meet Bookings has one room each, listed per session instead, so the
+     * lead's room is not shown as the only one.
+     */
+    private static String topLocation(BookingSnapshot l, List<Booking> events, String location) {
+        return events.size() > 1 && isMeet(l) ? null : location;
     }
 
     /**
@@ -1300,7 +1329,8 @@ public class EmailService {
     public record AnswerLine(String label, String value) {}
 
     /**
-     * One Booking of a set as listed in a set mail: {@code index} of {@code of}, its start, its length. Public for Qute.
+     * One Booking of a set as listed in a set mail: {@code index} of {@code of}, its start, its length, and its own Meet
+     * link when the type uses Google Meet (null otherwise). Public for Qute.
      */
-    public record SessionLine(int index, int of, String when, int minutes) {}
+    public record SessionLine(int index, int of, String when, int minutes, String meetLink) {}
 }

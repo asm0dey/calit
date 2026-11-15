@@ -20,6 +20,7 @@ import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.CaptchaVerifier;
 import site.asm0dey.calit.booking.GuestStatus;
 import site.asm0dey.calit.booking.SlotPick;
+import site.asm0dey.calit.booking.events.BookingConfirmed;
 import site.asm0dey.calit.booking.events.GuestDeclined;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.domain.MeetingType;
@@ -41,6 +42,8 @@ class EmailSetTest {
     BookingService bookingService;
     @Inject
     BookingInviteService invites;
+    @Inject
+    EmailService emailService;
     @Inject
     MockMailbox mailbox;
     @InjectMock
@@ -185,6 +188,64 @@ class EmailSetTest {
         )
             .isNotEmpty()
             .allSatisfy(html -> assertThat(html).doesNotContain("/admin/set"));
+    }
+
+    @Test
+    void guestDeclineAfterOneCancelDropsTheHeldSessions() {
+        setType(false);
+        bookSet(List.of(GUEST), null);
+        List<Booking> rows = setRows();
+        bookingService.cancel(rows.getFirst().manageToken);
+        mailbox.clear();
+
+        bookingService.declineGuest(leadGuestToken());
+
+        List<Mail> toGuest = mailbox.getMailsSentTo(GUEST);
+        assertThat(toGuest).hasSize(1);
+        String ics = ics(toGuest.getFirst());
+        assertThat(ics).contains("METHOD:CANCEL", "UID:" + rows.get(1).manageToken, "UID:" + rows.get(2).manageToken);
+        assertThat(count(ics, "BEGIN:VEVENT")).isEqualTo(2);
+    }
+
+    @Test
+    void meetSetListsEachSessionsOwnRoom() {
+        setType(false);
+        QuarkusTransaction.requiringNew().run(() -> {
+            MeetingType t = MeetingType.find("slug", "set").firstResult();
+            t.locationType = MeetingType.LocationType.GOOGLE_MEET;
+        });
+        bookSet(List.of(), null);
+        List<Booking> rows = setRows();
+        QuarkusTransaction.requiringNew().run(() -> {
+            for (int i = 0; i < rows.size(); i++) {
+                Booking.<Booking>findById(rows.get(i).id).meetLink = "https://meet.google.com/room-" + i;
+            }
+        });
+        mailbox.clear();
+
+        emailService.handleConfirmed(new BookingConfirmed(rows.getFirst().id));
+
+        String html = mailbox.getMailsSentTo(EMAIL).getFirst().getHtml();
+        assertThat(html).contains("room-0", "room-1", "room-2");
+        assertThat(count(html, "https://meet.google.com/room-0")).as("once in its session line's href and text").isEqualTo(
+                2
+        );
+    }
+
+    @Test
+    void inviteeIcsDownloadHoldsEverySession() {
+        setType(false);
+        bookSet(List.of(), null);
+
+        String ics = new String(emailService.inviteeIcs(setRows().getFirst().id).orElseThrow(), StandardCharsets.UTF_8);
+
+        assertThat(count(ics, "BEGIN:VEVENT")).isEqualTo(3);
+    }
+
+    private static List<Booking> setRows() {
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>list("inviteeEmail = ?1 order by startUtc", EMAIL));
     }
 
     private static String leadGuestToken() {
