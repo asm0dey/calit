@@ -401,6 +401,18 @@ public interface AppMessages {
     @Message("Some of the sessions you picked could not be read. Please pick them again.")
     String pub_set_error_invalid();
 
+    @Message("{lengths} min each")
+    String pub_set_lengths_each(String lengths);
+
+    @Message("or")
+    String pub_set_or();
+
+    @Message("Book {min} to {max} sessions at once{#if differentDays}, on different days{/if}.")
+    String pub_set_rules_range(int min, int max, boolean differentDays);
+
+    @Message("Book {count} sessions at once{#if differentDays}, on different days{/if}.")
+    String pub_set_rules_exact(int count, boolean differentDays);
+
     // ---- Confirmation page (confirmation.html) ----
     @Message("Request sent")
     String pub_conf_title_pending();

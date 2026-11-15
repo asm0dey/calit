@@ -272,9 +272,12 @@ public class PublicResource {
             Map<String, SetRules.Blocked> blockedBySlot,
             List<PickRow> rows,
             Set<String> pickedDates,
-            Map<String, List<String>> reasonsByDay,
+            Map<String, Set<SetRules.Blocked>> blocksByDay,
             List<String> statusByCount,
-            List<String> continueByCount
+            List<String> continueByCount,
+            String lengthsLine,
+            String rulesLine,
+            boolean sameDay
     ) {
         public boolean checked(String startUtc, int minutes) {
             return picks
@@ -302,8 +305,11 @@ public class PublicResource {
             return pickedDates.contains(isoDate);
         }
 
-        public List<String> reasons(String isoDate) {
-            return reasonsByDay.getOrDefault(isoDate, List.of());
+        /**
+         * Whether the day shows the reason line for {@code blocked} (a {@link SetRules.Blocked} name).
+         */
+        public boolean shows(String isoDate, String blocked) {
+            return blocksByDay.getOrDefault(isoDate, Set.of()).contains(SetRules.Blocked.valueOf(blocked));
         }
 
         public boolean belowMin() {
@@ -322,7 +328,7 @@ public class PublicResource {
     /**
      * One pick in the rail; {@code hidden} when no rendered checkbox carries it (another length, or gone).
      */
-    public record PickRow(String value, String startUtc, String label, int minutes, boolean hidden) {}
+    public record PickRow(String value, String startUtc, String label, int minutes, boolean hidden, String isoDate) {}
 
     /**
      * The lengths this type offers and the one currently rendered.
@@ -628,7 +634,7 @@ public class PublicResource {
         int min = type.multiSlotMin == null ? 1 : type.multiSlotMin;
         int max = type.multiSlotMax;
         Map<String, SetRules.Blocked> blocked = new HashMap<>();
-        Map<String, List<String>> reasons = new HashMap<>();
+        Map<String, Set<SetRules.Blocked>> reasons = new HashMap<>();
         Set<String> rendered = new HashSet<>();
         for (DaySlots day : days) {
             var dayBlocks = EnumSet.noneOf(SetRules.Blocked.class);
@@ -641,24 +647,20 @@ public class PublicResource {
                     dayBlocks.add(b);
                 }
             }
-            reasons.put(
-                    day.isoDate(),
-                    dayBlocks
-                        .stream()
-                        .map(b -> switch (b) {
-                            case SAME_DAY -> m.pub_set_reason_same_day();
-                            case OVERLAP -> m.pub_set_reason_overlap();
-                            case MAX -> m.pub_set_reason_max(max);
-                            case NONE -> throw new IllegalStateException();
-                        })
-                        .toList()
-            );
+            reasons.put(day.isoDate(), dayBlocks);
         }
         var dateFmt = DATE_FMT.withLocale(activeLocale.current());
         List<PickRow> rows = picks.stream().map(p -> {
             var start = p.startUtc().atZone(zone);
             var label = start.format(dateFmt) + " · " + start.format(TIME_FMT);
-            return new PickRow(p.value(), p.startUtc().toString(), label, p.minutes(), !rendered.contains(p.value()));
+            return new PickRow(
+                    p.value(),
+                    p.startUtc().toString(),
+                    label,
+                    p.minutes(),
+                    !rendered.contains(p.value()),
+                    start.toLocalDate().toString()
+            );
         }).toList();
         Set<String> pickedDates =
                 picks
@@ -675,7 +677,35 @@ public class PublicResource {
             );
             labels.add(n < min ? m.pub_set_btn_need(min) : m.pub_set_btn_continue(n));
         }
-        return new SetPicker(min, max, picks, blocked, rows, pickedDates, reasons, status, labels);
+        var allowed = MeetingTypeDuration.allowedDurations(type);
+        var lengths = allowed.size() < 2
+                ? null
+                : m.pub_set_lengths_each(
+                                allowed.subList(0, allowed.size() - 1).stream().map(String::valueOf).collect(Collectors.joining(
+                                        ", "
+                                ))
+                        + " "
+                        + m.pub_set_or()
+                        + " "
+                        + allowed.getLast()
+        );
+        boolean differentDays = !type.multiSlotSameDay;
+        var rules =
+                min == max ? m.pub_set_rules_exact(min, differentDays) : m.pub_set_rules_range(min, max, differentDays);
+        return new SetPicker(
+                min,
+                max,
+                picks,
+                blocked,
+                rows,
+                pickedDates,
+                reasons,
+                status,
+                labels,
+                lengths,
+                rules,
+                type.multiSlotSameDay
+        );
     }
 
     private String turnstileSiteKey() {

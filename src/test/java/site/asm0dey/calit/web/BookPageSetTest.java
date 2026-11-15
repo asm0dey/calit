@@ -100,6 +100,13 @@ class BookPageSetTest {
             .body(containsString("Your details"))
             .body(containsString("Length of the next session"))
             .body(containsString("role=\"status\" aria-atomic=\"true\""))
+            .body(containsString("id=\"set-form\" data-same-day=\"0\""))
+            .body(containsString("<p class=\"slot-reason\" data-reason=\"SAME_DAY\" hidden>"))
+            .body(containsString("<p class=\"slot-reason\" data-reason=\"OVERLAP\" hidden>"))
+            .body(containsString("<p class=\"slot-reason\" data-reason=\"MAX\" hidden>"))
+            .body(containsString("CALIT_SET_PICKER"))
+            .body(containsString("30 or 60 min each"))
+            .body(containsString("Book 2 to 3 sessions at once, on different days."))
             .body(not(containsString("name=\"startUtc\"")))
             .body(not(containsString("name=\"inviteeEmail\"")));
     }
@@ -107,7 +114,11 @@ class BookPageSetTest {
     @Test
     void picksSurviveDurationSwitch() {
         get("?pick=" + A + "/30&duration=60")
-            .body(containsString("<input type=\"hidden\" name=\"pick\" value=\"" + A + "/30\">"))
+            .body(
+                    containsString(
+                            "<input type=\"hidden\" name=\"pick\" value=\"" + A + "/30\" data-date=\"" + DAY1 + "\">"
+                    )
+            )
             .body(containsString("name=\"remove\" value=\"" + A + "/30\""))
             .body(containsString("type=\"checkbox\" name=\"pick\" value=\"" + B + "/60\""))
             .body(not(containsString("value=\"" + B + "/30\"")));
@@ -120,6 +131,21 @@ class BookPageSetTest {
             .then()
             .statusCode(200)
             .body(containsString("value=\"" + B + "/60\""));
+    }
+
+    @Test
+    void exactCountSameDayCopy() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            var t = MeetingType.findBySlug(1L, SLUG);
+            t.multiSlotMax = 2;
+            t.multiSlotSameDay = true;
+            MeetingTypeDuration.delete("meetingTypeId", t.id);
+        });
+        get("")
+            .body(containsString("Book 2 sessions at once."))
+            .body(not(containsString("on different days")))
+            .body(not(containsString("min each")))
+            .body(containsString("id=\"set-form\" data-same-day=\"1\""));
     }
 
     @Test
@@ -138,21 +164,23 @@ class BookPageSetTest {
             .body(containsString("value=\"" + A + "/30\" checked"))
             .body(containsString("value=\"" + C + "/30\" disabled"))
             .body(not(containsString("value=\"" + B + "/30\" disabled")))
-            .body(containsString("You already have a session this day"));
+            .body(containsString("data-reason=\"SAME_DAY\">You already have a session this day</p>"))
+            // DAY2 holds no pick: its same-day line is rendered for the script but hidden.
+            .body(containsString("data-reason=\"SAME_DAY\" hidden>You already have a session this day</p>"));
     }
 
     @Test
     void overlapAtOtherLengthIsDisabled() {
         get("?pick=" + A + "/30&duration=60")
             .body(containsString("value=\"" + A + "/60\" disabled"))
-            .body(containsString("Overlaps a session you picked"));
+            .body(containsString("data-reason=\"OVERLAP\">Overlaps a session you picked</p>"));
     }
 
     @Test
     void maxReachedDisablesRest() {
         get("?pick=" + A + "/30&pick=" + B + "/30&pick=" + D + "/30")
             .body(containsString("3 / 3"))
-            .body(containsString("You have the maximum of 3"))
+            .body(containsString("data-reason=\"MAX\">You have the maximum of 3</p>"))
             .body(containsString("value=\"" + at(DAY2, 10, 0) + "/30\" disabled"))
             .body(containsString("Continue with 3 sessions"));
     }

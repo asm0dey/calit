@@ -36,8 +36,15 @@
           <h1 class="text-2xl font-bold mb-3">{type.name}</h1>
           <p class="flex items-center gap-2 font-semibold mb-3">
             <svg class="h-5 w-5 text-base-content/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            {#if picker && picker.lengthsLine}
+            {picker.lengthsLine}
+            {#else}
             {duration.chosen} {msg:pub_book_minutes_short}
+            {/if}
           </p>
+          {#if picker}
+          <p class="text-sm text-base-content/70 mb-3">{picker.rulesLine}</p>
+          {/if}
           {#if type.description}<p class="text-sm text-base-content/70 mb-3">{type.description}</p>{/if}
           {#if type.locationType.name == 'GOOGLE_MEET'}
             {#if meetLink}<p class="text-sm mb-2"><strong>{msg:pub_book_location_label}</strong> {msg:pub_book_meet_hint}</p>{/if}
@@ -79,10 +86,10 @@
             <li class="step">{msg:pub_set_step_details}</li>
           </ul>
           {#if error}<div role="alert" class="alert alert-error mb-4">{error}</div>{/if}
-          <form method="get" action="{links.pickAction}" id="set-form">
+          <form method="get" action="{links.pickAction}" id="set-form" data-same-day="{#if picker.sameDay}1{#else}0{/if}">
             {#if links.invite}<input type="hidden" name="invite" value="{links.invite}">{/if}
             {#for p in picker.rows}{#if p.hidden}
-            <input type="hidden" name="pick" value="{p.value}">
+            <input type="hidden" name="pick" value="{p.value}" data-date="{p.isoDate}">
             {/if}{/for}
             {#if duration.multiple}
               <p class="label mb-2">{msg:pub_set_duration_label}</p>
@@ -110,9 +117,10 @@
                           <time data-utc="{slot.startUtc}" data-time-only="1">{slot.label}</time>{#let other=picker.otherLength(slot.startUtc, duration.chosen)}{#if other}<span class="slot-badge badge badge-xs badge-accent">{msg:pub_set_badge_minutes(other)}</span>{/if}{/let}
                         </label>
                       {/for}
-                      {#for r in picker.reasons(day.isoDate)}
-                        <p class="slot-reason">{r}</p>
-                      {/for}
+                      {! All three reasons are rendered; the server unhides the ones that apply, the script re-toggles them live. !}
+                      <p class="slot-reason" data-reason="SAME_DAY"{#if !picker.shows(day.isoDate, 'SAME_DAY')} hidden{/if}>{msg:pub_set_reason_same_day}</p>
+                      <p class="slot-reason" data-reason="OVERLAP"{#if !picker.shows(day.isoDate, 'OVERLAP')} hidden{/if}>{msg:pub_set_reason_overlap}</p>
+                      <p class="slot-reason" data-reason="MAX"{#if !picker.shows(day.isoDate, 'MAX')} hidden{/if}>{msg:pub_set_reason_max(picker.max)}</p>
                     </section>
                   {/for}
                   </div>
@@ -132,35 +140,61 @@
           {chrome.tzScript.raw}
           {chrome.calScript.raw}
           <script>
-          /* CALIT_SET_PICKER — live count, rail sentence, Continue label, max cap and calendar dots (JS-only). */
+          /* CALIT_SET_PICKER — mirrors the server's set rules live (JS-only): count, rail sentence, Continue,
+             MAX / overlap / same-day disabling with the day's reason lines, and calendar dots. */
           (function () {
             var form = document.getElementById('set-form');
             var btn = form && form.querySelector('[data-continue]');
             if (!btn) { return; }
             var status = document.querySelector('[data-status]');
             var badge = document.querySelector('[data-count-badge]');
-            var min = +btn.dataset.min, max = +btn.dataset.max;
+            var min = +btn.dataset.min, max = +btn.dataset.max, sameDayOk = form.dataset.sameDay === '1';
             var boxes = Array.prototype.slice.call(form.querySelectorAll('input[type=checkbox][name=pick]'));
-            boxes.forEach(function (b) { b.dataset.blocked = b.disabled ? '1' : ''; });
+            var sections = Array.prototype.slice.call(form.querySelectorAll('.day-slots'));
+            function span(v, date) {
+              var i = v.lastIndexOf('/'), s = Date.parse(v.slice(0, i));
+              return { s: s, e: s + v.slice(i + 1) * 60000, date: date };
+            }
             function update() {
-              var n = form.querySelectorAll('input[type=hidden][name=pick]').length
-                    + boxes.filter(function (b) { return b.checked; }).length;
-              var k = Math.min(n, max);
+              var picks = Array.prototype.map.call(form.querySelectorAll('input[type=hidden][name=pick]'),
+                function (h) { return span(h.value, h.dataset.date); });
+              boxes.forEach(function (b) { if (b.checked) { picks.push(span(b.value, b.closest('.day-slots').dataset.date)); } });
+              var n = picks.length, k = Math.min(n, max), shown = {};
               badge.textContent = n + ' / ' + max;
               status.textContent = status.dataset['s' + k];
               btn.textContent = btn.dataset['l' + k];
               btn.disabled = n < min || n > max;
-              boxes.forEach(function (b) { if (!b.checked && !b.dataset.blocked) { b.disabled = n >= max; } });
+              boxes.forEach(function (b) {
+                var date = b.closest('.day-slots').dataset.date, c = span(b.value, date), why = '';
+                if (!b.checked) {
+                  /* Same order as SetRules.blocked; half-open intervals, so touching is not overlap. */
+                  if (n >= max) { why = 'MAX'; }
+                  else if (picks.some(function (p) { return c.s < p.e && p.s < c.e; })) { why = 'OVERLAP'; }
+                  else if (!sameDayOk && picks.some(function (p) { return p.date === date; })) { why = 'SAME_DAY'; }
+                }
+                b.disabled = !!why;
+                b.closest('.slot').classList.toggle('slot-disabled', !!why);
+                if (why) { shown[date + why] = true; }
+              });
+              sections.forEach(function (s) {
+                var date = s.dataset.date;
+                s.classList.toggle('day-slots--picked', picks.some(function (p) { return p.date === date; }));
+                s.querySelectorAll('[data-reason]').forEach(function (r) { r.hidden = !shown[date + r.dataset.reason]; });
+              });
+              dots();
             }
-            form.addEventListener('change', function (e) { if (e.target.name === 'pick') { update(); } });
             var cal = document.getElementById('calendar');
             function dots() {
-              document.querySelectorAll('.day-slots--picked').forEach(function (s) {
+              if (!cal) { return; }
+              sections.forEach(function (s) {
                 var d = cal.querySelector('.calendar__day[data-date="' + s.dataset.date + '"]');
-                if (d) { d.classList.add('calendar__day--picked'); }
+                if (d) { d.classList.toggle('calendar__day--picked', s.classList.contains('day-slots--picked')); }
               });
             }
-            if (cal) { new MutationObserver(dots).observe(cal, { childList: true }); dots(); }
+            form.addEventListener('change', function (e) { if (e.target.name === 'pick') { update(); } });
+            if (cal) { new MutationObserver(dots).observe(cal, { childList: true }); }
+            /* Once on load too: back/forward cache restores ticks the server never saw. */
+            update();
           })();
           </script>
         </div>
