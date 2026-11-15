@@ -144,14 +144,14 @@ The booking page first lets the invitee tick the sessions they want, with a "You
 - The set is **all or nothing**. If any chosen time was just taken, nothing is booked and the invitee picks again, keeping the rest of their picks.
 - With **Requires approval**, you approve or decline the set once, and a pending set expires as a unit.
 - It works with co-hosts — every session must be free for every host — and with [single-use invites](#single-use-invites); the invite page never reveals the meeting type's URL.
-- The invitee gets one confirmation email and one calendar file for the whole set.
+- The invitee gets one confirmation email for the whole set. When calit sends the calendar file, it is one file holding every session; when the events are on Google, Google sends its own invitation for each session instead.
 
 ### Managing a set
 
 Each session is still a normal booking with its own manage link, so it can be rescheduled or cancelled on its own. The manage page lists the other sessions of the set and offers **Cancel all** for those still held. Your bookings dashboard labels each one "k of N".
 
 :::note[Upgrade]
-Migration `V40` adds nullable columns only. Nothing to do on upgrade.
+Migration `V40` adds nullable or defaulted columns and an index. Nothing to do on upgrade.
 :::
 
 ## Google account
