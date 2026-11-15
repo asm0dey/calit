@@ -7,6 +7,17 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- Meeting types can allow several sessions per booking (a range or exact count, up to 5). The set is booked,
+  approved, declined and expired as one; each session reschedules and cancels alone. ([#278](https://github.com/asm0dey/calit/pull/278))
+- `V40__multi_slot_booking.sql` adds `meeting_type.multi_slot_min`, `multi_slot_max`, `multi_slot_same_day` and
+  `booking.set_id`; additive only. ([#278](https://github.com/asm0dey/calit/pull/278))
+
+Upgrade: nothing to do.
+
 ## 1.29.0
 
 Single-use booking invites, and approved bookings no longer wait on the owner's own Google RSVP.
