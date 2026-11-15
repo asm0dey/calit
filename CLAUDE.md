@@ -16,7 +16,7 @@ Skills live in `.agents/skills/`; `.claude/skills/` and `.crush/skills/` are sym
 
 ### Issue tracker
 
-Issues are beans in `.beans/` (agentic-first tracker, `beans` CLI). See `docs/agents/issue-tracker.md`.
+Issues are GitHub Issues on `asm0dey/calit` (`gh` CLI, labels for type/state/priority, sub-issues for epics). See `docs/agents/issue-tracker.md`.
 
 ### Domain docs
 
@@ -32,7 +32,7 @@ what was actually settled.
 
 ## Build & run
 
-Java (Liberica 27) is pinned in `.sdkmanrc` (sdkman auto-env; mise reads it too); Bun, `beans`, `actionlint` in `mise.toml` — `mise install` once (its `postinstall` hook runs `bun install` → git hooks, skipped when `$CI` is set); CI installs both via `jdx/mise-action`. `mise tasks` lists wrappers (`setup`, `dev`, `build`, `test`, `format`, `lint-ci`, `css`) around the commands below.
+Java (Liberica 27) is pinned in `.sdkmanrc` (sdkman auto-env; mise reads it too); Bun, `actionlint` in `mise.toml` — `mise install` once (its `postinstall` hook runs `bun install` → git hooks, skipped when `$CI` is set); CI installs both via `jdx/mise-action`. `mise tasks` lists wrappers (`setup`, `dev`, `build`, `test`, `format`, `lint-ci`, `css`) around the commands below.
 
 ```bash
 bun install              # once — installs Tailwind/daisyUI CLI
@@ -144,7 +144,7 @@ Flyway migrations in `src/main/resources/db/migration/`, applied at boot (`quark
 
 ## Docker / CI
 
-`Dockerfile` multi-stage: Bun compiles CSS → BellSoft **Liberica JDK 27** builds → BellSoft **hardened distroless Liberica JRE (musl)** runs. Tests skipped in image — run `mvn test` on host (with Docker) before building. CI is `.github/workflows/ci.yml` (test/build/merge/release; multi-arch JVM images plus `-native`-suffixed GraalVM images from `Dockerfile.native`, pushed to `ghcr.io/asm0dey/calit` and mirrored to `docker.io/asm0dey/calit`). Pull requests that change Java lines get a diff coverage report from **cribro** (Maven extension in `.mvn/extensions.xml`, from Maven Central, so every local `mvn test` prints the same report; in CI a job summary plus one PR comment, non-blocking). Dependency updates via **Renovate** (`renovate.json`), not Dependabot. A `customManagers` regex also bumps the Quarkus version quoted in `README.md` (badge) and at the top of this file — keep both in the full `X.Y.Z` (or four-part `X.Y.Z.W`) form or the regex stops matching. The `changes` job gates the image matrix: a push to `main` that touched only `.beans/**`, root-level markdown (`README.md`, `CLAUDE.md`, …), `docs/**`, `.agents/**`, `.claude/**` or `LICENSE` builds no image and publishes no `edge`/`sha-*` tag — that is intentional, not a broken run. `v*` tag pushes always build.
+`Dockerfile` multi-stage: Bun compiles CSS → BellSoft **Liberica JDK 27** builds → BellSoft **hardened distroless Liberica JRE (musl)** runs. Tests skipped in image — run `mvn test` on host (with Docker) before building. CI is `.github/workflows/ci.yml` (test/build/merge/release; multi-arch JVM images plus `-native`-suffixed GraalVM images from `Dockerfile.native`, pushed to `ghcr.io/asm0dey/calit` and mirrored to `docker.io/asm0dey/calit`). Pull requests that change Java lines get a diff coverage report from **cribro** (Maven extension in `.mvn/extensions.xml`, from Maven Central, so every local `mvn test` prints the same report; in CI a job summary plus one PR comment, non-blocking). Dependency updates via **Renovate** (`renovate.json`), not Dependabot. A `customManagers` regex also bumps the Quarkus version quoted in `README.md` (badge) and at the top of this file — keep both in the full `X.Y.Z` (or four-part `X.Y.Z.W`) form or the regex stops matching. The `changes` job gates the image matrix: a push to `main` that touched only root-level markdown (`README.md`, `CLAUDE.md`, …), `docs/**`, `.agents/**`, `.claude/**` or `LICENSE` builds no image and publishes no `edge`/`sha-*` tag — that is intentional, not a broken run. `v*` tag pushes always build.
 
 ## Documentation
 
@@ -161,5 +161,3 @@ Public docs site lives on **`docs-site`** branch (Astro Starlight project in `do
 Compress wording, never facts. These always survive into the bullet: migration identifiers and what they change, env var and config names, route paths, anything a user must do on upgrade, and any caveat that limits the fix (e.g. "not retrofitted to existing rows", "group bookings keep the previous wording"). A caveat that will not compress gets its own short bullet rather than being dropped.
 
 Close each section with an upgrade note: `Upgrade: nothing to do.` when there is nothing to do and no caveat, otherwise one or two sentences saying what to do or what to watch for.
-
-**IMPORTANT**: before you do anything else, run the `beans prime` command and heed its output.
