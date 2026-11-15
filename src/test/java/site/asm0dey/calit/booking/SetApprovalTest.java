@@ -17,6 +17,7 @@ import site.asm0dey.calit.booking.events.BookingDeclined;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.scheduler.Reminder;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
 
@@ -27,7 +28,9 @@ import site.asm0dey.calit.user.AppUser;
 @QuarkusTest
 class SetApprovalTest {
     private static final ZoneId AMS = ZoneId.of("Europe/Amsterdam");
-    private static final LocalDate MONDAY = LocalDate.now(AMS).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+    // two days out at least, so every slot is past the 24h reminder lead
+    private static final LocalDate MONDAY =
+            LocalDate.now(AMS).plusDays(2).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
     private static final String EMAIL = "sam@x.com";
     @Inject
     BookingService bookingService;
@@ -84,11 +87,15 @@ class SetApprovalTest {
     }
 
     private static void singleHostType() {
+        singleHostType(true);
+    }
+
+    private static void singleHostType(boolean approval) {
         QuarkusTransaction.requiringNew().run(() -> {
             MultiHostFixtures.settings(1L, "pasha");
             MultiHostFixtures.rule(1L, DayOfWeek.MONDAY, 9, 17);
             MeetingType t = MultiHostFixtures.meetingType(1L, "set", 30);
-            t.requiresApproval = true;
+            t.requiresApproval = approval;
             t.multiSlotMin = 2;
             t.multiSlotMax = 3;
             t.multiSlotSameDay = true;
@@ -133,6 +140,28 @@ class SetApprovalTest {
             .call(() -> Booking.leadOfSet(rows.getFirst().setId, 1L).id);
     }
 
+    /**
+     * Booking ids that hold an unsent reminder, in start order.
+     */
+    private static List<Long> remindedRows() {
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> rows()
+                .stream()
+                .filter(b -> Reminder.count("bookingId = ?1 and sentAt is null", b.id) > 0)
+                .map(b -> b.id)
+                .toList());
+    }
+
+    @Test
+    void autoConfirmedSetGetsReminderPerBooking() {
+        singleHostType(false);
+
+        bookSet(10, 11);
+
+        assertThat(remindedRows()).containsExactlyElementsOf(rows().stream().map(b -> b.id).toList());
+    }
+
     @Test
     void approvingOneRowConfirmsWholeSet() {
         singleHostType();
@@ -148,6 +177,7 @@ class SetApprovalTest {
             .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
         assertThat(EventLog.APPROVED).containsExactly(lead(rows));
         assertThat(EventLog.CONFIRMED).isEmpty();
+        assertThat(remindedRows()).containsExactlyElementsOf(rows.stream().map(b -> b.id).toList());
     }
 
     @Test
@@ -186,6 +216,13 @@ class SetApprovalTest {
             .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
         assertThat(EventLog.CONFIRMED).containsExactly(lead(rows));
         assertThat(EventLog.APPROVED).isEmpty();
+        // one per Booking, on the creator's (group lead) row
+        assertThat(remindedRows())
+            .containsExactlyElementsOf(rows
+                .stream()
+                .filter(b -> b.ownerId == 1L)
+                .map(b -> b.id)
+                .toList());
     }
 
     @Test
