@@ -86,6 +86,10 @@ public class PendingExpiryScheduler {
      * Advisory-lock key-space prefix for a single-host booking (no group); see {@link #GROUP_LOCK_PREFIX}.
      */
     private static final String SINGLE_LOCK_PREFIX = "booking:";
+    /**
+     * Advisory-lock key-space prefix for a multi-slot Booking set; disjoint from the two above.
+     */
+    private static final String SET_LOCK_PREFIX = "set:";
 
     /**
      * Reads candidate expired PENDING bookings with a plain (lock-free) SELECT and, per candidate,
@@ -113,7 +117,7 @@ public class PendingExpiryScheduler {
                 @SuppressWarnings("unchecked")
                 List<Object[]> candidates = em
                     .createNativeQuery(
-                            "SELECT id, group_id FROM booking "
+                            "SELECT id, group_id, set_id FROM booking "
                             + "WHERE status = 'PENDING' "
                             + "AND LEAST(created_at + (:holdHours * INTERVAL '1 hour'), start_utc) "
                             + "    <= now() + make_interval(secs => :graceSeconds) "
@@ -129,7 +133,8 @@ public class PendingExpiryScheduler {
                     // Defensive parse: driver/Hibernate version can return a uuid column as either
                     // java.util.UUID or its String form from a scalar native query.
                     var groupId = row[1] == null ? null : UUID.fromString(row[1].toString());
-                    processCandidate(id, groupId, declined);
+                    var setId = row[2] == null ? null : UUID.fromString(row[2].toString());
+                    processCandidate(id, groupId, setId, declined);
                 }
             });
         for (Long bookingId : declined) {
@@ -151,12 +156,19 @@ public class PendingExpiryScheduler {
      * caller's transaction has committed -- the lead row's id for a group, the booking's own id
      * for a single-host booking.
      */
-    private void processCandidate(Long id, UUID groupId, List<Long> declined) {
+    private void processCandidate(Long id, UUID groupId, UUID setId, List<Long> declined) {
         // Non-blocking: two ticks racing on the same group/booking never wait on each
         // other, so no wait-for cycle -- and thus no deadlock -- can ever form. The prefix
         // keeps the group and single-booking key spaces disjoint (a group_id and a booking
         // id could otherwise theoretically collide once hashed).
-        var lockKey = groupId != null ? GROUP_LOCK_PREFIX + groupId : SINGLE_LOCK_PREFIX + id;
+        String lockKey;
+        if (setId != null) {
+            lockKey = SET_LOCK_PREFIX + setId;
+        } else if (groupId != null) {
+            lockKey = GROUP_LOCK_PREFIX + groupId;
+        } else {
+            lockKey = SINGLE_LOCK_PREFIX + id;
+        }
         boolean owns = Boolean.TRUE.equals(em
             .createNativeQuery("select pg_try_advisory_xact_lock(hashtextextended(?1, 0))")
             .setParameter(1, lockKey)
@@ -181,7 +193,10 @@ public class PendingExpiryScheduler {
         // whole conceptual meeting failed to convene -- decline every row in the group, not
         // just the one that happened to be claimed, and send a single declined email (fanned
         // out per host by EmailService) keyed on the group's lead row.
-        if (b.groupId != null) {
+        // A set expires as a unit (its first Booking's start is the earliest candidate), co-hosted or not.
+        if (b.setId != null) {
+            declineSet(b, declined);
+        } else if (b.groupId != null) {
             declineGroup(b, declined);
         } else {
             declineSingle(id, b, declined);
@@ -228,6 +243,36 @@ public class PendingExpiryScheduler {
                     ex,
                     "declined enqueue failed for group %s lead booking %d (declined, mail dropped)",
                     b.groupId,
+                    lead.id
+            );
+        }
+    }
+
+    private void declineSet(Booking b, List<Long> declined) {
+        Long creatorOwnerId = MeetingType.<MeetingType>findById(b.meetingTypeId).ownerId;
+        // Same lead-row lock as BookingService.approve/decline of a set row, so a host's click and this
+        // tick serialise; rows are re-read under it (refresh, not the possibly stale managed copies).
+        Booking lead = Booking.leadOfSet(b.setId, creatorOwnerId);
+        em.refresh(lead, LockModeType.PESSIMISTIC_WRITE);
+        List<Booking> rows = Booking.set(b.setId);
+        rows.forEach(em::refresh);
+        // Idempotency: already declined, or approved by every host meanwhile -- nothing left to expire.
+        if (lead.status == BookingStatus.DECLINED || rows.stream().noneMatch(r -> r.status == BookingStatus.PENDING)) {
+            return;
+        }
+        for (Booking r : rows) {
+            r.status = BookingStatus.DECLINED;
+            Reminder.deleteUnsentFor(r.id);
+        }
+        declined.add(lead.id);
+        // Same guard as declineGroup: a render failure drops the mail, the decline still commits.
+        try {
+            emailService.enqueueDeclined(lead.id);
+        } catch (Exception ex) {
+            Log.errorf(
+                    ex,
+                    "declined enqueue failed for set %s lead booking %d (declined, mail dropped)",
+                    b.setId,
                     lead.id
             );
         }

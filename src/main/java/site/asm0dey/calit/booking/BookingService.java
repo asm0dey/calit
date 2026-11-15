@@ -505,12 +505,12 @@ public class BookingService {
      * events this call already made, then rethrows the original exception.
      */
     private void createMirrorEventsOrCompensate(MeetingType type, List<Booking> rows) {
-        boolean multiHost = MeetingTypeHost.isMultiHost(type.id);
         List<Booking> created = new ArrayList<>();
         try {
             for (Booking row : rows) {
                 Booking holder = row;
-                if (multiHost) {
+                // keyed on the row, not the type's current hosts, which may have changed since booking
+                if (row.groupId != null) {
                     createGroupGoogleEvent(type, row.groupId);
                     holder = Booking.leadOfGroup(row.groupId, type.ownerId);
                 } else if (calendarPort.isConnected(type.ownerId)) {
@@ -1086,10 +1086,10 @@ public class BookingService {
 
     @Transactional
     public void approve(Long bookingId) {
-        // Row lock: an overlapping second click waits for this commit, then sees the settled status below.
-        Booking booking = Booking.findById(bookingId, LockModeType.PESSIMISTIC_WRITE);
-        if (booking == null) {
-            throw new NotFoundException("No booking " + bookingId);
+        Booking booking = lockForDecision(bookingId);
+        if (booking.setId != null) {
+            approveSet(booking);
+            return;
         }
         // Only a PENDING request can be approved (UC-014 BR-006). Covers double-submits (no second
         // Mirror event / BookingConfirmed) and stale tabs acting on a cancelled or declined booking.
@@ -1125,10 +1125,10 @@ public class BookingService {
 
     @Transactional
     public void decline(Long bookingId) {
-        // Row lock: an overlapping second click waits for this commit, then sees the settled status below.
-        Booking booking = Booking.findById(bookingId, LockModeType.PESSIMISTIC_WRITE);
-        if (booking == null) {
-            throw new NotFoundException("No booking " + bookingId);
+        Booking booking = lockForDecision(bookingId);
+        if (booking.setId != null) {
+            declineSet(booking);
+            return;
         }
         // Only a PENDING request can be declined (UC-014 BR-006): a confirmed booking is cancelled,
         // never declined, and a cancelled/declined one is already settled. Also absorbs double-submits.
@@ -1150,6 +1150,77 @@ public class BookingService {
         }
         Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
         bookingDeclinedEvent.fire(new BookingDeclined(lead.id));
+    }
+
+    /**
+     * Loads a booking for approve/decline under a row lock, so an overlapping second click waits for this
+     * commit and then sees the settled status. A set row locks its set's lead instead (before any other
+     * row), so clicks on different rows of one set serialise on one lock; every row is then re-read.
+     */
+    private Booking lockForDecision(Long bookingId) {
+        Booking booking = Booking.findById(bookingId);
+        if (booking == null) {
+            throw new NotFoundException("No booking " + bookingId);
+        }
+        var em = Booking.getEntityManager();
+        // refresh re-reads the DB and would discard this transaction's unflushed changes
+        em.flush();
+        if (booking.setId == null) {
+            em.refresh(booking, LockModeType.PESSIMISTIC_WRITE);
+            return booking;
+        }
+        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+        em.refresh(Booking.leadOfSet(booking.setId, creatorOwnerId), LockModeType.PESSIMISTIC_WRITE);
+        Booking.<Booking>set(booking.setId).forEach(em::refresh);
+        return booking;
+    }
+
+    /**
+     * Approves this Host's rows of a set (the caller holds the set lock). Once no row is PENDING, creates
+     * every Booking's Mirror event and fires one event on the set's lead.
+     */
+    private void approveSet(Booking booking) {
+        if (booking.status != BookingStatus.PENDING) {
+            return;
+        }
+        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        List<Booking> rows = Booking.set(booking.setId);
+        for (Booking row : rows) {
+            if (row.ownerId.equals(booking.ownerId) && row.status == BookingStatus.PENDING) {
+                row.status = BookingStatus.CONFIRMED;
+            }
+        }
+        if (rows
+            .stream()
+            .anyMatch(r -> r.status == BookingStatus.PENDING)) {
+            return;
+        }
+        // one row per Booking: the creator's (a co-hosted Booking's group lead)
+        List<Booking> perBooking = rows
+            .stream()
+            .filter(r -> r.ownerId.equals(type.ownerId))
+            .toList();
+        createMirrorEventsOrCompensate(type, perBooking);
+        Booking lead = perBooking.getFirst();
+        if (lead.groupId == null) {
+            bookingApprovedEvent.fire(new BookingApproved(lead.id));
+        } else {
+            bookingConfirmedEvent.fire(new BookingConfirmed(lead.id));
+        }
+    }
+
+    /**
+     * Declines every row of a set (the caller holds the set lock); one event on the set's lead.
+     */
+    private void declineSet(Booking booking) {
+        if (booking.status != BookingStatus.PENDING) {
+            return;
+        }
+        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+        for (Booking row : Booking.<Booking>set(booking.setId)) {
+            row.status = BookingStatus.DECLINED;
+        }
+        bookingDeclinedEvent.fire(new BookingDeclined(Booking.leadOfSet(booking.setId, creatorOwnerId).id));
     }
 
     @Transactional
