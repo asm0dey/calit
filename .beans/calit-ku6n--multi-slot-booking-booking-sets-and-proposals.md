@@ -5,7 +5,7 @@ status: in-progress
 type: feature
 priority: normal
 created_at: 2026-11-15T11:40:32Z
-updated_at: 2026-11-15T14:58:20Z
+updated_at: 2026-11-15T20:15:56Z
 ---
 
 Spec: docs/superpowers/specs/2026-11-15-multi-slot-booking-design.md
@@ -18,4 +18,5 @@ An Owner lets an Invitee pick several slots of one meeting type in one flow. Two
 - [x] Implementation plan (sets: docs/superpowers/plans/2026-11-15-multi-slot-booking-sets.md; proposals: own plan after sets merge)
 - [x] Booking sets
 - [ ] Proposal mode
-- [ ] Docs-site page + Unreleased changelog
+- [x] Booking sets: docs-site page + Unreleased changelog (#278)
+- [ ] Proposal mode: docs + changelog
