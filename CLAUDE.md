@@ -53,7 +53,7 @@ mvn test -Dtest=BookingServiceTest                    # one class
 mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 ```
 
-- Affected-only runs: `./mvnw -Paffected test-order:affected test` (index learned on the first `./mvnw -Paffected test`, stored in git-ignored `.test-order/`). CI and image builds don't load the plugin.
+- Affected-only runs: `./mvnw -Paffected test-order:affected test` (index learned on the first `./mvnw -Paffected test`, stored in git-ignored `.test-order/`). CI and image builds don't load the plugin. The index is learned once and never refreshed (`alwaysLearn` makes every run a full-suite learn run, so it stays off); re-learn it when it predates the branch's merge-base with `origin/main`: `rm -rf .test-order && ./mvnw -Paffected test` (about 4-5 min). A root `pom.xml` change forces a near-full selection.
 
 - Surefire runs **`reuseForks=true`**: ONE reused JVM fork + ONE Dev Services Postgres shared across all same-profile `@QuarkusTest` classes (cold-boot per class took minutes). `@TestProfile` classes trigger in-JVM Quarkus restart. Heap pinned `-Xms512m -Xmx6g`.
 - Dev Services Postgres is **reused between runs** (`quarkus.datasource.devservices.reuse=true` in
