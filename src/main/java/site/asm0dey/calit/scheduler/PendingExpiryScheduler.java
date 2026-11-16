@@ -104,7 +104,7 @@ public class PendingExpiryScheduler {
      * makes a tick the sole owner of that group/booking for the round; only then does it flip
      * PENDING -> DECLINED, delete any unsent reminder, and enqueue the declined email, all in the
      * SAME tx (crash-safe: a node dying mid-tick loses nothing, everything commits together or not
-     * at all). Expiry = min(createdAt + holdHours, startUtc) <= now() + grace. A render failure for
+     * at all). Expiry = min((pendingSince ?: createdAt) + holdHours, startUtc) <= now() + grace. A render failure for
      * one poison booking is caught/logged so it can't roll back the whole batch.
      *
      * <p>Outbound channel notifications are dispatched AFTER this transaction commits, never
@@ -123,7 +123,7 @@ public class PendingExpiryScheduler {
                     .createNativeQuery(
                             "SELECT id, group_id, set_id FROM booking "
                             + "WHERE status = 'PENDING' "
-                            + "AND LEAST(created_at + (:holdHours * INTERVAL '1 hour'), start_utc) "
+                            + "AND LEAST(COALESCE(pending_since, created_at) + (:holdHours * INTERVAL '1 hour'), start_utc) "
                             + "    <= now() + make_interval(secs => :graceSeconds) "
                             + "ORDER BY created_at "
                             + "LIMIT 50"

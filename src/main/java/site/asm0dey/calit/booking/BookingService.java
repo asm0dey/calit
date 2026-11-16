@@ -1253,6 +1253,7 @@ public class BookingService {
         if (reApproval) {
             // Feature 14: return to the approval queue; drop any existing event.
             booking.status = BookingStatus.PENDING;
+            booking.pendingSince = Instant.now();
             if (booking.eventId != null) {
                 rememberRemovedMirror(booking);
             }
@@ -1384,8 +1385,11 @@ public class BookingService {
             r.endUtc = newEnd;
             r.icsSequence = r.icsSequence + 1;
             r.status = SlotFit.groupRowStatusAfterMove(reApproval, r.ownerId, initiator, r.status);
-            if (reApproval && r.status == BookingStatus.PENDING && r.approvalToken == null) {
-                r.approvalToken = UUID.randomUUID().toString();
+            if (reApproval && r.status == BookingStatus.PENDING) {
+                r.pendingSince = Instant.now();
+                if (r.approvalToken == null) {
+                    r.approvalToken = UUID.randomUUID().toString();
+                }
             }
         }
     }

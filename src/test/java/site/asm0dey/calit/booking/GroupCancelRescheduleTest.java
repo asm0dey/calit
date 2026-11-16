@@ -199,6 +199,7 @@ class GroupCancelRescheduleTest {
 
         Booking.<Booking>group(lead.groupId).forEach(r -> {
             assertThat(r.status).isEqualTo(BookingStatus.PENDING);
+            assertThat(r.pendingSince).as("#309: the hold restarts at the re-request").isNotNull();
             assertThat(r.eventId).isNull();
             assertThat(r.meetLink).isNull();
         });
@@ -250,6 +251,7 @@ class GroupCancelRescheduleTest {
                 assertThat(r.status).as("initiating host's row stays confirmed").isEqualTo(BookingStatus.CONFIRMED);
             } else {
                 assertThat(r.status).as("other hosts revert to pending").isEqualTo(BookingStatus.PENDING);
+                assertThat(r.pendingSince).as("#309: the hold restarts at the re-request").isNotNull();
             }
         }
         verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), anyString());

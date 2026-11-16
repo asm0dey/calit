@@ -153,10 +153,14 @@ class SetPendingExpiryTest {
         bookingService.approve(rows.getFirst().id);
         bookingService.reschedule(rows.get(1).manageToken, monday.atTime(14, 0).atZone(zone).toInstant());
         var ids = rows.stream().map(b -> b.id).toList();
-        // booked a month ago: the rescheduled request is past its hold
+        // booked and re-requested a month ago: the rescheduled request is past its hold (it counts from pendingSince)
         QuarkusTransaction
             .requiringNew()
-            .run(() -> Booking.update("createdAt = ?1 where id in ?2", Instant.now().minus(30, ChronoUnit.DAYS), ids));
+            .run(() -> Booking.update(
+                    "createdAt = ?1, pendingSince = ?1 where id in ?2",
+                    Instant.now().minus(30, ChronoUnit.DAYS),
+                    ids
+            ));
         clearInvocations(emailService);
 
         scheduler.expirePendingBookings();

@@ -132,6 +132,36 @@ class RescheduleCancelTest {
 
     @Test
     @TestTransaction
+    void inviteeRescheduleToPendingStampsPendingSince() {
+        // #309: the hold restarts when approval is re-requested, not at the original creation
+        seedSettings();
+        approvalType("resched-pending-since");
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        Booking b = bookingService.book(
+                1L,
+                "resched-pending-since",
+                SLOT_09,
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of()
+        );
+        bookingService.approve(b.id);
+        Booking.<Booking>findById(b.id).createdAt = Instant.now().minus(48, ChronoUnit.HOURS);
+
+        bookingService.reschedule(b.manageToken, SLOT_10);
+
+        Booking loaded = Booking.findById(b.id);
+        assertThat(loaded.status).isEqualTo(BookingStatus.PENDING);
+        assertThat(loaded.pendingSince).isAfter(Instant.now().minusSeconds(60));
+    }
+
+    @Test
+    @TestTransaction
     void rescheduleToSameTimeIsNoOp() {
         seedSettings();
         meetingTypeWithMondayWindow("resched-noop", false);

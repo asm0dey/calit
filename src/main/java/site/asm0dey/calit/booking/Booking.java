@@ -53,6 +53,12 @@ public class Booking extends PanacheEntityBase {
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
     /**
+     * When a reschedule last put this row back into PENDING; null means it has been pending since {@link #createdAt}.
+     * The approval hold counts from here (#309).
+     */
+    @Column(name = "pending_since")
+    public Instant pendingSince;
+    /**
      * Invitee manage/reschedule/cancel key: a random UUID set at creation. Unique.
      * Plan 4 emails a tokenized link {app.base-url}/booking/{manageToken}/manage; Plan 5 must
      * expose that exact UI route. (The REST API uses /api/bookings/{manageToken}/... separately.)

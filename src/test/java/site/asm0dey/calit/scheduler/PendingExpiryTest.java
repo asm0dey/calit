@@ -117,7 +117,42 @@ class PendingExpiryTest {
         });
     }
 
+    @Test
+    void holdCountsFromPendingSinceWhenSet() {
+        var mt = seedMeetingType();
+        // created long ago, but re-requested 1h ago (reschedule back to PENDING) -> within the hold
+        Long reRequested = seedBooking(
+                mt,
+                Instant.now().minus(25, ChronoUnit.HOURS),
+                uniqueFutureStart(),
+                BookingStatus.PENDING,
+                Instant.now().minus(1, ChronoUnit.HOURS)
+        );
+        Long staleReRequest = seedBooking(
+                mt,
+                Instant.now().minus(50, ChronoUnit.HOURS),
+                uniqueFutureStart(),
+                BookingStatus.PENDING,
+                Instant.now().minus(25, ChronoUnit.HOURS)
+        );
+
+        scheduler.expirePendingBookings();
+
+        assertThat(reloadStatus(reRequested)).isEqualTo(BookingStatus.PENDING);
+        assertThat(reloadStatus(staleReRequest)).isEqualTo(BookingStatus.DECLINED);
+    }
+
     private Long seedBooking(Long meetingTypeId, Instant createdAt, Instant startUtc, BookingStatus status) {
+        return seedBooking(meetingTypeId, createdAt, startUtc, status, null);
+    }
+
+    private Long seedBooking(
+            Long meetingTypeId,
+            Instant createdAt,
+            Instant startUtc,
+            BookingStatus status,
+            Instant pendingSince
+    ) {
         return QuarkusTransaction.requiringNew().call(() -> {
             Booking b = new Booking();
             b.ownerId = 1L;
@@ -128,6 +163,7 @@ class PendingExpiryTest {
             b.endUtc = startUtc.plusSeconds(1800);
             b.status = status;
             b.createdAt = createdAt;
+            b.pendingSince = pendingSince;
             b.manageToken = UUID.randomUUID().toString();
             b.persist();
             return b.id;
