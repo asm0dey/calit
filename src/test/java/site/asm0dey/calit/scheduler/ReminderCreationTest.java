@@ -29,6 +29,14 @@ class ReminderCreationTest {
             .requiringNew()
             .call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
         assertThat(count).isOne();
+        Reminder r = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Reminder.find("bookingId", id).firstResult());
+        assertThat(r.kind).isEqualTo(Reminder.KIND_REMINDER);
+        // start in 72h, lead 24h -> sendAt ~ 48h from now
+        assertThat(r.sendAt)
+            .isAfter(Instant.now().plus(47, ChronoUnit.HOURS))
+            .isBefore(Instant.now().plus(49, ChronoUnit.HOURS));
     }
 
     @Test

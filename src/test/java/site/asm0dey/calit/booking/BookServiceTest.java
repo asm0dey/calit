@@ -45,6 +45,40 @@ class BookServiceTest {
     private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant();
 
     @Test
+    void rejectsCrlfInjectionInEmail() {
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "intro",
+                    Instant.parse("2099-01-01T10:00:00Z"),
+                    "Mallory",
+                    "a@b.com\r\nBcc: attacker@evil.com",
+                    Map.of(),
+                    null,
+                    null,
+                    "en",
+                    List.of()
+            ));
+    }
+
+    @Test
+    void rejectsOversizedInviteeName() {
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "intro",
+                    Instant.parse("2099-01-01T10:00:00Z"),
+                    "n".repeat(201),
+                    "a@b.com",
+                    Map.of(),
+                    null,
+                    null,
+                    "en",
+                    List.of()
+            ));
+    }
+
+    @Test
     @TestTransaction
     void happyPathPersistsBookingWithMeetLinkAndFiresEvent() {
         seedSettings();

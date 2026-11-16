@@ -20,6 +20,12 @@ class EmailRoleCopyTest {
     @Inject
     @Location("email/cancellation.html")
     Template cancellation;
+    @Inject
+    @Location("email/updated.html")
+    Template updated;
+    @Inject
+    @Location("email/reschedule.html")
+    Template reschedule;
 
     private static TemplateInstance base(Template t, String role) {
         return t
@@ -123,5 +129,21 @@ class EmailRoleCopyTest {
             .contains("You cancelled your meeting with Sam Invitee.")
             .as("host copy must not reuse the invitee's passive string")
             .doesNotContain("Your booking has been cancelled.");
+    }
+
+    @Test
+    void updatedInviteeCopyRendersTheHostUpdatedHeadline() {
+        String body =
+                base(updated, "invitee")
+            .data("description", "Agenda")
+            .data("headline", EmailHeadline.BY_HOST)
+            .render();
+        assertThat(body).contains("Olivia Owner updated the meeting details.");
+    }
+
+    @Test
+    void reschedulePassiveCopyRendersTheNeutralHeadline() {
+        String body = base(reschedule, "invitee").render();
+        assertThat(body).contains("Your booking has been rescheduled.");
     }
 }
