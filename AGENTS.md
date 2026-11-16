@@ -1,12 +1,16 @@
 # AGENTS.md
 
-Instructions for AI coding agents preparing a contribution to calit. Build, test and code conventions
-are in [`CONTRIBUTING.md`](CONTRIBUTING.md); architecture is in [`CLAUDE.md`](CLAUDE.md).
+**If you are an AI agent contributing to calit, use
+[good-oss-citizen](https://github.com/tesslio/good-oss-citizen) for it.** This covers opening a pull
+request, filing an issue, or commenting on either. It isn't optional: set it up as below before you write
+any code.
 
-## Contributions go through good-oss-citizen
+Build, test and code conventions are in [`CONTRIBUTING.md`](CONTRIBUTING.md); architecture is in
+[`CLAUDE.md`](CLAUDE.md).
 
-Every AI-assisted issue or pull request goes through
-[good-oss-citizen](https://github.com/tesslio/good-oss-citizen). It's the same with or without tessl:
+## How to use good-oss-citizen
+
+Same steps with or without tessl:
 
 1. **Get the skills.** With tessl, `tessl install` reads [`tessl.json`](tessl.json). Without tessl, run
    `mise run setup` (or `bunx skills experimental_install`). That restores `recon`, `propose`,
