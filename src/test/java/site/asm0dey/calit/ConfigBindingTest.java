@@ -1,7 +1,5 @@
 package site.asm0dey.calit;
 
-import module java.base;
-import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.component.QuarkusComponentTest;
 import io.quarkus.test.component.TestConfigProperty;
 import jakarta.inject.Inject;
@@ -12,6 +10,7 @@ import site.asm0dey.calit.privacy.PrivacyFacts;
 import site.asm0dey.calit.user.SignupConfig;
 import site.asm0dey.calit.web.LegalFragments;
 import site.asm0dey.calit.web.SiteInfo;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The HTTP tests swap these beans for instances built with their test value, so nothing there proves

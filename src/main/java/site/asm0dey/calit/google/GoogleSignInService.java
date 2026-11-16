@@ -1,12 +1,12 @@
 package site.asm0dey.calit.google;
 
-import site.asm0dey.calit.user.SignupConfig;
 import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.user.SignupConfig;
 import site.asm0dey.calit.user.Usernames;
 
 /**

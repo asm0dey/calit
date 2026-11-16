@@ -1,12 +1,8 @@
 package site.asm0dey.calit.google;
 
-import static org.mockito.Mockito.when;
-import io.quarkus.test.InjectMock;
-import site.asm0dey.calit.user.SignupConfig;
 import module java.base;
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.filter.cookie.CookieFilter;
@@ -15,6 +11,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.user.SignupConfig;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.Mockito.when;
 
 /**
  * End-to-end Google sign-in proving the two end-user journeys:
@@ -28,12 +28,6 @@ import site.asm0dey.calit.user.AppUser;
 class GoogleSignInFlowTest {
     @InjectMock
     SignupConfig signup;
-
-    @BeforeEach
-    void signupOn() {
-        when(signup.enabled()).thenReturn(true);
-    }
-
     @Inject
     GoogleOAuthConfig oauthConfig;
     @Inject
@@ -42,7 +36,8 @@ class GoogleSignInFlowTest {
     private static final Instant FIXED = java.time.Instant.parse("2026-06-12T12:00:00Z");
 
     @BeforeEach
-    void freezeClock() {
+    void setUp() {
+        when(signup.enabled()).thenReturn(true);
         QuarkusMock.installMockForType(java.time.Clock.fixed(FIXED, java.time.ZoneOffset.UTC), java.time.Clock.class);
     }
 

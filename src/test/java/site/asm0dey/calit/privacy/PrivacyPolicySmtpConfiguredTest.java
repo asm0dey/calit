@@ -2,13 +2,13 @@ package site.asm0dey.calit.privacy;
 
 import module java.base;
 import io.quarkus.test.junit.QuarkusMock;
+import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.CaptchaProviderConfig;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Test;
 
 /**
  * The positive SMTP-recipient case: mail is NOT mocked and a real host is configured, so the

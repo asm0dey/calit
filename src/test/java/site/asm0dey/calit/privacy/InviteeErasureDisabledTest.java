@@ -2,14 +2,14 @@ package site.asm0dey.calit.privacy;
 
 import module java.base;
 import io.quarkus.test.junit.QuarkusMock;
-import org.junit.jupiter.api.BeforeEach;
+import io.quarkus.test.junit.QuarkusTest;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.web.SiteInfo;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import io.quarkus.test.junit.QuarkusTest;
-import org.junit.jupiter.api.Test;
 
 /**
  * INVITEE_ERASURE=false: the button is replaced by the operator's contact, and the route is gone.

@@ -1,18 +1,18 @@
 package site.asm0dey.calit.scheduler;
 
-import jakarta.persistence.EntityManager;
-import org.junit.jupiter.api.BeforeEach;
-import site.asm0dey.calit.email.EmailService;
-import site.asm0dey.calit.notify.NotificationDispatcher;
 import module java.base;
-import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
+import site.asm0dey.calit.email.EmailService;
+import site.asm0dey.calit.notify.NotificationDispatcher;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @QuarkusTest
 class ReminderGraceWindowTest {

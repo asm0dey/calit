@@ -1,16 +1,16 @@
 package site.asm0dey.calit.google;
 
-import static org.mockito.Mockito.when;
-import io.quarkus.test.InjectMock;
-import site.asm0dey.calit.user.SignupConfig;
 import module java.base;
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.user.SignupConfig;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.Mockito.when;
 
 /**
  * End-to-end sign-in: stub the Google network seam, then drive callback -> bridge -> j_security_check
@@ -20,12 +20,6 @@ import org.junit.jupiter.api.Test;
 class GoogleLoginResourceTest {
     @InjectMock
     SignupConfig signup;
-
-    @BeforeEach
-    void signupOn() {
-        when(signup.enabled()).thenReturn(true);
-    }
-
     @Inject
     GoogleOAuthConfig oauthConfig;
     @Inject
@@ -48,7 +42,8 @@ class GoogleLoginResourceTest {
     }
 
     @BeforeEach
-    void installStub() {
+    void setUp() {
+        when(signup.enabled()).thenReturn(true);
         QuarkusMock.installMockForType(new StubLoginService(oauthConfig), GoogleLoginService.class);
         QuarkusMock.installMockForType(java.time.Clock.fixed(FIXED, java.time.ZoneOffset.UTC), java.time.Clock.class);
     }

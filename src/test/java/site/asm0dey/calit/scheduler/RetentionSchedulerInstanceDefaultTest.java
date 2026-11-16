@@ -1,20 +1,20 @@
 package site.asm0dey.calit.scheduler;
 
-import io.quarkus.test.junit.QuarkusMock;
-import org.junit.jupiter.api.BeforeEach;
-import site.asm0dey.calit.privacy.PrivacyConfig;
 import module java.base;
-import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.privacy.ErasureFixtures;
+import site.asm0dey.calit.privacy.PrivacyConfig;
 import site.asm0dey.calit.user.AppUser;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The instance-default half of {@link RetentionSchedulerTest}: a 14-day instance window, swapped in
