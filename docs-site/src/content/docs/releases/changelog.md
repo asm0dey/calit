@@ -15,6 +15,8 @@ Merged but not yet in a tagged release.
   approved, declined and expired as one; each session reschedules and cancels alone. ([#278](https://github.com/asm0dey/calit/pull/278))
 - `V40__multi_slot_booking.sql` adds `meeting_type.multi_slot_min`, `multi_slot_max`, `multi_slot_same_day` and
   `booking.set_id`; additive only. ([#278](https://github.com/asm0dey/calit/pull/278))
+- Native images no longer return a 500 on the owner dashboard; every template value now has a build-time
+  resolver instead of relying on reflection. ([#346](https://github.com/asm0dey/calit/pull/346))
 
 Upgrade: nothing to do.
 
