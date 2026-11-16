@@ -7,9 +7,9 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
-## Unreleased
+## 1.30.0
 
-Merged but not yet in a tagged release.
+Multi-session bookings, a native dashboard fix, and six high-priority booking and calendar bug fixes.
 
 - Meeting types can allow several sessions per booking (a range or exact count, up to 5). The set is booked,
   approved, declined and expired as one; each session reschedules and cancels alone. ([#278](https://github.com/asm0dey/calit/pull/278))
@@ -17,6 +17,17 @@ Merged but not yet in a tagged release.
   `booking.set_id`; additive only. ([#278](https://github.com/asm0dey/calit/pull/278))
 - Native images no longer return a 500 on the owner dashboard; every template value now has a build-time
   resolver instead of relying on reflection. ([#346](https://github.com/asm0dey/calit/pull/346))
+- A CalDAV server that stalls its response body now times out after `calit.caldav.timeout`; native images
+  could hold a request thread until it finished. ([#347](https://github.com/asm0dey/calit/pull/347))
+- An invitee reschedule back to pending restarts the approval hold. `V41__booking_pending_since.sql` adds nullable
+  `booking.pending_since`; additive only. ([#347](https://github.com/asm0dey/calit/pull/347))
+- A guest declining a group booking no longer removes the Co-hosts from its calendar event. ([#347](https://github.com/asm0dey/calit/pull/347))
+- The `invite.ics` download of a cancelled or declined booking is a CANCEL, so importing it no longer
+  restores the event. ([#347](https://github.com/asm0dey/calit/pull/347))
+- Mailed `.ics` attachments declare their real method (`method=CANCEL` on cancellations), not always `REQUEST`. ([#347](https://github.com/asm0dey/calit/pull/347))
+- Cancelling an already cancelled or declined booking does nothing, and sends no second cancellation mail. ([#347](https://github.com/asm0dey/calit/pull/347))
+- Rescheduling or editing a booking whose calendar event was deleted by hand recreates the event instead of
+  failing with a 500. ([#347](https://github.com/asm0dey/calit/pull/347))
 
 Upgrade: nothing to do.
 
