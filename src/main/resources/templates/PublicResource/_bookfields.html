@@ -1,7 +1,8 @@
+{@site.asm0dey.calit.web.PublicResource$Captcha captcha}
               <fieldset class="fieldset">
-                {#if type.nameMode.name != 'HIDDEN'}
+                {#if type.nameMode != FieldMode:HIDDEN}
                 <label class="label" for="inviteeName">{msg:pub_book_your_name}</label>
-                <input id="inviteeName" class="input w-full" type="text" name="inviteeName"{#if type.nameMode.name == 'REQUIRED'} required{/if}>
+                <input id="inviteeName" class="input w-full" type="text" name="inviteeName"{#if type.nameMode == FieldMode:REQUIRED} required{/if}>
                 {/if}
                 <label class="label" for="inviteeEmail">{msg:pub_book_your_email}</label>
                 <input id="inviteeEmail" class="input w-full" type="email" name="inviteeEmail" required>
@@ -10,13 +11,13 @@
                 {/if}
                 {#for f in fields}
                   <label class="label" for="f-{f.fieldKey}">{f.label}</label>
-                  {#if f.type.name == 'LONG_TEXT'}
+                  {#if f.type == FieldType:LONG_TEXT}
                     <textarea id="f-{f.fieldKey}" class="textarea w-full" name="answers.{f.fieldKey}" {#if f.required}required{/if}></textarea>
-                  {#else if f.type.name == 'EMAIL'}
+                  {#else if f.type == FieldType:EMAIL}
                     <input id="f-{f.fieldKey}" class="input w-full" type="email" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
-                  {#else if f.type.name == 'PHONE'}
+                  {#else if f.type == FieldType:PHONE}
                     <input id="f-{f.fieldKey}" class="input w-full" type="tel" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
-                  {#else if f.type.name == 'NUMBER'}
+                  {#else if f.type == FieldType:NUMBER}
                     <input id="f-{f.fieldKey}" class="input w-full" type="number" name="answers.{f.fieldKey}" {#if f.required}required{/if}>
                   {#else}
                     <input id="f-{f.fieldKey}" class="input w-full" type="text" name="answers.{f.fieldKey}" {#if f.required}required{/if}>

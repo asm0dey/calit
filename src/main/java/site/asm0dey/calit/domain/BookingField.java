@@ -2,11 +2,13 @@ package site.asm0dey.calit.domain;
 
 import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+import io.quarkus.qute.TemplateEnum;
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "booking_field")
 public class BookingField extends PanacheEntityBase {
+    @TemplateEnum
     public enum FieldType {
         SHORT_TEXT,
         LONG_TEXT,

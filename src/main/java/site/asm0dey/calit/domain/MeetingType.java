@@ -2,11 +2,13 @@ package site.asm0dey.calit.domain;
 
 import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+import io.quarkus.qute.TemplateEnum;
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "meeting_type")
 public class MeetingType extends PanacheEntityBase {
+    @TemplateEnum
     public enum LocationType {
         GOOGLE_MEET,
         PHONE,
@@ -17,6 +19,7 @@ public class MeetingType extends PanacheEntityBase {
     /**
      * How a built-in invitee field is presented on the booking form.
      */
+    @TemplateEnum
     public enum FieldMode {
         REQUIRED,
         OPTIONAL,

@@ -1,11 +1,14 @@
 package site.asm0dey.calit.privacy;
 
+import io.quarkus.qute.TemplateEnum;
+
 /**
  * Per-destination outcome of one erasure. The done page reports this rather than a blanket
  * success: calit sends invitee data to places it cannot reach back into, and the invitee is owed
  * an honest answer about which copies are actually gone.
  */
 public record ErasureReport(GoogleOutcome google, boolean channelsWereUsed, boolean mailWasDelivered) {
+    @TemplateEnum
     public enum GoogleOutcome {
         /**
          * No Mirror event existed for this booking (no write calendar, or already cancelled).

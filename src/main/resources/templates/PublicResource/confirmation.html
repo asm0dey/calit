@@ -23,7 +23,7 @@
       <div class="rounded-box bg-base-200 border border-base-300 p-4 my-4 space-y-1">
         <p><strong>{msg:pub_conf_when_label}</strong> <time data-utc="{startUtcIso}">{whenLabel}</time></p>
         {#if !pending}
-          {#if type.locationType.name == 'GOOGLE_MEET'}
+          {#if type.locationType == LocationType:GOOGLE_MEET}
             <p><strong>{msg:pub_conf_meet_label}</strong> <a class="link link-primary" href="{location}">{location}</a></p>
           {#else}
             <p><strong>{msg:pub_conf_location_label}</strong> {location}</p>
