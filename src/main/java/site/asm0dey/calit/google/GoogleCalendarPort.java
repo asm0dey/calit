@@ -275,23 +275,7 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
             // sendUpdates=all so Google emails attendees the new time and notifies anyone added/removed.
             client(addr.cred()).events().patch(addr.calendarId(), eventId, patch).setSendUpdates("all").execute();
         } catch (GoogleJsonResponseException e) {
-            if (!gone(e)) {
-                throw new UncheckedIOException("updateEvent failed", e);
-            }
-            if (addr.stored()) {
-                // the booking's own Mirror event was deleted by hand: the caller re-projects it (ADR 0001)
-                throw new EventGoneException(eventId, e);
-            }
-            // the write-target fallback may simply not be where the event lives: recreating could duplicate it
-            org.jboss.logging.Logger
-                .getLogger(GoogleCalendarPort.class)
-                .infof(
-                        "Google event %s not on write-target calendar %s (owner %d, HTTP %d); nothing to updateEvent",
-                        eventId,
-                        addr.calendarId(),
-                        ownerId,
-                        e.getStatusCode()
-                );
+            onPatchFailure(e, addr, ownerId, eventId, "updateEvent");
         } catch (IOException e) {
             throw new UncheckedIOException("updateEvent failed", e);
         }
@@ -316,23 +300,7 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
         try {
             client(addr.cred()).events().patch(addr.calendarId(), eventId, patch).setSendUpdates("all").execute();
         } catch (GoogleJsonResponseException e) {
-            if (!gone(e)) {
-                throw new UncheckedIOException("updateEventDetails failed", e);
-            }
-            if (addr.stored()) {
-                // the booking's own Mirror event was deleted by hand: the caller re-projects it (ADR 0001)
-                throw new EventGoneException(eventId, e);
-            }
-            // the write-target fallback may simply not be where the event lives: recreating could duplicate it
-            org.jboss.logging.Logger
-                .getLogger(GoogleCalendarPort.class)
-                .infof(
-                        "Google event %s not on write-target calendar %s (owner %d, HTTP %d); nothing to updateEventDetails",
-                        eventId,
-                        addr.calendarId(),
-                        ownerId,
-                        e.getStatusCode()
-                );
+            onPatchFailure(e, addr, ownerId, eventId, "updateEventDetails");
         } catch (IOException e) {
             throw new UncheckedIOException("updateEventDetails failed", e);
         }
@@ -366,6 +334,36 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
         } catch (IOException e) {
             throw new UncheckedIOException("deleteEvent failed", e);
         }
+    }
+
+    /**
+     * A failed patch: a gone event behind the booking's stored address is reported so the caller re-projects it (ADR
+     * 0001); behind the write-target fallback it is only logged, since recreating there could duplicate an event that
+     * lives elsewhere. Every other status fails loudly.
+     */
+    private static void onPatchFailure(
+            GoogleJsonResponseException e,
+            WriteAddress addr,
+            Long ownerId,
+            String eventId,
+            String operation
+    ) {
+        if (!gone(e)) {
+            throw new UncheckedIOException(operation + " failed", e);
+        }
+        if (addr.stored()) {
+            throw new EventGoneException(eventId, e);
+        }
+        org.jboss.logging.Logger
+            .getLogger(GoogleCalendarPort.class)
+            .infof(
+                    "Google event %s not on write-target calendar %s (owner %d, HTTP %d); nothing to %s",
+                    eventId,
+                    addr.calendarId(),
+                    ownerId,
+                    e.getStatusCode(),
+                    operation
+            );
     }
 
     /**
