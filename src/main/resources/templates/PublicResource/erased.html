@@ -10,9 +10,9 @@
       <p class="text-base-content/70">{msg:pub_erased_desc}</p>
       <ul class="list-disc ms-5">
         <li>{msg:pub_erased_local_ok}</li>
-        {#if report.google.name == 'REMOVED'}<li>{msg:pub_erased_google_removed}</li>{/if}
-        {#if report.google.name == 'UNREACHABLE'}<li class="text-warning">{msg:pub_erased_google_unreachable}</li>{/if}
-        {#if report.google.name == 'NOT_APPLICABLE'}<li>{msg:pub_erased_google_none}</li>{/if}
+        {#if report.google == GoogleOutcome:REMOVED}<li>{msg:pub_erased_google_removed}</li>{/if}
+        {#if report.google == GoogleOutcome:UNREACHABLE}<li class="text-warning">{msg:pub_erased_google_unreachable}</li>{/if}
+        {#if report.google == GoogleOutcome:NOT_APPLICABLE}<li>{msg:pub_erased_google_none}</li>{/if}
         {#if report.channelsWereUsed}<li>{msg:pub_erased_channels}</li>{/if}
         {#if report.mailWasDelivered}<li>{msg:pub_erased_mail}</li>{/if}
       </ul>
