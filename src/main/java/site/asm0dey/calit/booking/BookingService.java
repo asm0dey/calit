@@ -27,6 +27,7 @@ import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.CalendarUnavailableException;
 import site.asm0dey.calit.calendar.CreatedEvent;
+import site.asm0dey.calit.calendar.EventGoneException;
 import site.asm0dey.calit.calendar.MirrorProvider;
 import site.asm0dey.calit.calendar.WriteTargetResolver;
 import site.asm0dey.calit.i18n.AppLocales;
@@ -780,6 +781,28 @@ public class BookingService {
     }
 
     /**
+     * Runs a Mirror event patch. When the provider reports the booking's stored event gone (deleted by hand), the event
+     * is re-projected (ADR 0001): the stale address is cleared and the row's event created again, a group's on its
+     * lead. With no write calendar left, the row simply keeps no address (ADR 0013).
+     */
+    private void patchMirror(Booking row, MeetingType type, Runnable patch) {
+        try {
+            patch.run();
+        } catch (EventGoneException _) {
+            Log.infof("Mirror event %s of booking %d is gone; recreating it", row.eventId, row.id);
+            row.eventId = null;
+            row.meetLink = null;
+            row.calendarRemoteId = null;
+            row.calendarAccountId = null;
+            if (row.groupId != null) {
+                createGroupGoogleEvent(type, row.groupId);
+            } else {
+                createGoogleEvent(type, row);
+            }
+        }
+    }
+
+    /**
      * Stamps a created Mirror event onto its booking row: the event id, the meet link, and the
      * calendar it actually landed on. Extracted so the invariant "the event id and the address it
      * lives on are written together" has ONE home -- a row carrying an event id but no address
@@ -1253,6 +1276,7 @@ public class BookingService {
         if (reApproval) {
             // Feature 14: return to the approval queue; drop any existing event.
             booking.status = BookingStatus.PENDING;
+            booking.pendingSince = Instant.now();
             if (booking.eventId != null) {
                 rememberRemovedMirror(booking);
             }
@@ -1307,14 +1331,14 @@ public class BookingService {
         } else {
             if (calendarPort.isConnected(type.ownerId) && booking.eventId != null) {
                 OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
-                calendarPort.updateEvent(
+                patchMirror(booking, type, () -> calendarPort.updateEvent(
                         type.ownerId,
                         booking.calendarRef(),
                         booking.eventId,
                         booking.startUtc,
                         booking.endUtc,
                         attendeeEmails(booking, owner)
-                );
+                ));
             }
             bookingRescheduledEvent.fire(new BookingRescheduled(booking.id, oldStart, byOwner));
         }
@@ -1384,8 +1408,11 @@ public class BookingService {
             r.endUtc = newEnd;
             r.icsSequence = r.icsSequence + 1;
             r.status = SlotFit.groupRowStatusAfterMove(reApproval, r.ownerId, initiator, r.status);
-            if (reApproval && r.status == BookingStatus.PENDING && r.approvalToken == null) {
-                r.approvalToken = UUID.randomUUID().toString();
+            if (reApproval && r.status == BookingStatus.PENDING) {
+                r.pendingSince = Instant.now();
+                if (r.approvalToken == null) {
+                    r.approvalToken = UUID.randomUUID().toString();
+                }
             }
         }
     }
@@ -1448,14 +1475,14 @@ public class BookingService {
 
         if (calendarPort.isConnected(type.ownerId) && booking.eventId != null) {
             OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
-            calendarPort.updateEventDetails(
+            patchMirror(booking, type, () -> calendarPort.updateEventDetails(
                     type.ownerId,
                     booking.calendarRef(),
                     booking.eventId,
                     googleSummary(type, booking),
                     googleDescription(type, booking),
                     attendeeEmails(booking, owner)
-            );
+            ));
         }
 
         bookingDetailsChangedEvent.fire(new BookingDetailsChanged(booking.id, byOwner));
@@ -1502,14 +1529,14 @@ public class BookingService {
 
         Booking eventRow = groupEventRow(booking.groupId);
         if (eventRow != null && calendarPort.isConnected(eventRow.ownerId)) {
-            calendarPort.updateEventDetails(
+            patchMirror(eventRow, type, () -> calendarPort.updateEventDetails(
                     eventRow.ownerId,
                     eventRow.calendarRef(),
                     eventRow.eventId,
                     googleSummary(type, lead),
                     googleDescription(type, lead),
                     groupAttendeeEmails(type, booking.groupId, meetingHosts.hostOwnerIds(type))
-            );
+            ));
         }
 
         bookingDetailsChangedEvent.fire(new BookingDetailsChanged(lead.id, byOwner));
@@ -1638,6 +1665,10 @@ public class BookingService {
         Booking booking = Booking.findByManageToken(manageToken);
         if (booking == null || booking.isErased()) {
             throw new NotFoundException("No booking for that token");
+        }
+        if (booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
+            // already over: a re-clicked link must not re-cancel or resend the mail (#310)
+            return false;
         }
         boolean deleted = cancelRows(booking, tolerateGoogleFailure);
         Long eventId = booking.groupId == null
@@ -1874,16 +1905,32 @@ public class BookingService {
      * guest a cancellation via sendUpdates=all.
      */
     private void resyncGuests(Booking booking, Long ownerId) {
+        if (booking != null && booking.groupId != null) {
+            // one shared event for the group: its row may be a Co-host's (pre-ADR 0007), and its attendees are every host
+            Booking row = groupEventRow(booking.groupId);
+            if (row != null && calendarPort.isConnected(row.ownerId)) {
+                MeetingType type = MeetingType.findById(booking.meetingTypeId);
+                patchMirror(row, type, () -> calendarPort.updateEvent(
+                        row.ownerId,
+                        row.calendarRef(),
+                        row.eventId,
+                        row.startUtc,
+                        row.endUtc,
+                        groupAttendeeEmails(type, booking.groupId, meetingHosts.hostOwnerIds(type))
+                ));
+            }
+            return;
+        }
         if (booking != null && calendarPort.isConnected(ownerId) && booking.eventId != null) {
             OwnerSettings owner = OwnerSettings.forOwner(ownerId);
-            calendarPort.updateEvent(
+            patchMirror(booking, MeetingType.findById(booking.meetingTypeId), () -> calendarPort.updateEvent(
                     ownerId,
                     booking.calendarRef(),
                     booking.eventId,
                     booking.startUtc,
                     booking.endUtc,
                     attendeeEmails(booking, owner)
-            );
+            ));
         }
     }
 }

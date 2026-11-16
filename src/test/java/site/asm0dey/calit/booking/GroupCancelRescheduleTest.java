@@ -30,9 +30,14 @@ class GroupCancelRescheduleTest {
     private static final ZoneId AMS = ZoneId.of("Europe/Amsterdam");
     // CDI observer counting fired BookingRescheduled events (same pattern as BookServiceTest).
     static final AtomicInteger RESCHEDULED = new AtomicInteger();
+    static final AtomicInteger CANCELLED = new AtomicInteger();
 
     void onRescheduled(@Observes BookingRescheduled e) {
         RESCHEDULED.incrementAndGet();
+    }
+
+    void onCancelled(@Observes site.asm0dey.calit.booking.events.BookingCancelled e) {
+        CANCELLED.incrementAndGet();
     }
 
     private Instant nextMonday(int hour) {
@@ -123,6 +128,41 @@ class GroupCancelRescheduleTest {
         assertThat(Booking.<Booking>leadOfGroup(lead.groupId, 1L).eventId).isNull();
     }
 
+    @Test
+    @TestTransaction
+    void cancellingViaCohostTokenAfterLeadCancelIsNoOp() {
+        // #310: the group is already cancelled through the lead's token; the Co-host's link must not cancel it again
+        stubOrganizerOnCreator();
+        groupType(false);
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday(10),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
+        Booking cohostRow =
+                Booking
+            .<Booking>group(lead.groupId)
+            .stream()
+            .filter(r -> !r.ownerId.equals(1L))
+            .findFirst()
+            .orElseThrow();
+        int before = CANCELLED.get();
+
+        bookingService.cancel(lead.manageToken, true);
+        bookingService.cancel(cohostRow.manageToken, true);
+
+        assertThat(CANCELLED.get() - before).isEqualTo(1);
+        verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), anyString());
+    }
+
     // --- (a2) final-review fix: cancelling a CONFIRMED group whose organizer has since disconnected
     // Google must still succeed (all rows -> CANCELLED, local event refs cleared) without attempting
     // the remote deleteEvent call, mirroring cancelSingle's isConnected guard ---
@@ -199,6 +239,7 @@ class GroupCancelRescheduleTest {
 
         Booking.<Booking>group(lead.groupId).forEach(r -> {
             assertThat(r.status).isEqualTo(BookingStatus.PENDING);
+            assertThat(r.pendingSince).as("#309: the hold restarts at the re-request").isNotNull();
             assertThat(r.eventId).isNull();
             assertThat(r.meetLink).isNull();
         });
@@ -250,6 +291,7 @@ class GroupCancelRescheduleTest {
                 assertThat(r.status).as("initiating host's row stays confirmed").isEqualTo(BookingStatus.CONFIRMED);
             } else {
                 assertThat(r.status).as("other hosts revert to pending").isEqualTo(BookingStatus.PENDING);
+                assertThat(r.pendingSince).as("#309: the hold restarts at the re-request").isNotNull();
             }
         }
         verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), anyString());

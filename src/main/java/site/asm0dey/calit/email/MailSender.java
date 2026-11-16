@@ -21,7 +21,7 @@ public class MailSender {
      * ponytail: the only attachment calit sends. Generalize if a second type ever appears.
      */
     private static final String ICS_FILENAME = "invite.ics";
-    private static final String ICS_CONTENT_TYPE = "text/calendar; charset=UTF-8; method=REQUEST";
+    private static final Pattern ICS_METHOD = Pattern.compile("(?m)^METHOD:([A-Z-]+)");
     final Mailer mailer;
 
     @Inject
@@ -44,9 +44,18 @@ public class MailSender {
             mail.setFrom(fromName + " <" + mailFrom + ">");
         }
         if (ics != null) {
-            mail.addAttachment(ICS_FILENAME, ics, ICS_CONTENT_TYPE);
+            mail.addAttachment(ICS_FILENAME, ics, icsContentType(ics));
         }
         mailer.send(mail);
+    }
+
+    /**
+     * RFC 6047 2.4: the MIME {@code method} parameter must match the calendar's METHOD, or a client may treat a CANCEL
+     * as an invite.
+     */
+    static String icsContentType(byte[] ics) {
+        var m = ICS_METHOD.matcher(new String(ics, StandardCharsets.UTF_8));
+        return m.find() ? "text/calendar; charset=UTF-8; method=" + m.group(1) : "text/calendar; charset=UTF-8";
     }
 
     /**

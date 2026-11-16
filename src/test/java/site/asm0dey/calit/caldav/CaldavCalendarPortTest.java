@@ -2,6 +2,7 @@ package site.asm0dey.calit.caldav;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -20,6 +21,7 @@ import site.asm0dey.calit.calendar.BusyInterval;
 import site.asm0dey.calit.calendar.CaldavAccount;
 import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.CalendarUnavailableException;
+import site.asm0dey.calit.calendar.EventGoneException;
 import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
@@ -207,6 +209,41 @@ class CaldavCalendarPortTest {
     }
 
     @Test
+    void rescheduleOfAHandDeletedEventCommitsTheMoveAndRecreatesTheEvent() {
+        // #283 through the real port bean and its @Transactional interceptor, committed: the gone event must not
+        // doom the caller's transaction
+        var slug = "caldav-gone-" + UUID.randomUUID();
+        QuarkusTransaction.requiringNew().run(() -> {
+            var t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "CalDAV call";
+            t.slug = slug;
+            t.durationMinutes = 30;
+            t.minNoticeMinutes = 0;
+            t.horizonDays = 50_000;
+            t.locationType = MeetingType.LocationType.PHONE;
+            t.persist();
+            var r = new AvailabilityRule();
+            r.ownerId = 1L;
+            r.dayOfWeek = DAY.getDayOfWeek();
+            r.startTime = LocalTime.of(9, 0);
+            r.endTime = LocalTime.of(12, 0);
+            r.persist();
+        });
+        Booking b = bookingService.book(1L, slug, T10, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        port.deleteEvent(1L, new CalendarRef(accountId, calendarHref), b.eventId);
+
+        bookingService.reschedule(b.manageToken, T11, null, true);
+
+        Booking moved = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(b.id));
+        assertThat(moved.startUtc).isEqualTo(T11);
+        assertThat(moved.eventId).isNotNull();
+        assertThat(fetch(moved.eventId)).contains("BEGIN:VEVENT");
+    }
+
+    @Test
     void wrongPasswordFailsClosedAndFlagsReconnect() {
         QuarkusTransaction
             .requiringNew()
@@ -280,6 +317,31 @@ class CaldavCalendarPortTest {
         seedBooking(uid, 2);
 
         assertThat(fetch(create(uid, T10, T1030))).contains("SEQUENCE:2");
+    }
+
+    @Test
+    void updatingAStoredEventDeletedByHandReportsItGone() {
+        // #283: the stored address proves the event is missing, so the caller recreates it
+        var uid = UUID.randomUUID().toString();
+        seedBooking(uid, 0);
+        var eventId = create(uid, T10, T1030);
+        port.deleteEvent(1L, null, eventId);
+        var stored = new CalendarRef(accountId, calendarHref);
+
+        assertThatThrownBy(() -> port.updateEvent(1L, stored, eventId, T11, T1130, null))
+            .isInstanceOf(EventGoneException.class);
+        assertThatThrownBy(() -> port.updateEventDetails(1L, stored, eventId, "T", "D", null))
+            .isInstanceOf(EventGoneException.class);
+    }
+
+    @Test
+    void updatingAMissingEventThroughTheFallbackIsSwallowed() {
+        var uid = UUID.randomUUID().toString();
+        seedBooking(uid, 0);
+        var eventId = create(uid, T10, T1030);
+        port.deleteEvent(1L, null, eventId);
+
+        assertThatCode(() -> port.updateEvent(1L, null, eventId, T11, T1130, null)).doesNotThrowAnyException();
     }
 
     @Test

@@ -154,4 +154,49 @@ class InviteeIcsMethodTest {
 
         assertThat(new String(bytes, StandardCharsets.UTF_8)).contains("METHOD:REQUEST", "SEQUENCE:3");
     }
+
+    @Test
+    void downloadOfCancelledBookingIsCancel() {
+        // #325: a REQUEST at the CANCEL's SEQUENCE would resurrect the event when imported
+        long id = seed(BookingStatus.CANCELLED, 2);
+
+        var ics = new String(emailService.inviteeIcs(id).orElseThrow(), StandardCharsets.UTF_8);
+
+        assertThat(ics).contains("METHOD:CANCEL", "SEQUENCE:2").doesNotContain("METHOD:REQUEST");
+    }
+
+    @Test
+    void downloadOfDeclinedBookingIsCancel() {
+        long id = seed(BookingStatus.DECLINED, 0);
+
+        var ics = new String(emailService.inviteeIcs(id).orElseThrow(), StandardCharsets.UTF_8);
+
+        assertThat(ics).contains("METHOD:CANCEL").doesNotContain("METHOD:REQUEST");
+    }
+
+    private String attachmentType(String to) {
+        List<Mail> mails = mailbox.getMailsSentTo(to);
+        assertThat(mails).hasSize(1);
+        return mails.getFirst().getAttachments().getFirst().getContentType();
+    }
+
+    @Test
+    void cancellationAttachmentDeclaresMethodCancel() {
+        // RFC 6047 2.4: the MIME method parameter must match the METHOD property inside the .ics
+        long id = seed(BookingStatus.CANCELLED, 0);
+
+        emailService.handleCancelled(new BookingCancelled(id, false));
+
+        assertThat(attachmentType(INVITEE_EMAIL)).contains("method=CANCEL").doesNotContain("method=REQUEST");
+        assertThat(attachmentType(OWNER_EMAIL)).contains("method=CANCEL");
+    }
+
+    @Test
+    void rescheduleAttachmentDeclaresMethodRequest() {
+        long id = seed(BookingStatus.CONFIRMED, 1);
+
+        emailService.handleRescheduled(new BookingRescheduled(id, Instant.parse("2026-06-07T09:00:00Z"), false));
+
+        assertThat(attachmentType(INVITEE_EMAIL)).contains("method=REQUEST");
+    }
 }
