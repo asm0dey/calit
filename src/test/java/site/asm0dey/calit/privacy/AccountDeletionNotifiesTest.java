@@ -144,6 +144,7 @@ class AccountDeletionNotifiesTest {
         emailService.sendInvite(
                 id,
                 "parked@example.com",
+                "parked-mail-owner",
                 "https://x/activate",
                 "admin",
                 "https://x",

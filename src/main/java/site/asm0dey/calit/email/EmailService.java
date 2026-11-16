@@ -91,13 +91,18 @@ public class EmailService {
     public void sendInvite(
             Long ownerId,
             String toEmail,
+            String username,
             String activationUrl,
             String inviter,
             String host,
             Instant expiresAt,
             Locale locale
     ) {
-        String body = Templates.invite(locale.getLanguage(), activationUrl, inviter, host).setLocale(locale).render();
+        String body =
+                Templates
+            .invite(locale.getLanguage(), username, activationUrl, inviter, host)
+            .setLocale(locale)
+            .render();
         mailSender.send(
                 null,
                 toEmail,
@@ -312,7 +317,13 @@ public class EmailService {
 
         static native TemplateInstance passwordReset(String lang, String resetUrl);
 
-        static native TemplateInstance invite(String lang, String activationUrl, String inviter, String host);
+        static native TemplateInstance invite(
+                String lang,
+                String username,
+                String activationUrl,
+                String inviter,
+                String host
+        );
 
         static native TemplateInstance calendarDisconnected(
                 String lang,

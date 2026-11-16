@@ -35,9 +35,9 @@
     <div class="alert alert-error mb-2"><span>{error}</span></div>
     {/if}
     <label class="label" for="username">{msg:auth_signup_username_label}</label>
-    <input id="username" class="input w-full" type="text" name="username" required autofocus>
+    <input id="username" class="input w-full" type="text" name="username" required autofocus autocomplete="username">
     <label class="label" for="password">{msg:auth_signup_password_label}</label>
-    <input id="password" class="input w-full" type="password" name="password" required>
+    <input id="password" class="input w-full" type="password" name="password" required autocomplete="new-password">
     <button type="submit" class="btn btn-primary mt-3">{msg:auth_signup_submit}</button>
     <a href="/login" class="link link-hover text-sm mt-2">{msg:auth_signup_login_link}</a>
   </form>

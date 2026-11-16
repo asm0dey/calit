@@ -4,6 +4,7 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -21,6 +22,8 @@ class UsersResourceTest {
     private static final PasswordHasher HASHER = new PasswordHasher();
     @Inject
     EntityManager em;
+    @Inject
+    MockMailbox mailbox;
 
     /**
      * Reload a user straight from the DB, bypassing the test thread's first-level cache. The
@@ -48,6 +51,7 @@ class UsersResourceTest {
     @Test
     @TestSecurity(user = "admin", roles = {"user", "admin"})
     void createUserSendsInviteAndStoresEmail() {
+        mailbox.clear();
         given()
             .contentType("application/x-www-form-urlencoded")
             .formParam("username", "bob")
@@ -69,6 +73,18 @@ class UsersResourceTest {
         assertThat(s).as("settings row pre-created so the wizard can pre-fill the email").isNotNull();
         assertThat(s.ownerEmail).isEqualTo("bob@example.com");
         assertThat(PasswordResetToken.count("userId", bob.id)).as("exactly one activation token minted").isOne();
+
+        var html = mailbox.getMailsSentTo("bob@example.com").getFirst().getHtml();
+        assertThat(html).as("invite names the account").contains("Your username: bob");
+        var token = html.replaceAll("(?s).*/reset-password\\?token=([A-Za-z0-9_-]+).*", "$1");
+        // The set-password page shows the username where password managers pick it up.
+        given()
+            .when()
+            .get("/reset-password?token=" + token)
+            .then()
+            .statusCode(200)
+            .body(containsString("value=\"bob\" readonly autocomplete=\"username\""))
+            .body(containsString("autocomplete=\"new-password\""));
     }
 
     @Test

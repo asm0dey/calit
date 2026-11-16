@@ -1087,6 +1087,9 @@ public interface AppMessages {
     @Message("{inviter} invited you to join calit at {host}. Set your password to activate your account.")
     String email_invite_body(String inviter, String host);
 
+    @Message("Your username: {username}")
+    String email_invite_username(String username);
+
     @Message("Activate your account")
     String email_invite_btn();
 
