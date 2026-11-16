@@ -36,6 +36,8 @@ concurrency:
 jobs:
   declaration:
     name: Contribution declaration
+    # Dependency bots (Renovate) write no declaration. A job skipped here still satisfies a required check.
+    if: github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     steps:
       # Checks out the base repository (the default ref for
