@@ -1643,6 +1643,10 @@ public class BookingService {
         if (booking == null || booking.isErased()) {
             throw new NotFoundException("No booking for that token");
         }
+        if (booking.status == BookingStatus.CANCELLED || booking.status == BookingStatus.DECLINED) {
+            // already over: a re-clicked link must not re-cancel or resend the mail (#310)
+            return false;
+        }
         boolean deleted = cancelRows(booking, tolerateGoogleFailure);
         Long eventId = booking.groupId == null
                 ? booking.id

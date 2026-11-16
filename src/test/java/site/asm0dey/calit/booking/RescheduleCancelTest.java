@@ -2,13 +2,16 @@ package site.asm0dey.calit.booking;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.*;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.availability.TimeSlot;
+import site.asm0dey.calit.booking.events.BookingCancelled;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
@@ -22,7 +25,13 @@ class RescheduleCancelTest {
     BookingService bookingService;
     @InjectMock
     CalendarPort calendarPort;
+    static final AtomicInteger CANCELLED = new AtomicInteger();
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
+
+    void onCancelled(@Observes BookingCancelled e) {
+        CANCELLED.incrementAndGet();
+    }
+
     private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
     // 09:00 local
     private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant();
@@ -202,6 +211,77 @@ class RescheduleCancelTest {
         assertThat(loaded.startUtc).isEqualTo(SLOT_09);
         assertThat(loaded.icsSequence).as("no-op must not bump the sequence").isEqualTo(beforeSeq);
         verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @TestTransaction
+    void cancellingTwiceFiresOnceAndDeletesOnce() {
+        // #310: a second cancel (a re-clicked manage link) must not re-cancel or resend mail
+        seedSettings();
+        meetingTypeWithMondayWindow("cancel-twice", false);
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-twice", null, "h", null));
+        Booking b = bookingService.book(
+                1L,
+                "cancel-twice",
+                SLOT_09,
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of()
+        );
+        int before = CANCELLED.get();
+
+        bookingService.cancel(b.manageToken);
+        bookingService.cancel(b.manageToken);
+
+        assertThat(CANCELLED.get() - before).isEqualTo(1);
+        verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), eq("evt-twice"));
+        assertThat(Booking.<Booking>findById(b.id).status).isEqualTo(BookingStatus.CANCELLED);
+    }
+
+    @Test
+    @TestTransaction
+    void cancellingADeclinedBookingKeepsItDeclined() {
+        seedSettings();
+        approvalType("cancel-declined");
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        Booking b = bookingService.book(
+                1L,
+                "cancel-declined",
+                SLOT_09,
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of()
+        );
+        Booking.<Booking>findById(b.id).status = BookingStatus.DECLINED;
+        int before = CANCELLED.get();
+
+        assertThatCode(() -> bookingService.cancel(b.manageToken)).doesNotThrowAnyException();
+
+        assertThat(CANCELLED.get()).isEqualTo(before);
+        assertThat(Booking.<Booking>findById(b.id).status).isEqualTo(BookingStatus.DECLINED);
     }
 
     @Test
