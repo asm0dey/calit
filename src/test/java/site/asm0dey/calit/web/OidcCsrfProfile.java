@@ -11,23 +11,28 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 public class OidcCsrfProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-        return Map.of(
-                "quarkus.rest-csrf.enabled",
-                "true",
-                "calit.oidc.enabled",
-                "true",
-                "quarkus.oidc.tenant-enabled",
-                "true",
-                "calit.signup.enabled",
-                "true",
-                "quarkus.oidc.auth-server-url",
-                "${keycloak.url}/realms/quarkus",
-                "quarkus.oidc.client-id",
-                "quarkus-web-app",
-                "quarkus.oidc.credentials.secret",
-                "secret",
-                "quarkus.oidc.application-type",
-                "web-app"
-        );
+        return Map
+            .of(
+                    "quarkus.rest-csrf.enabled",
+                    "true",
+                    "calit.oidc.enabled",
+                    "true",
+                    "quarkus.oidc.tenant-enabled",
+                    "true",
+                    "calit.signup.enabled",
+                    "true",
+                    "quarkus.oidc.auth-server-url",
+                    "${keycloak.url}/realms/quarkus",
+                    "quarkus.oidc.client-id",
+                    "quarkus-web-app",
+                    "quarkus.oidc.credentials.secret",
+                    "secret",
+                    "quarkus.oidc.application-type",
+                    "web-app",
+                    // The tests talk to OidcWiremockTestResource; a Keycloak Dev Services container would
+                    // only add its own boot to this app's.
+                    "quarkus.keycloak.devservices.enabled",
+                    "false"
+            );
     }
 }
