@@ -475,6 +475,27 @@ class BookServiceTest {
             ));
     }
 
+    @Test
+    @TestTransaction
+    void bookingUnknownSlugThrowsNotFound() {
+        seedSettings();
+        Map<String, String> answers = Map.of();
+        List<String> guestEmails = List.of();
+        assertThatExceptionOfType(jakarta.ws.rs.NotFoundException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "no-such-slug",
+                    SLOT_09,
+                    "X",
+                    "x@example.com",
+                    answers,
+                    "tok",
+                    "",
+                    "en",
+                    guestEmails
+            ));
+    }
+
     // --- helpers ---
     private void seedSettings() {
         // Idempotent upsert: a non-@TestTransaction REST test (MeetingTypeResourceTest PUT /api/settings)

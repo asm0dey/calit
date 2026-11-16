@@ -44,4 +44,37 @@ class AuthI18nTest {
             .body(containsString("<html lang=\"en\""))
             .body(containsString("Sign in"));
     }
+
+    @Test
+    void loginPageGermanGoogleNotice() {
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/login?notice=google_signup_disabled")
+            .then()
+            .statusCode(200)
+            .body(containsString("Registrierungen sind deaktiviert"));
+    }
+
+    @Test
+    void loginPageGermanGenericGoogleNotice() {
+        given()
+            .cookie("calit_lang", "de")
+            .when()
+            .get("/login?notice=google")
+            .then()
+            .statusCode(200)
+            .body(containsString("Google-Anmeldung konnte nicht abgeschlossen werden"));
+    }
+
+    @Test
+    void forgotPageRendersEnglishByDefault() {
+        given()
+            .when()
+            .get("/forgot-password")
+            .then()
+            .statusCode(200)
+            .body(containsString("<html lang=\"en\""))
+            .body(containsString("Forgot password"));
+    }
 }
