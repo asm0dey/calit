@@ -1,19 +1,33 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
+import io.quarkus.test.junit.QuarkusMock;
+import org.junit.jupiter.api.BeforeEach;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import site.asm0dey.calit.web.SiteInfo;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.web.IsolatedSettingsProfile;
 
 /**
  * INVITEE_ERASURE=false: the button is replaced by the operator's contact, and the route is gone.
  */
 @QuarkusTest
-@TestProfile(IsolatedSettingsProfile.class)
 class InviteeErasureDisabledTest {
+    @ConfigProperty(name = "app.base-url")
+    String baseUrl;
+
+    @BeforeEach
+    void erasureOffWithContact() {
+        QuarkusMock.installMockForType(new PrivacyConfig(false, Optional.empty()), PrivacyConfig.class);
+        QuarkusMock.installMockForType(
+                new SiteInfo(Optional.empty(), Optional.empty(), Optional.of("privacy@example.com"), baseUrl),
+                SiteInfo.class
+        );
+    }
+
     @Test
     void manageHubShowsTheOperatorContactInsteadOfTheButton() {
         String token = ErasureFixtures.seedPastBooking();

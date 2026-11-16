@@ -1,13 +1,14 @@
 package site.asm0dey.calit.scheduler;
 
+import io.quarkus.test.junit.QuarkusMock;
+import org.junit.jupiter.api.BeforeEach;
+import site.asm0dey.calit.privacy.PrivacyConfig;
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.web.IsolatedSettingsProfile;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
@@ -16,14 +17,16 @@ import site.asm0dey.calit.privacy.ErasureFixtures;
 import site.asm0dey.calit.user.AppUser;
 
 /**
- * The instance-default half of {@link RetentionSchedulerTest}, split into its own top-level class
- * because {@code @TestProfile} forces its own Quarkus restart — a {@code @Nested} class sharing
- * the enclosing class's boot would never see this config override, and surefire does not run
- * {@code $}-named nested classes as tests in the first place.
+ * The instance-default half of {@link RetentionSchedulerTest}: a 14-day instance window, swapped in
+ * through {@link PrivacyConfig}.
  */
 @QuarkusTest
-@TestProfile(IsolatedSettingsProfile.class)
 class RetentionSchedulerInstanceDefaultTest {
+    @BeforeEach
+    void fourteenDayInstanceDefault() {
+        QuarkusMock.installMockForType(new PrivacyConfig(true, Optional.of(14)), PrivacyConfig.class);
+    }
+
     @Inject
     RetentionScheduler scheduler;
 
