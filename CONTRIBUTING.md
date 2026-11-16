@@ -93,10 +93,11 @@ land the repair as its own commit and say so in the PR.
 
 ## AI-assisted contributions
 
-Welcome, as long as they're disclosed and done carefully. If an AI agent helps you, install
-[good-oss-citizen](https://tessl.io/registry/tessl-labs/good-oss-citizen) in your fork first
-(`tessl install tessl-labs/good-oss-citizen`; tessl-aware agents pick it up from [`tessl.json`](tessl.json)).
-It runs recon and preflight before the PR and writes the disclosure. Every PR description needs either an
+Welcome, as long as they're disclosed and done carefully. If an AI agent helps you, it must go through
+[good-oss-citizen](https://github.com/tesslio/good-oss-citizen), which runs recon and preflight before
+the PR and writes the disclosure. With tessl, `tessl install` picks it up from [`tessl.json`](tessl.json).
+Without tessl, `mise run setup` installs its skills for your agent from `skills-lock.json`, and
+[`AGENTS.md`](AGENTS.md) tells the agent how to use them. Every PR description needs either an
 **AI Disclosure** section or the checked "written without AI assistance" box from the PR template; the
 `Contribution declaration` check fails without one.
 
