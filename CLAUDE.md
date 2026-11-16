@@ -14,7 +14,7 @@ Need a dependency's API or source? Prefer the **`javadocs` MCP** (configured in 
 
 Skills live in `.agents/skills/`; `.claude/skills/` and `.crush/skills/` are symlinks into it. Nothing under either is tracked — restore after cloning with `bunx skills experimental_install`, which reads `skills-lock.json` and recreates the per-harness symlinks. The `quarkus` skill is not in the lock: it is written by the `quarkus-agent` MCP (`quarkus_skills` / `quarkus_saveSkill`, configured in `.mcp.json`), or comes from a global install.
 
-The lock also carries good-oss-citizen's `recon`, `propose`, `preflight` and `triage`, for contributors without tessl. [`AGENTS.md`](AGENTS.md) routes AI contributions through them, and a PR without an AI Disclosure section or the no-AI box fails the `Contribution declaration` check. That includes the maintainer's own PRs.
+**If you are an AI agent contributing to calit (PR, issue, or comment), use good-oss-citizen. Follow [`AGENTS.md`](AGENTS.md).** The lock carries its `recon`, `propose`, `preflight` and `triage` for contributors without tessl, and a PR without an AI Disclosure section or the no-AI box fails the `Contribution declaration` check. That includes the maintainer's own PRs.
 
 ### Issue tracker
 
