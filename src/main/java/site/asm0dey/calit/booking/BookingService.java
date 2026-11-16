@@ -788,7 +788,7 @@ public class BookingService {
     private void patchMirror(Booking row, MeetingType type, Runnable patch) {
         try {
             patch.run();
-        } catch (EventGoneException e) {
+        } catch (EventGoneException _) {
             Log.infof("Mirror event %s of booking %d is gone; recreating it", row.eventId, row.id);
             row.eventId = null;
             row.meetLink = null;

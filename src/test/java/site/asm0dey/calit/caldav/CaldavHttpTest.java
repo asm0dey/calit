@@ -15,20 +15,20 @@ import org.junit.jupiter.api.Test;
 class CaldavHttpTest {
     HttpServer server;
     final List<String> seen = new CopyOnWriteArrayList<>();
+    final CountDownLatch stopped = new CountDownLatch(1);
 
     @BeforeEach
     void start() throws IOException {
         server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
-        // the drip handler blocks; keep it off the dispatcher thread so stop() and other contexts still run
+        // the stalling handler blocks; keep it off the dispatcher thread so stop() and other contexts still run
         server.setExecutor(Executors.newCachedThreadPool());
-        server.createContext("/drip", x -> {
+        server.createContext("/stall", x -> {
             x.sendResponseHeaders(200, 0);
             try (var out = x.getResponseBody()) {
-                for (int i = 0; i < 100; i++) {
-                    out.write('x');
-                    out.flush();
-                    Thread.sleep(100);
-                }
+                // a body that starts and then never ends, until the test is over
+                out.write('x');
+                out.flush();
+                stopped.await(10, TimeUnit.SECONDS);
             } catch (IOException _) {
                 // client hung up at its deadline, as intended
             } catch (InterruptedException _) {
@@ -73,6 +73,7 @@ class CaldavHttpTest {
 
     @AfterEach
     void stop() {
+        stopped.countDown();
         server.stop(0);
     }
 
@@ -141,11 +142,11 @@ class CaldavHttpTest {
     }
 
     @Test
-    void slowDripBodyFailsWithinTheTimeout() {
-        // timeout() is 2 s; the server would take ~10 s to finish the body
+    void stalledBodyFailsWithinTheTimeout() {
+        // timeout() is 2 s; the server never finishes the body
         var http = new CaldavHttp(config(true));
         long t0 = System.nanoTime();
-        assertThatThrownBy(() -> http.send("u", "p", "GET", url("/drip"), Map.of(), null))
+        assertThatThrownBy(() -> http.send("u", "p", "GET", url("/stall"), Map.of(), null))
             .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
                 .isEqualTo(CaldavException.Reason.UNREACHABLE));
         assertThat(Duration.ofNanos(System.nanoTime() - t0)).isLessThan(Duration.ofSeconds(4));

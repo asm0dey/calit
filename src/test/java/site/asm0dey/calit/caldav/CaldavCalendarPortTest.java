@@ -1,9 +1,8 @@
 package site.asm0dey.calit.caldav;
 
 import module java.base;
-import site.asm0dey.calit.calendar.EventGoneException;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -22,6 +21,7 @@ import site.asm0dey.calit.calendar.BusyInterval;
 import site.asm0dey.calit.calendar.CaldavAccount;
 import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.CalendarUnavailableException;
+import site.asm0dey.calit.calendar.EventGoneException;
 import site.asm0dey.calit.calendar.SelectedCalendar;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
