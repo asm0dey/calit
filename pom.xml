@@ -38,14 +38,14 @@
     <sonar.projectKey>asm0dey_calit</sonar.projectKey>
     <!-- Coverage from quarkus-jacoco (default report dir target/jacoco-report). -->
     <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/jacoco-report/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+    <!-- Vendored from tesslio/good-oss-citizen's install-gate: fix its findings upstream, not in our copy. -->
+    <sonar.exclusions>.github/scripts/**</sonar.exclusions>
     <!-- Duplication in the email layer is inherent to the type-safe @CheckedTemplate design, not
          copy/paste to refactor away (flat params were chosen over a view record on purpose — see
          docs/superpowers/specs/2026-07-02-typed-email-templates-design.md): each template redeclares
          the {@...} vars it uses (Qute has no cross-template decl sharing) and EmailService's
          per-event render methods/call-sites mirror those same param sets 1:1. Exclude both from
          duplication detection only; every other rule still applies. -->
-    <!-- Vendored from tesslio/good-oss-citizen's install-gate; tracked and fixed upstream, not here. -->
-    <sonar.exclusions>.github/scripts/**</sonar.exclusions>
     <sonar.cpd.exclusions>**/templates/email/*.html,**/email/EmailService.java</sonar.cpd.exclusions>
     <sonar.issue.ignore.multicriteria>e1,e2,e3,e4,e5</sonar.issue.ignore.multicriteria>
     <!-- e1: Flyway migrations are PostgreSQL, but Sonar analyses .sql with its Oracle PL/SQL engine
