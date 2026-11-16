@@ -339,3 +339,23 @@ git commit -m "docs(claude): swap config beans instead of adding test profiles (
 ```
 
 PR body: before/after wall time and overhead tables, what Task 7 found, `Closes #345`, a show-me diagram (see memory), AI disclosure.
+
+---
+
+### Task 9: Postgres from a reusable Testcontainers resource, not Dev Services (added during execution)
+
+Found in Task 8: the Dev Services container's `org.testcontainers.hash` is stable across runs, but Quarkus stops the container at shutdown despite `quarkus.datasource.devservices.reuse=true`. Testcontainers reuses only a *running* container, so every run, and every `@TestProfile` app, creates a new one (4.5–8 s each).
+
+**Files:**
+- Create: `src/test/java/site/asm0dey/calit/test/PostgresResource.java`
+- Modify: `src/test/resources/application.properties` (replace the Dev Services reuse block)
+- Modify: `CLAUDE.md` (Tests section: the reuse paragraph)
+
+**Interfaces:**
+- Produces: `public class PostgresResource implements QuarkusTestResourceLifecycleManager`, annotated `@WithTestResource(value = PostgresResource.class, scope = TestResourceScope.GLOBAL)`. `start()` returns `quarkus.datasource.jdbc.url`, `quarkus.datasource.username`, `quarkus.datasource.password`. `stop()` does nothing.
+
+- [ ] **Step 1:** `GenericContainer<>("postgres:18")` with `withReuse(true)`, fixed `POSTGRES_DB/USER/PASSWORD`, `postgres -c fsync=off`, and a wait for the second "ready to accept connections" log line. Held in a static field so restarts in one JVM reuse it. `stop()` is a no-op: with `testcontainers.reuse.enable=true` the container outlives the run, and without it Ryuk removes it at JVM exit.
+- [ ] **Step 2:** `%test.quarkus.datasource.devservices.enabled=false` replaces `quarkus.datasource.devservices.reuse=true`. Keep `clean-at-start`.
+- [ ] **Step 3:** Run `./mvnw test -Dtest='HealthResourceTest,OidcBridgeFlowTest,CaldavClientTest'` twice. Expected: green both times. The second run's log has no `Creating container for image: postgres:18`.
+- [ ] **Step 4:** Run `./mvnw clean test`. Expected: green, and wall time below Task 8's 202 s.
+- [ ] **Step 5:** Run `./mvnw verify -DskipTests=false -Dtest=none -Dsurefire.failIfNoSpecifiedTests=false` so the two `*IT` classes run against the global resource. Expected: green.
