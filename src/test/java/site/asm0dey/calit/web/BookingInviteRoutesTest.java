@@ -454,33 +454,36 @@ class BookingInviteRoutesTest {
 
     private Long seed(String slug) {
         when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        return QuarkusTransaction.requiringNew().call(() -> {
-            var s = OwnerSettings.forOwner(1L);
-            if (s == null) {
-                s = new OwnerSettings();
-                s.ownerId = 1L;
-            }
-            s.ownerName = "Owner";
-            s.ownerEmail = "owner@example.com";
-            s.timezone = "Europe/Amsterdam";
-            s.persist();
+        return QuarkusTransaction
+            .requiringNew()
+            .call(() -> {
+                var s = OwnerSettings.forOwner(1L);
+                if (s == null) {
+                    s = new OwnerSettings();
+                    s.ownerId = 1L;
+                }
+                s.ownerName = "Owner";
+                s.ownerEmail = "owner@example.com";
+                s.timezone = "Europe/Amsterdam";
+                s.persist();
 
-            var t = new MeetingType();
-            t.ownerId = 1L;
-            t.name = "Invite Type";
-            t.slug = slug;
-            t.durationMinutes = 60;
-            t.minNoticeMinutes = 0;
-            t.horizonDays = 50_000;
-            t.persist();
-            var r = new AvailabilityRule();
-            r.ownerId = 1L;
-            r.dayOfWeek = DAY.getDayOfWeek();
-            r.startTime = LocalTime.of(9, 0);
-            r.endTime = LocalTime.of(11, 0);
-            r.meetingTypeId = null;
-            r.persist();
-            return t.id;
-        });
+                var t = new MeetingType();
+                t.ownerId = 1L;
+                t.name = "Invite Type";
+                t.slug = slug;
+                t.durationMinutes = 60;
+                t.minNoticeMinutes = 0;
+                // Covers DAY (7 days out) with margin; a huge horizon made every render compute years of slots.
+                t.horizonDays = 14;
+                t.persist();
+                var r = new AvailabilityRule();
+                r.ownerId = 1L;
+                r.dayOfWeek = DAY.getDayOfWeek();
+                r.startTime = LocalTime.of(9, 0);
+                r.endTime = LocalTime.of(11, 0);
+                r.meetingTypeId = null;
+                r.persist();
+                return t.id;
+            });
     }
 }
