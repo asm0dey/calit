@@ -209,6 +209,41 @@ class CaldavCalendarPortTest {
     }
 
     @Test
+    void rescheduleOfAHandDeletedEventCommitsTheMoveAndRecreatesTheEvent() {
+        // #283 through the real port bean and its @Transactional interceptor, committed: the gone event must not
+        // doom the caller's transaction
+        var slug = "caldav-gone-" + UUID.randomUUID();
+        QuarkusTransaction.requiringNew().run(() -> {
+            var t = new MeetingType();
+            t.ownerId = 1L;
+            t.name = "CalDAV call";
+            t.slug = slug;
+            t.durationMinutes = 30;
+            t.minNoticeMinutes = 0;
+            t.horizonDays = 50_000;
+            t.locationType = MeetingType.LocationType.PHONE;
+            t.persist();
+            var r = new AvailabilityRule();
+            r.ownerId = 1L;
+            r.dayOfWeek = DAY.getDayOfWeek();
+            r.startTime = LocalTime.of(9, 0);
+            r.endTime = LocalTime.of(12, 0);
+            r.persist();
+        });
+        Booking b = bookingService.book(1L, slug, T10, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        port.deleteEvent(1L, new CalendarRef(accountId, calendarHref), b.eventId);
+
+        bookingService.reschedule(b.manageToken, T11, null, true);
+
+        Booking moved = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(b.id));
+        assertThat(moved.startUtc).isEqualTo(T11);
+        assertThat(moved.eventId).isNotNull();
+        assertThat(fetch(moved.eventId)).contains("BEGIN:VEVENT");
+    }
+
+    @Test
     void wrongPasswordFailsClosedAndFlagsReconnect() {
         QuarkusTransaction
             .requiringNew()

@@ -114,7 +114,8 @@ public class CaldavCalendarPort implements ProviderCalendarPort {
     }
 
     @Override
-    @Transactional
+    // reported, not failed: the caller recreates the event inside the same transaction (#283)
+    @Transactional(dontRollbackOn = EventGoneException.class)
     public void updateEvent(
             Long ownerId,
             CalendarRef ref,
@@ -133,7 +134,8 @@ public class CaldavCalendarPort implements ProviderCalendarPort {
     }
 
     @Override
-    @Transactional
+    // reported, not failed: the caller recreates the event inside the same transaction (#283)
+    @Transactional(dontRollbackOn = EventGoneException.class)
     public void updateEventDetails(
             Long ownerId,
             CalendarRef ref,
