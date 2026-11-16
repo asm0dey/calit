@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.smallrye.mutiny.Multi;
-import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.WithTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -29,7 +29,7 @@ import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.EmailService;
 
 @QuarkusTest
-@QuarkusTestResource(value = RadicaleResource.class, restrictToAnnotatedClass = true)
+@WithTestResource(RadicaleResource.class)
 class CaldavCalendarPortTest {
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
     private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
