@@ -1,0 +1,8 @@
+{
+  "name": "calit",
+  "dependencies": {
+    "tessl-labs/good-oss-citizen": {
+      "version": "1.1.12"
+    }
+  }
+}

@@ -1,11 +1,39 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "daisyui": {
       "source": "saadeghi/daisyui",
       "sourceType": "github",
       "skillPath": "skills/daisyui/SKILL.md",
       "computedHash": "f70b06883160802b5b04db0504647cc140bd38cf7eb941183a38f44a179b27ca"
+    },
+    "preflight": {
+      "source": "tesslio/good-oss-citizen",
+      "commit": "f21fda887815af815979a4fea43a66eb5174ee3e",
+      "sourceType": "github",
+      "skillPath": "plugins/good-oss-citizen/skills/preflight/SKILL.md",
+      "computedHash": "29be3074835bc676ee32f4013b60faff282eb8125a1cf59cdd72b5ae402f8a9d"
+    },
+    "propose": {
+      "source": "tesslio/good-oss-citizen",
+      "commit": "f21fda887815af815979a4fea43a66eb5174ee3e",
+      "sourceType": "github",
+      "skillPath": "plugins/good-oss-citizen/skills/propose/SKILL.md",
+      "computedHash": "342a37e4335ee437bfaba1ca38e07a00a64207a47951d7ed70e7897875b0507b"
+    },
+    "recon": {
+      "source": "tesslio/good-oss-citizen",
+      "commit": "f21fda887815af815979a4fea43a66eb5174ee3e",
+      "sourceType": "github",
+      "skillPath": "plugins/good-oss-citizen/skills/recon/SKILL.md",
+      "computedHash": "82029c72a63176cb8d7dda6ef98021b01f5acca474c89f55e31ce7de525ac6e6"
+    },
+    "triage": {
+      "source": "tesslio/good-oss-citizen",
+      "commit": "f21fda887815af815979a4fea43a66eb5174ee3e",
+      "sourceType": "github",
+      "skillPath": "plugins/good-oss-citizen/skills/triage/SKILL.md",
+      "computedHash": "28668f5ea01a9c7c1e99545da3b52c6a4dc26295609b1bf09e197b2ae0777c73"
     }
   }
 }

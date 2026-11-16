@@ -38,6 +38,8 @@
     <sonar.projectKey>asm0dey_calit</sonar.projectKey>
     <!-- Coverage from quarkus-jacoco (default report dir target/jacoco-report). -->
     <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/jacoco-report/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+    <!-- Vendored from tesslio/good-oss-citizen's install-gate: fix its findings upstream, not in our copy. -->
+    <sonar.exclusions>.github/scripts/**</sonar.exclusions>
     <!-- Duplication in the email layer is inherent to the type-safe @CheckedTemplate design, not
          copy/paste to refactor away (flat params were chosen over a view record on purpose — see
          docs/superpowers/specs/2026-07-02-typed-email-templates-design.md): each template redeclares
