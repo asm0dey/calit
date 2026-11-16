@@ -7,6 +7,7 @@ import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.user.SignupConfig;
 import site.asm0dey.calit.user.Usernames;
 
 /**
@@ -26,7 +27,7 @@ import site.asm0dey.calit.user.Usernames;
  */
 @ApplicationScoped
 public class OidcSignInService {
-    final boolean signupEnabled;
+    final SignupConfig signup;
     /**
      * OIDC group whose members get admin, or absent/blank to disable OIDC-driven admin entirely.
      * Optional<String>, not a required String: an unset OIDC_ADMIN_GROUP resolves to an empty
@@ -37,10 +38,10 @@ public class OidcSignInService {
 
     @Inject
     public OidcSignInService(
-            @ConfigProperty(name = "calit.signup.enabled", defaultValue = "false") boolean signupEnabled,
+            SignupConfig signup,
             @ConfigProperty(name = "calit.oidc.admin-group") Optional<String> adminGroup
     ) {
-        this.signupEnabled = signupEnabled;
+        this.signup = signup;
         this.adminGroup = adminGroup;
     }
 
@@ -68,7 +69,7 @@ public class OidcSignInService {
             }
         }
 
-        if (!signupEnabled) {
+        if (!signup.enabled()) {
             throw new OidcSignInException(OidcSignInException.Reason.SIGNUP_DISABLED);
         }
         return provision(identity, grantsAdmin);

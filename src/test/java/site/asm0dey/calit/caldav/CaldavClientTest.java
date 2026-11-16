@@ -4,7 +4,7 @@ import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.WithTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -13,7 +13,7 @@ import site.asm0dey.calit.calendar.CaldavAccount;
 import site.asm0dey.calit.calendar.CalendarListPort.RemoteCalendar;
 
 @QuarkusTest
-@QuarkusTestResource(value = RadicaleResource.class, restrictToAnnotatedClass = true)
+@WithTestResource(RadicaleResource.class)
 class CaldavClientTest {
     @Inject
     CaldavClient client;

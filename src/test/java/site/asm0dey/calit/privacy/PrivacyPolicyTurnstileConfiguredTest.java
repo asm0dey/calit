@@ -1,21 +1,29 @@
 package site.asm0dey.calit.privacy;
 
+import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.booking.CaptchaProviderConfig;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
-import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.web.IsolatedSettingsProfile;
+import static org.mockito.Mockito.when;
 
 /**
  * When Cloudflare Turnstile is the effective CAPTCHA provider ({@link
  * site.asm0dey.calit.booking.CaptchaProviderConfig#provider()} resolves to {@code "turnstile"}),
- * the "Data sharing" list must disclose it. Top-level class for the same
- * {@code @TestProfile}-requires-restart reason as its siblings in this package.
+ * the "Data sharing" list must disclose it.
  */
 @QuarkusTest
-@TestProfile(IsolatedSettingsProfile.class)
 class PrivacyPolicyTurnstileConfiguredTest {
+    @InjectMock
+    CaptchaProviderConfig captcha;
+
+    @BeforeEach
+    void turnstileOn() {
+        when(captcha.provider()).thenReturn("turnstile");
+    }
+
     @Test
     void turnstileBulletRendersWhenTurnstileIsTheEffectiveCaptchaProvider() {
         given()

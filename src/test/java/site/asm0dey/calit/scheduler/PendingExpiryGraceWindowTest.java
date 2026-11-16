@@ -1,27 +1,36 @@
 package site.asm0dey.calit.scheduler;
 
 import module java.base;
-import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.web.CommonFeaturesProfile;
+import site.asm0dey.calit.email.EmailService;
+import site.asm0dey.calit.notify.NotificationDispatcher;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @QuarkusTest
-@TestProfile(CommonFeaturesProfile.class)
 class PendingExpiryGraceWindowTest {
     @Inject
+    EntityManager em;
+    @Inject
+    EmailService emailService;
+    @Inject
+    NotificationDispatcher channels;
+    /**
+     * Built here with a 120 s grace window, so the default app's 30 s needs no test profile.
+     */
     PendingExpiryScheduler scheduler;
 
     @BeforeEach
-    void clearBookings() {
+    void setUp() {
+        scheduler = new PendingExpiryScheduler(em, emailService, channels, 24, 120);
         QuarkusTransaction.requiringNew().run(() -> {
             Booking.deleteAll();
             OwnerSettings s = OwnerSettings.forOwner(1L);

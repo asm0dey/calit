@@ -1,32 +1,35 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
+import io.quarkus.test.junit.QuarkusMock;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.booking.CaptchaProviderConfig;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
-import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.web.IsolatedSettingsProfile;
 
 /**
- * The "Google is not configured" case. A top-level class rather than a nested one: {@code
- * @TestProfile} triggers an in-JVM Quarkus restart, which JUnit only honors for a class it
- * discovers as a top-level (or {@code @Nested}) test class on the classpath — a plain {@code
- * static class} nested inside another top-level test is invisible to surefire's default
- * inclusion pattern and would silently never run.
- *
- * <p>The override value is a single space, not an empty string: {@link
- * site.asm0dey.calit.google.GoogleOAuthConfig} is a {@code @ConfigMapping} and rejects an empty
- * resolved value for its required {@code oauth.client-id} property (see the comment on {@code
- * %test.google.oauth.client-id} in {@code application.properties}), so the app would fail to boot
- * under this profile with a literal {@code ""}. A single space is non-blank for {@code
- * @ConfigMapping} binding purposes but IS blank under {@link PrivacyFacts}'s {@code
- * String::isBlank} check — the same signal {@code LoginResource} uses to decide Google is
- * unconfigured.
+ * The "Google is not configured" case: {@link PrivacyFacts} is swapped for one built with a blank
+ * client id, the signal {@code LoginResource} also uses to decide Google is unconfigured.
  */
 @QuarkusTest
-@TestProfile(IsolatedSettingsProfile.class)
 class PrivacyPolicyGoogleUnconfiguredTest {
+    @Inject
+    CaptchaProviderConfig captcha;
+    @Inject
+    PrivacyConfig privacyConfig;
+
+    @BeforeEach
+    void googleUnconfigured() {
+        QuarkusMock.installMockForType(
+                new PrivacyFacts(Optional.of(" "), false, Optional.empty(), true, captcha, privacyConfig),
+                PrivacyFacts.class
+        );
+    }
+
     @Test
     void googleSectionsAreAbsentWhenGoogleIsUnconfigured() {
         given()

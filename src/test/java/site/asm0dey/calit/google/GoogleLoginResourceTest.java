@@ -1,23 +1,25 @@
 package site.asm0dey.calit.google;
 
 import module java.base;
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.web.CommonFeaturesProfile;
+import site.asm0dey.calit.user.SignupConfig;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.Mockito.when;
 
 /**
  * End-to-end sign-in: stub the Google network seam, then drive callback -> bridge -> j_security_check
  * and assert a session cookie is minted. Signup enabled so an unknown identity provisions a user.
  */
 @QuarkusTest
-@TestProfile(CommonFeaturesProfile.class)
 class GoogleLoginResourceTest {
+    @InjectMock
+    SignupConfig signup;
     @Inject
     GoogleOAuthConfig oauthConfig;
     @Inject
@@ -40,7 +42,8 @@ class GoogleLoginResourceTest {
     }
 
     @BeforeEach
-    void installStub() {
+    void setUp() {
+        when(signup.enabled()).thenReturn(true);
         QuarkusMock.installMockForType(new StubLoginService(oauthConfig), GoogleLoginService.class);
         QuarkusMock.installMockForType(java.time.Clock.fixed(FIXED, java.time.ZoneOffset.UTC), java.time.Clock.class);
     }

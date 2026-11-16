@@ -42,7 +42,7 @@ mvn quarkus:dev          # dev server at :8080 — Docker MUST be running (Dev S
 mvn package              # production build -> target/quarkus-app/quarkus-run.jar
 ```
 
-- **Docker mandatory** for `quarkus:dev` and test suite: Quarkus Dev Services starts throwaway Postgres container. No embedded/H2 fallback.
+- **Docker mandatory** for `quarkus:dev` and test suite: Dev Services starts a throwaway Postgres for `quarkus:dev`; tests get theirs from `PostgresResource` (below). No embedded/H2 fallback.
 - Fresh DB no users → every request redirects to `/setup` to create first (admin) user. No default password.
 
 ## Tests
@@ -55,13 +55,13 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 
 - Affected-only runs: `./mvnw -Paffected test-order:affected test` (index learned on the first `./mvnw -Paffected test`, stored in git-ignored `.test-order/`). CI and image builds don't load the plugin. The index is learned once and never refreshed (`alwaysLearn` makes every run a full-suite learn run, so it stays off); re-learn it when it predates the branch's merge-base with `origin/main`: `rm -rf .test-order && ./mvnw -Paffected test` (about 4-5 min). A root `pom.xml` change forces a near-full selection.
 
-- Surefire runs **`reuseForks=true`**: ONE reused JVM fork + ONE Dev Services Postgres shared across all same-profile `@QuarkusTest` classes (cold-boot per class took minutes). `@TestProfile` classes trigger in-JVM Quarkus restart. Heap pinned `-Xms512m -Xmx6g`.
-- Dev Services Postgres is **reused between runs** (`quarkus.datasource.devservices.reuse=true` in
-  `src/test/resources/application.properties`) and the reuse hash knows nothing about your branch or
-  worktree — a container parked by a branch with more migrations would otherwise fail the next boot with
+- Surefire runs **`reuseForks=true`**: ONE reused JVM fork shared by all same-profile `@QuarkusTest` classes (cold-boot per class took minutes). Each distinct test app (a `@TestProfile`, or a `@WithTestResource` set) costs an up-front build of about 3.5 s plus an in-JVM restart of about 9 s. Heap pinned `-Xms512m -Xmx6g`.
+- **A test that needs a non-default setting swaps the `@ApplicationScoped` bean that reads it** instead of adding a `@TestProfile`: `@InjectMock` for a bean with one or two methods (`SignupConfig`, `CaptchaProviderConfig`), or `QuarkusMock.installMockForType(new X(...), X.class)` with the test value for a bean with several getters (`SiteInfo`, `PrivacyFacts`, `PrivacyConfig`, `LegalFragments`), so unstubbed getters don't answer `null`. Either lasts one test. Never install a `new` instance of a bean with `@Transactional` methods: that bypasses the interceptor. `@TestProfile` is only for extension wiring fixed at startup (`OidcCsrfProfile`: CSRF, OIDC tenant).
+- **Test Postgres is `site.asm0dey.calit.test.PostgresResource`, not Dev Services** (`%test` has `quarkus.datasource.devservices.enabled=false`). Dev Services stopped its container at shutdown even with `reuse=true`, so every run and every profile app made a new one. `PostgresResource` is a global test resource whose container is never stopped. With `testcontainers.reuse.enable=true` in `~/.testcontainers.properties`, every app and every later run attaches to the same container in well under a second; without it (CI), Ryuk removes the container at JVM exit.
+  The reuse hash knows nothing about your branch or worktree, so a container left by a branch with more migrations would fail the next boot with
   `FlywayValidateException: Detected applied migration not resolved locally: NN`. `quarkus.flyway.clean-at-start=true`
-  (same file) drops and re-migrates the schema on every `%test` boot, so a stale container is harmless.
-  If you ever need a genuinely fresh container, run with `-Dquarkus.datasource.devservices.reuse=false`.
+  (`src/test/resources/application.properties`) drops and re-migrates the schema on every `%test` boot, so a stale container is harmless.
+  For a genuinely fresh container: `docker rm -f $(docker ps -q --filter label=calit.test-db)`.
   The reused container serves one suite run at a time: `clean-at-start` drops the schema at boot, so a
   second concurrent `mvn test` against the same container fails with "relation does not exist". (Not new
   — `DatabaseResetCallback`'s `TRUNCATE … RESTART IDENTITY CASCADE` already made concurrent runs unusable

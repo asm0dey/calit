@@ -1,22 +1,28 @@
 package site.asm0dey.calit.oidc;
 
 import module java.base;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
-import site.asm0dey.calit.web.CommonFeaturesProfile;
+import site.asm0dey.calit.user.SignupConfig;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @QuarkusTest
-@TestProfile(CommonFeaturesProfile.class)
 class OidcSignInServiceTest {
-    @Inject
-    OidcSignInService service;
+    // Built here, not injected: it needs signup on and an admin group, which the default app has off.
+    // The test methods are @Transactional, standing in for the service's own interceptor.
+    final OidcSignInService service = new OidcSignInService(signupOn(), Optional.of("calit-admins"));
+
+    private static SignupConfig signupOn() {
+        SignupConfig c = mock(SignupConfig.class);
+        when(c.enabled()).thenReturn(true);
+        return c;
+    }
 
     private static OidcIdentity id(String sub, String email, boolean verified, String... groups) {
         return new OidcIdentity(sub, email, verified, Set.of(groups));

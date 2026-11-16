@@ -1,7 +1,5 @@
 package site.asm0dey.calit.web;
 
-import module java.base;
-import io.quarkus.logging.Log;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.RawString;
 import io.quarkus.qute.TemplateInstance;
@@ -10,7 +8,6 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.notify.NotificationChannel;
 
 /**
@@ -20,7 +17,7 @@ import site.asm0dey.calit.notify.NotificationChannel;
  * no state mutation, so no CSRF token (mirrors {@code LangResource}).
  *
  * <p>An operator can also replace the entire shipped body with their own HTML fragment via {@code
- * app.privacy-policy-path} / {@code app.terms-path} — see {@link #fragment(Optional)}.
+ * app.privacy-policy-path} / {@code app.terms-path} — see {@link LegalFragments}.
  */
 @Path("/")
 public class LegalResource {
@@ -40,18 +37,12 @@ public class LegalResource {
     }
 
     final OgCards ogCards;
-    final Optional<String> privacyPolicyPath;
-    final Optional<String> termsPath;
+    final LegalFragments fragments;
 
     @Inject
-    public LegalResource(
-            OgCards ogCards,
-            @ConfigProperty(name = "app.privacy-policy-path") Optional<String> privacyPolicyPath,
-            @ConfigProperty(name = "app.terms-path") Optional<String> termsPath
-    ) {
+    public LegalResource(OgCards ogCards, LegalFragments fragments) {
         this.ogCards = ogCards;
-        this.privacyPolicyPath = privacyPolicyPath;
-        this.termsPath = termsPath;
+        this.fragments = fragments;
     }
 
     @GET
@@ -63,7 +54,7 @@ public class LegalResource {
         return Templates.privacy(
                 "Privacy Policy",
                 ogCards.product("/privacy"),
-                fragment(privacyPolicyPath),
+                fragments.privacy(),
                 NotificationChannel.count() > 0
         );
     }
@@ -72,26 +63,6 @@ public class LegalResource {
     @Path("/terms")
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance terms() {
-        return Templates.terms("Terms of Service", ogCards.product("/terms"), fragment(termsPath));
-    }
-
-    /**
-     * The operator's replacement body for a legal page, or null to render the shipped one. Read on
-     * every request rather than cached at startup: an operator editing the file should see the
-     * change without a restart, and these two pages are not hot. An unreadable path — missing file,
-     * or a malformed path string ({@link InvalidPathException}) — logs and falls back to the shipped
-     * copy — a missing file must never take /privacy down, because the Google consent screen links
-     * it. The warning carries the exception's message, not its stack trace: an operator typo in a
-     * config value is not an application error worth a trace dump on every request.
-     */
-    private RawString fragment(Optional<String> path) {
-        return path.filter(p -> !p.isBlank()).map(p -> {
-            try {
-                return new RawString(Files.readString(java.nio.file.Path.of(p)));
-            } catch (IOException | InvalidPathException e) {
-                Log.warnf("Could not read legal fragment %s (%s); serving the shipped copy", p, e.getMessage());
-                return null;
-            }
-        }).orElse(null);
+        return Templates.terms("Terms of Service", ogCards.product("/terms"), fragments.terms());
     }
 }

@@ -1,14 +1,27 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@TestProfile(CommonFeaturesProfile.class)
 class GoogleVerificationMetaTest {
+    @ConfigProperty(name = "app.base-url")
+    String baseUrl;
+
+    @BeforeEach
+    void verificationToken() {
+        QuarkusMock.installMockForType(
+                new SiteInfo(Optional.of("tok_calit_test_123"), Optional.empty(), Optional.empty(), baseUrl),
+                SiteInfo.class
+        );
+    }
+
     @Test
     void publicPageRendersVerificationMetaWhenConfigured() {
         given()
