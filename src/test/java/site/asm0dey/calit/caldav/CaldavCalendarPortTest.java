@@ -1,6 +1,8 @@
 package site.asm0dey.calit.caldav;
 
 import module java.base;
+import site.asm0dey.calit.calendar.EventGoneException;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.quarkus.mailer.MockMailbox;
@@ -280,6 +282,31 @@ class CaldavCalendarPortTest {
         seedBooking(uid, 2);
 
         assertThat(fetch(create(uid, T10, T1030))).contains("SEQUENCE:2");
+    }
+
+    @Test
+    void updatingAStoredEventDeletedByHandReportsItGone() {
+        // #283: the stored address proves the event is missing, so the caller recreates it
+        var uid = UUID.randomUUID().toString();
+        seedBooking(uid, 0);
+        var eventId = create(uid, T10, T1030);
+        port.deleteEvent(1L, null, eventId);
+        var stored = new CalendarRef(accountId, calendarHref);
+
+        assertThatThrownBy(() -> port.updateEvent(1L, stored, eventId, T11, T1130, null))
+            .isInstanceOf(EventGoneException.class);
+        assertThatThrownBy(() -> port.updateEventDetails(1L, stored, eventId, "T", "D", null))
+            .isInstanceOf(EventGoneException.class);
+    }
+
+    @Test
+    void updatingAMissingEventThroughTheFallbackIsSwallowed() {
+        var uid = UUID.randomUUID().toString();
+        seedBooking(uid, 0);
+        var eventId = create(uid, T10, T1030);
+        port.deleteEvent(1L, null, eventId);
+
+        assertThatCode(() -> port.updateEvent(1L, null, eventId, T11, T1130, null)).doesNotThrowAnyException();
     }
 
     @Test

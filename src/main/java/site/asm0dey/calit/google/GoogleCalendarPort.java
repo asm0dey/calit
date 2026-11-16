@@ -273,6 +273,24 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
         try {
             // sendUpdates=all so Google emails attendees the new time and notifies anyone added/removed.
             client(addr.cred()).events().patch(addr.calendarId(), eventId, patch).setSendUpdates("all").execute();
+        } catch (GoogleJsonResponseException e) {
+            if (!gone(e)) {
+                throw new UncheckedIOException("updateEvent failed", e);
+            }
+            if (addr.stored()) {
+                // the booking's own Mirror event was deleted by hand: the caller re-projects it (ADR 0001)
+                throw new EventGoneException(eventId, e);
+            }
+            // the write-target fallback may simply not be where the event lives: recreating could duplicate it
+            org.jboss.logging.Logger
+                .getLogger(GoogleCalendarPort.class)
+                .infof(
+                        "Google event %s not on write-target calendar %s (owner %d, HTTP %d); nothing to updateEvent",
+                        eventId,
+                        addr.calendarId(),
+                        ownerId,
+                        e.getStatusCode()
+                );
         } catch (IOException e) {
             throw new UncheckedIOException("updateEvent failed", e);
         }
@@ -295,6 +313,24 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
         }
         try {
             client(addr.cred()).events().patch(addr.calendarId(), eventId, patch).setSendUpdates("all").execute();
+        } catch (GoogleJsonResponseException e) {
+            if (!gone(e)) {
+                throw new UncheckedIOException("updateEventDetails failed", e);
+            }
+            if (addr.stored()) {
+                // the booking's own Mirror event was deleted by hand: the caller re-projects it (ADR 0001)
+                throw new EventGoneException(eventId, e);
+            }
+            // the write-target fallback may simply not be where the event lives: recreating could duplicate it
+            org.jboss.logging.Logger
+                .getLogger(GoogleCalendarPort.class)
+                .infof(
+                        "Google event %s not on write-target calendar %s (owner %d, HTTP %d); nothing to updateEventDetails",
+                        eventId,
+                        addr.calendarId(),
+                        ownerId,
+                        e.getStatusCode()
+                );
         } catch (IOException e) {
             throw new UncheckedIOException("updateEventDetails failed", e);
         }
@@ -312,7 +348,7 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
             // directly in Google Calendar). The end state we wanted already holds, so deleting is
             // idempotent from the caller's side — let the local cancellation proceed. Every other
             // status still fails loudly.
-            if (e.getStatusCode() != 410 && e.getStatusCode() != 404) {
+            if (!gone(e)) {
                 throw new UncheckedIOException("deleteEvent failed", e);
             }
             org.jboss.logging.Logger
@@ -328,6 +364,13 @@ public class GoogleCalendarPort implements ProviderCalendarPort {
         } catch (IOException e) {
             throw new UncheckedIOException("deleteEvent failed", e);
         }
+    }
+
+    /**
+     * 404 Not Found / 410 Gone: the event no longer exists on Google.
+     */
+    private static boolean gone(GoogleJsonResponseException e) {
+        return e.getStatusCode() == 404 || e.getStatusCode() == 410;
     }
 
     private SelectedCalendar requireWriteTarget(Long ownerId) {

@@ -17,6 +17,7 @@ import net.fortuna.ical4j.model.property.Sequence;
 import net.fortuna.ical4j.model.property.Summary;
 import org.jboss.logging.Logger;
 import site.asm0dey.calit.booking.Booking;
+import site.asm0dey.calit.calendar.EventGoneException;
 import site.asm0dey.calit.calendar.*;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.email.IcsBuilder;
@@ -172,7 +173,11 @@ public class CaldavCalendarPort implements ProviderCalendarPort {
         call(account, () -> {
             var fetched = client.get(account, url);
             if (fetched == null) {
-                // recreating a vanished Mirror event is calit-o69e's job; Google behaves the same today
+                if (ref != null && addr.calendarHref().equals(ref.remoteCalendarId())) {
+                    // the booking's own Mirror event was deleted by hand: the caller re-projects it (ADR 0001)
+                    throw new EventGoneException(eventId, null);
+                }
+                // the write-target fallback may simply not be where the event lives: recreating could duplicate it
                 LOG.warnf("CalDAV event %s on account %d is gone; nothing to update", eventId, account.id);
                 return null;
             }

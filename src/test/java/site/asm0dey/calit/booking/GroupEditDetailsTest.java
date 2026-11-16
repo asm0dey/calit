@@ -461,4 +461,52 @@ class GroupEditDetailsTest {
                     argThat(list -> list.contains("volodya@x.com") && !list.contains("ana@x.com"))
             );
     }
+
+    @Test
+    @io.quarkus.test.TestTransaction
+    void groupDetailsEditOfHandDeletedEventRecreatesOnTheLead() {
+        // #283: the group's shared Mirror event was deleted by hand; the edit re-projects it instead of a 500
+        stubOrganizerOnCreator();
+        GoogleCredential cred = seedCredential("sub-group-gone");
+        CalendarRef ref = new CalendarRef(cred.id, "grp-cal@example.com");
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyList(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(
+                    new CreatedEvent("grp-evt", "meet", "cal", ref),
+                    new CreatedEvent("grp-evt-2", "meet2", "cal", ref)
+            );
+        groupType();
+        Booking lead =
+                bookingService.book(
+                        1L,
+                        "intro",
+                        nextMonday(10),
+                        "Sam",
+                        "sam@x.com",
+                        Map.of(),
+                        "tok",
+                        "",
+                        "en",
+                        List.of()
+        );
+        doThrow(new site.asm0dey.calit.calendar.EventGoneException("grp-evt", null))
+            .when(calendarPort)
+            .updateEventDetails(anyLong(), any(), eq("grp-evt"), any(), any(), anyList());
+
+        bookingService.updateDetails(lead.manageToken, "Roadmap sync", "Q3", List.of(), true);
+
+        verify(calendarPort, times(2))
+            .createEvent(anyLong(), any(), any(), any(), any(), any(), any(), anyList(), anyBoolean(), any());
+        assertThat(Booking.<Booking>leadOfGroup(lead.groupId, 1L).eventId).isEqualTo("grp-evt-2");
+    }
 }

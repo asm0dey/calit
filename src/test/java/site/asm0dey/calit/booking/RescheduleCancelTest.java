@@ -12,6 +12,9 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.booking.events.BookingCancelled;
+import site.asm0dey.calit.booking.events.BookingRescheduled;
+import site.asm0dey.calit.calendar.CalendarRef;
+import site.asm0dey.calit.calendar.EventGoneException;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
@@ -27,9 +30,14 @@ class RescheduleCancelTest {
     CalendarPort calendarPort;
     static final AtomicInteger CANCELLED = new AtomicInteger();
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
+    static final AtomicInteger RESCHEDULED = new AtomicInteger();
 
     void onCancelled(@Observes BookingCancelled e) {
         CANCELLED.incrementAndGet();
+    }
+
+    void onRescheduled(@Observes BookingRescheduled e) {
+        RESCHEDULED.incrementAndGet();
     }
 
     private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
@@ -167,6 +175,97 @@ class RescheduleCancelTest {
         Booking loaded = Booking.findById(b.id);
         assertThat(loaded.status).isEqualTo(BookingStatus.PENDING);
         assertThat(loaded.pendingSince).isAfter(Instant.now().minusSeconds(60));
+    }
+
+    private static final CalendarRef STORED = new CalendarRef(null, "stored@example.com");
+
+    /**
+     * #283: an auto-confirmed booking whose Mirror event ("evt-1") the owner then deleted by hand in their calendar; the
+     * next create returns {@code recreated}.
+     */
+    private Booking handDeletedMirror(String slug, CreatedEvent recreated) {
+        seedSettings();
+        meetingTypeWithMondayWindow(slug, false);
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        when(calendarPort.createEvent(
+                anyLong(),
+                any(),
+                any(),
+                anyString(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                anyBoolean(),
+                any()
+        ))
+            .thenReturn(new CreatedEvent("evt-1", null, "h", STORED), recreated);
+        Booking b =
+                bookingService.book(1L, slug, SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+        doThrow(new EventGoneException("evt-1", null))
+            .when(calendarPort)
+            .updateEvent(anyLong(), any(), eq("evt-1"), any(), any(), any());
+        doThrow(new EventGoneException("evt-1", null))
+            .when(calendarPort)
+            .updateEventDetails(anyLong(), any(), eq("evt-1"), any(), any(), any());
+        return b;
+    }
+
+    private void verifyCreatedTwice() {
+        verify(calendarPort, times(2))
+            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+    }
+
+    @Test
+    @TestTransaction
+    void rescheduleOfHandDeletedEventRecreatesAndRestamps() {
+        Booking b = handDeletedMirror("gone-owner", new CreatedEvent("evt-2", null, "h", STORED));
+        int before = RESCHEDULED.get();
+
+        bookingService.reschedule(b.manageToken, SLOT_10, null, true);
+
+        Booking loaded = Booking.findById(b.id);
+        assertThat(loaded.startUtc).isEqualTo(SLOT_10);
+        assertThat(loaded.eventId).isEqualTo("evt-2");
+        verifyCreatedTwice();
+        assertThat(RESCHEDULED.get() - before).as("the invitee is still told").isEqualTo(1);
+    }
+
+    @Test
+    @TestTransaction
+    void inviteeRescheduleOfHandDeletedEventAlsoRecreates() {
+        Booking b = handDeletedMirror("gone-invitee", new CreatedEvent("evt-2", null, "h", STORED));
+
+        bookingService.reschedule(b.manageToken, SLOT_10);
+
+        assertThat(Booking.<Booking>findById(b.id).eventId).isEqualTo("evt-2");
+        verifyCreatedTwice();
+    }
+
+    @Test
+    @TestTransaction
+    void detailsEditOfHandDeletedEventRecreates() {
+        Booking b = handDeletedMirror("gone-details", new CreatedEvent("evt-2", null, "h", STORED));
+
+        bookingService.updateDetails(b.manageToken, "T", "D", List.of(), true);
+
+        assertThat(Booking.<Booking>findById(b.id).eventId).isEqualTo("evt-2");
+        verifyCreatedTwice();
+    }
+
+    @Test
+    @TestTransaction
+    void recreateWithNoWriteCalendarLeavesNoAddress() {
+        // ADR 0013: no write calendar means no Mirror event, not an error
+        Booking b = handDeletedMirror("gone-nowhere", null);
+
+        assertThatCode(() -> bookingService.reschedule(b.manageToken, SLOT_10, null, true)).doesNotThrowAnyException();
+
+        Booking loaded = Booking.findById(b.id);
+        assertThat(loaded.eventId).isNull();
+        assertThat(loaded.calendarRemoteId).isNull();
+        assertThat(loaded.calendarAccountId).isNull();
     }
 
     @Test
