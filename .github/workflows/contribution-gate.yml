@@ -64,7 +64,7 @@ jobs:
           PY
 
       - name: Post sticky comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           VERDICT: ${{ steps.gate.outputs.verdict }}
           REASONS: ${{ steps.gate.outputs.reasons }}
