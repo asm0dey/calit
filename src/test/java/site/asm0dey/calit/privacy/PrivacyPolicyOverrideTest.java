@@ -1,22 +1,33 @@
 package site.asm0dey.calit.privacy;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.web.CommonFeaturesProfile;
+import org.junit.jupiter.api.io.TempDir;
+import site.asm0dey.calit.web.LegalFragments;
 
 /**
- * The operator fragment-override path ({@code app.privacy-policy-path}). A top-level class, not a
- * nested one: {@code @TestProfile} requires an in-JVM Quarkus restart that JUnit/surefire only
- * wires up for a class it discovers directly — a {@code static class} nested inside another
- * top-level {@code @QuarkusTest} is skipped by surefire's default include pattern and never runs.
+ * The operator fragment-override path ({@code app.privacy-policy-path}), end to end through /privacy.
  */
 @QuarkusTest
-@TestProfile(CommonFeaturesProfile.class)
 class PrivacyPolicyOverrideTest {
+    @TempDir
+    Path dir;
+
+    @BeforeEach
+    void operatorPolicy() throws IOException {
+        var policy = Files.writeString(dir.resolve("policy.html"), "<h1>OPERATOR SUPPLIED POLICY</h1>");
+        QuarkusMock.installMockForType(
+                new LegalFragments(Optional.of(policy.toString()), Optional.empty()),
+                LegalFragments.class
+        );
+    }
+
     @Test
     void theOperatorFragmentReplacesTheShippedBody() {
         given()
