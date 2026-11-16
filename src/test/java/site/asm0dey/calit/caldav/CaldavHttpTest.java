@@ -19,6 +19,22 @@ class CaldavHttpTest {
     @BeforeEach
     void start() throws IOException {
         server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        // the drip handler blocks; keep it off the dispatcher thread so stop() and other contexts still run
+        server.setExecutor(Executors.newCachedThreadPool());
+        server.createContext("/drip", x -> {
+            x.sendResponseHeaders(200, 0);
+            try (var out = x.getResponseBody()) {
+                for (int i = 0; i < 100; i++) {
+                    out.write('x');
+                    out.flush();
+                    Thread.sleep(100);
+                }
+            } catch (IOException _) {
+                // client hung up at its deadline, as intended
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+            }
+        });
         server.createContext("/redirect", x -> {
             seen.add("redirect");
             x.getResponseHeaders().add("Location", "http://10.0.0.5/secret");
@@ -122,6 +138,17 @@ class CaldavHttpTest {
         assertThatThrownBy(() -> http.send("u", "p", "GET", url("/huge"), Map.of(), null))
             .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
                 .isEqualTo(CaldavException.Reason.HTTP_ERROR));
+    }
+
+    @Test
+    void slowDripBodyFailsWithinTheTimeout() {
+        // timeout() is 2 s; the server would take ~10 s to finish the body
+        var http = new CaldavHttp(config(true));
+        long t0 = System.nanoTime();
+        assertThatThrownBy(() -> http.send("u", "p", "GET", url("/drip"), Map.of(), null))
+            .isInstanceOfSatisfying(CaldavException.class, e -> assertThat(e.reason())
+                .isEqualTo(CaldavException.Reason.UNREACHABLE));
+        assertThat(Duration.ofNanos(System.nanoTime() - t0)).isLessThan(Duration.ofSeconds(4));
     }
 
     @Test

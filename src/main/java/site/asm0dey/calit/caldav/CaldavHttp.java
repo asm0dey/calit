@@ -37,8 +37,7 @@ public class CaldavHttp {
             // shortcut: DNS rebinding between check and connect is not prevented, pin the resolved IP via a custom
             // resolver if this instance is multi-tenant and hostile
             uri = HostGuard.checked(uri, config.allowPrivateHosts());
-            var fetched = execute(request(user, password, method, origin, uri, headers, body));
-            var res = fetched.response();
+            var res = execute(request(user, password, method, origin, uri, headers, body));
             int status = res.statusCode();
             var location = res.headers().firstValue("Location");
             if (status >= 300 && status < 400 && location.isPresent()) {
@@ -53,11 +52,9 @@ public class CaldavHttp {
                         null
                 );
             }
-            return new Response(status, res.headers().map(), fetched.text());
+            return new Response(status, res.headers().map(), res.body());
         }
     }
-
-    private record Fetched(HttpResponse<InputStream> response, String text) {}
 
     /**
      * Builds the request for {@code uri}, which must be the value {@link HostGuard#checked} just returned.
@@ -93,16 +90,40 @@ public class CaldavHttp {
         }
     }
 
-    private Fetched execute(HttpRequest request) {
+    /**
+     * Sends and reads the whole response under one deadline: JDK 25's request timeout stops at the headers, so a server
+     * dripping its body would otherwise hold the caller's thread. Bodies over {@link #MAX_BODY} bytes are refused.
+     */
+    private HttpResponse<String> execute(HttpRequest request) {
+        var future = client.sendAsync(
+                request,
+                HttpResponse.BodyHandlers.limiting(HttpResponse.BodyHandlers.ofString(), MAX_BODY)
+        );
         try {
-            var res = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            return new Fetched(res, readCapped(res));
-        } catch (IOException e) {
-            throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "CalDAV server unreachable", e);
+            return future.get(config.timeout().toMillis(), TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "CalDAV server too slow", e);
         } catch (InterruptedException e) {
+            future.cancel(true);
             Thread.currentThread().interrupt();
             throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "Interrupted", e);
+        } catch (ExecutionException e) {
+            throw failure(e.getCause());
         }
+    }
+
+    private static CaldavException failure(Throwable cause) {
+        // shortcut: JDK's LimitingSubscriber signals overflow only by message; oversizedBodyIsRefused pins it, swap for a counting subscriber if a JDK changes it
+        if (cause instanceof IOException io
+                && io.getMessage() != null
+                && io.getMessage().startsWith("body exceeds capacity")) {
+            return new CaldavException(CaldavException.Reason.HTTP_ERROR, 0, "CalDAV response too large", io);
+        }
+        if (cause instanceof IOException io) {
+            return new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "CalDAV server unreachable", io);
+        }
+        return new CaldavException(CaldavException.Reason.HTTP_ERROR, 0, "CalDAV request failed", cause);
     }
 
     /**
@@ -117,40 +138,6 @@ public class CaldavHttp {
         } catch (IllegalArgumentException e) {
             throw new CaldavException(CaldavException.Reason.HTTP_ERROR, status, "Malformed redirect", e);
         }
-    }
-
-    /**
-     * Reads at most {@link #MAX_BODY} bytes; a longer body is abandoned (stream closed) and refused.
-     */
-    private static String readCapped(HttpResponse<InputStream> res) throws IOException {
-        try (var in = res.body()) {
-            var bytes = in.readNBytes(MAX_BODY + 1);
-            if (bytes.length > MAX_BODY) {
-                throw new CaldavException(
-                        CaldavException.Reason.HTTP_ERROR,
-                        res.statusCode(),
-                        "CalDAV response too large",
-                        null
-                );
-            }
-            return new String(bytes, charset(res));
-        }
-    }
-
-    private static Charset charset(HttpResponse<?> res) {
-        return res
-            .headers()
-            .firstValue("Content-Type")
-            .map(ct -> Pattern.compile("charset=\"?([\\w.:-]+)", Pattern.CASE_INSENSITIVE).matcher(ct))
-            .filter(Matcher::find)
-            .map(m -> {
-                try {
-                    return Charset.forName(m.group(1));
-                } catch (IllegalArgumentException _) {
-                    return StandardCharsets.UTF_8;
-                }
-            })
-            .orElse(StandardCharsets.UTF_8);
     }
 
     private static boolean sameOrigin(URI a, URI b) {
