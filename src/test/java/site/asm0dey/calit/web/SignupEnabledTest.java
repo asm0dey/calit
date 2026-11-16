@@ -1,16 +1,26 @@
 package site.asm0dey.calit.web;
 
+import static org.mockito.Mockito.when;
+import io.quarkus.test.InjectMock;
+import org.junit.jupiter.api.BeforeEach;
+import site.asm0dey.calit.user.SignupConfig;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.user.AppUser;
 
 @QuarkusTest
-@TestProfile(CommonFeaturesProfile.class)
 class SignupEnabledTest {
+    @InjectMock
+    SignupConfig signup;
+
+    @BeforeEach
+    void signupOn() {
+        when(signup.enabled()).thenReturn(true);
+    }
+
     @Test
     void getRendersForm() {
         given().when().get("/signup").then().statusCode(200).body(containsString("Sign up"));

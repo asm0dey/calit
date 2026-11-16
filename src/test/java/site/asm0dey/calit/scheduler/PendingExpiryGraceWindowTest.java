@@ -1,10 +1,12 @@
 package site.asm0dey.calit.scheduler;
 
+import jakarta.persistence.EntityManager;
+import site.asm0dey.calit.email.EmailService;
+import site.asm0dey.calit.notify.NotificationDispatcher;
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,13 +14,24 @@ import site.asm0dey.calit.booking.Booking;
 import site.asm0dey.calit.booking.BookingStatus;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.OwnerSettings;
-import site.asm0dey.calit.web.CommonFeaturesProfile;
 
 @QuarkusTest
-@TestProfile(CommonFeaturesProfile.class)
 class PendingExpiryGraceWindowTest {
     @Inject
+    EntityManager em;
+    @Inject
+    EmailService emailService;
+    @Inject
+    NotificationDispatcher channels;
+    /**
+     * Built here with a 120 s grace window, so the default app's 30 s needs no test profile.
+     */
     PendingExpiryScheduler scheduler;
+
+    @BeforeEach
+    void buildScheduler() {
+        scheduler = new PendingExpiryScheduler(em, emailService, channels, 24, 120);
+    }
 
     @BeforeEach
     void clearBookings() {

@@ -1,18 +1,27 @@
 package site.asm0dey.calit.google;
 
+import static org.mockito.Mockito.when;
+import io.quarkus.test.InjectMock;
+import org.junit.jupiter.api.BeforeEach;
+import site.asm0dey.calit.user.SignupConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
-import site.asm0dey.calit.web.CommonFeaturesProfile;
 
 @QuarkusTest
-@TestProfile(CommonFeaturesProfile.class)
 class GoogleSignInProvisionTest {
+    @InjectMock
+    SignupConfig signup;
+
+    @BeforeEach
+    void signupOn() {
+        when(signup.enabled()).thenReturn(true);
+    }
+
     @Inject
     GoogleSignInService signIn;
 

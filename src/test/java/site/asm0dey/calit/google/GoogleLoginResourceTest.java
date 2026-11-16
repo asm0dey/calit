@@ -1,23 +1,31 @@
 package site.asm0dey.calit.google;
 
+import static org.mockito.Mockito.when;
+import io.quarkus.test.InjectMock;
+import site.asm0dey.calit.user.SignupConfig;
 import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.web.CommonFeaturesProfile;
 
 /**
  * End-to-end sign-in: stub the Google network seam, then drive callback -> bridge -> j_security_check
  * and assert a session cookie is minted. Signup enabled so an unknown identity provisions a user.
  */
 @QuarkusTest
-@TestProfile(CommonFeaturesProfile.class)
 class GoogleLoginResourceTest {
+    @InjectMock
+    SignupConfig signup;
+
+    @BeforeEach
+    void signupOn() {
+        when(signup.enabled()).thenReturn(true);
+    }
+
     @Inject
     GoogleOAuthConfig oauthConfig;
     @Inject

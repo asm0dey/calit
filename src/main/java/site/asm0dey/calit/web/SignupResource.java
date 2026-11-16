@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import site.asm0dey.calit.user.SignupConfig;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.inject.Inject;
@@ -8,7 +9,6 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestForm;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.i18n.ActiveLocale;
@@ -26,7 +26,7 @@ public class SignupResource {
         public static native TemplateInstance signup(String title, String error, OgCard og);
     }
 
-    final boolean signupEnabled;
+    final SignupConfig signup;
     final PasswordHasher passwordHasher;
     final AppMessageResolver messages;
     final ActiveLocale activeLocale;
@@ -37,13 +37,13 @@ public class SignupResource {
             PasswordHasher passwordHasher,
             AppMessageResolver messages,
             ActiveLocale activeLocale,
-            @ConfigProperty(name = "calit.signup.enabled", defaultValue = "false") boolean signupEnabled,
+            SignupConfig signup,
             OgCards ogCards
     ) {
         this.passwordHasher = passwordHasher;
         this.messages = messages;
         this.activeLocale = activeLocale;
-        this.signupEnabled = signupEnabled;
+        this.signup = signup;
         this.ogCards = ogCards;
     }
 
@@ -51,7 +51,7 @@ public class SignupResource {
      * When signup is disabled the whole resource is invisible: behave exactly like no route.
      */
     private void requireEnabled() {
-        if (!signupEnabled) {
+        if (!signup.enabled()) {
             throw new NotFoundException();
         }
     }

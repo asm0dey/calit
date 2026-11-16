@@ -1,10 +1,10 @@
 package site.asm0dey.calit.google;
 
+import site.asm0dey.calit.user.SignupConfig;
 import module java.base;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
 import site.asm0dey.calit.user.Usernames;
@@ -26,13 +26,11 @@ import site.asm0dey.calit.user.Usernames;
  */
 @ApplicationScoped
 public class GoogleSignInService {
-    final boolean signupEnabled;
+    final SignupConfig signup;
 
     @Inject
-    public GoogleSignInService(
-            @ConfigProperty(name = "calit.signup.enabled", defaultValue = "false") boolean signupEnabled
-    ) {
-        this.signupEnabled = signupEnabled;
+    public GoogleSignInService(SignupConfig signup) {
+        this.signup = signup;
     }
 
     @Transactional
@@ -55,7 +53,7 @@ public class GoogleSignInService {
             }
         }
 
-        if (!signupEnabled) {
+        if (!signup.enabled()) {
             throw new GoogleSignInException(GoogleSignInException.Reason.SIGNUP_DISABLED);
         }
         return provision(identity);

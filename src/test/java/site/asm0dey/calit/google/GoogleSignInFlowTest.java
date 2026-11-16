@@ -1,19 +1,20 @@
 package site.asm0dey.calit.google;
 
+import static org.mockito.Mockito.when;
+import io.quarkus.test.InjectMock;
+import site.asm0dey.calit.user.SignupConfig;
 import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import io.restassured.filter.cookie.CookieFilter;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.user.AppUser;
-import site.asm0dey.calit.web.CommonFeaturesProfile;
 
 /**
  * End-to-end Google sign-in proving the two end-user journeys:
@@ -24,8 +25,15 @@ import site.asm0dey.calit.web.CommonFeaturesProfile;
  * QuarkusTransaction.requiringNew so the separate HTTP-request transaction can see it.
  */
 @QuarkusTest
-@TestProfile(CommonFeaturesProfile.class)
 class GoogleSignInFlowTest {
+    @InjectMock
+    SignupConfig signup;
+
+    @BeforeEach
+    void signupOn() {
+        when(signup.enabled()).thenReturn(true);
+    }
+
     @Inject
     GoogleOAuthConfig oauthConfig;
     @Inject
