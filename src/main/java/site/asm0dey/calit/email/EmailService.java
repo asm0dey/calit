@@ -1179,7 +1179,7 @@ public class EmailService {
 
     /**
      * The invitee's calendar entry for one booking — byte-identical to what the confirmation mail
-     * attaches. Returns {@link Optional#empty()} when the booking (or its owner's settings) is gone,
+     * attaches; a cancelled or declined booking downloads as a CANCEL, like its cancellation mail. Returns {@link Optional#empty()} when the booking (or its owner's settings) is gone,
      * matching every other {@link BookingSnapshotLoader#load} caller's "nothing to build" path.
      * <p>
      * Public because a failed send used to take the calendar entry with it: the .ics existed only as
@@ -1195,7 +1195,14 @@ public class EmailService {
         if (l == null) {
             return Optional.empty();
         }
-        return Optional.of(inviteeIcsBytes(l, heldOrSelf(l), resolveLocation(l), IcsMethod.REQUEST));
+        var events = heldOrSelf(l);
+        // a dead booking downloads as a CANCEL: a REQUEST at the CANCEL's SEQUENCE would resurrect it (#325)
+        var method = events
+            .stream()
+            .anyMatch(b -> b.status == BookingStatus.PENDING || b.status == BookingStatus.CONFIRMED)
+                ? IcsMethod.REQUEST
+                : IcsMethod.CANCEL;
+        return Optional.of(inviteeIcsBytes(l, events, resolveLocation(l), method));
     }
 
     /**

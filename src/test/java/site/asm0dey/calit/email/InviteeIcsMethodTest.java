@@ -154,4 +154,23 @@ class InviteeIcsMethodTest {
 
         assertThat(new String(bytes, StandardCharsets.UTF_8)).contains("METHOD:REQUEST", "SEQUENCE:3");
     }
+
+    @Test
+    void downloadOfCancelledBookingIsCancel() {
+        // #325: a REQUEST at the CANCEL's SEQUENCE would resurrect the event when imported
+        long id = seed(BookingStatus.CANCELLED, 2);
+
+        var ics = new String(emailService.inviteeIcs(id).orElseThrow(), StandardCharsets.UTF_8);
+
+        assertThat(ics).contains("METHOD:CANCEL", "SEQUENCE:2").doesNotContain("METHOD:REQUEST");
+    }
+
+    @Test
+    void downloadOfDeclinedBookingIsCancel() {
+        long id = seed(BookingStatus.DECLINED, 0);
+
+        var ics = new String(emailService.inviteeIcs(id).orElseThrow(), StandardCharsets.UTF_8);
+
+        assertThat(ics).contains("METHOD:CANCEL").doesNotContain("METHOD:REQUEST");
+    }
 }
