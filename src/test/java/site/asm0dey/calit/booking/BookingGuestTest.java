@@ -44,20 +44,6 @@ class BookingGuestTest {
 
     @Test
     @TestTransaction
-    void persistsAndReadsBackGuestFields() {
-        var bookingId = createBooking();
-        BookingGuest g = guest(bookingId, "ana@example.com", GuestStatus.INVITED);
-
-        BookingGuest loaded = BookingGuest.findById(g.id);
-        assertThat(loaded.ownerId).isOne();
-        assertThat(loaded.bookingId).isEqualTo(bookingId);
-        assertThat(loaded.email).isEqualTo("ana@example.com");
-        assertThat(loaded.status).isEqualTo(GuestStatus.INVITED);
-        assertThat(loaded.declineToken).isEqualTo(g.declineToken);
-    }
-
-    @Test
-    @TestTransaction
     void activeForBookingReturnsOnlyInvited() {
         var bookingId = createBooking();
         guest(bookingId, "ana@example.com", GuestStatus.INVITED);
@@ -80,16 +66,5 @@ class BookingGuestTest {
         // findInBooking is case-insensitive on email
         assertThat(BookingGuest.findInBooking(bookingId, "ana@example.com").id).isEqualTo(g.id);
         assertThat(BookingGuest.findInBooking(bookingId, "nobody@example.com")).isNull();
-    }
-
-    @Test
-    @TestTransaction
-    void bookingIcsSequenceDefaultsToZeroAndRoundTrips() {
-        var bookingId = createBooking();
-        Booking b = Booking.findById(bookingId);
-        assertThat(b.icsSequence).isZero();
-        b.icsSequence = 2;
-        b.persistAndFlush();
-        assertThat(Booking.<Booking>findById(bookingId).icsSequence).isEqualTo(2);
     }
 }

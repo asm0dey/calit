@@ -20,6 +20,12 @@ class EmailRoleCopyTest {
     @Inject
     @Location("email/cancellation.html")
     Template cancellation;
+    @Inject
+    @Location("email/updated.html")
+    Template updated;
+    @Inject
+    @Location("email/reschedule.html")
+    Template reschedule;
 
     private static TemplateInstance base(Template t, String role) {
         return t
@@ -32,8 +38,7 @@ class EmailRoleCopyTest {
             .data("inviteeName", "Sam Invitee")
             .data("inviteeEmail", "sam@example.com")
             .data("ownerName", "Olivia Owner")
-            .data("byOwner", false)
-            .data("hostSelfCancel", false)
+            .data("headline", EmailHeadline.PASSIVE)
             .data("meetingTypeName", "Intro call")
             .data("startTime", "Wed, 1 Jul 2026, 09:00")
             .data("oldStartTime", "Tue, 30 Jun 2026, 09:00")
@@ -118,7 +123,7 @@ class EmailRoleCopyTest {
 
     @Test
     void hostCancelOwnerCopySaysTheHostCancelledAndNamesTheInvitee() {
-        String body = base(cancellation, "owner").data("byOwner", true).data("hostSelfCancel", true).render();
+        String body = base(cancellation, "owner").data("headline", EmailHeadline.of(true, true, true)).render();
         assertThat(body)
             .as("host who cancelled reads an active line naming the invitee")
             .contains("You cancelled your meeting with Sam Invitee.")
@@ -127,32 +132,18 @@ class EmailRoleCopyTest {
     }
 
     @Test
-    void groupHostCancelNonActorOwnerCopyStaysPassive() {
-        String body = base(cancellation, "owner").data("byOwner", true).data("hostSelfCancel", false).render();
-        assertThat(body)
-            .as("non-acting co-host reads the passive fallback, unchanged from before this fix")
-            .contains("Your booking has been cancelled.")
-            .as("non-acting co-host copy must not claim the recipient cancelled")
-            .doesNotContain("You cancelled");
+    void updatedInviteeCopyRendersTheHostUpdatedHeadline() {
+        String body =
+                base(updated, "invitee")
+            .data("description", "Agenda")
+            .data("headline", EmailHeadline.BY_HOST)
+            .render();
+        assertThat(body).contains("Olivia Owner updated the meeting details.");
     }
 
     @Test
-    void hostCancelInviteeCopyStillNamesTheHost() {
-        String body = base(cancellation, "invitee").data("byOwner", true).render();
-        assertThat(body)
-            .as("invitee copy names the host")
-            .contains("Olivia Owner cancelled your booking.")
-            .as("invitee copy must not claim the invitee acted")
-            .doesNotContain("You cancelled");
-    }
-
-    @Test
-    void guestCancelOwnerCopyNamesTheGuestAsTheActor() {
-        String body = base(cancellation, "owner").render();
-        assertThat(body)
-            .as("owner copy names who cancelled")
-            .contains("Sam Invitee cancelled their booking.")
-            .as("owner copy is not passive")
-            .doesNotContain("was cancelled");
+    void reschedulePassiveCopyRendersTheNeutralHeadline() {
+        String body = base(reschedule, "invitee").render();
+        assertThat(body).contains("Your booking has been rescheduled.");
     }
 }

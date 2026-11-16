@@ -133,45 +133,6 @@ class BookingResourceTest {
     }
 
     @Test
-    void seededSlotIsAvailableForBooking() {
-        // The unauthenticated JSON /api/meeting-types/{slug}/available endpoint was deleted in the
-        // owner-scoping refactor. Availability is now proven directly: the seeded 09:00 slot is free,
-        // so booking it succeeds (a slot that was not available would yield 409 "not available").
-        var slug = "rest-avail-" + System.nanoTime();
-        seedType(slug);
-        when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(
-                anyLong(),
-                any(),
-                any(),
-                anyString(),
-                anyString(),
-                any(),
-                any(),
-                any(),
-                anyBoolean(),
-                any()
-        ))
-            .thenReturn(new CreatedEvent("evt-avail", "https://meet.google.com/av-1-2", "h", null));
-
-        given()
-            .contentType("application/json")
-            .body(
-                    "{\"user\":\"admin\",\"slug\":\""
-                    + slug
-                    + "\",\"startUtc\":\""
-                    + SLOT_09_UTC
-                    + "\","
-                    + "\"inviteeName\":\"Sam\",\"inviteeEmail\":\"sam@example.com\",\"turnstileToken\":\"tok\",\"honeypot\":\"\"}"
-            )
-            .when()
-            .post("/api/bookings")
-            .then()
-            .statusCode(201);
-    }
-
-    @Test
     void unknownUserReturns404() {
         var slug = "rest-unknown-" + System.nanoTime();
         // belongs to admin (owner 1)

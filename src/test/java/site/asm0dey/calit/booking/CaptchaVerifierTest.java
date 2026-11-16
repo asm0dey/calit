@@ -4,25 +4,19 @@ import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectSpy;
-import jakarta.inject.Inject;
 import org.altcha.altcha.v1.Altcha;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Runs in the default (no-profile) Quarkus boot: spy the config bean and force the altcha provider +
- * hmac key per-test instead of a @TestProfile restart.
+ * Mock the config bean and force the altcha provider + hmac key per-test.
  */
-@QuarkusTest
 class CaptchaVerifierTest {
     static final String KEY = "test-hmac-secret";
-    @Inject
-    CaptchaVerifier verifier;
-    @InjectSpy
-    CaptchaProviderConfig providerConfig;
+    final CaptchaProviderConfig providerConfig = mock(CaptchaProviderConfig.class);
+    final CaptchaVerifier verifier = new CaptchaVerifier(providerConfig);
 
     @BeforeEach
     void enableAltcha() {

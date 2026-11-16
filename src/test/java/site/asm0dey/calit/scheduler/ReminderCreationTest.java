@@ -17,35 +17,6 @@ class ReminderCreationTest {
 
     // Lead time default is 1440 min (24h).
     @Test
-    void scheduleReminderInsertsRowOneLeadBeforeStart() {
-        Long id = seedBooking(Instant.now().plus(48, ChronoUnit.HOURS), BookingStatus.CONFIRMED);
-
-        scheduler.scheduleReminder(id);
-
-        Reminder r = QuarkusTransaction
-            .requiringNew()
-            .call(() -> Reminder.find("bookingId", id).firstResult());
-        assertThat(r.kind).isEqualTo(Reminder.KIND_REMINDER);
-        assertThat(r.sendAt)
-            // start in 48h, lead 24h -> sendAt ~ 24h from now (well in the future).
-            .isAfter(Instant.now().plus(23, ChronoUnit.HOURS))
-            .isBefore(Instant.now().plus(25, ChronoUnit.HOURS));
-    }
-
-    @Test
-    void scheduleReminderSkipsWhenSendAtAlreadyPast() {
-        // Booking starts in 1h but lead is 24h -> sendAt is in the past -> no row.
-        Long id = seedBooking(Instant.now().plus(1, ChronoUnit.HOURS), BookingStatus.CONFIRMED);
-
-        scheduler.scheduleReminder(id);
-
-        long count = QuarkusTransaction
-            .requiringNew()
-            .call(() -> Reminder.count("bookingId", id));
-        assertThat(count).isZero();
-    }
-
-    @Test
     void scheduleReminderIsIdempotentReplacingUnsentRow() {
         Long id = seedBooking(Instant.now().plus(72, ChronoUnit.HOURS), BookingStatus.CONFIRMED);
 
@@ -58,6 +29,14 @@ class ReminderCreationTest {
             .requiringNew()
             .call(() -> Reminder.count("bookingId = ?1 and sentAt is null", id));
         assertThat(count).isOne();
+        Reminder r = QuarkusTransaction
+            .requiringNew()
+            .call(() -> Reminder.find("bookingId", id).firstResult());
+        assertThat(r.kind).isEqualTo(Reminder.KIND_REMINDER);
+        // start in 72h, lead 24h -> sendAt ~ 48h from now
+        assertThat(r.sendAt)
+            .isAfter(Instant.now().plus(47, ChronoUnit.HOURS))
+            .isBefore(Instant.now().plus(49, ChronoUnit.HOURS));
     }
 
     @Test

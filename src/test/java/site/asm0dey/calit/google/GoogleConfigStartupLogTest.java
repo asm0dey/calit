@@ -5,15 +5,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import io.quarkus.runtime.StartupEvent;
-import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
 /**
- * The config is hand-mocked rather than injected — the subject is which branch runs. @QuarkusTest is
- * nonetheless required: quarkus-jacoco only records what executes inside the Quarkus test run, so a
- * plain JUnit class would pass while reporting zero coverage.
+ * The config is hand-mocked rather than injected — the subject is which branch runs.
  */
-@QuarkusTest
 class GoogleConfigStartupLogTest {
     private static GoogleOAuthConfig configWith(String clientId, String clientSecret) {
         var oauth = mock(GoogleOAuthConfig.OAuth.class);

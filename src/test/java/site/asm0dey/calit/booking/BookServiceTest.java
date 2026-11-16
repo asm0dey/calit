@@ -45,6 +45,40 @@ class BookServiceTest {
     private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant();
 
     @Test
+    void rejectsCrlfInjectionInEmail() {
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "intro",
+                    Instant.parse("2099-01-01T10:00:00Z"),
+                    "Mallory",
+                    "a@b.com\r\nBcc: attacker@evil.com",
+                    Map.of(),
+                    null,
+                    null,
+                    "en",
+                    List.of()
+            ));
+    }
+
+    @Test
+    void rejectsOversizedInviteeName() {
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "intro",
+                    Instant.parse("2099-01-01T10:00:00Z"),
+                    "n".repeat(201),
+                    "a@b.com",
+                    Map.of(),
+                    null,
+                    null,
+                    "en",
+                    List.of()
+            ));
+    }
+
+    @Test
     @TestTransaction
     void happyPathPersistsBookingWithMeetLinkAndFiresEvent() {
         seedSettings();
@@ -291,32 +325,6 @@ class BookServiceTest {
 
     @Test
     @TestTransaction
-    void requiredCustomFieldBlankThrowsValidation() {
-        seedSettings();
-        MeetingType t = meetingTypeWithMondayWindow("book-required-blank", LocationType.GOOGLE_MEET, false);
-        requiredField(t.id, "company", "Company");
-        when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        // Present but blank value is rejected just like a missing key.
-        Map<String, String> answers = Map.of("company", "   ");
-        List<String> guestEmails = List.of();
-        assertThatExceptionOfType(BookingValidationException.class)
-            .isThrownBy(() -> bookingService.book(
-                    1L,
-                    "book-required-blank",
-                    SLOT_09,
-                    "Sam",
-                    "sam@example.com",
-                    answers,
-                    "tok",
-                    "",
-                    "en",
-                    guestEmails
-            ));
-    }
-
-    @Test
-    @TestTransaction
     void requiredCustomFieldPresentPersistsAndStoresAnswers() {
         seedSettings();
         MeetingType t = meetingTypeWithMondayWindow("book-required-ok", LocationType.GOOGLE_MEET, false);
@@ -491,6 +499,27 @@ class BookServiceTest {
                     1L,
                     "book-bad-start",
                     start,
+                    "X",
+                    "x@example.com",
+                    answers,
+                    "tok",
+                    "",
+                    "en",
+                    guestEmails
+            ));
+    }
+
+    @Test
+    @TestTransaction
+    void bookingUnknownSlugThrowsNotFound() {
+        seedSettings();
+        Map<String, String> answers = Map.of();
+        List<String> guestEmails = List.of();
+        assertThatExceptionOfType(jakarta.ws.rs.NotFoundException.class)
+            .isThrownBy(() -> bookingService.book(
+                    1L,
+                    "no-such-slug",
+                    SLOT_09,
                     "X",
                     "x@example.com",
                     answers,

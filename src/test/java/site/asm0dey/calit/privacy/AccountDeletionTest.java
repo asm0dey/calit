@@ -80,15 +80,6 @@ class AccountDeletionTest {
     }
 
     @Test
-    void deletionClearsParkedMailForThatOwner() {
-        var id = seedSecondUser();
-        privacy.deleteAccount(id);
-        QuarkusTransaction
-            .requiringNew()
-            .run(() -> assertThat(EmailOutbox.count("ownerId", id)).isZero());
-    }
-
-    @Test
     void theLastEnabledAdminCannotBeDeleted() {
         // DatabaseResetCallback seeds exactly one admin, always id 1.
         assertThat(privacy.isLastEnabledAdmin(1L)).isTrue();

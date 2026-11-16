@@ -35,8 +35,7 @@ import site.asm0dey.calit.user.LoginTicketService;
 @ApplicationScoped
 public class BookingService {
     // Collaborators + config are constructor-injected (immutable, fail-fast, plain-unit testable,
-    // consistent with the Plan 2 google package). The six CDI Event<> emitters below stay as @Inject
-    // fields: they are framework plumbing and would otherwise bloat the constructor to ten args.
+    // consistent with the Plan 2 google package), including the CDI Event<> emitters.
     private final SlotService slotService;
     private final CalendarPort calendarPort;
     private final CaptchaVerifier captchaVerifier;
@@ -55,7 +54,17 @@ public class BookingService {
             CaptchaVerifier captchaVerifier,
             MeetingHosts meetingHosts,
             WriteTargetResolver writeTargets,
-            @ConfigProperty(name = "calit.abuse.per-email-daily-cap", defaultValue = "10") long perEmailDailyCap
+            @ConfigProperty(name = "calit.abuse.per-email-daily-cap", defaultValue = "10") long perEmailDailyCap,
+            Event<BookingRequested> bookingRequestedEvent,
+            Event<BookingConfirmed> bookingConfirmedEvent,
+            Event<BookingApproved> bookingApprovedEvent,
+            Event<BookingDeclined> bookingDeclinedEvent,
+            Event<BookingRescheduled> bookingRescheduledEvent,
+            Event<BookingCancelled> bookingCancelledEvent,
+            Event<BookingSetCancelled> bookingSetCancelledEvent,
+            Event<GuestDeclined> guestDeclinedEvent,
+            Event<GuestRemoved> guestRemovedEvent,
+            Event<BookingDetailsChanged> bookingDetailsChangedEvent
     ) {
         this.slotService = slotService;
         this.calendarPort = calendarPort;
@@ -63,28 +72,28 @@ public class BookingService {
         this.meetingHosts = meetingHosts;
         this.writeTargets = writeTargets;
         this.perEmailDailyCap = perEmailDailyCap;
+        this.bookingRequestedEvent = bookingRequestedEvent;
+        this.bookingConfirmedEvent = bookingConfirmedEvent;
+        this.bookingApprovedEvent = bookingApprovedEvent;
+        this.bookingDeclinedEvent = bookingDeclinedEvent;
+        this.bookingRescheduledEvent = bookingRescheduledEvent;
+        this.bookingCancelledEvent = bookingCancelledEvent;
+        this.bookingSetCancelledEvent = bookingSetCancelledEvent;
+        this.guestDeclinedEvent = guestDeclinedEvent;
+        this.guestRemovedEvent = guestRemovedEvent;
+        this.bookingDetailsChangedEvent = bookingDetailsChangedEvent;
     }
 
-    @Inject
-    Event<BookingRequested> bookingRequestedEvent;
-    @Inject
-    Event<BookingConfirmed> bookingConfirmedEvent;
-    @Inject
-    Event<BookingApproved> bookingApprovedEvent;
-    @Inject
-    Event<BookingDeclined> bookingDeclinedEvent;
-    @Inject
-    Event<BookingRescheduled> bookingRescheduledEvent;
-    @Inject
-    Event<BookingCancelled> bookingCancelledEvent;
-    @Inject
-    Event<BookingSetCancelled> bookingSetCancelledEvent;
-    @Inject
-    Event<GuestDeclined> guestDeclinedEvent;
-    @Inject
-    Event<GuestRemoved> guestRemovedEvent;
-    @Inject
-    Event<BookingDetailsChanged> bookingDetailsChangedEvent;
+    private final Event<BookingRequested> bookingRequestedEvent;
+    private final Event<BookingConfirmed> bookingConfirmedEvent;
+    private final Event<BookingApproved> bookingApprovedEvent;
+    private final Event<BookingDeclined> bookingDeclinedEvent;
+    private final Event<BookingRescheduled> bookingRescheduledEvent;
+    private final Event<BookingCancelled> bookingCancelledEvent;
+    private final Event<BookingSetCancelled> bookingSetCancelledEvent;
+    private final Event<GuestDeclined> guestDeclinedEvent;
+    private final Event<GuestRemoved> guestRemovedEvent;
+    private final Event<BookingDetailsChanged> bookingDetailsChangedEvent;
 
     public List<TimeSlot> availableSlots(MeetingType type, LocalDate from, LocalDate to) {
         return availableSlots(type, from, to, (Long) null);
@@ -218,16 +227,7 @@ public class BookingService {
         Map<Instant, TimeSlot> hostFree = new LinkedHashMap<>();
         for (TimeSlot slot : slotService.generateRawSlots(type, hostId, from, to, latticeZone, durationMinutes)) {
             Instant slotStart = slot.start().toInstant();
-            // Feature 11: drop too-soon (before now+minNotice) and too-far (after now+horizon) slots.
-            if (slotStart.isBefore(earliest) || slotStart.isAfter(latest)) {
-                continue;
-            }
-            Interval buffered =
-                    new Interval(
-                            slotStart.minusSeconds(60L * bufBefore),
-                            slot.end().toInstant().plusSeconds(60L * bufAfter)
-            );
-            if (!buffered.overlapsAny(busy)) {
+            if (SlotFit.fits(slotStart, slot.end().toInstant(), earliest, latest, bufBefore, bufAfter, busy)) {
                 hostFree.put(slotStart, slot);
             }
         }
@@ -554,8 +554,8 @@ public class BookingService {
             List<String> guestEmails,
             List<Integer> durations
     ) {
-        validateInviteeEmail(inviteeEmail);
-        validateInputBounds(inviteeName, answers);
+        BookingInputRules.validateInviteeEmail(inviteeEmail);
+        BookingInputRules.validateInputBounds(inviteeName, answers);
         MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
         // Every booking write lands here (form + JSON API), so an inactive type is refused once for all.
         if (type == null || !type.active) {
@@ -571,18 +571,14 @@ public class BookingService {
         // just forwards the cf-turnstile-response (turnstileToken) and website (honeypot) form values.
         // -> AbuseException (400) on invalid CAPTCHA
         captchaVerifier.verify(turnstileToken, altchaSolution);
-        if (honeypot != null && !honeypot.isBlank()) {
-            // a bot filled the hidden field
-            // -> AbuseException (400)
-            throw new AbuseException("Honeypot field was filled.");
-        }
+        BookingInputRules.rejectHoneypot(honeypot);
         // -> RateLimitException (429) over cap
         enforcePerEmailDailyCap(type, inviteeEmail);
 
         Map<String, String> submitted = answers == null ? Map.of() : answers;
         // Feature 10: every required custom field must have a non-blank value. Built-in
         // name/email are method params, not BookingField rows, so they are not in this loop.
-        validateRequiredFields(type, submitted);
+        BookingInputRules.validateRequiredFields(BookingField.formFor(type.ownerId, type.id), submitted);
         return new Prechecked(type, inviteeName, submitted, guestEmails);
     }
 
@@ -823,7 +819,7 @@ public class BookingService {
 
     /**
      * Normalizes + persists the invitee-supplied guest emails as INVITED rows. Trims, lower-cases for
-     * de-dup, drops blanks / the invitee's own address / anything that fails {@link #isPlausibleEmail},
+     * de-dup, drops blanks / the invitee's own address / anything that fails {@link BookingInputRules#isPlausibleEmail},
      * and caps at {@link #MAX_GUESTS_PER_BOOKING}. Bad entries are dropped silently (one typo must not
      * fail the whole booking). owner_id is copied from the booking for the multi-tenancy invariant.
      */
@@ -879,7 +875,7 @@ public class BookingService {
             var acceptable = !email.isEmpty()
                     && email.length() <= 254
                     && !email.equalsIgnoreCase(inviteeEmail)
-                    && isPlausibleEmail(email);
+                    && BookingInputRules.isPlausibleEmail(email);
             if (acceptable && byLower.size() < MAX_GUESTS_PER_BOOKING) {
                 byLower.putIfAbsent(email.toLowerCase(), email);
             }
@@ -946,82 +942,16 @@ public class BookingService {
      * Feature 16: rejects the booking (HTTP 429) if this invitee email already created at least
      * {@code perEmailDailyCap} bookings during today's owner-tz day window.
      */
-    private static void validateInputBounds(String inviteeName, Map<String, String> answers) {
-        if (inviteeName != null && inviteeName.length() > 200) {
-            throw new BookingValidationException("Name is too long.");
-        }
-        if (answers != null) {
-            for (String v : answers.values()) {
-                if (v != null && v.length() > 2000) {
-                    throw new BookingValidationException("An answer is too long.");
-                }
-            }
-        }
-    }
-
-    private static void validateInviteeEmail(String email) {
-        if (email == null || email.isBlank()) {
-            throw new BookingValidationException("Email is required.");
-        }
-        if (email.length() > 254) {
-            throw new BookingValidationException("Email is too long.");
-        }
-        if (!isPlausibleEmail(email)) {
-            throw new BookingValidationException("Enter a valid email address.");
-        }
-    }
-
-    // RFC-pragmatic single-address check done WITHOUT a regex (so there is no ReDoS or regex-engine
-    // stack-overflow risk on hostile input): exactly one non-leading '@', a domain with at least one
-    // dot and no empty labels, and no whitespace or comma anywhere — the latter blocks header/ICS
-    // injection and CRLF smuggling. Not a full RFC 5322 parser (SEC-INPUT-01).
-    private static boolean isPlausibleEmail(String email) {
-        for (var i = 0; i < email.length(); i++) {
-            var ch = email.charAt(i);
-            if (ch == ',' || Character.isWhitespace(ch)) {
-                // commas and CR/LF/space/tab are injection vectors — reject
-                return false;
-            }
-        }
-        var at = email.indexOf('@');
-        if (at <= 0 || at != email.lastIndexOf('@') || at == email.length() - 1) {
-            // need exactly one '@', neither first nor last char
-            return false;
-        }
-        var domain = email.substring(at + 1);
-        if (domain.startsWith(".") || domain.endsWith(".") || domain.contains("..")) {
-            // no empty domain labels
-            return false;
-        }
-        // domain must have at least one dot
-        return domain.indexOf('.') >= 0;
-    }
-
     private void enforcePerEmailDailyCap(MeetingType type, String inviteeEmail) {
         ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
         var today = Instant.now().atZone(zone).toLocalDate();
         var dayStart = today.atStartOfDay(zone).toInstant();
         var dayEnd = today.plusDays(1).atStartOfDay(zone).toInstant();
-        if (Booking.countDistinctBookingsByEmailBetween(inviteeEmail, dayStart, dayEnd) >= perEmailDailyCap) {
-            throw new RateLimitException("Daily booking cap reached for " + inviteeEmail);
-        }
-    }
-
-    /**
-     * Feature 10: rejects the booking (HTTP 422) if any required field in
-     * {@code BookingField.formFor(type.ownerId, type.id)} is missing or blank in the submitted answers.
-     */
-    private void validateRequiredFields(MeetingType type, Map<String, String> answers) {
-        for (BookingField field : BookingField.formFor(type.ownerId, type.id)) {
-            if (field.required) {
-                String value = answers.get(field.fieldKey);
-                if (value == null || value.isBlank()) {
-                    throw new BookingValidationException("Required field '"
-                            + field.fieldKey
-                            + "' is missing or blank");
-                }
-            }
-        }
+        BookingInputRules.enforceDailyCap(
+                inviteeEmail,
+                Booking.countDistinctBookingsByEmailBetween(inviteeEmail, dayStart, dayEnd),
+                perEmailDailyCap
+        );
     }
 
     /**
@@ -1120,12 +1050,7 @@ public class BookingService {
         // column. Only the LAST host's approval (no group row still PENDING) creates the ONE
         // shared Mirror event and fires the invitee-facing BookingConfirmed; earlier approvals
         // just flip that host's row and wait.
-        boolean anyPending =
-                Booking
-            .<Booking>group(booking.groupId)
-            .stream()
-            .anyMatch(r -> r.status == BookingStatus.PENDING);
-        if (!anyPending) {
+        if (SetDecisions.groupFullyApproved(Booking.group(booking.groupId))) {
             createGroupGoogleEvent(type, booking.groupId);
             Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
             bookingConfirmedEvent.fire(new BookingConfirmed(lead.id));
@@ -1200,31 +1125,22 @@ public class BookingService {
     private void approveSet(Booking booking) {
         MeetingType type = MeetingType.findById(booking.meetingTypeId);
         List<Booking> rows = Booking.set(booking.setId);
-        Optional<Booking> hostPending = pendingRowOf(rows, booking.ownerId);
+        Optional<Booking> hostPending = SetDecisions.pendingRowOf(rows, booking.ownerId);
         if (hostPending.isEmpty()) {
             return;
         }
-        List<Booking> undecided = undecidedOfSet(rows, type.ownerId);
+        List<Booking> undecided = SetDecisions.undecidedOfSet(rows, type.ownerId);
         if (undecided.size() == 1) {
             approveOne(hostPending.get());
             return;
         }
-        for (Booking row : rows) {
-            if (row.ownerId.equals(booking.ownerId) && row.status == BookingStatus.PENDING) {
-                row.status = BookingStatus.CONFIRMED;
-            }
-        }
-        // a co-hosted Booking stays undecided until every Host has approved it
-        List<Booking> confirmed = undecided
-            .stream()
-            .filter(b -> rowsOfBooking(rows, b).noneMatch(r -> r.status == BookingStatus.PENDING))
-            .toList();
+        List<Booking> confirmed = SetDecisions.approveHostRows(rows, booking.ownerId, undecided);
         if (confirmed.isEmpty()) {
             return;
         }
         createMirrorEventsOrCompensate(type, confirmed);
         List<Long> ids = confirmed.stream().map(b -> b.id).toList();
-        if (confirmed.getFirst().groupId == null) {
+        if (SetDecisions.announce(confirmed) == SetDecisions.Announce.APPROVED) {
             bookingApprovedEvent.fire(new BookingApproved(ids.getFirst(), ids));
         } else {
             bookingConfirmedEvent.fire(new BookingConfirmed(ids.getFirst(), ids));
@@ -1239,25 +1155,18 @@ public class BookingService {
     private void declineSet(Booking booking) {
         Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
         List<Booking> rows = Booking.set(booking.setId);
-        Optional<Booking> hostPending = pendingRowOf(rows, booking.ownerId);
+        Optional<Booking> hostPending = SetDecisions.pendingRowOf(rows, booking.ownerId);
         if (hostPending.isEmpty()) {
             return;
         }
-        List<Booking> undecided = undecidedOfSet(rows, creatorOwnerId);
+        List<Booking> undecided = SetDecisions.undecidedOfSet(rows, creatorOwnerId);
         if (undecided.size() == 1) {
             declineOne(hostPending.get());
             return;
         }
-        declineBookings(rows, undecided);
+        SetDecisions.declineBookings(rows, undecided);
         List<Long> ids = undecided.stream().map(b -> b.id).toList();
         bookingDeclinedEvent.fire(new BookingDeclined(ids.getFirst(), ids));
-    }
-
-    private static Optional<Booking> pendingRowOf(List<Booking> setRows, Long hostOwnerId) {
-        return setRows
-            .stream()
-            .filter(r -> r.ownerId.equals(hostOwnerId) && r.status == BookingStatus.PENDING)
-            .findFirst();
     }
 
     /**
@@ -1266,34 +1175,7 @@ public class BookingService {
      */
     public static boolean decisionOpen(Booking b) {
         return b.status == BookingStatus.PENDING
-                || b.setId != null && pendingRowOf(Booking.set(b.setId), b.ownerId).isPresent();
-    }
-
-    /**
-     * The Invitee-facing row (a lone row, or the Creator's row of a co-hosted group) of every Booking among
-     * {@code setRows} still undecided, meaning it has a PENDING row; in time order.
-     */
-    public static List<Booking> undecidedOfSet(List<Booking> setRows, Long creatorOwnerId) {
-        return setRows
-            .stream()
-            .filter(r -> r.groupId == null || r.ownerId.equals(creatorOwnerId))
-            .filter(b -> rowsOfBooking(setRows, b).anyMatch(r -> r.status == BookingStatus.PENDING))
-            .toList();
-    }
-
-    /**
-     * Declines every held row of the given undecided Bookings (Invitee-facing rows, from {@link #undecidedOfSet}).
-     */
-    public static void declineBookings(List<Booking> setRows, List<Booking> undecided) {
-        undecided
-            .stream()
-            .flatMap(b -> rowsOfBooking(setRows, b))
-            .filter(r -> r.status == BookingStatus.PENDING || r.status == BookingStatus.CONFIRMED)
-            .forEach(r -> r.status = BookingStatus.DECLINED);
-    }
-
-    private static Stream<Booking> rowsOfBooking(List<Booking> setRows, Booking b) {
-        return b.groupId == null ? Stream.of(b) : setRows.stream().filter(r -> b.groupId.equals(r.groupId));
+                || b.setId != null && SetDecisions.pendingRowOf(Booking.set(b.setId), b.ownerId).isPresent();
     }
 
     @Transactional
@@ -1365,7 +1247,7 @@ public class BookingService {
         // Deliberate behavior change (Task 11): an owner-initiated reschedule of an approval type no
         // longer reverts to PENDING -- only an invitee-initiated one does. A host already knows their
         // own slot is free (they just picked it), so re-approving themselves would be theater.
-        var reApproval = type.requiresApproval && !byOwner;
+        var reApproval = SlotFit.needsReApproval(type.requiresApproval, byOwner, false);
         String priorEventId = booking.eventId;
         CalendarRef priorRef = booking.calendarRef();
         if (reApproval) {
@@ -1472,7 +1354,7 @@ public class BookingService {
             .collect(Collectors.toSet());
         assertSlotAvailable(type, newStartUtc, groupRowIds, bookedLength);
 
-        boolean reApproval = type.requiresApproval;
+        boolean reApproval = SlotFit.needsReApproval(type.requiresApproval, byOwner, true);
         var initiator = byOwner ? initiatorOwnerId : null;
         // drop the one event; recreated below only on full re-confirm
         deleteGroupGoogleEvent(row.groupId);
@@ -1501,12 +1383,9 @@ public class BookingService {
             r.startUtc = newStartUtc;
             r.endUtc = newEnd;
             r.icsSequence = r.icsSequence + 1;
-            if (reApproval) {
-                var keepsApproval = initiator != null && initiator.equals(r.ownerId);
-                r.status = keepsApproval ? BookingStatus.CONFIRMED : BookingStatus.PENDING;
-                if (!keepsApproval && r.approvalToken == null) {
-                    r.approvalToken = UUID.randomUUID().toString();
-                }
+            r.status = SlotFit.groupRowStatusAfterMove(reApproval, r.ownerId, initiator, r.status);
+            if (reApproval && r.status == BookingStatus.PENDING && r.approvalToken == null) {
+                r.approvalToken = UUID.randomUUID().toString();
             }
         }
     }

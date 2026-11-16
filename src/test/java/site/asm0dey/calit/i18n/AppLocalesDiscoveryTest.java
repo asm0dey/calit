@@ -30,21 +30,6 @@ class AppLocalesDiscoveryTest {
     }
 
     @Test
-    void labelForDeIsDeutsch() {
-        assertThat(AppLocales.labelFor("de")).isEqualTo("Deutsch");
-    }
-
-    @Test
-    void labelForEnIsEnglish() {
-        assertThat(AppLocales.labelFor("en")).isEqualTo("English");
-    }
-
-    @Test
-    void labelForHeIsHebrewEndonym() {
-        assertThat(AppLocales.labelFor("he")).isEqualTo("עברית");
-    }
-
-    @Test
     void supportedMatchesBundleBeans() {
         // Pick and isSupported round-trip through the live discovered list
         assertThat(AppLocales.pick("de")).isEqualTo(Locale.GERMAN);

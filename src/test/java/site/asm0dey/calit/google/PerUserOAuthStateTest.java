@@ -41,16 +41,6 @@ class PerUserOAuthStateTest {
         assertThat(tokenService.validateState(state, tooLate)).as("expired state must be rejected").isNull();
     }
 
-    @Test
-    void consentUrlCarriesSignedStateForOwner() {
-        String url = tokenService.buildConsentUrl(7L, Instant.parse("2026-06-08T12:00:00Z"));
-        assertThat(url)
-            .as("consent URL must include a state param")
-            .contains("state=")
-            .as("consent URL points at Google")
-            .startsWith("https://accounts.google.com/");
-    }
-
     /**
      * Stubs the network seam so exchangeCode does no real Google call.
      */

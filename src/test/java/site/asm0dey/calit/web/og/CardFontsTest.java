@@ -2,22 +2,12 @@ package site.asm0dey.calit.web.og;
 
 import module java.desktop;
 import static org.assertj.core.api.Assertions.assertThat;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
 // java.desktop's module import would otherwise bind List to java.awt.List
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/**
- * {@code @QuarkusTest} (not a plain unit test like {@link TextRunsTest}) because quarkus-jacoco
- * only instruments code paths reached through a booted Quarkus application -- a plain {@code new
- * CardFonts()} in an un-annotated test class runs against un-instrumented bytecode and is
- * invisible to the coverage report, no matter how real the assertion is.
- */
-@QuarkusTest
 class CardFontsTest {
-    @Inject
-    CardFonts fonts;
+    final CardFonts fonts = new CardFonts();
 
     @Test
     void regularIsRubikRegular() {

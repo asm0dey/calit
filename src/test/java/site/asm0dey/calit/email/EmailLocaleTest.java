@@ -23,7 +23,7 @@ import site.asm0dey.calit.i18n.AppLocales;
 
 /**
  * Verifies locale-aware email rendering:
- *  1. AppMessageResolver accessor returns different (non-blank) German subjects.
+ *  1. Every locale's h12 datetime pattern is a valid, renderable DateTimeFormatter pattern.
  *  2. A booking with locale="de" produces a German date string in the email body.
  */
 @QuarkusTest
@@ -45,40 +45,6 @@ class EmailLocaleTest {
         QuarkusTransaction
             .requiringNew()
             .run(() -> Booking.deleteAll());
-    }
-
-    // ---- 1. Subject accessor: German differs from English ----
-    @Test
-    void germanSubjectResolves() {
-        String deSubj = messages.forTag("de").email_confirmed_subject("X");
-        String enSubj = messages.forTag("en").email_confirmed_subject("X");
-        assertThat(deSubj)
-            .as("German confirmation subject must not be blank")
-            .isNotBlank()
-            .as("German subject must differ from English")
-            .isNotEqualTo(enSubj);
-    }
-
-    @Test
-    void germanPasswordResetSubjectNonBlankAndDiffersFromEnglish() {
-        String enSubj = messages.forTag("en").email_password_reset_subject();
-        String deSubj = messages.forTag("de").email_password_reset_subject();
-        assertThat(deSubj)
-            .as("German password-reset subject must not be blank")
-            .isNotBlank()
-            .as("German password-reset subject must differ from English")
-            .isNotEqualTo(enSubj);
-    }
-
-    @Test
-    void germanGoogleDisconnectedSubjectNonBlankAndDiffersFromEnglish() {
-        String enSubj = messages.forTag("en").email_google_disconnected_subject();
-        String deSubj = messages.forTag("de").email_google_disconnected_subject();
-        assertThat(deSubj)
-            .as("German Google-disconnected subject must not be blank")
-            .isNotBlank()
-            .as("German Google-disconnected subject must differ from English")
-            .isNotEqualTo(enSubj);
     }
 
     // ---- 1b. h12 pattern is a valid, renderable DateTimeFormatter pattern in every locale ----

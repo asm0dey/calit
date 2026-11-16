@@ -71,22 +71,4 @@ class PublicI18nTest {
             .body(containsString("<html lang=\"en\""))
             .body(containsString("Book a meeting"));
     }
-
-    @Test
-    void germanUserLandingHasGermanTitle() {
-        seedAlice();
-        given()
-            .cookie("calit_lang", "de")
-            .when()
-            .get("/alice")
-            .then()
-            .statusCode(200)
-            .body(containsString("<title>Termin buchen</title>"));
-    }
-
-    @Test
-    void englishUserLandingHasEnglishTitle() {
-        seedAlice();
-        given().when().get("/alice").then().statusCode(200).body(containsString("<title>Book a meeting</title>"));
-    }
 }

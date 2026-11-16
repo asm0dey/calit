@@ -1,5 +1,5 @@
 {@java.lang.String recipientRole}
-{@java.lang.Boolean byOwner}
+{@site.asm0dey.calit.email.EmailHeadline headline}
 {@java.lang.String description}
 {@java.lang.String lang}
 {@java.lang.String inviteeName}
@@ -17,19 +17,15 @@
 {@java.util.List<site.asm0dey.calit.email.EmailService$AnswerLine> answers}
 {#include email/layout}
 {#title}{msg:email_updated_title}{/title}
-{#if byOwner}
-  {#if recipientRole == 'owner'}
-<p><strong>{msg:email_updated_body_self}</strong></p>
-  {#else}
+{! SELF is unreachable here: callers pass hostActed=false !}
+{#when headline}
+  {#is BY_HOST}
 <p><strong>{msg:email_updated_body_by_owner(ownerName)}</strong></p>
-  {/if}
-{#else}
-  {#if recipientRole == 'owner'}
+  {#is BY_INVITEE}
 <p><strong>{msg:email_updated_body_by_invitee(inviteeName)}</strong></p>
-  {#else}
+  {#is PASSIVE}
 <p><strong>{msg:email_updated_body_self}</strong></p>
-  {/if}
-{/if}
+{/when}
 <ul>
   {#include email/_invitee /}
   <li><strong>{msg:email_body_meeting_label}</strong> {meetingTypeName}</li>

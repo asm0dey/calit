@@ -29,8 +29,8 @@ public class EmailService {
     /**
      * Recipient-role values passed to the per-role body builder.
      */
-    private static final String INVITEE_ROLE = "invitee";
-    private static final String OWNER_ROLE = "owner";
+    static final String INVITEE_ROLE = "invitee";
+    static final String OWNER_ROLE = "owner";
     final MailSender mailSender;
     final AppMessageResolver messages;
     final CalendarPort calendarPort;
@@ -152,9 +152,8 @@ public class EmailService {
     // EmailService/reminder instead of email/reminder.html.
     /**
      * Typed bindings for the email templates. Non-obvious shared params: {@code greetingName} is
-     * role-aware (invitee name on the invitee copy, owner name on the owner copy); {@code byOwner}
-     * says the host — not the invitee — drove the change, which flips the reschedule/cancel/update
-     * wording; {@code approveUrl}/{@code declineUrl}/{@code ownerManageUrl} are owner-only and passed
+     * role-aware (invitee name on the invitee copy, owner name on the owner copy); {@code headline}
+     * ({@link EmailHeadline}) picks the reschedule/cancel/update wording per recipient; {@code approveUrl}/{@code declineUrl}/{@code ownerManageUrl} are owner-only and passed
      * null for the invitee copy (the template renders them only for the owner).
      */
     @CheckedTemplate(basePath = "email")
@@ -230,7 +229,7 @@ public class EmailService {
 
         static native TemplateInstance reschedule(
                 String recipientRole,
-                boolean byOwner,
+                EmailHeadline headline,
                 String lang,
                 String inviteeName,
                 String inviteeEmail,
@@ -250,7 +249,7 @@ public class EmailService {
 
         static native TemplateInstance updated(
                 String recipientRole,
-                boolean byOwner,
+                EmailHeadline headline,
                 String description,
                 String lang,
                 String inviteeName,
@@ -270,8 +269,7 @@ public class EmailService {
 
         static native TemplateInstance cancellation(
                 String recipientRole,
-                boolean byOwner,
-                boolean hostSelfCancel,
+                EmailHeadline headline,
                 String lang,
                 String inviteeName,
                 String inviteeEmail,
@@ -589,7 +587,7 @@ public class EmailService {
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
                     .reschedule(
                             role,
-                            e.byOwner(),
+                            EmailHeadline.of(e.byOwner(), OWNER_ROLE.equals(role), false),
                             locale.getLanguage(),
                             l.booking().inviteeName,
                             l.booking().inviteeEmail,
@@ -635,7 +633,7 @@ public class EmailService {
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
                     .updated(
                             role,
-                            e.byOwner(),
+                            EmailHeadline.of(e.byOwner(), OWNER_ROLE.equals(role), false),
                             desc,
                             locale.getLanguage(),
                             l.booking().inviteeName,
@@ -702,8 +700,8 @@ public class EmailService {
                 (role, locale, zone, greetingName, linkBooking, hourCycle) -> Templates
                     .cancellation(
                             role,
-                            byOwner,
-                            byOwner && l.booking().groupId == null,
+                            EmailHeadline.of(byOwner, OWNER_ROLE.equals(role), byOwner
+                            && l.booking().groupId == null),
                             locale.getLanguage(),
                             l.booking().inviteeName,
                             l.booking().inviteeEmail,
@@ -1084,66 +1082,23 @@ public class EmailService {
         var ics = mirror == CalendarProvider.GOOGLE || icsMethod == null
                 ? null
                 : inviteeIcsBytes(l, events, icsLocation, icsMethod);
-        // a CalDAV Mirror event already sits on the Creator's calendar; a calit copy would duplicate it
-        var creatorIcs = mirror == CalendarProvider.CALDAV ? null : ics;
         var from = fromName(l);
-
-        Locale inviteeLocale = AppLocales.pick(l.booking().locale);
-        sink.deliver(
-                from,
-                l.booking().inviteeEmail,
-                subjectForLocale.apply(inviteeLocale),
-                bodyForRecipient.render(
-                        INVITEE_ROLE,
-                        inviteeLocale,
-                        l.zone(),
-                        l.booking().inviteeName,
-                        l.booking(),
-                        "auto"
-                ),
-                ics,
-                MailTag.forBooking(l.booking().id, l.booking().ownerId)
-        );
-
-        if (l.booking().groupId != null) {
-            for (HostDelivery hd : l.hostDeliveries()) {
-                if (!actionable && !hd.settings().ownerNotificationsEnabled) {
-                    continue;
-                }
-                Locale hostLocale = AppLocales.pick(hd.settings().locale);
-                ZoneId hostZone = ZoneId.of(hd.settings().timezone);
-                sink.deliver(
-                        from,
-                        hd.settings().ownerEmail,
-                        subjectForLocale.apply(hostLocale),
-                        bodyForRecipient.render(
-                                OWNER_ROLE,
-                                hostLocale,
-                                hostZone,
-                                hd.settings().ownerName,
-                                hd.booking(),
-                                hd.settings().timeFormat
-                        ),
-                        hd.settings().ownerId.equals(l.meetingType().ownerId) ? creatorIcs : ics,
-                        MailTag.forBooking(hd.booking().id, hd.settings().ownerId)
-                );
-            }
-        } else if (l.owner().ownerNotificationsEnabled) {
-            Locale ownerLocale = AppLocales.pick(l.owner().locale);
+        for (var r : MailPlan.plan(l, mirror, icsMethod != null, actionable)) {
+            var zone = r.zone();
             sink.deliver(
                     from,
-                    l.owner().ownerEmail,
-                    subjectForLocale.apply(ownerLocale),
+                    r.email(),
+                    subjectForLocale.apply(r.locale()),
                     bodyForRecipient.render(
-                            OWNER_ROLE,
-                            ownerLocale,
-                            l.zone(),
-                            l.owner().ownerName,
-                            l.booking(),
-                            l.owner().timeFormat
+                            r.role(),
+                            r.locale(),
+                            zone,
+                            r.greetingName(),
+                            r.linkBooking(),
+                            r.hourCycle()
                     ),
-                    creatorIcs,
-                    MailTag.forBooking(l.booking().id, l.owner().ownerId)
+                    r.attachIcs() ? ics : null,
+                    r.tag()
             );
         }
     }
@@ -1162,7 +1117,11 @@ public class EmailService {
      * invite would duplicate. In degraded mode calit's .ics is the only invite, so it is attached from the request on.
      */
     private boolean awaitingFirstInvite(BookingSnapshot l) {
-        return l.mirror() == null && l.booking().icsSequence == 0 && calendarPort.isConnected(l.owner().ownerId);
+        return MailPlan.awaitingFirstInvite(
+                l.mirror(),
+                l.booking().icsSequence,
+                calendarPort.isConnected(l.owner().ownerId)
+        );
     }
 
     /**

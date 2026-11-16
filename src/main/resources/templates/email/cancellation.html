@@ -1,7 +1,6 @@
 {@java.util.List<site.asm0dey.calit.email.EmailService$SessionLine> sessions}
 {@java.lang.String recipientRole}
-{@java.lang.Boolean byOwner}
-{@java.lang.Boolean hostSelfCancel}
+{@site.asm0dey.calit.email.EmailHeadline headline}
 {@java.lang.String lang}
 {@java.lang.String inviteeName}
 {@java.lang.String inviteeEmail}
@@ -12,23 +11,16 @@
 {@java.lang.Integer durationMinutes}
 {#include email/layout}
 {#title}{msg:email_cancellation_title}{/title}
-{#if byOwner}
-  {#if recipientRole == 'owner'}
-    {#if hostSelfCancel}
+{#when headline}
+  {#is SELF}
 <p><strong>{msg:email_cancellation_body_owner_self(inviteeName)}</strong></p>
-    {#else}
-<p><strong>{msg:email_cancellation_body}</strong></p>
-    {/if}
-  {#else}
+  {#is BY_HOST}
 <p><strong>{msg:email_cancellation_body_by_owner(ownerName)}</strong></p>
-  {/if}
-{#else}
-  {#if recipientRole == 'owner'}
+  {#is BY_INVITEE}
 <p><strong>{msg:email_cancellation_body_owner(inviteeName)}</strong></p>
-  {#else}
+  {#is PASSIVE}
 <p><strong>{msg:email_cancellation_body}</strong></p>
-  {/if}
-{/if}
+{/when}
 <ul>
   {#include email/_invitee /}
   <li><strong>{msg:email_body_meeting_label}</strong> {meetingTypeName}</li>

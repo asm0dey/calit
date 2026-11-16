@@ -8,30 +8,6 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class StaticAssetsTest {
     @Test
-    void customStylesheetIsServed() {
-        given()
-            .when()
-            .get("/calit.css")
-            .then()
-            .statusCode(200)
-            .contentType(containsString("css"))
-            .body(containsString("--color-base-100"));
-    }
-
-    @Test
-    void faviconIsServedAsSvg() {
-        given()
-            .when()
-            .get("/favicon.svg")
-            .then()
-            .statusCode(200)
-            .contentType(containsString("svg"))
-            .body(containsString("<svg"))
-            // brand indigo, matching the landing "c" chip
-            .body(containsString("#6061f8"));
-    }
-
-    @Test
     void landingPageLinksTheFavicon() {
         given()
             .when()

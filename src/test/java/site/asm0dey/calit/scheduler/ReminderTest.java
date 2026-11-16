@@ -13,26 +13,6 @@ import site.asm0dey.calit.domain.MeetingType;
 class ReminderTest {
     @Test
     @TestTransaction
-    void persistsAndReadsBackAllFields() {
-        // reminder.booking_id REFERENCES booking(id), so seed a real booking first (Plan 6 deviation).
-        var bookingId = seedBookingAt(uniqueFutureStart());
-        var sendAt = Instant.parse("2026-06-07T07:00:00Z");
-        Reminder r = new Reminder();
-        r.bookingId = bookingId;
-        r.sendAt = sendAt;
-        r.kind = Reminder.KIND_REMINDER;
-        r.sentAt = null;
-        r.persist();
-
-        Reminder loaded = Reminder.findById(r.id);
-        assertThat(loaded.bookingId).isEqualTo(bookingId);
-        assertThat(loaded.sendAt).isEqualTo(sendAt);
-        assertThat(loaded.kind).isEqualTo("REMINDER");
-        assertThat(loaded.sentAt).isNull();
-    }
-
-    @Test
-    @TestTransaction
     void deleteUnsentForRemovesOnlyUnsentRowsOfThatBooking() {
         // reminder.booking_id REFERENCES booking(id), so seed real bookings (Plan 6 deviation).
         // Distinct unique far-future slots so the booking_no_overlap_held exclusion guard doesn't

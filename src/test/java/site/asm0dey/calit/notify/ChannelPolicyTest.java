@@ -1,18 +1,14 @@
 package site.asm0dey.calit.notify;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.mockito.InjectSpy;
-import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
-@QuarkusTest
 class ChannelPolicyTest {
-    @Inject
-    ChannelPolicy policy;
-    @InjectSpy
-    NotifyConfig config;
+    // The shipped defaults: calit.notify.allowed-schemes=*, allow-private-targets=true, max-attempts=3.
+    final NotifyConfig config = spy(new NotifyConfig("*", true, 3));
+    final ChannelPolicy policy = new ChannelPolicy(config);
 
     @Test
     void unknownSchemeIsRejected() {
@@ -23,7 +19,7 @@ class ChannelPolicyTest {
     /**
      * The star is the DEFAULT, so a regression that parsed it into a literal one-entry allowlist would leave
      * {@link #starAllowsEveryKnownScheme} green — it only names schemes such an allowlist might contain. This
-     * asks the real config about a scheme notify4j has never heard of, which only an empty (= allow-all) set
+     * asks a config built from the shipped {@code *} about a scheme notify4j has never heard of, which only an empty (= allow-all) set
      * admits, and pins the case-insensitive lookup at the same time.
      */
     @Test

@@ -2,16 +2,24 @@ package site.asm0dey.calit.google;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 
-@QuarkusTest
 class GoogleLoginServiceTest {
-    @Inject
-    GoogleLoginService loginService;
-    @Inject
-    GoogleTokenService tokenService;
+    final GoogleOAuthConfig config = config();
+    final GoogleLoginService loginService = new GoogleLoginService(config);
+    final GoogleTokenService tokenService = new GoogleTokenService(config);
+
+    private static GoogleOAuthConfig config() {
+        var oauth = mock(GoogleOAuthConfig.OAuth.class);
+        when(oauth.clientId()).thenReturn("test-client-id");
+        when(oauth.loginRedirectUri()).thenReturn("http://localhost:8080/api/google/login/callback");
+        when(oauth.stateSecret()).thenReturn("test-state-secret");
+        var config = mock(GoogleOAuthConfig.class);
+        when(config.oauth()).thenReturn(oauth);
+        return config;
+    }
 
     @Test
     void consentUrlTargetsGoogleWithLoginRedirectAndState() {

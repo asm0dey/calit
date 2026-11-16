@@ -53,7 +53,7 @@ mvn test -Dtest=BookingServiceTest                    # one class
 mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
 ```
 
-- Affected-only runs: `./mvnw -Paffected test-order:affected test` (index learned on the first `./mvnw -Paffected test`, stored in git-ignored `.test-order/`). CI and image builds don't load the plugin.
+- Affected-only runs: `./mvnw -Paffected test-order:affected test` (index learned on the first `./mvnw -Paffected test`, stored in git-ignored `.test-order/`). CI and image builds don't load the plugin. The index is learned once and never refreshed (`alwaysLearn` makes every run a full-suite learn run, so it stays off); re-learn it when it predates the branch's merge-base with `origin/main`: `rm -rf .test-order && ./mvnw -Paffected test` (about 4-5 min). A root `pom.xml` change forces a near-full selection.
 
 - Surefire runs **`reuseForks=true`**: ONE reused JVM fork + ONE Dev Services Postgres shared across all same-profile `@QuarkusTest` classes (cold-boot per class took minutes). `@TestProfile` classes trigger in-JVM Quarkus restart. Heap pinned `-Xms512m -Xmx6g`.
 - Dev Services Postgres is **reused between runs** (`quarkus.datasource.devservices.reuse=true` in
@@ -67,11 +67,12 @@ mvn test -Dtest=BookingServiceTest#booksAvailableSlot # one method
   — `DatabaseResetCallback`'s `TRUNCATE … RESTART IDENTITY CASCADE` already made concurrent runs unusable
   — but this failure mode is more confusing, so it's worth naming.)
 - `DatabaseResetCallback` (registered via `src/test/resources/META-INF/services/`) truncates + reseeds DB per test. Admin user **always id 1**. Write owner-scoped tests against that invariant.
-- Coverage: `quarkus-jacoco` instruments code reached through a booted `@QuarkusTest`; plain-JUnit tests are measured by the `jacoco-maven-plugin` agent, which appends to the same `target/jacoco-quarkus.exec`, so the one `target/jacoco-report/jacoco.xml` (what Sonar reads) covers both. The report is only written when at least one `@QuarkusTest` runs.
+- Coverage: `quarkus-jacoco` instruments code reached through a booted `@QuarkusTest`; plain-JUnit tests are measured by the `jacoco-maven-plugin` agent, which appends to the same `target/jacoco-quarkus.exec`, so the one `target/jacoco-report/jacoco.xml` (what Sonar reads) covers both; `@QuarkusComponentTest` coverage reaches `target/jacoco-quarkus.exec` through surefire's `jacoco-agent.destfile`/`append` properties. The report is only written when at least one `@QuarkusTest` runs.
 - `*IT` classes (e.g. `OgImageResourceIT`) run under **`mvn verify`** via `maven-failsafe-plugin`, not under `mvn test` — `verify` therefore packages the app and boots it for real. Plain `mvn test` is unaffected and stays fast.
 - Mailer mocked in `%dev`/`%test`; Google + Turnstile disabled by default. Full booking flow runs zero external accounts.
 - RestAssured can't execute JS — tests assert on stable marker comments (e.g. `CALIT_TZ_REFORMAT`) instead of running scripts.
 - Assertions are **AssertJ** (`assertThat`, `assertThatThrownBy`, `assertThatCode`, `assertSoftly`), not JUnit `Assertions.*` or Hamcrest `MatcherAssert`. Assert on the value, never `assertThat(<boolean expr>).isTrue()` when a fluent check exists: collections via `hasSize`/`extracting(...).containsExactly(...)`/`allSatisfy`, numbers via `isGreaterThan`, dates via `isAfter`/`isBefore`, strings via `contains`/`isNotBlank`. Hamcrest stays only inside RestAssured `.body(...)`.
+- Decision logic lives in pure classes (`SetRules`, `SetDecisions`, `MailPlan`, `EmailHeadline`, `BookingInputRules`, `SlotFit`) tested with plain JUnit. Beans are constructor-injected and tested in plain JUnit with mocks; `@QuarkusComponentTest` only where a test needs real config expansion or a `@ConfigMapping` (the two `GoogleRedirectUri*` tests). `@QuarkusTest` is for DB, locking, commit-time and HTTP behaviour.
 
 **Never open a PR while the test suite is red.** `mvn test` must be fully green —
 0 failures, 0 errors, `BUILD SUCCESS` — before a branch becomes a pull request,

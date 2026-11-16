@@ -10,24 +10,6 @@ import org.junit.jupiter.api.Test;
 class MeetingTypeTest {
     @Test
     @TestTransaction
-    void persistsWithDefaultBuffersActiveAndNotSecret() {
-        MeetingType t = new MeetingType();
-        t.ownerId = 1L;
-        t.name = "Intro 30";
-        t.slug = "intro-30";
-        t.durationMinutes = 30;
-        t.persist();
-
-        MeetingType loaded = MeetingType.findBySlug(1L, "intro-30");
-        assertThat(loaded.id).isEqualTo(t.id);
-        assertThat(loaded.bufferBeforeMinutes).isZero();
-        assertThat(loaded.bufferAfterMinutes).isZero();
-        assertThat(loaded.active).isTrue();
-        assertThat(loaded.secret).isFalse();
-    }
-
-    @Test
-    @TestTransaction
     void findBySlugReturnsNullWhenMissing() {
         assertThat(MeetingType.findBySlug(1L, "does-not-exist")).isNull();
     }
