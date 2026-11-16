@@ -398,4 +398,67 @@ class GroupEditDetailsTest {
             assertThat(r.meetLink).as("no dead Meet link survives on any row").isNull();
         });
     }
+
+    @Test
+    @io.quarkus.test.TestTransaction
+    void decliningAGroupGuestKeepsEveryCoHostOnTheEvent() {
+        // #327: the re-sync after a guest declines must send the GROUP attendee list, Co-hosts included
+        stubOrganizerOnCreator();
+        groupType();
+        Booking lead = bookingService.book(
+                1L,
+                "intro",
+                nextMonday(10),
+                "Sam",
+                "sam@x.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of("ana@x.com")
+        );
+        BookingGuest ana = BookingGuest.<BookingGuest>activeForBooking(lead.id).getFirst();
+
+        bookingService.declineGuest(ana.declineToken);
+
+        verify(calendarPort)
+            .updateEvent(
+                    eq(1L),
+                    any(),
+                    eq("grp-evt"),
+                    any(),
+                    any(),
+                    argThat(list -> list.contains("volodya@x.com")
+                    && list.contains("pasha@x.com")
+                    && !list.contains("ana@x.com"))
+            );
+    }
+
+    @Test
+    @io.quarkus.test.TestTransaction
+    void decliningAGuestOfALegacyCohostEventGroupPatchesTheCohostRow() {
+        var ref = new CalendarRef(null, "legacy@example.com");
+        var cohostId = new Long[1];
+        Booking cohost = legacyCohostEventGroup(cohostId, ref);
+        Booking lead = Booking.leadOfGroup(cohost.groupId, 1L);
+        BookingGuest ana = new BookingGuest();
+        ana.ownerId = 1L;
+        ana.bookingId = lead.id;
+        ana.email = "ana@x.com";
+        ana.declineToken = UUID.randomUUID().toString();
+        ana.createdAt = Instant.now();
+        ana.persist();
+
+        bookingService.declineGuest(ana.declineToken);
+
+        verify(calendarPort)
+            .updateEvent(
+                    eq(cohostId[0]),
+                    eq(ref),
+                    eq("legacy-evt"),
+                    any(),
+                    any(),
+                    argThat(list -> list.contains("volodya@x.com") && !list.contains("ana@x.com"))
+            );
+    }
 }

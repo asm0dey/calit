@@ -1878,6 +1878,22 @@ public class BookingService {
      * guest a cancellation via sendUpdates=all.
      */
     private void resyncGuests(Booking booking, Long ownerId) {
+        if (booking != null && booking.groupId != null) {
+            // one shared event for the group: its row may be a Co-host's (pre-ADR 0007), and its attendees are every host
+            Booking row = groupEventRow(booking.groupId);
+            if (row != null && calendarPort.isConnected(row.ownerId)) {
+                MeetingType type = MeetingType.findById(booking.meetingTypeId);
+                calendarPort.updateEvent(
+                        row.ownerId,
+                        row.calendarRef(),
+                        row.eventId,
+                        row.startUtc,
+                        row.endUtc,
+                        groupAttendeeEmails(type, booking.groupId, meetingHosts.hostOwnerIds(type))
+                );
+            }
+            return;
+        }
         if (booking != null && calendarPort.isConnected(ownerId) && booking.eventId != null) {
             OwnerSettings owner = OwnerSettings.forOwner(ownerId);
             calendarPort.updateEvent(
