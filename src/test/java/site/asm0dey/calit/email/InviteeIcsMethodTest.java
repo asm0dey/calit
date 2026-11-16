@@ -173,4 +173,30 @@ class InviteeIcsMethodTest {
 
         assertThat(ics).contains("METHOD:CANCEL").doesNotContain("METHOD:REQUEST");
     }
+
+    private String attachmentType(String to) {
+        List<Mail> mails = mailbox.getMailsSentTo(to);
+        assertThat(mails).hasSize(1);
+        return mails.getFirst().getAttachments().getFirst().getContentType();
+    }
+
+    @Test
+    void cancellationAttachmentDeclaresMethodCancel() {
+        // RFC 6047 2.4: the MIME method parameter must match the METHOD property inside the .ics
+        long id = seed(BookingStatus.CANCELLED, 0);
+
+        emailService.handleCancelled(new BookingCancelled(id, false));
+
+        assertThat(attachmentType(INVITEE_EMAIL)).contains("method=CANCEL").doesNotContain("method=REQUEST");
+        assertThat(attachmentType(OWNER_EMAIL)).contains("method=CANCEL");
+    }
+
+    @Test
+    void rescheduleAttachmentDeclaresMethodRequest() {
+        long id = seed(BookingStatus.CONFIRMED, 1);
+
+        emailService.handleRescheduled(new BookingRescheduled(id, Instant.parse("2026-06-07T09:00:00Z"), false));
+
+        assertThat(attachmentType(INVITEE_EMAIL)).contains("method=REQUEST");
+    }
 }
