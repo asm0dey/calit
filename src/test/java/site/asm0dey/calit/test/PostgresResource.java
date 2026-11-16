@@ -18,12 +18,18 @@ import org.testcontainers.containers.wait.strategy.Wait;
 @WithTestResource(value = PostgresResource.class, scope = TestResourceScope.GLOBAL)
 public class PostgresResource implements QuarkusTestResourceLifecycleManager {
     private static final String DB = "calit";
-    private static GenericContainer<?> postgres;
+    /**
+     * Each Quarkus test app loads this class in its own classloader, so a static field would start a
+     * container per app. A system property is JVM-wide: the first app starts the container and every
+     * later app in the fork reuses its URL.
+     */
+    private static final String URL_PROPERTY = "calit.test-db.url";
 
     @Override
     public synchronized Map<String, String> start() {
-        if (postgres == null) {
-            postgres = new GenericContainer<>("postgres:18")
+        var url = System.getProperty(URL_PROPERTY);
+        if (url == null) {
+            var postgres = new GenericContainer<>("postgres:18")
                 .withEnv(Map.of("POSTGRES_DB", DB, "POSTGRES_USER", DB, "POSTGRES_PASSWORD", DB))
                 // test data is thrown away; durability only costs time
                 .withCommand("postgres", "-c", "fsync=off")
@@ -34,10 +40,12 @@ public class PostgresResource implements QuarkusTestResourceLifecycleManager {
                 // the image's init script runs a temporary server first, so the second line is the real one
                 .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\s", 2));
             postgres.start();
+            url = "jdbc:postgresql://" + postgres.getHost() + ":" + postgres.getMappedPort(5432) + "/" + DB;
+            System.setProperty(URL_PROPERTY, url);
         }
         return Map.of(
                 "quarkus.datasource.jdbc.url",
-                "jdbc:postgresql://" + postgres.getHost() + ":" + postgres.getMappedPort(5432) + "/" + DB,
+                url,
                 "quarkus.datasource.username",
                 DB,
                 "quarkus.datasource.password",
