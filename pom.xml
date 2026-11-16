@@ -44,6 +44,8 @@
          the {@...} vars it uses (Qute has no cross-template decl sharing) and EmailService's
          per-event render methods/call-sites mirror those same param sets 1:1. Exclude both from
          duplication detection only; every other rule still applies. -->
+    <!-- Vendored from tesslio/good-oss-citizen's install-gate; tracked and fixed upstream, not here. -->
+    <sonar.exclusions>.github/scripts/**</sonar.exclusions>
     <sonar.cpd.exclusions>**/templates/email/*.html,**/email/EmailService.java</sonar.cpd.exclusions>
     <sonar.issue.ignore.multicriteria>e1,e2,e3,e4,e5</sonar.issue.ignore.multicriteria>
     <!-- e1: Flyway migrations are PostgreSQL, but Sonar analyses .sql with its Oracle PL/SQL engine
