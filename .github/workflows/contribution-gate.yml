@@ -36,6 +36,9 @@ concurrency:
 jobs:
   declaration:
     name: Contribution declaration
+    # Dependency bots write no declaration; a job skipped here still satisfies a required check.
+    # An allowlist, not user.type == 'Bot': AI agents (Copilot, claude[bot], Devin) are bots too.
+    if: ${{ !contains(fromJSON('["renovate[bot]", "dependabot[bot]"]'), github.event.pull_request.user.login) }}
     runs-on: ubuntu-latest
     steps:
       # Checks out the base repository (the default ref for
