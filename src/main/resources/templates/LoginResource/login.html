@@ -14,9 +14,9 @@
       <form method="post" action="/j_security_check" class="mt-2">
         <fieldset class="fieldset">
           <label class="label" for="j_username">{msg:auth_login_username_label}</label>
-          <input id="j_username" class="input w-full" type="text" name="j_username" required autofocus>
+          <input id="j_username" class="input w-full" type="text" name="j_username" required autofocus autocomplete="username">
           <label class="label" for="j_password">{msg:auth_login_password_label}</label>
-          <input id="j_password" class="input w-full" type="password" name="j_password" required>
+          <input id="j_password" class="input w-full" type="password" name="j_password" required autocomplete="current-password">
           <label class="label cursor-pointer justify-start gap-2 mt-2" for="remember">
             <input type="checkbox" id="remember" class="checkbox checkbox-sm"> {msg:auth_login_remember_me}
           </label>

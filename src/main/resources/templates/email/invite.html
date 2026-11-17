@@ -1,4 +1,5 @@
 {@java.lang.String lang}
+{@java.lang.String username}
 {@java.lang.String activationUrl}
 {@java.lang.String inviter}
 {@java.lang.String host}
@@ -8,6 +9,7 @@
 <body>
 <p>{msg:email_invite_greeting}</p>
 <p>{msg:email_invite_body(inviter, host)}</p>
+<p>{msg:email_invite_username(username)}</p>
 <p><a href="{activationUrl}">{msg:email_invite_btn}</a></p>
 <p>{msg:email_paste_link_hint}<br>{activationUrl}</p>
 <p>{msg:email_invite_expiry}</p>

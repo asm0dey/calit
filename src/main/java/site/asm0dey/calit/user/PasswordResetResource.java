@@ -52,7 +52,7 @@ public class PasswordResetResource {
     public static class Templates {
         public static native TemplateInstance forgot(String title, boolean sent);
 
-        public static native TemplateInstance reset(String title, String token, boolean error);
+        public static native TemplateInstance reset(String title, String token, String username, boolean error);
     }
 
     @GET
@@ -93,7 +93,7 @@ public class PasswordResetResource {
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance resetForm(@QueryParam("token") String token) {
         AppMessages m = messages.forLocale(activeLocale.current());
-        return Templates.reset(m.auth_reset_title(), token, false);
+        return Templates.reset(m.auth_reset_title(), token, resetService.usernameFor(token, Instant.now()), false);
     }
 
     @POST
@@ -104,12 +104,15 @@ public class PasswordResetResource {
         AppMessages m = messages.forLocale(activeLocale.current());
         if (password == null || password.isBlank()) {
             // Token not yet consumed — let them retry with the same link.
-            return html(Response.Status.BAD_REQUEST, Templates.reset(m.auth_reset_title(), token, true));
+            return html(
+                    Response.Status.BAD_REQUEST,
+                    Templates.reset(m.auth_reset_title(), token, resetService.usernameFor(token, Instant.now()), true)
+            );
         }
         AppUser user = resetService.consume(token, Instant.now());
         if (user == null) {
             // Unknown/expired/used: dead-end view (token=null) prompts a fresh request.
-            return html(Response.Status.BAD_REQUEST, Templates.reset(m.auth_reset_title(), null, true));
+            return html(Response.Status.BAD_REQUEST, Templates.reset(m.auth_reset_title(), null, null, true));
         }
         user.passwordHash = passwordHasher.hash(password);
         // managed entity in this tx — flushed on commit

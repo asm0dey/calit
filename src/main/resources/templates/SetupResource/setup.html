@@ -10,9 +10,9 @@
         <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
         <fieldset class="fieldset">
           <label class="label" for="username">{msg:auth_setup_username_label}</label>
-          <input id="username" class="input w-full" type="text" name="username" required autofocus>
+          <input id="username" class="input w-full" type="text" name="username" required autofocus autocomplete="username">
           <label class="label" for="password">{msg:auth_setup_password_label}</label>
-          <input id="password" class="input w-full" type="password" name="password" required>
+          <input id="password" class="input w-full" type="password" name="password" required autocomplete="new-password">
           <button type="submit" class="btn btn-primary btn-block mt-2">{msg:auth_setup_submit}</button>
         </fieldset>
       </form>

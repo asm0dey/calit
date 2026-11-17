@@ -151,6 +151,7 @@ public class UsersResource {
         emailService.sendInvite(
                 invited.userId(),
                 inviteEmail,
+                normalized,
                 baseUrl + "/reset-password?token=" + invited.token(),
                 inviterEmail(),
                 baseUrl,
@@ -311,6 +312,7 @@ public class UsersResource {
         emailService.sendInvite(
                 u.id,
                 s.ownerEmail,
+                u.username,
                 baseUrl + "/reset-password?token=" + token,
                 inviterEmail(),
                 baseUrl,

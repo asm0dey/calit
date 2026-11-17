@@ -1,5 +1,6 @@
 {@java.lang.String title}
 {@java.lang.String token}
+{@java.lang.String username}
 {@java.lang.Boolean error}
 {#include base title=title}
   <div class="card bg-base-100 border border-base-300 shadow-sm max-w-sm mx-auto">
@@ -11,8 +12,12 @@
           <input type="hidden" name="{inject:csrf.parameterName}" value="{inject:csrf.token}">
           <input type="hidden" name="token" value="{token}">
           <fieldset class="fieldset">
+            {#if username}
+            <label class="label" for="username">{msg:auth_login_username_label}</label>
+            <input id="username" class="input w-full" type="text" name="username" value="{username}" readonly autocomplete="username">
+            {/if}
             <label class="label" for="password">{msg:auth_reset_new_password_label}</label>
-            <input id="password" class="input w-full" type="password" name="password" required autofocus>
+            <input id="password" class="input w-full" type="password" name="password" required autofocus autocomplete="new-password">
             <button type="submit" class="btn btn-primary btn-block mt-2">{msg:auth_reset_submit}</button>
           </fieldset>
         </form>

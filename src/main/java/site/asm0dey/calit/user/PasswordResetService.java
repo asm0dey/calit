@@ -45,6 +45,23 @@ public class PasswordResetService {
     }
 
     /**
+     * The username a still-valid token belongs to, without consuming it (shown on the set-password
+     * form so the user and their password manager know which account it is); null otherwise.
+     */
+    @Transactional
+    public String usernameFor(String token, Instant now) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        PasswordResetToken t = PasswordResetToken.findByTokenHash(LoginTicketService.sha256Hex(token));
+        if (t == null || t.expiresAt.isBefore(now)) {
+            return null;
+        }
+        // the FK cascades on user delete, so a live token always has its user
+        return AppUser.<AppUser>findById(t.userId).username;
+    }
+
+    /**
      * Validate and consume a raw token. Deletes the matching token (single-use) and returns its
      * {@link AppUser}, or null when the token is unknown, expired, or its user no longer exists.
      */
