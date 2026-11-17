@@ -441,6 +441,47 @@
   </build>
   <profiles>
     <profile>
+      <!-- Native smoke: `./mvnw verify -Pnative` compiles the native binary in a glibc Liberica NIK
+           container (glibc, not Dockerfile.native's musl builder, so the binary runs on the Ubuntu CI
+           runner; same NIK version), skips surefire, and failsafe runs every *IT against
+           native.image.path. CI runs this in the native-it job. Flags come from application.properties.
+           Run Maven itself on JDK 25 (the NIK version): Qute generates resolvers for the build JDK's own
+           String/Map methods, and native-image 25 fails on JDK 27-only ones (String.compareToFoldCase). -->
+      <id>native</id>
+      <properties>
+        <quarkus.native.enabled>true</quarkus.native.enabled>
+        <quarkus.native.container-build>true</quarkus.native.container-build>
+        <!-- the NIK image has no ENTRYPOINT and works in /, while Quarkus passes only native-image
+             arguments and mounts the build at /project (Mandrel images set both) -->
+        <quarkus.native.container-runtime-options>--entrypoint=native-image,--workdir=/project</quarkus.native.container-runtime-options>
+        <quarkus.native.builder-image>bellsoft/liberica-native-image-kit-container:jdk-25-nik-25.0.3-glibc@sha256:9826a9b3de952a6e16aada3251884af6055f3fe72838f69841a5026092f3d511</quarkus.native.builder-image>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <skipTests>true</skipTests>
+            </configuration>
+          </plugin>
+          <plugin>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <executions>
+              <execution>
+                <configuration>
+                  <environmentVariables>
+                    <!-- AWT dlopen()s the JDK .so files native-image emits beside the build; the image
+                         copies them to /app/lib (Dockerfile.native), here they stay in target/. -->
+                    <LD_LIBRARY_PATH>${project.build.directory}/${project.build.finalName}-native-image-source-jar</LD_LIBRARY_PATH>
+                  </environmentVariables>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
       <id>affected</id>
       <build>
         <plugins>
