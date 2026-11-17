@@ -1,9 +1,5 @@
 package site.asm0dey.calit.arch;
 
-import static com.tngtech.archunit.base.DescribedPredicate.not;
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
-import static site.asm0dey.calit.arch.PersistenceAccess.ACCESS_PERSISTENCE;
-import static site.asm0dey.calit.arch.PersistenceAccess.IS_REPOSITORY;
 import module java.base;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
@@ -12,6 +8,10 @@ import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
 import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.MeetingHosts;
+import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static site.asm0dey.calit.arch.PersistenceAccess.ACCESS_PERSISTENCE;
+import static site.asm0dey.calit.arch.PersistenceAccess.IS_REPOSITORY;
 
 /**
  * Database access lives in repositories (#343). Existing violations are frozen in

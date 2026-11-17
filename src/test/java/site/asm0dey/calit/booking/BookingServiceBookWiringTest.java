@@ -15,35 +15,42 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 class BookingServiceBookWiringTest extends BookingServiceWiringFixture {
     @Test
     void rejectsCrlfInjectionInEmail() {
+        var start = Instant.parse("2099-01-01T10:00:00Z");
+        Map<String, String> answers = Map.of();
+        List<String> guests = List.of();
         assertThatExceptionOfType(BookingValidationException.class)
             .isThrownBy(() -> bookingService.book(
                     1L,
                     "intro",
-                    Instant.parse("2099-01-01T10:00:00Z"),
+                    start,
                     "Mallory",
                     "a@b.com\r\nBcc: attacker@evil.com",
-                    Map.of(),
+                    answers,
                     null,
                     null,
                     "en",
-                    List.of()
+                    guests
             ));
     }
 
     @Test
     void rejectsOversizedInviteeName() {
+        var start = Instant.parse("2099-01-01T10:00:00Z");
+        var longName = "n".repeat(201);
+        Map<String, String> answers = Map.of();
+        List<String> guests = List.of();
         assertThatExceptionOfType(BookingValidationException.class)
             .isThrownBy(() -> bookingService.book(
                     1L,
                     "intro",
-                    Instant.parse("2099-01-01T10:00:00Z"),
-                    "n".repeat(201),
+                    start,
+                    longName,
                     "a@b.com",
-                    Map.of(),
+                    answers,
                     null,
                     null,
                     "en",
-                    List.of()
+                    guests
             ));
     }
 

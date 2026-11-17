@@ -1,15 +1,15 @@
 package site.asm0dey.calit.arch;
 
-import static com.tngtech.archunit.base.DescribedPredicate.not;
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
-import static org.assertj.core.api.Assertions.assertThat;
-import static site.asm0dey.calit.arch.PersistenceAccess.ACCESS_PERSISTENCE;
-import static site.asm0dey.calit.arch.PersistenceAccess.IS_REPOSITORY;
 import module java.base;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.arch.fixtures.*;
 import site.asm0dey.calit.booking.Booking;
+import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static org.assertj.core.api.Assertions.assertThat;
+import static site.asm0dey.calit.arch.PersistenceAccess.ACCESS_PERSISTENCE;
+import static site.asm0dey.calit.arch.PersistenceAccess.IS_REPOSITORY;
 
 class PersistenceAccessTest {
     private static List<String> violations(Class<?>... fixtures) {

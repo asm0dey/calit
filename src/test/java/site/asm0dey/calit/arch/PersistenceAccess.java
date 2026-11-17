@@ -1,6 +1,5 @@
 package site.asm0dey.calit.arch;
 
-import static com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo;
 import module java.base;
 import module java.sql;
 import com.tngtech.archunit.base.DescribedPredicate;
@@ -21,6 +20,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Query;
 import org.hibernate.Session;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo;
 
 /**
  * The persistence boundary: which calls count as database access, and which classes may make them.
