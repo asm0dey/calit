@@ -2,6 +2,7 @@ package site.asm0dey.calit.booking;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.*;
 import jakarta.enterprise.event.Event;
 import org.junit.jupiter.api.Test;
@@ -269,5 +270,15 @@ class BookingServiceWiringTest {
         bookingService.updateDetails(booked.manageToken, "New title", "New description", null, false);
 
         verify(calendarPort).updateEventDetails(eq(booked.ownerId), eq(ref), eq("evt-details"), any(), any(), any());
+    }
+
+    @Test
+    void updateDetailsRejectsOverlongTitle() {
+        Booking b = confirmedWithEvent(false, null, null);
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        var title = "x".repeat(201);
+        List<String> guestEmails = List.of();
+        assertThatExceptionOfType(BookingValidationException.class)
+            .isThrownBy(() -> bookingService.updateDetails(b.manageToken, title, null, guestEmails, true));
     }
 }
