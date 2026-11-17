@@ -7,6 +7,15 @@ This changelog is maintained manually. The canonical release notes, including
 asset downloads, are on
 [GitHub Releases](https://github.com/asm0dey/calit/releases).
 
+## Unreleased
+
+Merged but not yet in a tagged release.
+
+- Invite emails and the set-password page now show the account's username; login, setup, signup and
+  set-password forms carry `autocomplete` hints for password managers. ([#355](https://github.com/asm0dey/calit/pull/355))
+
+Upgrade: nothing to do.
+
 ## 1.30.0
 
 Multi-session bookings, a native dashboard fix, and six high-priority booking and calendar bug fixes.
