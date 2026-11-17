@@ -453,6 +453,10 @@
         <quarkus.native.container-build>true</quarkus.native.container-build>
         <!-- the NIK image has no ENTRYPOINT and works in /, while Quarkus passes only native-image
              arguments and mounts the build at /project (Mandrel images set both) -->
+        <!-- -Ob: quick-build mode, a less-optimised but much faster native-image compile. The smoke ITs
+             look for missing reflection/resources/init, which optimisation does not change; the shipped
+             image (Dockerfile.native) is still fully optimised. Appended, so the shared list stays intact. -->
+        <quarkus.native.additional-build-args-append>-Ob</quarkus.native.additional-build-args-append>
         <quarkus.native.container-runtime-options>--entrypoint=native-image,--workdir=/project</quarkus.native.container-runtime-options>
         <quarkus.native.builder-image>bellsoft/liberica-native-image-kit-container:jdk-25-nik-25.0.3-glibc@sha256:9826a9b3de952a6e16aada3251884af6055f3fe72838f69841a5026092f3d511</quarkus.native.builder-image>
       </properties>

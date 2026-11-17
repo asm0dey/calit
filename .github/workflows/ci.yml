@@ -133,7 +133,7 @@ jobs:
 
       - name: Build Tailwind + daisyUI CSS
         run: |
-          bun install --frozen-lockfile
+          bun install --frozen-lockfile --ignore-scripts
           bun run css:build
           test -s src/main/resources/META-INF/resources/calit.css
 
