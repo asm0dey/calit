@@ -214,7 +214,7 @@
     <dependency>
         <groupId>org.webjars.npm</groupId>
         <artifactId>altcha</artifactId>
-        <version>3.5.0</version>
+        <version>3.6.0</version>
         <scope>runtime</scope>
     </dependency>
     <!-- altcha's hash-wasm dependency is declared as a version RANGE; pin a concrete version so the
@@ -224,7 +224,7 @@
     <dependency>
         <groupId>org.webjars.npm</groupId>
         <artifactId>hash-wasm</artifactId>
-        <version>4.12.0</version>
+        <version>4.13.0</version>
         <scope>runtime</scope>
     </dependency>
     <!-- Version-less static paths for the WebJar assets above. -->
