@@ -59,7 +59,8 @@ jobs:
           CRIBRO_ARGS: ${{ github.event_name == 'pull_request' && format('-Dcribro.diffBase=origin/{0}', github.base_ref) || '' }}
         run: |
           # shellcheck disable=SC2086 # CRIBRO_ARGS holds one argument, or none
-          ./mvnw --batch-mode --no-transfer-progress verify $CRIBRO_ARGS
+          # -DskipITs: the *IT smoke tests run against the native binary in native-it, in parallel.
+          ./mvnw --batch-mode --no-transfer-progress verify -DskipITs $CRIBRO_ARGS
 
       # cribro writes no report when the PR changed no Java lines it measures, and then nothing is
       # published.
@@ -95,6 +96,68 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./mvnw --batch-mode --no-transfer-progress org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
 
+
+  # The *IT classes are native smoke tests: -Pnative compiles the native binary (glibc NIK container) and
+  # failsafe runs them against it, catching request-time native failures (reflection, resources,
+  # build-time init) that a green build hides. No secrets, so fork PRs run it here too.
+  native-it:
+    name: Native smoke ITs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v7
+
+      - name: Set up Bun from mise.toml
+        uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          install_args: "bun"
+
+      # JDK 25, not .sdkmanrc's 27: Maven must run on the NIK builder's JDK, because Qute generates
+      # resolvers for the build JDK's own String/Map methods and native-image 25 rejects 27-only ones.
+      - name: Set up Liberica JDK 25 (the NIK version)
+        uses: actions/setup-java@v6
+        with:
+          distribution: liberica
+          java-version: "25"
+
+      - name: Cache Maven repository
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-
+
+      - name: Build Tailwind + daisyUI CSS
+        run: |
+          bun install --frozen-lockfile
+          bun run css:build
+          test -s src/main/resources/META-INF/resources/calit.css
+
+      # AWT in the native binary needs freetype, fontconfig and at least one font on the host.
+      - name: Install the AWT runtime libraries
+        run: sudo apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core libfreetype6
+
+      - name: Build the native binary and run the ITs against it
+        run: ./mvnw --batch-mode --no-transfer-progress verify -Pnative
+
+      # A reflection/init error can be logged on a request that still answered.
+      - name: Fail on native reflection/init errors in the app log
+        run: |
+          test -s target/quarkus.log || { echo "::error::target/quarkus.log missing or empty"; exit 1; }
+          if grep -iE 'NoSuchMethodException|InstantiationException|no accessible default constructor|UnsupportedFeatureException' target/quarkus.log; then
+            echo "::error::native reflection/init error in target/quarkus.log"; exit 1
+          fi
+
+      - name: Upload the app log and failsafe reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-it-logs
+          path: |
+            target/quarkus.log
+            target/failsafe-reports/
+          if-no-files-found: ignore
+          retention-days: 7
 
   # A separate job so the token that can comment never shares a runner with the build.
   diff-coverage-comment:
@@ -205,16 +268,17 @@ jobs:
 
   build:
     name: Build ${{ matrix.variant }} image (${{ matrix.arch }})
-    needs: [test, changes]
+    needs: [test, changes, native-it]
     # !cancelled() drops the implicit success() gate GitHub applies over `needs:`,
     # so we restate needs.test.result explicitly — without it a red test suite
-    # would start publishing images. `!= 'false'` (not `== 'true'`) means only an
+    # would start publishing images. native-it the same: no image ships whose binary failed the smoke ITs. `!= 'false'` (not `== 'true'`) means only an
     # explicitly-computed false skips the build; a failed/skipped changes job
     # (whose outputs evaluate to '') still builds, so a tagged release never
     # ships with no images.
     if: >-
       !cancelled() &&
       needs.test.result == 'success' &&
+      needs.native-it.result == 'success' &&
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) &&
       needs.changes.outputs.code != 'false'
@@ -310,13 +374,12 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
 
-      # Boot the just-built image and exercise the paths that fail at request time even though the
-      # build was green (build-heap RNG, BouncyCastle argon2id, Hibernate, Qute render, JSON
-      # reflection, AWT card rendering). Runs for BOTH variants: the font/AWT failure mode this
-      # step's card checks guard against hits the JVM image exactly as it hits native (calit-o89d)
-      # -- only the reflection/init log check below is native-specific in practice. The Google
-      # freeBusy path can't be smoked here (needs real OAuth tokens) — it relies on -H:Preserve in
-      # Dockerfile.native, which covers those packages by construction.
+      # Boot the just-built image and check only what the image adds on top of the binary: the runtime
+      # .so files and fonts (calit-o89d: /og.png fails when the image has none), the APP_VERSION/
+      # GIT_COMMIT build args, and a clean boot log. App behaviour (argon2id, Qute pages, JSON, ICS,
+      # DB-backed cards) is covered by the *IT classes, which native-it runs against the native binary.
+      # Runs for BOTH variants. The Google freeBusy path can't be smoked anywhere (needs real OAuth
+      # tokens) -- it relies on the -H:Preserve flags in application.properties.
       - name: Smoke test image
         run: |
           set -euo pipefail
@@ -340,29 +403,12 @@ jobs:
             sleep 1
           done
           if [ -z "$ready" ]; then echo "::error::image did not become ready"; docker logs app; exit 1; fi
-          # /setup render (Qute) + create admin (argon2id / BouncyCastle native path) with CSRF.
-          curl -fs -c /tmp/cj http://localhost:8080/setup -o /tmp/setup.html
+          # build-arg metadata reaches the footer; /setup renders on the empty DB
+          curl -fs http://localhost:8080/setup -o /tmp/setup.html
           grep -Fq '<span>${{ steps.buildmeta.outputs.version }} &middot; ${{ steps.buildmeta.outputs.commit }}</span>' /tmp/setup.html || { echo "::error::/setup footer does not contain expected build metadata"; docker logs app; exit 1; }
-          csrf=$(grep -oP 'name="csrf-token"[^>]*value="\K[^"]+' /tmp/setup.html | head -1)
-          code=$(curl -s -b /tmp/cj -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/setup \
-            --data-urlencode "username=admin" --data-urlencode "email=a@b.co" \
-            --data-urlencode "password=hunter2hunter2" --data-urlencode "csrf-token=$csrf")
-          echo "/setup POST -> $code"
-          [ "$code" = "302" ] || { echo "::error::/setup (argon2id) returned $code, expected 302"; docker logs app; exit 1; }
-          # The card endpoint is the one path that is build-green and request-red when the runtime
-          # image lacks AWT's .so files or any font at all. Assert real PNG bytes, not just a 200.
-          # /og.png is the constant product card (proves AWT works at all); /og/admin.png resolves
-          # the real admin user through AppUser -> OwnerSettings -> CardRenderer and draws real text
-          # through the font chain, so it is the stronger probe of the two.
+          # the card is build-green and request-red when the image lacks AWT's .so files or any font
           curl -fs http://localhost:8080/og.png -o /tmp/og.png
           head -c 4 /tmp/og.png | grep -q 'PNG' || { echo "::error::/og.png is not a PNG"; docker logs app; exit 1; }
-          curl -fs http://localhost:8080/og/admin.png -o /tmp/og-admin.png
-          head -c 4 /tmp/og-admin.png | grep -q 'PNG' || { echo "::error::/og/admin.png is not a PNG"; docker logs app; exit 1; }
-          # A silent fallback to the product card would still pass the two PNG-magic checks above,
-          # so also assert the owner card actually differs from it -- that's the only way to know
-          # the DB-backed AppUser -> OwnerSettings -> CardRenderer path really rendered.
-          cmp -s /tmp/og.png /tmp/og-admin.png && { echo "::error::/og/admin.png is identical to the product card — DB-backed card did not render"; docker logs app; exit 1; }
-          echo "og card smoke test passed"
           # Fail on reflection/init errors even if a request happened to return non-fatally.
           if docker logs app 2>&1 | grep -iE 'NoSuchMethodException|InstantiationException|no accessible default constructor|UnsupportedFeatureException'; then
             echo "::error::native reflection/init error in logs"; exit 1

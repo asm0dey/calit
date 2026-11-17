@@ -55,7 +55,8 @@ jobs:
       # .mvn/extensions.xml loads cribro (diff coverage) into every build; it diffs against the PR's
       # base branch. Keep in sync with ci.yml.
       - name: Build and run tests
-        run: ./mvnw --batch-mode --no-transfer-progress verify "-Dcribro.diffBase=origin/$GITHUB_BASE_REF"
+        # -DskipITs: ci.yml's native-it job runs the *IT classes for fork PRs too.
+        run: ./mvnw --batch-mode --no-transfer-progress verify -DskipITs "-Dcribro.diffBase=origin/$GITHUB_BASE_REF"
 
       # cribro writes no report when the PR changed no Java lines it measures, and then nothing is
       # published.
