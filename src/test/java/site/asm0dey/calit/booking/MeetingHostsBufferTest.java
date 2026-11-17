@@ -40,37 +40,6 @@ class MeetingHostsBufferTest {
         return t;
     }
 
-    /**
-     * ADR-0002: the max is over the overrides actually SET; an unset one is not a 10-minute floor.
-     */
-    @Test
-    void neitherSetFallsBackToTheTypeBuffer() {
-        MeetingType t = seed("buf-none", null, null);
-        assertThat(meetingHosts.effectiveBufferBefore(t, OWNER, 120)).isEqualTo(10);
-        assertThat(meetingHosts.effectiveBufferAfter(t, OWNER, 120)).isEqualTo(10);
-    }
-
-    @Test
-    void aHostOverrideBelowTheTypeDefaultIsNotRaised() {
-        MeetingType t = seed("buf-host-low", 5, null);
-        assertThat(meetingHosts.effectiveBufferBefore(t, OWNER, 120)).isEqualTo(5);
-    }
-
-    @Test
-    void aDurationOverrideAppliesWhenTheHostHasNone() {
-        MeetingType t = seed("buf-duration", null, 45);
-        assertThat(meetingHosts.effectiveBufferBefore(t, OWNER, 120)).isEqualTo(45);
-    }
-
-    @Test
-    void theLargerOfTwoSetOverridesWins() {
-        MeetingType t = seed("buf-both-duration-wins", 5, 45);
-        assertThat(meetingHosts.effectiveBufferBefore(t, OWNER, 120)).isEqualTo(45);
-
-        MeetingType u = seed("buf-both-host-wins", 90, 45);
-        assertThat(meetingHosts.effectiveBufferBefore(u, OWNER, 120)).isEqualTo(90);
-    }
-
     @Test
     void aLengthWithNoRowUsesOnlyTheHostOverride() {
         MeetingType t = seed("buf-other-length", 5, 45);

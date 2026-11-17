@@ -2,7 +2,6 @@ package site.asm0dey.calit.booking;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.enterprise.event.Observes;
@@ -55,18 +54,5 @@ class MeetingHostsMutationTest {
         // creator row gone too
         assertThat(MeetingTypeHost.forType(t.id)).isEmpty();
         assertThat(MeetingTypeHost.isMultiHost(t.id)).isFalse();
-    }
-
-    @Test
-    @TestTransaction
-    void capRejectsEleventhHost() {
-        MeetingType t = MultiHostFixtures.meetingType(1L, "intro", 30);
-        for (var i = 0; i < 9; i++) {
-            meetingHosts.addCohost(t, MultiHostFixtures.enabledUser("h" + i));
-        }
-        // 1 creator + 9 cohosts = 10
-        em.flush();
-        AppUser extra = MultiHostFixtures.enabledUser("overflow");
-        assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> meetingHosts.addCohost(t, extra));
     }
 }

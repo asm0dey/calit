@@ -10,6 +10,13 @@ public class MeetingTypeHostRepository implements PanacheRepositoryBase<MeetingT
         return MeetingTypeHost.forType(meetingTypeId);
     }
 
+    /**
+     * Every host row of the listed types.
+     */
+    public List<MeetingTypeHost> forTypes(Collection<Long> meetingTypeIds) {
+        return list("meetingTypeId in ?1", meetingTypeIds);
+    }
+
     public List<MeetingTypeHost> acceptedForType(Long meetingTypeId) {
         return MeetingTypeHost.acceptedForType(meetingTypeId);
     }

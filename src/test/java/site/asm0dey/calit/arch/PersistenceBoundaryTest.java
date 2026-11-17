@@ -10,6 +10,7 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
+import site.asm0dey.calit.booking.MeetingHosts;
 
 /**
  * Database access lives in repositories (#343). Existing violations are frozen in
@@ -20,7 +21,7 @@ class PersistenceBoundaryTest {
     /**
      * Classes already moved onto repositories: checked strictly, never frozen.
      */
-    static final List<Class<?>> STRICT = List.of();
+    static final List<Class<?>> STRICT = List.of(MeetingHosts.class);
     @ArchTest
     static final ArchRule noPersistenceOutsideRepositories = FreezingArchRule.freeze(noClasses()
         .that(not(IS_REPOSITORY))

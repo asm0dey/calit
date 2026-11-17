@@ -35,4 +35,19 @@ class MeetingTypeHostRepositoryTest {
         MeetingTypeHost.of(t.id, cohost.id, MeetingTypeHost.COHOST, MeetingTypeHost.PENDING).persist();
         assertThat(hosts.isMultiHost(t.id)).isTrue();
     }
+
+    @Test
+    @TestTransaction
+    void forTypesReturnsOnlyTheListedTypesRows() {
+        var cohost = MultiHostFixtures.enabledUser("repo-cohost3");
+        var a = MultiHostFixtures.acceptedTwoHostType(1L, cohost.id, "repo-for-types-a", 30, false);
+        var b = MultiHostFixtures.meetingType(1L, "repo-for-types-b", 30);
+        MeetingTypeHost.of(b.id, 1L, MeetingTypeHost.CREATOR, MeetingTypeHost.ACCEPTED).persist();
+        var other = MultiHostFixtures.acceptedTwoHostType(1L, cohost.id, "repo-for-types-other", 30, false);
+
+        assertThat(hosts.forTypes(java.util.List.of(a.id, b.id)))
+            .extracting(h -> h.meetingTypeId)
+            .containsExactlyInAnyOrder(a.id, a.id, b.id)
+            .doesNotContain(other.id);
+    }
 }
