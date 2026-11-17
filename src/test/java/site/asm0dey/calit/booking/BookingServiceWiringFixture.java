@@ -189,6 +189,24 @@ abstract class BookingServiceWiringFixture {
         when(slotService.generateRawSlots(eq(t), eq(OWNER), any(), any(), any(), eq(minutes))).thenReturn(free);
     }
 
+    /**
+     * Sam books {@code t} at 09:00.
+     */
+    Booking book(MeetingType t) {
+        return bookingService.book(
+                OWNER,
+                t.slug,
+                SLOT_09,
+                "Sam",
+                "sam@example.com",
+                Map.of(),
+                "tok",
+                "",
+                "en",
+                List.of()
+        );
+    }
+
     void createEventReturns(CreatedEvent created) {
         when(calendarPort.createEvent(
                 anyLong(),
