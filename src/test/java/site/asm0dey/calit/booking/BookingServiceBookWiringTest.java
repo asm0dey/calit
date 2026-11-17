@@ -229,4 +229,75 @@ class BookingServiceBookWiringTest extends BookingServiceWiringFixture {
 
         assertThat(Duration.between(b.startUtc, b.endUtc)).hasMinutes(30);
     }
+
+    @Test
+    void bookStoresProvidedLocale() {
+        MeetingType t = localeType();
+
+        Booking b = bookingService.book(
+                t.ownerId,
+                t.slug,
+                SLOT_09,
+                "Erika",
+                "erika@example.de",
+                Map.of(),
+                null,
+                null,
+                "de",
+                java.util.List.of()
+        );
+
+        assertThat(b.locale).isEqualTo("de");
+    }
+
+    @Test
+    void bookFallsBackToEnForUnsupportedLocale() {
+        MeetingType t = localeType();
+
+        Booking b = bookingService.book(
+                t.ownerId,
+                t.slug,
+                SLOT_09,
+                "Xavier",
+                "xavier@example.com",
+                Map.of(),
+                null,
+                null,
+                "xx",
+                java.util.List.of()
+        );
+
+        assertThat(b.locale).isEqualTo("en");
+    }
+
+    @Test
+    void bookFallsBackToEnForNullLocale() {
+        MeetingType t = localeType();
+
+        Booking b = bookingService.book(
+                t.ownerId,
+                t.slug,
+                SLOT_09,
+                "Nadia",
+                "nadia@example.com",
+                Map.of(),
+                null,
+                null,
+                null,
+                java.util.List.of()
+        );
+
+        assertThat(b.locale).isEqualTo("en");
+    }
+
+    /**
+     * A bookable 30-minute type, on a site that ships en, de and he.
+     */
+    private MeetingType localeType() {
+        MeetingType t = type(false);
+        t.durationMinutes = 30;
+        slotsFree(30, SLOT_09);
+        when(appLocaleDiscovery.supported()).thenReturn(List.of(Locale.ENGLISH, Locale.GERMAN, Locale.of("he")));
+        return t;
+    }
 }
