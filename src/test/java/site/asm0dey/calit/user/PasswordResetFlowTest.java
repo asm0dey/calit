@@ -129,6 +129,15 @@ class PasswordResetFlowTest {
             .statusCode(200)
             .body(containsString("name=\"password\""))
             .body(not(containsString("autocomplete=\"username\"")));
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("token", "no-such-token")
+            .formParam("password", "whatever-pw-1")
+            .when()
+            .post("/reset-password")
+            .then()
+            .statusCode(400)
+            .body(containsString("/forgot-password"));
     }
 
     @Test

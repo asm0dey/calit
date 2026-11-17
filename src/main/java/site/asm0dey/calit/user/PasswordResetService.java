@@ -57,8 +57,8 @@ public class PasswordResetService {
         if (t == null || t.expiresAt.isBefore(now)) {
             return null;
         }
-        AppUser u = AppUser.findById(t.userId);
-        return u == null ? null : u.username;
+        // the FK cascades on user delete, so a live token always has its user
+        return AppUser.<AppUser>findById(t.userId).username;
     }
 
     /**
