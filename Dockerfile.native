@@ -62,20 +62,36 @@ RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw -B -DskipTests package -Dquarkus.native.enabled=true \
     "-Dquarkus.native.additional-build-args=-H:Preserve=package=com.google.api.services.calendar.model,-H:Preserve=package=com.google.api.client.auth.oauth2,-H:Preserve=package=com.google.api.client.googleapis.json,-H:Preserve=package=com.google.api.client.googleapis.auth.oauth2,-H:Preserve=package=com.google.api.client.json.webtoken,--initialize-at-run-time=org.altcha.altcha.v1.Altcha,--initialize-at-build-time=java.awt.Color,--initialize-at-run-time=org.alexmond.notify4j.HttpClientConfig"
 
-# --- Runtime stage: Alpaquita musl base (~3.9MB) — no JDK, just the native binary ---
-FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:4b1f8a1ec23ce4d99437091e9b29bff5ac6fab56d7d9ae304bd128087577b84a AS runtime
-WORKDIR /app
-# ca-certificates: outbound TLS to Google API + SMTP. zlib: the binary links libz.so.1.
+# --- Font stack donor: the distroless runtime below has no apk, so install + cache fonts here ---
 # freetype + fontconfig: required by quarkus-awt for native mode, per its own guide. The font
 # package goes beyond what that guide lists and is NOT decorative: with no font file anywhere the
 # JDK font manager fails to initialise ("Fontconfig head is null"), and that breaks Font.createFont
-# even for a TTF embedded in the binary. Moving to a hardened/distroless base (calit-gabg) requires
-# switching this to a copy-from-builder stack instead: libfreetype.so.6, libfontconfig.so.1,
-# libexpat, libbz2, libpng16, libbrotlidec, libbrotlicommon, /etc/fonts, the font files, and
-# /var/cache/fontconfig with fc-cache run in the builder stage. Font.createFont(InputStream) also
-# spills to a temp file, so a read-only root filesystem needs a tmpfs mount at /tmp or card
-# rendering fails at request time regardless of the font stack.
-RUN apk add --no-cache ca-certificates zlib freetype fontconfig font-dejavu-core && update-ca-certificates
+# even for a TTF embedded in the binary. Packages deliberately unpinned, same reasoning as the
+# fontstack stage in Dockerfile (CVE-rich C parsers; Trivy + the CI smoke test gate the result).
+FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:4b1f8a1ec23ce4d99437091e9b29bff5ac6fab56d7d9ae304bd128087577b84a AS fontstack
+RUN apk add --no-cache freetype fontconfig font-dejavu-core && fc-cache -f
+
+# --- Runtime stage: BellSoft hardened distroless Alpaquita musl — no shell, no apk, just the binary ---
+# The base already ships musl and libz.so.1 (the binary links it). No ca-certificates: a native
+# image uses the JDK trust store captured at build time, not the system CA bundle (same as the
+# JVM image, whose distroless base has none either).
+FROM bellsoft/hardened-base:distroless-musl@sha256:0baa55f46dc01ff520b17fd57146fa00829132806f8fcdb2608040e3225d665c AS runtime
+WORKDIR /app
+# Only the SONAMEs libfontmanager.so's NEEDED entries reference; see Dockerfile for why.
+COPY --from=fontstack \
+    /usr/lib/libfreetype.so.6 \
+    /usr/lib/libfontconfig.so.1 \
+    /usr/lib/libexpat.so.1 \
+    /usr/lib/libbz2.so.1 \
+    /usr/lib/libpng16.so.16 \
+    /usr/lib/libbrotlidec.so.1 \
+    /usr/lib/libbrotlicommon.so.1 \
+    /usr/lib/
+COPY --from=fontstack /etc/fonts/ /etc/fonts/
+COPY --from=fontstack /usr/share/fonts/ /usr/share/fonts/
+COPY --from=fontstack /var/cache/fontconfig/ /var/cache/fontconfig/
+# Font.createFont(InputStream) spills to a temp file, so a read-only root filesystem needs a
+# tmpfs mount at /tmp or card rendering fails at request time regardless of the font stack.
 COPY --chown=1001:1001 --from=build /build/target/*-runner /app/application
 # AWT in a native image dlopen()s these JDK libraries at runtime; native-image emits them beside the
 # binary instead of linking them in, so they must ship with it.

@@ -160,6 +160,58 @@ class CaldavHttpTest {
                 .isEqualTo(CaldavException.Reason.HTTP_ERROR));
     }
 
+    /**
+     * The first connection answers without {@code Connection: close}, so the client pools it, then drops the next
+     * request on it unanswered: a server that closed a kept-alive connection (Radicale's HTTP/1.0 does every time).
+     */
+    @Test
+    void idempotentRequestIsRetriedOnAStalePooledConnection() throws Exception {
+        var methods = new CopyOnWriteArrayList<String>();
+        try (var raw = new ServerSocket(0, 0, InetAddress.getLoopbackAddress())) {
+            Thread
+                .ofVirtual()
+                .start(() -> {
+                    try (var first = raw.accept()) {
+                        methods.add(readRequestLine(first));
+                        first.getOutputStream().write("HTTP/1.1 207 Multi-Status\r\nContent-Length: 2\r\n\r\nhi"
+                            .getBytes()
+                        );
+                        methods.add(readRequestLine(first));
+                    } catch (IOException _) {
+                        // the test fails on the client side
+                    }
+                    try (var second = raw.accept()) {
+                        methods.add(readRequestLine(second));
+                        second.getOutputStream().write("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n".getBytes());
+                    } catch (IOException _) {
+                        // the test fails on the client side
+                    }
+                });
+            var http = new CaldavHttp(config(true));
+            var base = "http://127.0.0.1:" + raw.getLocalPort();
+
+            assertThat(http.send("u", "p", "PROPFIND", URI.create(base + "/cal/"), Map.of(), null).status()).isEqualTo(
+                    207
+            );
+            assertThat(http.send("u", "p", "DELETE", URI.create(base + "/cal/x.ics"), Map.of(), null).status()).isEqualTo(
+                    404
+            );
+            assertThat(methods).containsExactly("PROPFIND", "DELETE", "DELETE");
+        }
+    }
+
+    /**
+     * Reads one request's headers and returns its method.
+     */
+    static String readRequestLine(Socket socket) throws IOException {
+        var in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.US_ASCII));
+        var line = in.readLine();
+        for (var h = line; h != null && !h.isEmpty(); h = in.readLine()) {
+            // headers
+        }
+        return line.substring(0, line.indexOf(' '));
+    }
+
     @Test
     void restrictedHeaderIsHttpError() {
         var http = new CaldavHttp(config(true));
