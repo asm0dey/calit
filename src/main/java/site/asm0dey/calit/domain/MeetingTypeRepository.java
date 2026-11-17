@@ -9,7 +9,13 @@ public class MeetingTypeRepository implements PanacheRepositoryBase<MeetingType,
         return MeetingType.findBySlug(ownerId, slug);
     }
 
+    /**
+     * True when this owner already has a *different* type using this slug.
+     */
     public boolean slugUsedByOwner(Long ownerId, String slug, Long excludeTypeId) {
-        return MeetingType.slugUsedByOwner(ownerId, slug, excludeTypeId);
+        if (excludeTypeId == null) {
+            return count("ownerId = ?1 and slug = ?2", ownerId, slug) > 0;
+        }
+        return count("ownerId = ?1 and slug = ?2 and id <> ?3", ownerId, slug, excludeTypeId) > 0;
     }
 }

@@ -20,6 +20,8 @@ import site.asm0dey.calit.calendar.CreatedEvent;
 @QuarkusTest
 class BookingServiceGuestTest {
     @Inject
+    BookingGuestRepository guestRepository;
+    @Inject
     BookingService bookingService;
     @InjectMock
     CalendarPort calendarPort;
@@ -161,7 +163,7 @@ class BookingServiceGuestTest {
             .as("cyd added")
             .extracting(g -> g.email)
             .contains("cyd@example.com");
-        BookingGuest bob = BookingGuest.findInBooking(b.id, "bob@example.com");
+        BookingGuest bob = guestRepository.findInBooking(b.id, "bob@example.com");
         assertThat(bob.status).as("bob removed").isEqualTo(GuestStatus.REMOVED);
         assertThat(Booking.<Booking>findById(b.id).icsSequence).as("sequence bumped once").isOne();
     }
@@ -297,8 +299,8 @@ class BookingServiceGuestTest {
                 List.of("g1@example.com", "g2@example.com")
         );
 
-        BookingGuest g1 = BookingGuest
-            .<BookingGuest>allForBooking(b.id)
+        BookingGuest g1 = guestRepository
+            .allForBooking(b.id)
             .stream()
             .filter(g -> g.email.equals("g1@example.com"))
             .findFirst()

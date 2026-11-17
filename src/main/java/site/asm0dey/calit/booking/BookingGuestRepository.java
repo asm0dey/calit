@@ -10,12 +10,18 @@ public class BookingGuestRepository implements PanacheRepositoryBase<BookingGues
         return BookingGuest.activeForBooking(bookingId);
     }
 
+    /**
+     * Every guest row for a booking regardless of status (used by reschedule reconciliation).
+     */
     public List<BookingGuest> allForBooking(Long bookingId) {
-        return BookingGuest.allForBooking(bookingId);
+        return list("bookingId = ?1 order by id", bookingId);
     }
 
+    /**
+     * The guest row for this booking+email (any status), or null. Email match is case-insensitive.
+     */
     public BookingGuest findInBooking(Long bookingId, String email) {
-        return BookingGuest.findInBooking(bookingId, email);
+        return find("bookingId = ?1 and lower(email) = lower(?2)", bookingId, email).firstResult();
     }
 
     public BookingGuest findByDeclineToken(String declineToken) {

@@ -37,20 +37,6 @@ public class BookingGuest extends PanacheEntityBase {
     }
 
     /**
-     * Every guest row for a booking regardless of status (used by reschedule reconciliation).
-     */
-    public static List<BookingGuest> allForBooking(Long bookingId) {
-        return list("bookingId = ?1 order by id", bookingId);
-    }
-
-    /**
-     * The guest row for this booking+email (any status), or null. Email match is case-insensitive.
-     */
-    public static BookingGuest findInBooking(Long bookingId, String email) {
-        return find("bookingId = ?1 and lower(email) = lower(?2)", bookingId, email).firstResult();
-    }
-
-    /**
      * Loads a guest by its unguessable decline token, or null.
      */
     public static BookingGuest findByDeclineToken(String declineToken) {

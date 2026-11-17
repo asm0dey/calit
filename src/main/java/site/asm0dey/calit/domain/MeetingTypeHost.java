@@ -51,10 +51,6 @@ public class MeetingTypeHost extends PanacheEntityBase {
         return list("meetingTypeId", meetingTypeId);
     }
 
-    public static List<MeetingTypeHost> acceptedForType(Long meetingTypeId) {
-        return list("meetingTypeId = ?1 and status = ?2", meetingTypeId, ACCEPTED);
-    }
-
     public static MeetingTypeHost find(Long meetingTypeId, Long ownerId) {
         return find("meetingTypeId = ?1 and ownerId = ?2", meetingTypeId, ownerId).firstResult();
     }
@@ -71,15 +67,8 @@ public class MeetingTypeHost extends PanacheEntityBase {
     }
 
     /**
-     * True once the type has any co-host row (i.e. it is multi-host).
-     */
-    public static boolean isMultiHost(Long meetingTypeId) {
-        return count("meetingTypeId = ?1 and role = ?2", meetingTypeId, COHOST) > 0;
-    }
-
-    /**
      * The subset of {@code typeIds} that are multi-host (have at least one COHOST row), in a single
-     * query. Batched replacement for calling {@link #isMultiHost(Long)} once per type in a loop.
+     * query. Batched replacement for calling {@link MeetingTypeHostRepository#isMultiHost(Long)} once per type in a loop.
      */
     public static Set<Long> multiHostTypeIdsIn(Collection<Long> typeIds) {
         if (typeIds.isEmpty()) {

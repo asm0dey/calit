@@ -18,7 +18,7 @@ public class MeetingTypeHostRepository implements PanacheRepositoryBase<MeetingT
     }
 
     public List<MeetingTypeHost> acceptedForType(Long meetingTypeId) {
-        return MeetingTypeHost.acceptedForType(meetingTypeId);
+        return list("meetingTypeId = ?1 and status = ?2", meetingTypeId, MeetingTypeHost.ACCEPTED);
     }
 
     public MeetingTypeHost findHost(Long meetingTypeId, Long ownerId) {
@@ -29,8 +29,11 @@ public class MeetingTypeHostRepository implements PanacheRepositoryBase<MeetingT
         return MeetingTypeHost.cohostedTypesFor(ownerId);
     }
 
+    /**
+     * True once the type has any co-host row (i.e. it is multi-host).
+     */
     public boolean isMultiHost(Long meetingTypeId) {
-        return MeetingTypeHost.isMultiHost(meetingTypeId);
+        return countCohosts(meetingTypeId) > 0;
     }
 
     /**

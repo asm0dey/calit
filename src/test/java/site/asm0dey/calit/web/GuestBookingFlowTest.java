@@ -23,9 +23,12 @@ import site.asm0dey.calit.domain.MeetingType.LocationType;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.booking.BookingGuestRepository;
 
 @QuarkusTest
 class GuestBookingFlowTest {
+    @Inject
+    BookingGuestRepository guestRepository;
     @InjectMock
     CalendarPort calendarPort;
     @Inject
@@ -184,7 +187,7 @@ class GuestBookingFlowTest {
             .then()
             .statusCode(200);
 
-        assertThat(BookingGuest.findInBooking(b.id, "bob@example.com").status).isEqualTo(GuestStatus.REMOVED);
+        assertThat(guestRepository.findInBooking(b.id, "bob@example.com").status).isEqualTo(GuestStatus.REMOVED);
         assertThat(BookingGuest.activeForBooking(b.id)).hasSize(2);
     }
 }

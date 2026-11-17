@@ -13,9 +13,12 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.domain.MeetingTypeHostRepository;
 
 @QuarkusTest
 class MeetingHostsMutationTest {
+    @Inject
+    MeetingTypeHostRepository hostRepository;
     @Inject
     MeetingHosts meetingHosts;
     @Inject
@@ -53,6 +56,6 @@ class MeetingHostsMutationTest {
         em.flush();
         // creator row gone too
         assertThat(MeetingTypeHost.forType(t.id)).isEmpty();
-        assertThat(MeetingTypeHost.isMultiHost(t.id)).isFalse();
+        assertThat(hostRepository.isMultiHost(t.id)).isFalse();
     }
 }

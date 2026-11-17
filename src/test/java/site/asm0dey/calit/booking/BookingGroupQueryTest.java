@@ -13,6 +13,8 @@ import site.asm0dey.calit.user.TestOwners;
 @QuarkusTest
 class BookingGroupQueryTest {
     @Inject
+    BookingRepository bookingRepository;
+    @Inject
     EntityManager em;
 
     /**
@@ -67,7 +69,7 @@ class BookingGroupQueryTest {
         row(g, 2L, 1);
         // one single-host booking = 1 row
         row(null, 1L, 2);
-        long n = Booking.countDistinctBookingsByEmailBetween(
+        long n = bookingRepository.countDistinctBookingsByEmailBetween(
                 "sam@x.com",
                 Instant.parse("2000-01-01T00:00:00Z"),
                 Instant.parse("2100-01-01T00:00:00Z")

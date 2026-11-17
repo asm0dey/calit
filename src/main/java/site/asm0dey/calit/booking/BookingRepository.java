@@ -19,8 +19,15 @@ public class BookingRepository implements PanacheRepositoryBase<Booking, Long> {
         this.meetingTypes = meetingTypes;
     }
 
+    /**
+     * This owner's HELD (PENDING or CONFIRMED) bookings whose [startUtc, endUtc) overlaps the
+     * window [from, to). These are the bookings that block THIS OWNER's calendar (a pending
+     * approval request holds its slot too — feature 14). CANCELLED/DECLINED are excluded.
+     * Owner-scoped: owners are isolated, so another owner's bookings are never in this set.
+     * Overlap predicate: startUtc < to AND from < endUtc.
+     */
     public List<Booking> heldOverlapping(Long ownerId, Instant from, Instant to) {
-        return Booking.heldOverlapping(ownerId, from, to);
+        return list("ownerId = ?1 and status in ?2 and startUtc < ?3 and ?4 < endUtc", ownerId, HELD, to, from);
     }
 
     public Booking findByManageToken(String manageToken) {
@@ -43,8 +50,40 @@ public class BookingRepository implements PanacheRepositoryBase<Booking, Long> {
         return Booking.leadOfSet(setId, creatorOwnerId);
     }
 
+    /**
+     * Counts one per conceptual booking: standalone rows + distinct group_id (outside sets) + distinct set_id.
+     */
     public long countDistinctBookingsByEmailBetween(String email, Instant dayStart, Instant dayEnd) {
-        return Booking.countDistinctBookingsByEmailBetween(email, dayStart, dayEnd);
+        return countJpql(
+                "select count(b) from Booking b where b.inviteeEmail = :e and b.createdAt >= :s and b.createdAt < :d"
+                + " and b.groupId is null and b.setId is null",
+                email,
+                dayStart,
+                dayEnd
+        )
+                + countJpql(
+                        "select count(distinct b.groupId) from Booking b where b.inviteeEmail = :e"
+                        + " and b.createdAt >= :s and b.createdAt < :d and b.groupId is not null and b.setId is null",
+                        email,
+                        dayStart,
+                        dayEnd
+        )
+                + countJpql(
+                        "select count(distinct b.setId) from Booking b where b.inviteeEmail = :e"
+                        + " and b.createdAt >= :s and b.createdAt < :d and b.setId is not null",
+                        email,
+                        dayStart,
+                        dayEnd
+        );
+    }
+
+    private long countJpql(String jpql, String email, Instant dayStart, Instant dayEnd) {
+        return getEntityManager()
+            .createQuery(jpql, Long.class)
+            .setParameter("e", email)
+            .setParameter("s", dayStart)
+            .setParameter("d", dayEnd)
+            .getSingleResult();
     }
 
     /**

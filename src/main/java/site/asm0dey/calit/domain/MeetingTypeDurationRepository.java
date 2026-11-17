@@ -13,7 +13,7 @@ public class MeetingTypeDurationRepository
     }
 
     public boolean isAllowed(MeetingType type, int durationMinutes) {
-        return MeetingTypeDuration.isAllowed(type, durationMinutes);
+        return allowedDurations(type).contains(durationMinutes);
     }
 
     public MeetingTypeDuration findRow(Long meetingTypeId, int durationMinutes) {

@@ -25,6 +25,7 @@ import site.asm0dey.calit.booking.events.GuestDeclined;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.test.MultiHostFixtures;
+import site.asm0dey.calit.booking.BookingGuestRepository;
 
 /**
  * A Booking set mails once: one request/confirmation per recipient listing every Booking, one .ics with a VEVENT per
@@ -32,6 +33,8 @@ import site.asm0dey.calit.test.MultiHostFixtures;
  */
 @QuarkusTest
 class EmailSetTest {
+    @Inject
+    BookingGuestRepository guestRepository;
     private static final ZoneId AMS = ZoneId.of("Europe/Amsterdam");
     private static final LocalDate MONDAY =
             LocalDate.now(AMS).plusDays(2).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
@@ -252,11 +255,11 @@ class EmailSetTest {
             .call(() -> Booking.<Booking>list("inviteeEmail = ?1 order by startUtc", EMAIL));
     }
 
-    private static String leadGuestToken() {
+    private String leadGuestToken() {
         return QuarkusTransaction.requiringNew().call(() -> {
             Booking any = Booking.<Booking>find("inviteeEmail", EMAIL).firstResult();
             Booking lead = Booking.leadOfSet(any.setId, 1L);
-            return BookingGuest.findInBooking(lead.id, GUEST).declineToken;
+            return guestRepository.findInBooking(lead.id, GUEST).declineToken;
         });
     }
 }
