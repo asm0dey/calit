@@ -13,8 +13,12 @@ Merged but not yet in a tagged release.
 
 - Invite emails and the set-password page now show the account's username; login, setup, signup and
   set-password forms carry `autocomplete` hints for password managers. ([#355](https://github.com/asm0dey/calit/pull/355))
+- `-native` images run on BellSoft's distroless Alpaquita base (`hardened-base:distroless-musl`): no shell and no
+  package manager, like the JVM image. ([#356](https://github.com/asm0dey/calit/pull/356))
+- CalDAV `DELETE`, `PROPFIND` and `REPORT` are retried once when the server has closed a kept-alive connection,
+  instead of failing as unreachable. ([#356](https://github.com/asm0dey/calit/pull/356))
 
-Upgrade: nothing to do.
+Upgrade: `docker exec … sh` no longer works on `-native` images; debug them with an ephemeral sidecar instead.
 
 ## 1.30.0
 
