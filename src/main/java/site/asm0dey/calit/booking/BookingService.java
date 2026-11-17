@@ -1594,9 +1594,8 @@ public class BookingService {
      * True iff the booking's current active guest set equals {@code wanted} (case-insensitive).
      */
     private boolean sameGuestSet(Booking booking, List<String> wanted) {
-        Set<String> current =
-                guests
-            .activeForBooking(booking.id)
+        List<BookingGuest> active = guests.activeForBooking(booking.id);
+        Set<String> current = active
             .stream()
             .map(g -> g.email.toLowerCase())
             .collect(Collectors.toSet());
