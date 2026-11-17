@@ -80,6 +80,7 @@ abstract class BookingServiceWiringFixture {
     /**
      * The row {@code persistAndFlush} last wrote.
      */
+    // shortcut: holds one stored booking per test; a test that books two rows must stub its own lookups
     private Booking stored;
 
     BookingServiceWiringFixture() {

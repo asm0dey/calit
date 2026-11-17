@@ -6,6 +6,7 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.persistence.LockModeType;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.test.MultiHostFixtures;
@@ -47,20 +48,53 @@ class BookingRepositoryTest {
     }
 
     @Test
-    @TestTransaction
     void lockForDecisionOnSetRowReturnsClickedRow() {
-        var t = type(1L, "lock-set");
-        var set = UUID.randomUUID();
-        var lead = row(1L, t.id, FUTURE, BookingStatus.PENDING);
-        lead.setId = set;
-        persisted(lead);
-        var later = row(1L, t.id, FUTURE.plus(Duration.ofDays(1)), BookingStatus.PENDING);
-        later.setId = set;
-        persisted(later);
+        // committed first: a row inserted in this transaction already carries Hibernate's write lock
+        var ids = committedSet("lock-set");
+        QuarkusTransaction
+            .requiringNew()
+            .run(() -> {
+                assertThat(bookings.lockForDecision(ids.get(1)))
+                    .extracting(b -> b.id)
+                    .isEqualTo(ids.get(1));
+                // a click on any set row takes the one lock on the set's lead, not on the clicked row
+                assertLockedLeadOnly(ids);
+            });
+    }
 
-        assertThat(bookings.lockForDecision(later.id))
-            .extracting(b -> b.id)
-            .isEqualTo(later.id);
+    @Test
+    void lockSetLeadLocksTheCreatorsEarliestRow() {
+        var ids = committedSet("lock-lead");
+        QuarkusTransaction.requiringNew().run(() -> {
+            var set = bookings.findById(ids.getFirst()).setId;
+            assertThat(bookings.lockSetLead(set, 1L))
+                .extracting(b -> b.id)
+                .isEqualTo(ids.getFirst());
+            assertLockedLeadOnly(ids);
+        });
+    }
+
+    /**
+     * A committed two-row set: the lead first, then a later row.
+     */
+    private static List<Long> committedSet(String slug) {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            var t = type(1L, slug);
+            var set = UUID.randomUUID();
+            var later = row(1L, t.id, FUTURE.plus(Duration.ofDays(1)), BookingStatus.PENDING);
+            later.setId = set;
+            persisted(later);
+            var lead = row(1L, t.id, FUTURE, BookingStatus.PENDING);
+            lead.setId = set;
+            persisted(lead);
+            return List.of(lead.id, later.id);
+        });
+    }
+
+    private void assertLockedLeadOnly(List<Long> ids) {
+        var em = bookings.getEntityManager();
+        assertThat(em.getLockMode(bookings.findById(ids.getFirst()))).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
+        assertThat(em.getLockMode(bookings.findById(ids.get(1)))).isNotEqualTo(LockModeType.PESSIMISTIC_WRITE);
     }
 
     @Test
