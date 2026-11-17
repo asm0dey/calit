@@ -2346,7 +2346,7 @@ public class AdminResource {
                     type.description == null ? "" : type.description,
                     type.hidesGuests(),
                     detailsError,
-                    b.setId == null ? 0 : BookingService.cancellableOfSet(b.setId, type.ownerId).size()
+                    b.setId == null ? 0 : bookingService.cancellableOfSet(b.setId, type.ownerId).size()
             );
     }
 
@@ -2490,7 +2490,7 @@ public class AdminResource {
         String h1;
         String desc;
         // a set row acts while this Host still has a PENDING row in the set, even if this row was cancelled
-        if (!BookingService.decisionOpen(b)) {
+        if (!bookingService.decisionOpen(b)) {
             h1 = m().adm_approve_gone_h1();
             desc = m().adm_approve_gone_desc();
         } else if (approve) {

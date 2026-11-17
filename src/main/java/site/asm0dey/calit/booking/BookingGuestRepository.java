@@ -10,6 +10,10 @@ public class BookingGuestRepository implements PanacheRepositoryBase<BookingGues
         return BookingGuest.activeForBooking(bookingId);
     }
 
+    public List<BookingGuest> allForBooking(Long bookingId) {
+        return BookingGuest.allForBooking(bookingId);
+    }
+
     public BookingGuest findInBooking(Long bookingId, String email) {
         return BookingGuest.findInBooking(bookingId, email);
     }

@@ -6,7 +6,6 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
-import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
@@ -15,13 +14,15 @@ import org.hibernate.exception.ConstraintViolationException;
 import site.asm0dey.calit.availability.SlotService;
 import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.booking.events.*;
-import site.asm0dey.calit.domain.BookingField;
+import site.asm0dey.calit.domain.BookingFieldRepository;
 import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingType.FieldMode;
 import site.asm0dey.calit.domain.MeetingType.LocationType;
-import site.asm0dey.calit.domain.MeetingTypeDuration;
-import site.asm0dey.calit.domain.MeetingTypeHost;
+import site.asm0dey.calit.domain.MeetingTypeDurationRepository;
+import site.asm0dey.calit.domain.MeetingTypeHostRepository;
+import site.asm0dey.calit.domain.MeetingTypeRepository;
 import site.asm0dey.calit.domain.OwnerSettings;
+import site.asm0dey.calit.domain.OwnerSettingsRepository;
 import site.asm0dey.calit.calendar.BusyInterval;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.calendar.CalendarRef;
@@ -43,6 +44,14 @@ public class BookingService {
     private final MeetingHosts meetingHosts;
     private final WriteTargetResolver writeTargets;
     private final long perEmailDailyCap;
+    private final BookingRepository bookings;
+    private final BookingGuestRepository guests;
+    private final BookingInviteRepository invites;
+    private final MeetingTypeRepository meetingTypes;
+    private final MeetingTypeHostRepository hosts;
+    private final MeetingTypeDurationRepository durations;
+    private final OwnerSettingsRepository ownerSettings;
+    private final BookingFieldRepository bookingFields;
     /**
      * Max guests an invitee may attach to one booking. ponytail: a constant, not a config knob.
      */
@@ -65,7 +74,15 @@ public class BookingService {
             Event<BookingSetCancelled> bookingSetCancelledEvent,
             Event<GuestDeclined> guestDeclinedEvent,
             Event<GuestRemoved> guestRemovedEvent,
-            Event<BookingDetailsChanged> bookingDetailsChangedEvent
+            Event<BookingDetailsChanged> bookingDetailsChangedEvent,
+            BookingRepository bookings,
+            BookingGuestRepository guests,
+            BookingInviteRepository invites,
+            MeetingTypeRepository meetingTypes,
+            MeetingTypeHostRepository hosts,
+            MeetingTypeDurationRepository durations,
+            OwnerSettingsRepository ownerSettings,
+            BookingFieldRepository bookingFields
     ) {
         this.slotService = slotService;
         this.calendarPort = calendarPort;
@@ -83,6 +100,14 @@ public class BookingService {
         this.guestDeclinedEvent = guestDeclinedEvent;
         this.guestRemovedEvent = guestRemovedEvent;
         this.bookingDetailsChangedEvent = bookingDetailsChangedEvent;
+        this.bookings = bookings;
+        this.guests = guests;
+        this.invites = invites;
+        this.meetingTypes = meetingTypes;
+        this.hosts = hosts;
+        this.durations = durations;
+        this.ownerSettings = ownerSettings;
+        this.bookingFields = bookingFields;
     }
 
     private final Event<BookingRequested> bookingRequestedEvent;
@@ -219,7 +244,7 @@ public class BookingService {
             ZoneId latticeZone,
             int durationMinutes
     ) {
-        ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(OwnerSettings.forOwner(hostId).timezone));
+        ZoneId zone = ZoneId.of(OwnerSettings.coerceZone(ownerSettings.forOwner(hostId).timezone));
         var fromInstant = from.atStartOfDay(zone).toInstant();
         var toInstant = to.plusDays(1).atStartOfDay(zone).toInstant();
         List<Interval> busy = busyIntervals(hostId, fromInstant, toInstant, excludeBookingIds);
@@ -256,7 +281,7 @@ public class BookingService {
                 busy.add(new Interval(bi.start(), bi.end()));
             }
         }
-        for (Booking b : Booking.<Booking>heldOverlapping(ownerId, from, to)) {
+        for (Booking b : bookings.heldOverlapping(ownerId, from, to)) {
             if (excludeBookingIds.contains(b.id)) {
                 continue;
             }
@@ -319,7 +344,7 @@ public class BookingService {
             String locale,
             List<String> guestEmails
     ) {
-        MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
+        MeetingType type = meetingTypes.findBySlug(ownerId, meetingTypeSlug);
         int duration = type == null ? 0 : type.durationMinutes;
         return book(
                 ownerId,
@@ -438,7 +463,7 @@ public class BookingService {
             List<String> guestEmails,
             String inviteToken
     ) {
-        MeetingType found = MeetingType.findBySlug(ownerId, meetingTypeSlug);
+        MeetingType found = meetingTypes.findBySlug(ownerId, meetingTypeSlug);
         if (found == null || !found.active) {
             throw new NotFoundException("No meeting type with slug " + meetingTypeSlug + " for owner " + ownerId);
         }
@@ -446,8 +471,8 @@ public class BookingService {
         SetRules.validate(
                 found,
                 sorted,
-                MeetingTypeDuration.allowedDurations(found),
-                ZoneId.of(OwnerSettings.forOwner(found.ownerId).timezone)
+                durations.allowedDurations(found),
+                ZoneId.of(ownerSettings.forOwner(found.ownerId).timezone)
         );
         if (sorted.size() == 1) {
             SlotPick only = sorted.getFirst();
@@ -515,7 +540,7 @@ public class BookingService {
                 // keyed on the row, not the type's current hosts, which may have changed since booking
                 if (row.groupId != null) {
                     createGroupGoogleEvent(type, row.groupId);
-                    holder = Booking.leadOfGroup(row.groupId, type.ownerId);
+                    holder = bookings.leadOfGroup(row.groupId, type.ownerId);
                 } else if (calendarPort.isConnected(type.ownerId)) {
                     createGoogleEvent(type, row);
                 }
@@ -557,7 +582,7 @@ public class BookingService {
     ) {
         BookingInputRules.validateInviteeEmail(inviteeEmail);
         BookingInputRules.validateInputBounds(inviteeName, answers);
-        MeetingType type = MeetingType.findBySlug(ownerId, meetingTypeSlug);
+        MeetingType type = meetingTypes.findBySlug(ownerId, meetingTypeSlug);
         // Every booking write lands here (form + JSON API), so an inactive type is refused once for all.
         if (type == null || !type.active) {
             throw new NotFoundException("No meeting type with slug " + meetingTypeSlug + " for owner " + ownerId);
@@ -579,7 +604,7 @@ public class BookingService {
         Map<String, String> submitted = answers == null ? Map.of() : answers;
         // Feature 10: every required custom field must have a non-blank value. Built-in
         // name/email are method params, not BookingField rows, so they are not in this loop.
-        BookingInputRules.validateRequiredFields(BookingField.formFor(type.ownerId, type.id), submitted);
+        BookingInputRules.validateRequiredFields(bookingFields.formFor(type.ownerId, type.id), submitted);
         return new Prechecked(type, inviteeName, submitted, guestEmails);
     }
 
@@ -601,7 +626,7 @@ public class BookingService {
             boolean fireEvents
     ) {
         var endUtc = startUtc.plus(durationMinutes, ChronoUnit.MINUTES);
-        if (MeetingTypeHost.isMultiHost(type.id)) {
+        if (hosts.isMultiHost(type.id)) {
             return bookGroup(
                     type,
                     startUtc,
@@ -639,7 +664,7 @@ public class BookingService {
         // held (PENDING|CONFIRMED) row trips the `booking_no_overlap_held` exclusion constraint
         // here, surfaced as the same 409 the app-level check uses (instead of a 500).
         try {
-            booking.persistAndFlush();
+            bookings.persistAndFlush(booking);
         } catch (PersistenceException ex) {
             if (isNoOverlapViolation(ex)) {
                 throw new BookingConflictException("Slot " + startUtc + " is not available for " + type.slug);
@@ -712,13 +737,13 @@ public class BookingService {
                 }
                 b.groupId = groupId;
                 b.setId = setId;
-                b.persist();
+                bookings.persist(b);
                 if (hostId.equals(type.ownerId)) {
                     lead = b;
                 }
             }
             // surface booking_no_overlap_held now
-            Booking.getEntityManager().flush();
+            bookings.flush();
         } catch (PersistenceException ex) {
             if (isNoOverlapViolation(ex)) {
                 throw new BookingConflictException("Slot " + startUtc + " is not available for " + type.slug);
@@ -746,8 +771,8 @@ public class BookingService {
      */
     private void createGroupGoogleEvent(MeetingType type, UUID groupId) {
         // the removed event may sit on another row (written before ADR 0007); the group is re-stamped as a whole
-        Booking
-            .<Booking>group(groupId)
+        bookings
+            .group(groupId)
             .forEach(r -> r.removedMirrorProvider = null);
         List<Long> hostIds = meetingHosts.hostOwnerIds(type);
         Long organizer = meetingHosts.chooseOrganizer(type);
@@ -755,7 +780,7 @@ public class BookingService {
             // the Creator has no Connected account -> calit-only booking
             return;
         }
-        Booking lead = Booking.leadOfGroup(groupId, type.ownerId);
+        Booking lead = bookings.leadOfGroup(groupId, type.ownerId);
         List<String> attendees = groupAttendeeEmails(type, groupId, hostIds);
         CreatedEvent created = calendarPort.createEvent(
                 organizer,
@@ -826,15 +851,15 @@ public class BookingService {
      */
     private List<String> groupAttendeeEmails(MeetingType type, UUID groupId, List<Long> hostIds) {
         List<String> emails = new ArrayList<>();
-        Booking lead = Booking.leadOfGroup(groupId, type.ownerId);
+        Booking lead = bookings.leadOfGroup(groupId, type.ownerId);
         emails.add(lead.inviteeEmail);
         for (Long hostId : hostIds) {
-            OwnerSettings os = OwnerSettings.forOwner(hostId);
+            OwnerSettings os = ownerSettings.forOwner(hostId);
             if (os != null && os.ownerEmail != null) {
                 emails.add(os.ownerEmail);
             }
         }
-        for (BookingGuest g : BookingGuest.<BookingGuest>activeForBooking(lead.id)) {
+        for (BookingGuest g : guests.activeForBooking(lead.id)) {
             emails.add(g.email);
         }
         return emails;
@@ -855,7 +880,7 @@ public class BookingService {
             g.status = GuestStatus.INVITED;
             g.declineToken = UUID.randomUUID().toString();
             g.createdAt = Instant.now();
-            g.persist();
+            guests.persist(g);
         }
     }
 
@@ -913,7 +938,7 @@ public class BookingService {
      * Caller must guard with {@code calendarPort.isConnected()} (degraded mode skips this entirely).
      */
     private void createGoogleEvent(MeetingType type, Booking booking) {
-        OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
+        OwnerSettings owner = ownerSettings.forOwner(type.ownerId);
         CreatedEvent created = calendarPort.createEvent(
                 type.ownerId,
                 writeTargets.resolve(type.ownerId, type),
@@ -951,11 +976,11 @@ public class BookingService {
      * calit decline link stays authoritative; a Google-side RSVP won't update BookingGuest.status. No Google
      * API suppresses native RSVP, so this is accepted.
      */
-    private static List<String> attendeeEmails(Booking booking, OwnerSettings owner) {
+    private List<String> attendeeEmails(Booking booking, OwnerSettings owner) {
         List<String> emails = new ArrayList<>();
         emails.add(booking.inviteeEmail);
         emails.add(owner.ownerEmail);
-        for (BookingGuest g : BookingGuest.<BookingGuest>activeForBooking(booking.id)) {
+        for (BookingGuest g : guests.activeForBooking(booking.id)) {
             emails.add(g.email);
         }
         return emails;
@@ -966,13 +991,13 @@ public class BookingService {
      * {@code perEmailDailyCap} bookings during today's owner-tz day window.
      */
     private void enforcePerEmailDailyCap(MeetingType type, String inviteeEmail) {
-        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
+        ZoneId zone = ZoneId.of(ownerSettings.forOwner(type.ownerId).timezone);
         var today = Instant.now().atZone(zone).toLocalDate();
         var dayStart = today.atStartOfDay(zone).toInstant();
         var dayEnd = today.plusDays(1).atStartOfDay(zone).toInstant();
         BookingInputRules.enforceDailyCap(
                 inviteeEmail,
-                Booking.countDistinctBookingsByEmailBetween(inviteeEmail, dayStart, dayEnd),
+                bookings.countDistinctBookingsByEmailBetween(inviteeEmail, dayStart, dayEnd),
                 perEmailDailyCap
         );
     }
@@ -996,7 +1021,7 @@ public class BookingService {
      * downstream check. Rejected as the same 409 an unavailable slot produces.
      */
     private void assertDurationAllowed(MeetingType type, int durationMinutes) {
-        if (!MeetingTypeDuration.isAllowed(type, durationMinutes)) {
+        if (!durations.isAllowed(type, durationMinutes)) {
             throw new BookingConflictException("Duration " + durationMinutes + " is not offered by " + type.slug);
         }
     }
@@ -1016,9 +1041,9 @@ public class BookingService {
      * length has already passed {@link #assertDurationAllowed}, and by the reschedule paths at the
      * booking's own {@link #lengthOf} length.
      */
-    private static void consumeInvite(String inviteToken, MeetingType type) {
+    private void consumeInvite(String inviteToken, MeetingType type) {
         if (inviteToken != null
-                && BookingInvite.consume(LoginTicketService.sha256Hex(inviteToken), type.id, Instant.now()) == 0) {
+                && invites.consume(LoginTicketService.sha256Hex(inviteToken), type.id, Instant.now()) == 0) {
             throw new InvalidInviteException("Invite is invalid, expired or already used.");
         }
     }
@@ -1029,7 +1054,7 @@ public class BookingService {
             Set<Long> excludeBookingIds,
             int durationMinutes
     ) {
-        ZoneId zone = ZoneId.of(OwnerSettings.forOwner(type.ownerId).timezone);
+        ZoneId zone = ZoneId.of(ownerSettings.forOwner(type.ownerId).timezone);
         var day = startUtc.atZone(zone).toLocalDate();
         boolean ok = availableSlots(type, day, day, excludeBookingIds, durationMinutes)
             .stream()
@@ -1041,7 +1066,10 @@ public class BookingService {
 
     @Transactional
     public void approve(Long bookingId) {
-        Booking booking = lockForDecision(bookingId);
+        Booking booking = bookings.lockForDecision(bookingId);
+        if (booking == null) {
+            throw new NotFoundException("No booking " + bookingId);
+        }
         if (booking.setId != null) {
             approveSet(booking);
             return;
@@ -1059,7 +1087,7 @@ public class BookingService {
             return;
         }
         booking.status = BookingStatus.CONFIRMED;
-        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        MeetingType type = meetingTypes.findById(booking.meetingTypeId);
         if (booking.groupId == null) {
             // Single-host: unchanged from pre-multi-host behavior.
             // Feature 14 + degraded mode: create the Mirror event now, only when connected.
@@ -1073,16 +1101,19 @@ public class BookingService {
         // column. Only the LAST host's approval (no group row still PENDING) creates the ONE
         // shared Mirror event and fires the invitee-facing BookingConfirmed; earlier approvals
         // just flip that host's row and wait.
-        if (SetDecisions.groupFullyApproved(Booking.group(booking.groupId))) {
+        if (SetDecisions.groupFullyApproved(bookings.group(booking.groupId))) {
             createGroupGoogleEvent(type, booking.groupId);
-            Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
+            Booking lead = bookings.leadOfGroup(booking.groupId, type.ownerId);
             bookingConfirmedEvent.fire(new BookingConfirmed(lead.id));
         }
     }
 
     @Transactional
     public void decline(Long bookingId) {
-        Booking booking = lockForDecision(bookingId);
+        Booking booking = bookings.lockForDecision(bookingId);
+        if (booking == null) {
+            throw new NotFoundException("No booking " + bookingId);
+        }
         if (booking.setId != null) {
             declineSet(booking);
             return;
@@ -1108,35 +1139,12 @@ public class BookingService {
         }
         // Group: any single host declining kills the whole group -- no event was created
         // pre-confirmation, so there's nothing to delete on Google's side.
-        MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        for (Booking row : Booking.<Booking>group(booking.groupId)) {
+        MeetingType type = meetingTypes.findById(booking.meetingTypeId);
+        for (Booking row : bookings.group(booking.groupId)) {
             row.status = BookingStatus.DECLINED;
         }
-        Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
+        Booking lead = bookings.leadOfGroup(booking.groupId, type.ownerId);
         bookingDeclinedEvent.fire(new BookingDeclined(lead.id));
-    }
-
-    /**
-     * Loads a booking for approve/decline under a row lock, so an overlapping second click waits for this
-     * commit and then sees the settled status. A set row locks its set's lead instead (before any other
-     * row), so clicks on different rows of one set serialise on one lock; every row is then re-read.
-     */
-    private Booking lockForDecision(Long bookingId) {
-        Booking booking = Booking.findById(bookingId);
-        if (booking == null) {
-            throw new NotFoundException("No booking " + bookingId);
-        }
-        var em = Booking.getEntityManager();
-        // refresh re-reads the DB and would discard this transaction's unflushed changes
-        em.flush();
-        if (booking.setId == null) {
-            em.refresh(booking, LockModeType.PESSIMISTIC_WRITE);
-            return booking;
-        }
-        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
-        em.refresh(Booking.leadOfSet(booking.setId, creatorOwnerId), LockModeType.PESSIMISTIC_WRITE);
-        Booking.<Booking>set(booking.setId).forEach(em::refresh);
-        return booking;
     }
 
     /**
@@ -1146,8 +1154,8 @@ public class BookingService {
      * confirmed, and only those, get their Mirror events and are named by the one event.
      */
     private void approveSet(Booking booking) {
-        MeetingType type = MeetingType.findById(booking.meetingTypeId);
-        List<Booking> rows = Booking.set(booking.setId);
+        MeetingType type = meetingTypes.findById(booking.meetingTypeId);
+        List<Booking> rows = bookings.set(booking.setId);
         Optional<Booking> hostPending = SetDecisions.pendingRowOf(rows, booking.ownerId);
         if (hostPending.isEmpty()) {
             return;
@@ -1176,8 +1184,8 @@ public class BookingService {
      * the one event names exactly the Bookings declined.
      */
     private void declineSet(Booking booking) {
-        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
-        List<Booking> rows = Booking.set(booking.setId);
+        Long creatorOwnerId = meetingTypes.findById(booking.meetingTypeId).ownerId;
+        List<Booking> rows = bookings.set(booking.setId);
         Optional<Booking> hostPending = SetDecisions.pendingRowOf(rows, booking.ownerId);
         if (hostPending.isEmpty()) {
             return;
@@ -1196,9 +1204,9 @@ public class BookingService {
      * Whether a decision through {@code b} can still act: it is PENDING, or it is a set row and its Host still has a
      * PENDING row in that set (approve/decline re-check this under the set lock).
      */
-    public static boolean decisionOpen(Booking b) {
+    public boolean decisionOpen(Booking b) {
         return b.status == BookingStatus.PENDING
-                || b.setId != null && SetDecisions.pendingRowOf(Booking.set(b.setId), b.ownerId).isPresent();
+                || b.setId != null && SetDecisions.pendingRowOf(bookings.set(b.setId), b.ownerId).isPresent();
     }
 
     @Transactional
@@ -1236,7 +1244,7 @@ public class BookingService {
             boolean byOwner,
             Long initiatorOwnerId
     ) {
-        Booking booking = Booking.findByManageToken(manageToken);
+        Booking booking = bookings.findByManageToken(manageToken);
         if (booking == null
                 || booking.status == BookingStatus.CANCELLED
                 || booking.status == BookingStatus.DECLINED
@@ -1244,7 +1252,7 @@ public class BookingService {
             throw new NotFoundException("No active booking for that token");
         }
 
-        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        MeetingType type = meetingTypes.findById(booking.meetingTypeId);
         guestEmails = guestsFor(type, guestEmails);
         // No-op: same time and guests untouched (web callers pass null) -> nothing to do. Avoids a spurious
         // SEQUENCE bump + reschedule email when the invitee re-picks the current slot.
@@ -1291,7 +1299,7 @@ public class BookingService {
         // NFR cross-node guard: flush so the no-overlap exclusion constraint is checked against
         // the new range; a concurrent overlap is surfaced as the same 409 as a double-book.
         try {
-            booking.persistAndFlush();
+            bookings.persistAndFlush(booking);
         } catch (PersistenceException ex) {
             if (isNoOverlapViolation(ex)) {
                 throw new BookingConflictException("Slot " + newStartUtc + " is not available for this booking");
@@ -1330,7 +1338,7 @@ public class BookingService {
             bookingRequestedEvent.fire(new BookingRequested(booking.id));
         } else {
             if (calendarPort.isConnected(type.ownerId) && booking.eventId != null) {
-                OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
+                OwnerSettings owner = ownerSettings.forOwner(type.ownerId);
                 patchMirror(booking, type, () -> calendarPort.updateEvent(
                         type.ownerId,
                         booking.calendarRef(),
@@ -1361,7 +1369,7 @@ public class BookingService {
             boolean byOwner,
             Long initiatorOwnerId
     ) {
-        MeetingType type = MeetingType.findById(row.meetingTypeId);
+        MeetingType type = meetingTypes.findById(row.meetingTypeId);
         int bookedLength = lengthOf(row);
         var newEnd = newStartUtc.plus(bookedLength, ChronoUnit.MINUTES);
         // Re-check the intersection across all hosts at the new time (fail-closed inside availableSlots).
@@ -1371,8 +1379,8 @@ public class BookingService {
         // shift / adjacent-slot reschedule whenever a buffer made the new slot's buffered interval
         // overlap the group's own old occupied interval).
         // Re-check at the group's own booked length, not the type's default.
-        Set<Long> groupRowIds = Booking
-            .<Booking>group(row.groupId)
+        Set<Long> groupRowIds = bookings
+            .group(row.groupId)
             .stream()
             .map(r -> r.id)
             .collect(Collectors.toSet());
@@ -1385,7 +1393,7 @@ public class BookingService {
         Instant oldStart = row.startUtc;
         moveGroupRows(row, newStartUtc, newEnd, reApproval, initiator);
 
-        Booking freshLead = Booking.leadOfGroup(row.groupId, type.ownerId);
+        Booking freshLead = bookings.leadOfGroup(row.groupId, type.ownerId);
         // Guests live on the lead row only.
         List<Long> removedGuestIds = guestEmails != null ? reconcileGuests(freshLead, guestEmails) : List.of();
         for (Long guestId : removedGuestIds) {
@@ -1403,7 +1411,7 @@ public class BookingService {
     }
 
     private void moveGroupRows(Booking row, Instant newStartUtc, Instant newEnd, boolean reApproval, Long initiator) {
-        for (Booking r : Booking.<Booking>group(row.groupId)) {
+        for (Booking r : bookings.group(row.groupId)) {
             r.startUtc = newStartUtc;
             r.endUtc = newEnd;
             r.icsSequence = r.icsSequence + 1;
@@ -1436,14 +1444,14 @@ public class BookingService {
             List<String> guestEmails,
             boolean byOwner
     ) {
-        Booking booking = Booking.findByManageToken(manageToken);
+        Booking booking = bookings.findByManageToken(manageToken);
         if (booking == null
                 || booking.status == BookingStatus.CANCELLED
                 || booking.status == BookingStatus.DECLINED
                 || booking.isErased()) {
             throw new NotFoundException("No active booking for that token");
         }
-        MeetingType type = MeetingType.findById(booking.meetingTypeId);
+        MeetingType type = meetingTypes.findById(booking.meetingTypeId);
         guestEmails = guestsFor(type, guestEmails);
 
         if (booking.groupId != null) {
@@ -1467,14 +1475,14 @@ public class BookingService {
         booking.icsSequence = booking.icsSequence + 1;
 
         List<Long> removedGuestIds = reconcileGuests(booking, guestEmails);
-        booking.persistAndFlush();
+        bookings.persistAndFlush(booking);
 
         for (Long guestId : removedGuestIds) {
             guestRemovedEvent.fire(new GuestRemoved(booking.id, guestId));
         }
 
         if (calendarPort.isConnected(type.ownerId) && booking.eventId != null) {
-            OwnerSettings owner = OwnerSettings.forOwner(type.ownerId);
+            OwnerSettings owner = ownerSettings.forOwner(type.ownerId);
             patchMirror(booking, type, () -> calendarPort.updateEventDetails(
                     type.ownerId,
                     booking.calendarRef(),
@@ -1513,13 +1521,13 @@ public class BookingService {
         var newDescription = blankToNull(description);
         validateDetailBounds(newTitle, newDescription);
 
-        for (Booking r : Booking.<Booking>group(booking.groupId)) {
+        for (Booking r : bookings.group(booking.groupId)) {
             r.title = newTitle;
             r.description = newDescription;
             // Bump the iTIP SEQUENCE so guest .ics updates supersede the prior one (same as rescheduleGroup).
             r.icsSequence = r.icsSequence + 1;
         }
-        Booking lead = Booking.leadOfGroup(booking.groupId, type.ownerId);
+        Booking lead = bookings.leadOfGroup(booking.groupId, type.ownerId);
         if (guestEmails != null) {
             List<Long> removedGuestIds = reconcileGuests(lead, guestEmails);
             for (Long guestId : removedGuestIds) {
@@ -1548,7 +1556,7 @@ public class BookingService {
      * bookings written before ADR 0007 — see {@link #createGroupGoogleEvent}), or null when the group never had one.
      */
     private Booking groupEventRow(UUID groupId) {
-        for (Booking r : Booking.<Booking>group(groupId)) {
+        for (Booking r : bookings.group(groupId)) {
             if (r.eventId != null) {
                 return r;
             }
@@ -1578,9 +1586,10 @@ public class BookingService {
     /**
      * True iff the booking's current active guest set equals {@code wanted} (case-insensitive).
      */
-    private static boolean sameGuestSet(Booking booking, List<String> wanted) {
-        Set<String> current = BookingGuest
-            .<BookingGuest>activeForBooking(booking.id)
+    private boolean sameGuestSet(Booking booking, List<String> wanted) {
+        Set<String> current =
+                guests
+            .activeForBooking(booking.id)
             .stream()
             .map(g -> g.email.toLowerCase())
             .collect(Collectors.toSet());
@@ -1599,8 +1608,8 @@ public class BookingService {
         List<String> wanted = normalizeGuestEmails(guestEmails, booking.inviteeEmail);
         Set<String> wantedLower = wanted.stream().map(String::toLowerCase).collect(Collectors.toSet());
         // Existing rows for this booking, keyed by lowercase email (last row wins, as before).
-        Map<String, BookingGuest> existing = BookingGuest
-            .<BookingGuest>allForBooking(booking.id)
+        Map<String, BookingGuest> existing = guests
+            .allForBooking(booking.id)
             .stream()
             .collect(Collectors.toMap(g -> g.email.toLowerCase(), g -> g, (a, b) -> b));
         // Add or re-activate wanted guests.
@@ -1614,7 +1623,7 @@ public class BookingService {
                 g.declineToken = UUID.randomUUID().toString();
                 g.createdAt = Instant.now();
                 g.status = GuestStatus.INVITED;
-                g.persist();
+                guests.persist(g);
             } else if (g.status != GuestStatus.INVITED) {
                 // re-invited a previously removed/declined guest
                 g.status = GuestStatus.INVITED;
@@ -1662,7 +1671,7 @@ public class BookingService {
     }
 
     private boolean cancel(String manageToken, boolean byOwner, boolean tolerateGoogleFailure) {
-        Booking booking = Booking.findByManageToken(manageToken);
+        Booking booking = bookings.findByManageToken(manageToken);
         if (booking == null || booking.isErased()) {
             throw new NotFoundException("No booking for that token");
         }
@@ -1673,7 +1682,7 @@ public class BookingService {
         boolean deleted = cancelRows(booking, tolerateGoogleFailure);
         Long eventId = booking.groupId == null
                 ? booking.id
-                : Booking.leadOfGroup(booking.groupId, MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId).id;
+                : bookings.leadOfGroup(booking.groupId, meetingTypes.findById(booking.meetingTypeId).ownerId).id;
         bookingCancelledEvent.fire(new BookingCancelled(eventId, byOwner));
         return deleted;
     }
@@ -1688,12 +1697,12 @@ public class BookingService {
      */
     @Transactional
     public List<Booking> cancelSet(String manageToken, boolean byOwner) {
-        Booking booking = Booking.findByManageToken(manageToken);
+        Booking booking = bookings.findByManageToken(manageToken);
         if (booking == null || booking.isErased() || booking.setId == null) {
             throw new NotFoundException("No booking set for that token");
         }
-        lockForDecision(booking.id);
-        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+        bookings.lockForDecision(booking.id);
+        Long creatorOwnerId = meetingTypes.findById(booking.meetingTypeId).ownerId;
         List<Booking> toCancel = cancellableOfSet(booking.setId, creatorOwnerId);
         if (toCancel.isEmpty()) {
             return List.of();
@@ -1701,7 +1710,7 @@ public class BookingService {
         toCancel.forEach(b -> cancelRows(b, false));
         bookingSetCancelledEvent.fire(
                 new BookingSetCancelled(
-                        Booking.leadOfSet(booking.setId, creatorOwnerId).id,
+                        bookings.leadOfSet(booking.setId, creatorOwnerId).id,
                         toCancel.stream().map(b -> b.id).toList(),
                         byOwner
                 )
@@ -1712,10 +1721,10 @@ public class BookingService {
     /**
      * The set's Invitee-facing rows (one per Booking) still held and starting in the future: what "Cancel all" cancels.
      */
-    public static List<Booking> cancellableOfSet(UUID setId, Long creatorOwnerId) {
+    public List<Booking> cancellableOfSet(UUID setId, Long creatorOwnerId) {
         Instant now = Instant.now();
-        return Booking
-            .<Booking>set(setId)
+        return bookings
+            .set(setId)
             .stream()
             .filter(r -> r.groupId == null || r.ownerId.equals(creatorOwnerId))
             .filter(r -> r.status == BookingStatus.PENDING || r.status == BookingStatus.CONFIRMED)
@@ -1732,7 +1741,7 @@ public class BookingService {
             return cancelSingle(booking, tolerateGoogleFailure);
         }
         boolean deleted = deleteGroupGoogleEvent(booking.groupId, tolerateGoogleFailure);
-        for (Booking r : Booking.<Booking>group(booking.groupId)) {
+        for (Booking r : bookings.group(booking.groupId)) {
             r.status = BookingStatus.CANCELLED;
         }
         return deleted;
@@ -1769,7 +1778,7 @@ public class BookingService {
 
     private boolean deleteGroupGoogleEvent(UUID groupId, boolean tolerateGoogleFailure) {
         var deleted = false;
-        for (Booking r : Booking.<Booking>group(groupId)) {
+        for (Booking r : bookings.group(groupId)) {
             if (r.eventId != null) {
                 deleted |= deleteRemoteEvent(r, tolerateGoogleFailure);
                 rememberRemovedMirror(r);
@@ -1828,13 +1837,7 @@ public class BookingService {
      */
     @Transactional
     public void cancelFutureGroupBookingsForHost(MeetingType type, Long hostOwnerId) {
-        List<Booking> rows = Booking.list(
-                "ownerId = ?1 and meetingTypeId = ?2 and startUtc > ?3 and status in ?4 and groupId is not null",
-                hostOwnerId,
-                type.id,
-                Instant.now(),
-                List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)
-        );
+        List<Booking> rows = bookings.futureHeldGroupRows(hostOwnerId, type.id, Instant.now());
         Set<UUID> cancelledGroups = new HashSet<>();
         for (Booking row : rows) {
             if (cancelledGroups.add(row.groupId)) {
@@ -1845,11 +1848,11 @@ public class BookingService {
 
     @Transactional
     public void declineGuest(String declineToken) {
-        BookingGuest guest = BookingGuest.findByDeclineToken(declineToken);
+        BookingGuest guest = guests.findByDeclineToken(declineToken);
         if (guest == null) {
             throw new NotFoundException("No guest for that token");
         }
-        Booking booking = Booking.findById(guest.bookingId);
+        Booking booking = bookings.findById(guest.bookingId);
         if (booking != null && booking.setId != null) {
             declineSetGuest(booking, guest);
             return;
@@ -1869,22 +1872,20 @@ public class BookingService {
      * the lead row's guest.
      */
     private void declineSetGuest(Booking booking, BookingGuest guest) {
-        var em = Booking.getEntityManager();
-        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
-        Booking lead = Booking.leadOfSet(booking.setId, creatorOwnerId);
-        em.refresh(lead, LockModeType.PESSIMISTIC_WRITE);
+        Long creatorOwnerId = meetingTypes.findById(booking.meetingTypeId).ownerId;
+        Booking lead = bookings.lockSetLead(booking.setId, creatorOwnerId);
         BookingGuest leadGuest = null;
         boolean changed = false;
-        for (Booking row : Booking.<Booking>set(booking.setId)) {
+        for (Booking row : bookings.set(booking.setId)) {
             if (row.groupId != null && !row.ownerId.equals(creatorOwnerId)) {
                 continue;
             }
-            BookingGuest g = BookingGuest.findInBooking(row.id, guest.email);
+            BookingGuest g = guests.findInBooking(row.id, guest.email);
             if (g == null) {
                 continue;
             }
             // re-read under the lock: a concurrent click may have declined it since this context loaded it
-            em.refresh(g);
+            guests.reread(g);
             if (row.id.equals(lead.id)) {
                 leadGuest = g;
             }
@@ -1909,7 +1910,7 @@ public class BookingService {
             // one shared event for the group: its row may be a Co-host's (pre-ADR 0007), and its attendees are every host
             Booking row = groupEventRow(booking.groupId);
             if (row != null && calendarPort.isConnected(row.ownerId)) {
-                MeetingType type = MeetingType.findById(booking.meetingTypeId);
+                MeetingType type = meetingTypes.findById(booking.meetingTypeId);
                 patchMirror(row, type, () -> calendarPort.updateEvent(
                         row.ownerId,
                         row.calendarRef(),
@@ -1922,8 +1923,8 @@ public class BookingService {
             return;
         }
         if (booking != null && calendarPort.isConnected(ownerId) && booking.eventId != null) {
-            OwnerSettings owner = OwnerSettings.forOwner(ownerId);
-            patchMirror(booking, MeetingType.findById(booking.meetingTypeId), () -> calendarPort.updateEvent(
+            OwnerSettings owner = ownerSettings.forOwner(ownerId);
+            patchMirror(booking, meetingTypes.findById(booking.meetingTypeId), () -> calendarPort.updateEvent(
                     ownerId,
                     booking.calendarRef(),
                     booking.eventId,

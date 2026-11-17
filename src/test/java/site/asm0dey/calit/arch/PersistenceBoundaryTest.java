@@ -10,6 +10,7 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
+import site.asm0dey.calit.booking.BookingService;
 import site.asm0dey.calit.booking.MeetingHosts;
 
 /**
@@ -21,7 +22,7 @@ class PersistenceBoundaryTest {
     /**
      * Classes already moved onto repositories: checked strictly, never frozen.
      */
-    static final List<Class<?>> STRICT = List.of(MeetingHosts.class);
+    static final List<Class<?>> STRICT = List.of(MeetingHosts.class, BookingService.class);
     @ArchTest
     static final ArchRule noPersistenceOutsideRepositories = FreezingArchRule.freeze(noClasses()
         .that(not(IS_REPOSITORY))

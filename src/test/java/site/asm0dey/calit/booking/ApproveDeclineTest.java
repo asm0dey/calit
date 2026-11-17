@@ -223,6 +223,27 @@ class ApproveDeclineTest {
         assertThat(Booking.<Booking>findById(b.id).status).isEqualTo(BookingStatus.CANCELLED);
     }
 
+    /**
+     * A booking loaded through the repository stays managed: the CONFIRMED flip reaches the database (#343).
+     */
+    @Test
+    void approvePersistsConfirmedStatus() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            seedSettings();
+            approvalType("ap-persist");
+        });
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
+        Booking b = pendingBooking("ap-persist");
+
+        bookingService.approve(b.id);
+
+        assertThat(QuarkusTransaction
+            .requiringNew()
+            .call(() -> Booking.<Booking>findById(b.id).status))
+            .isEqualTo(BookingStatus.CONFIRMED);
+    }
+
     @Test
     void concurrentApproveCreatesOneEvent() throws Exception {
         // Two Approve clicks that overlap: the second must wait for the first to commit, then see CONFIRMED.

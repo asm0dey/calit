@@ -4,13 +4,20 @@ import module java.base;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.LockModeType;
-import site.asm0dey.calit.domain.MeetingType;
+import jakarta.inject.Inject;
+import site.asm0dey.calit.domain.MeetingTypeRepository;
 
 @ApplicationScoped
 public class BookingRepository implements PanacheRepositoryBase<Booking, Long> {
     private static final String FUTURE_HELD_GROUP_ROWS =
             "ownerId = ?1 and meetingTypeId = ?2 and startUtc > ?3 and status in ?4 and groupId is not null";
     private static final List<BookingStatus> HELD = List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
+    private final MeetingTypeRepository meetingTypes;
+
+    @Inject
+    public BookingRepository(MeetingTypeRepository meetingTypes) {
+        this.meetingTypes = meetingTypes;
+    }
 
     public List<Booking> heldOverlapping(Long ownerId, Instant from, Instant to) {
         return Booking.heldOverlapping(ownerId, from, to);
@@ -69,7 +76,7 @@ public class BookingRepository implements PanacheRepositoryBase<Booking, Long> {
             em.refresh(booking, LockModeType.PESSIMISTIC_WRITE);
             return booking;
         }
-        Long creatorOwnerId = MeetingType.<MeetingType>findById(booking.meetingTypeId).ownerId;
+        Long creatorOwnerId = meetingTypes.findById(booking.meetingTypeId).ownerId;
         lockSetLead(booking.setId, creatorOwnerId);
         set(booking.setId).forEach(em::refresh);
         return booking;
