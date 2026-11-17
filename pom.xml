@@ -335,8 +335,9 @@
                    the same env vars .github/workflows/ci.yml's smoke test supplies to a real prod
                    container. MAIL_FROM/USERNAME/PASSWORD stay unset on purpose, same as that smoke
                    test: QUARKUS_MAILER_MOCK=true short-circuits the real SMTP client before those are
-                   read. DB_* is not needed here: Quarkus keeps the Dev Services Postgres from the test
-                   phase alive and injects its JDBC URL/credentials as system properties automatically. -->
+                   read. DB_* is not needed here: the GLOBAL test resource PostgresResource starts (or reuses)
+                   the test Postgres and hands its JDBC URL/credentials to the launched app. SIGNUP_ENABLED lets
+                   every IT create its own owner through /signup once the first one took /setup. -->
               <environmentVariables>
                 <SESSION_ENCRYPTION_KEY>it-session-key-0123456789-abcdef</SESSION_ENCRYPTION_KEY>
                 <TOKEN_ENCRYPTION_KEY>1111111111111111111111111111111111111111111111111111111111111111</TOKEN_ENCRYPTION_KEY>
@@ -346,6 +347,7 @@
                 <GOOGLE_OAUTH_CLIENT_ID>dummy</GOOGLE_OAUTH_CLIENT_ID>
                 <GOOGLE_OAUTH_CLIENT_SECRET>dummy</GOOGLE_OAUTH_CLIENT_SECRET>
                 <GOOGLE_OAUTH_STATE_SECRET>it-state-secret-0123456789-abcdef</GOOGLE_OAUTH_STATE_SECRET>
+                <SIGNUP_ENABLED>true</SIGNUP_ENABLED>
               </environmentVariables>
             </configuration>
           </execution>

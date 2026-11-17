@@ -6,7 +6,7 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.restassured.response.Response;
+import site.asm0dey.calit.test.ItBrowser;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +27,7 @@ class CaldavFlowIT {
             "Basic " + Base64.getEncoder().encodeToString("alice:secret".getBytes(StandardCharsets.UTF_8));
 
     /**
-     * Radicale plus open signup; keeps the server URL for the test JVM (IT config never reaches it).
+     * Radicale; keeps the server URL for the test JVM (IT config never reaches it).
      */
     public static class Radicale extends RadicaleResource {
         static volatile String url;
@@ -36,35 +36,11 @@ class CaldavFlowIT {
         public Map<String, String> start() {
             var config = new HashMap<>(super.start());
             url = config.get("caldav.test.url");
-            config.put("calit.signup.enabled", "true");
             return config;
         }
     }
 
-    /**
-     * Every cookie the app has set so far, csrf-token and quarkus-credential included; sent by hand because the
-     * %prod cookies are Secure and this is plain http.
-     */
-    private final Map<String, String> jar = new HashMap<>();
-
-    private Response get(String path) {
-        Response r = given().cookies(jar).redirects().follow(false).get(path);
-        jar.putAll(r.getCookies());
-        return r;
-    }
-
-    private Response post(String path, Map<String, ?> form) {
-        Response r = given()
-            .cookies(jar)
-            .redirects()
-            .follow(false)
-            .contentType("application/x-www-form-urlencoded")
-            .formParams(form)
-            .formParam("csrf-token", jar.get("csrf-token"))
-            .post(path);
-        jar.putAll(r.getCookies());
-        return r;
-    }
+    private final ItBrowser browser = new ItBrowser();
 
     private static int dav(String method, String url, String contentType, String body) throws Exception {
         try (var client = HttpClient.newHttpClient()) {
@@ -103,27 +79,7 @@ class CaldavFlowIT {
     @Test
     void caldavBusyTimeBlocksSlotsOnThePublicPage() throws Exception {
         var suffix = UUID.randomUUID().toString().substring(0, 8);
-        var username = "caldavit" + suffix;
-        var password = "it-pass-" + suffix;
-        // owner: first user on an empty DB, else a self-signup
-        if (get("/setup").statusCode() == 200) {
-            assertThat(post("/setup", Map.of("username", username, "password", password)).statusCode()).isEqualTo(302);
-        } else {
-            assertThat(get("/signup").statusCode()).isEqualTo(200);
-            assertThat(post("/signup", Map.of("username", username, "password", password)).statusCode()).isEqualTo(303);
-        }
-        assertThat(post("/j_security_check", Map.of("j_username", username, "j_password", password)).statusCode())
-            .isEqualTo(302);
-        assertThat(jar).containsKey("quarkus-credential");
-        // first-login wizard: Berlin, which also seeds Mon-Fri 09:00-18:00
-        assertThat(get("/me/setup").statusCode()).isEqualTo(200);
-        assertThat(post(
-                "/me/setup",
-                Map.of("ownerName", "IT Owner", "ownerEmail", "owner@example.com", "timezone", BERLIN.getId())
-        )
-            .statusCode()
-        )
-            .isEqualTo(303);
+        var username = browser.signUpOwner("caldavit", BERLIN).username();
         // a calendar with two zone-only-by-name events on a weekday a few days out
         var day = LocalDate.now(BERLIN).plusDays(3);
         while (day.getDayOfWeek().getValue() > 5) {
@@ -171,41 +127,22 @@ class CaldavFlowIT {
         )
             .isEqualTo(201);
         // connect the account and read that calendar for busy time
-        assertThat(get("/me/calendars").statusCode()).isEqualTo(200);
-        assertThat(post(
-                "/me/calendars/caldav",
-                Map.of("serverUrl", Radicale.url, "username", "alice", "password", "secret")
-        )
+        assertThat(browser.get("/me/calendars").statusCode()).isEqualTo(200);
+        assertThat(browser
+            .post("/me/calendars/caldav", Map.of("serverUrl", Radicale.url, "username", "alice", "password", "secret"))
             .statusCode()
         )
             .isEqualTo(303);
-        var page = get("/me/calendars").then().statusCode(200).extract().asString();
+        var page = browser.get("/me/calendars").then().statusCode(200).extract().asString();
         var row = "value=\"(\\d+:[^\"]*/it-" + suffix + "/)\"";
         assertThat(page).containsPattern(row);
         var matcher = Pattern.compile(row).matcher(page);
         matcher.find();
-        assertThat(post("/me/calendars/calendars", Map.of("read", matcher.group(1))).statusCode()).isEqualTo(303);
+        assertThat(browser.post("/me/calendars/calendars", Map.of("read", matcher.group(1))).statusCode()).isEqualTo(
+                303
+        );
 
-        assertThat(post(
-                "/me/meeting-types",
-                Map.of(
-                        "name",
-                        "CalDAV IT",
-                        "slug",
-                        "caldav-it",
-                        "durationMinutes",
-                        "30",
-                        "minNoticeMinutes",
-                        "0",
-                        "horizonDays",
-                        "30",
-                        "locationType",
-                        "PHONE"
-                )
-        )
-            .statusCode()
-        )
-            .isEqualTo(200);
+        browser.createMeetingType("caldav-it");
 
         var booking = given().get("/" + username + "/caldav-it").then().statusCode(200).extract().asString();
         assertThat(booking)
