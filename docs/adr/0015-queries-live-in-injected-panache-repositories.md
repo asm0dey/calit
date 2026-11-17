@@ -24,6 +24,9 @@ run leaves it dirty, so a PR that removes violations commits the shrunk store. E
 not flagged. Freezing matches a violation by origin method and target, ignoring line numbers, so a
 second identical call inside an already-frozen method is not caught. Migrated classes therefore go on
 the `STRICT` list, which allows no violation at all.
+Changing the signature of a method that has frozen violations makes its old store line "resolved" and
+the call a new violation; fix it by migrating the call to a repository, or by editing that store line's
+origin signature by hand in the same commit.
 
 ## Considered options
 
