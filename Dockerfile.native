@@ -44,7 +44,7 @@ RUN apk add --no-cache freetype fontconfig font-dejavu-core && fc-cache -f
 # The base already ships musl and libz.so.1 (the binary links it). No ca-certificates: a native
 # image uses the JDK trust store captured at build time, not the system CA bundle (same as the
 # JVM image, whose distroless base has none either).
-FROM bellsoft/hardened-base:distroless-musl@sha256:0baa55f46dc01ff520b17fd57146fa00829132806f8fcdb2608040e3225d665c AS runtime
+FROM bellsoft/hardened-base:distroless-musl@sha256:fdbfd7aefa74f30f903faca679bbb7ae83e2c4c805bed014293286481c63b1ff AS runtime
 WORKDIR /app
 # Only the SONAMEs libfontmanager.so's NEEDED entries reference; see Dockerfile for why.
 COPY --from=fontstack \
