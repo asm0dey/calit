@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.*;
 import org.junit.jupiter.api.Test;
+import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.domain.MeetingType;
 
@@ -77,5 +78,36 @@ class BookingServiceCancelWiringTest extends BookingServiceWiringFixture {
         verify(calendarPort, never()).deleteEvent(anyLong(), any(), eq("evt-off"));
         assertThat(b.eventId).isNull();
         assertThat(b.meetLink).isNull();
+    }
+
+    @Test
+    void cancelDeletesOnTheStoredCalendar() {
+        CalendarRef ref = new CalendarRef(5L, "work@example.com");
+        Booking booked = bookAnySlot(ref, "evt-cancel");
+
+        bookingService.cancel(booked.manageToken, true);
+
+        verify(calendarPort).deleteEvent(booked.ownerId, ref, "evt-cancel");
+    }
+
+    @Test
+    void bookingWithNoReportedAddressStoresNone() {
+        // createEvent reports no address, as pre-V26 rows have none
+        Booking booked = bookAnySlot(null, "evt-old");
+
+        bookingService.cancel(booked.manageToken, true);
+
+        verify(calendarPort).deleteEvent(eq(booked.ownerId), isNull(), eq("evt-old"));
+    }
+
+    /**
+     * Google connected, createEvent returning {@code eventId} at {@code address}; Sam books 09:00 on an auto type.
+     */
+    private Booking bookAnySlot(CalendarRef address, String eventId) {
+        MeetingType t = type(false);
+        slotFree(SLOT_09);
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        createEventReturns(new CreatedEvent(eventId, null, null, address));
+        return book(t);
     }
 }

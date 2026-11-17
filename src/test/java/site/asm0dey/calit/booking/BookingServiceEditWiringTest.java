@@ -186,4 +186,41 @@ class BookingServiceEditWiringTest extends BookingServiceWiringFixture {
         assertThat(b.icsSequence).as("no-op must not bump the sequence").isEqualTo(beforeSeq);
         verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any(), any());
     }
+
+    @Test
+    void bookingRecordsTheCalendarTheEventWasCreatedOn() {
+        MeetingType t = type(false);
+        slotFree(SLOT_09);
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        createEventReturns(new CreatedEvent("evt-created", null, null, new CalendarRef(5L, "work@example.com")));
+
+        Booking booked = book(t);
+
+        assertThat(booked.calendarRemoteId).isEqualTo("work@example.com");
+        assertThat(booked.calendarAccountId).isEqualTo(5L);
+    }
+
+    @Test
+    void rescheduleOfAnApprovalTypeDeletesOnTheStoredCalendar() {
+        // Task 4 Step 4: an invitee-initiated reschedule of an approval type re-enters PENDING and
+        // deletes the prior Google event. `priorRef` in BookingService.reschedule/applyRescheduleOutcome
+        // must be captured BEFORE the re-approval block clears googleCalendarId/googleCredentialId --
+        // otherwise the delete would address the wrong (cleared/null) ref.
+        CalendarRef ref = new CalendarRef(5L, "work@example.com");
+        MeetingType t = type(true);
+        slotsFree(60, SLOT_09, SLOT_10);
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        createEventReturns(new CreatedEvent("evt-resched", null, null, ref));
+        Booking booked = book(t);
+        bookingService.approve(booked.id);
+        // Invitee-initiated (byOwner defaults false) -> triggers re-approval.
+        bookingService.reschedule(booked.manageToken, SLOT_10);
+
+        verify(calendarPort).deleteEvent(booked.ownerId, ref, "evt-resched");
+
+        assertThat(booked.status).isEqualTo(BookingStatus.PENDING);
+        assertThat(booked.eventId).isNull();
+        assertThat(booked.calendarRemoteId).isNull();
+        assertThat(booked.calendarAccountId).isNull();
+    }
 }
