@@ -25,12 +25,13 @@ import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.domain.OwnerSettingsRepository;
 import site.asm0dey.calit.calendar.BusyInterval;
 import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarAccountRepository;
 import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.CalendarUnavailableException;
 import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.calendar.EventGoneException;
-import site.asm0dey.calit.calendar.MirrorProvider;
 import site.asm0dey.calit.calendar.WriteTargetResolver;
+import site.asm0dey.calit.i18n.AppLocaleDiscovery;
 import site.asm0dey.calit.i18n.AppLocales;
 import site.asm0dey.calit.user.LoginTicketService;
 
@@ -52,6 +53,8 @@ public class BookingService {
     private final MeetingTypeDurationRepository durations;
     private final OwnerSettingsRepository ownerSettings;
     private final BookingFieldRepository bookingFields;
+    private final CalendarAccountRepository calendarAccounts;
+    private final AppLocaleDiscovery appLocaleDiscovery;
     /**
      * Max guests an invitee may attach to one booking. ponytail: a constant, not a config knob.
      */
@@ -82,7 +85,9 @@ public class BookingService {
             MeetingTypeHostRepository hosts,
             MeetingTypeDurationRepository durations,
             OwnerSettingsRepository ownerSettings,
-            BookingFieldRepository bookingFields
+            BookingFieldRepository bookingFields,
+            CalendarAccountRepository calendarAccounts,
+            AppLocaleDiscovery appLocaleDiscovery
     ) {
         this.slotService = slotService;
         this.calendarPort = calendarPort;
@@ -108,6 +113,8 @@ public class BookingService {
         this.durations = durations;
         this.ownerSettings = ownerSettings;
         this.bookingFields = bookingFields;
+        this.calendarAccounts = calendarAccounts;
+        this.appLocaleDiscovery = appLocaleDiscovery;
     }
 
     private final Event<BookingRequested> bookingRequestedEvent;
@@ -651,7 +658,7 @@ public class BookingService {
         booking.createdAt = Instant.now();
         booking.manageToken = UUID.randomUUID().toString();
         booking.answers = p.answers();
-        booking.locale = AppLocales.isSupported(locale) ? locale : "en";
+        booking.locale = AppLocales.isSupported(locale, appLocaleDiscovery.supported()) ? locale : "en";
         booking.setId = setId;
         // Feature 14: approval types hold the slot as PENDING; auto types are CONFIRMED immediately.
         booking.status = type.requiresApproval ? BookingStatus.PENDING : BookingStatus.CONFIRMED;
@@ -730,7 +737,7 @@ public class BookingService {
                 b.createdAt = Instant.now();
                 b.manageToken = UUID.randomUUID().toString();
                 b.answers = answers;
-                b.locale = AppLocales.isSupported(locale) ? locale : "en";
+                b.locale = AppLocales.isSupported(locale, appLocaleDiscovery.supported()) ? locale : "en";
                 b.status = approval ? BookingStatus.PENDING : BookingStatus.CONFIRMED;
                 if (approval) {
                     b.approvalToken = UUID.randomUUID().toString();
@@ -801,8 +808,8 @@ public class BookingService {
      * Records which provider held the row's Mirror event before its address is cleared: the mail that follows (this
      * cancel, a later decline) must know whether that provider or calit invited the attendees.
      */
-    private static void rememberRemovedMirror(Booking row) {
-        row.removedMirrorProvider = MirrorProvider.of(row.ownerId, row.calendarRef());
+    private void rememberRemovedMirror(Booking row) {
+        row.removedMirrorProvider = calendarAccounts.mirrorProviderOf(row.ownerId, row.calendarRef());
     }
 
     /**

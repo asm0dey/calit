@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.availability.SlotService;
 import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.booking.events.*;
+import site.asm0dey.calit.calendar.CalendarAccountRepository;
 import site.asm0dey.calit.calendar.CalendarPort;
 import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.CreatedEvent;
@@ -21,6 +22,7 @@ import site.asm0dey.calit.domain.MeetingTypeHostRepository;
 import site.asm0dey.calit.domain.MeetingTypeRepository;
 import site.asm0dey.calit.domain.OwnerSettings;
 import site.asm0dey.calit.domain.OwnerSettingsRepository;
+import site.asm0dey.calit.i18n.AppLocaleDiscovery;
 
 /**
  * {@link BookingService} wiring over mocked repositories and ports: no database (#343).
@@ -38,6 +40,8 @@ class BookingServiceWiringTest {
     private final BookingRepository bookings = mock(BookingRepository.class);
     private final MeetingTypeRepository meetingTypes = mock(MeetingTypeRepository.class);
     private final OwnerSettingsRepository ownerSettings = mock(OwnerSettingsRepository.class);
+    private final CalendarAccountRepository calendarAccounts = mock(CalendarAccountRepository.class);
+    private final AppLocaleDiscovery appLocaleDiscovery = mock(AppLocaleDiscovery.class);
     private final BookingService bookingService = new BookingService(
             slotService,
             calendarPort,
@@ -62,7 +66,9 @@ class BookingServiceWiringTest {
             mock(MeetingTypeHostRepository.class),
             mock(MeetingTypeDurationRepository.class),
             ownerSettings,
-            mock(BookingFieldRepository.class)
+            mock(BookingFieldRepository.class),
+            calendarAccounts,
+            appLocaleDiscovery
     );
 
     /**
