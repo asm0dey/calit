@@ -60,6 +60,17 @@ class PersistenceAccessTest {
     }
 
     @Test
+    void flagsConcreteRepositoryQueryString() {
+        assertThat(violations(ConcreteRepositoryQuery.class))
+            .anySatisfy(d -> assertThat(d).contains("via site.asm0dey.calit.arch.fixtures.FixtureRepository.find("));
+    }
+
+    @Test
+    void allowsEntityConstruction() {
+        assertThat(violations(EntityConstruction.class, FixtureEntity.class)).isEmpty();
+    }
+
+    @Test
     void allowsRepositoryById() {
         assertThat(violations(RepositoryById.class)).isEmpty();
     }

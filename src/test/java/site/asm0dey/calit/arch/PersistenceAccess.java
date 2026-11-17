@@ -8,6 +8,7 @@ import com.tngtech.archunit.core.domain.AccessTarget.CodeUnitAccessTarget;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
 import com.tngtech.archunit.core.domain.JavaCodeUnitAccess;
+import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ConditionEvents;
@@ -101,11 +102,15 @@ public final class PersistenceAccess {
         if (PERSISTENCE_TYPES.stream().anyMatch(target.getOwner()::isAssignableTo)) {
             return true;
         }
-        return target.resolveMember().map(m -> {
-            var declaring = m.getOwner();
-            return declaring.isEquivalentTo(PanacheEntityBase.class)
-                    || declaring.isEquivalentTo(PanacheRepositoryBase.class) && !allowedRepositoryCall(m);
-        }).orElse(false);
+        return target
+            .resolveMember()
+            .map(m -> {
+                var declaring = m.getOwner();
+                // Constructors do no I/O: every entity's implicit super() targets PanacheEntityBase.<init>().
+                return declaring.isEquivalentTo(PanacheEntityBase.class) && m instanceof JavaMethod
+                        || declaring.isEquivalentTo(PanacheRepositoryBase.class) && !allowedRepositoryCall(m);
+            })
+            .orElse(false);
     }
 
     private static boolean isStatic(JavaCodeUnit unit) {
