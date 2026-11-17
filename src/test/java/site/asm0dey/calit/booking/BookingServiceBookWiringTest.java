@@ -290,6 +290,19 @@ class BookingServiceBookWiringTest extends BookingServiceWiringFixture {
         assertThat(b.locale).isEqualTo("en");
     }
 
+    @Test
+    void degradedModeCreatesNoEvent() {
+        MeetingType t = type(false);
+        t.locationType = LocationType.PHONE;
+        slotFree(SLOT_09);
+        when(calendarPort.isConnected(anyLong())).thenReturn(false);
+
+        bookingService.book(1L, t.slug, SLOT_09, "Sam", "sam@example.com", Map.of(), "tok", "", "en", List.of());
+
+        verify(calendarPort, never())
+            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
+    }
+
     /**
      * A bookable 30-minute type, on a site that ships en, de and he.
      */

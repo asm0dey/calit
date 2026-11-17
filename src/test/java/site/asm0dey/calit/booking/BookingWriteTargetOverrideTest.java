@@ -112,17 +112,6 @@ class BookingWriteTargetOverrideTest {
             );
     }
 
-    @Test
-    @TestTransaction
-    void degradedModeCreatesNoEvent() {
-        when(calendarPort.isConnected(anyLong())).thenReturn(false);
-
-        book("book-degraded", null, null);
-
-        verify(calendarPort, never())
-            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
-    }
-
     /**
      * Group path (ADR 0007): the Creator is disconnected and a Co-host is connected. The Co-host
      * is never promoted to organizer, so no Google event is created and the booking is CONFIRMED.
