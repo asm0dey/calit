@@ -22,7 +22,8 @@ public class NotifyConfig {
      * hundreds of clients and their selector threads with no connection reuse. A {@code final} field in
      * an {@code @ApplicationScoped} bean is safely published by the JMM with no synchronisation, and
      * being an instance field (never a static) keeps the native-image contract intact -- see
-     * Dockerfile.native's --initialize-at-run-time=org.alexmond.notify4j.HttpClientConfig.
+     * application.properties' --initialize-at-run-time=org.alexmond.notify4j.HttpClientConfig
+     * (quarkus.native.additional-build-args).
      */
     final HttpClientConfig http;
     /**
