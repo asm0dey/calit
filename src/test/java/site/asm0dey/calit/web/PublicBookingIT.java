@@ -22,6 +22,9 @@ class PublicBookingIT {
 
     @Test
     void publicPagesRender() {
+        // On an empty DB FirstRunRedirectFilter sends /favicon.svg (and more) to /setup, so make sure a user
+        // exists: in CI the DB is fresh and the IT order is the filesystem's.
+        new ItBrowser().signUpOwner("publicit", ZoneId.of("Europe/Berlin"));
         var visitor = new ItBrowser();
         var landing = visitor.get("/");
         assertThat(landing.statusCode()).isEqualTo(200);
@@ -44,8 +47,9 @@ class PublicBookingIT {
         assertThat(invitee.get("/" + username).statusCode()).isEqualTo(200);
         var page = invitee.get("/" + username + "/book-it");
         assertThat(page.statusCode()).isEqualTo(200);
+        assertThat(page.asString()).as("a bookable slot on the page").containsPattern(SLOT);
         var slot = SLOT.matcher(page.asString());
-        assertThat(slot.find()).as("a bookable slot on the page").isTrue();
+        slot.find();
         var hebrew = invitee.get("/" + username + "/book-it?lang=he");
         assertThat(hebrew.statusCode()).isEqualTo(200);
         assertThat(hebrew.asString()).contains("lang=\"he\"");
@@ -64,8 +68,9 @@ class PublicBookingIT {
                 )
         );
         assertThat(confirmation.statusCode()).isEqualTo(200);
+        assertThat(confirmation.asString()).as("manage link on the confirmation").containsPattern(MANAGE);
         var manage = MANAGE.matcher(confirmation.asString());
-        assertThat(manage.find()).as("manage link on the confirmation").isTrue();
+        manage.find();
         var booking = "/booking/" + manage.group(1);
 
         assertThat(invitee.get(booking + "/manage").statusCode()).isEqualTo(200);

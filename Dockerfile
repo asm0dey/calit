@@ -42,8 +42,7 @@ FROM bellsoft/liberica-runtime-container:jdk-27-musl@sha256:f17ced6e9dde43c1e920
 # picking up the patched version on every rebuild is the safer default. Both failure modes this
 # could introduce are already gated in CI before any GHCR push -- Trivy (HIGH,CRITICAL,
 # exit-code 1, ignore-unfixed: true) catches a vulnerable-with-a-fix version, and the smoke test
-# (requests /og.png and /og/admin.png, checks PNG magic + non-identity) catches a functionally
-# broken font stack. Renovate also can't manage an apk pin here -- no native Dockerfile-apk
+# (requests /og.png, checks PNG magic) catches a functionally broken font stack in the image. Renovate also can't manage an apk pin here -- no native Dockerfile-apk
 # manager, and Alpaquita isn't a standard repology datasource -- so a pin would just rot.
 RUN apk add --no-cache freetype fontconfig font-dejavu-core \
     # Populate /var/cache/fontconfig at build time, as root, so it can be copied pre-warmed into

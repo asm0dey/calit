@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /**
- * Packaging proof for ical4j (JVM jar here, the native binary under {@code -Dnative}): a real Radicale holds a
+ * Packaging proof for ical4j (JVM jar here, the native binary under {@code -Pnative}): a real Radicale holds a
  * recurring {@code TZID=Europe/Berlin} event and an Outlook-style {@code TZID=W. Europe Standard Time} event, neither
  * with a VTIMEZONE, and the packaged app must parse, expand and zone-resolve both to keep their times off the public
  * booking page. HTTP only: the app is a separate %prod process, so CSRF is on and the owner is created through
