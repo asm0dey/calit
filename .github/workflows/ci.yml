@@ -62,6 +62,11 @@ jobs:
           # -DskipITs: the *IT smoke tests run against the native binary in native-it, in parallel.
           ./mvnw --batch-mode --no-transfer-progress verify -DskipITs $CRIBRO_ARGS
 
+      # FreezingArchRule rewrites the store when a frozen persistence violation is fixed; a fix that
+      # does not commit the shrunk store would let the violation come back unnoticed.
+      - name: ArchUnit store is committed
+        run: git diff --exit-code -- src/test/resources/archunit_store || { echo "::error::ArchUnit store shrank; commit src/test/resources/archunit_store"; exit 1; }
+
       # cribro writes no report when the PR changed no Java lines it measures, and then nothing is
       # published.
       - name: Publish diff coverage to the job summary
