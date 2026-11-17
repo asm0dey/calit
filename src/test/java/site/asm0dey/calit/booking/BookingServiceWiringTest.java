@@ -6,8 +6,10 @@ import static org.mockito.Mockito.*;
 import jakarta.enterprise.event.Event;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.availability.SlotService;
+import site.asm0dey.calit.availability.TimeSlot;
 import site.asm0dey.calit.booking.events.*;
 import site.asm0dey.calit.calendar.CalendarPort;
+import site.asm0dey.calit.calendar.CalendarRef;
 import site.asm0dey.calit.calendar.CreatedEvent;
 import site.asm0dey.calit.calendar.WriteTargetResolver;
 import site.asm0dey.calit.domain.BookingFieldRepository;
@@ -28,15 +30,18 @@ class BookingServiceWiringTest {
     private static final Long TYPE_ID = 7L;
     private static final Long BOOKING_ID = 42L;
     private static final Instant SLOT_09 = Instant.now().plus(7, ChronoUnit.DAYS).truncatedTo(ChronoUnit.HOURS);
+    private static final Instant SLOT_10 = SLOT_09.plusSeconds(3600);
+    private final SlotService slotService = mock(SlotService.class);
     private final CalendarPort calendarPort = mock(CalendarPort.class);
+    private final MeetingHosts meetingHosts = mock(MeetingHosts.class);
     private final BookingRepository bookings = mock(BookingRepository.class);
     private final MeetingTypeRepository meetingTypes = mock(MeetingTypeRepository.class);
     private final OwnerSettingsRepository ownerSettings = mock(OwnerSettingsRepository.class);
     private final BookingService bookingService = new BookingService(
-            mock(SlotService.class),
+            slotService,
             calendarPort,
             mock(CaptchaVerifier.class),
-            mock(MeetingHosts.class),
+            meetingHosts,
             mock(WriteTargetResolver.class),
             10,
             mock(Event.class),
@@ -60,9 +65,9 @@ class BookingServiceWiringTest {
     );
 
     /**
-     * A one-hour Google Meet approval type with a PENDING 09:00 request, served by {@code lockForDecision}.
+     * A one-hour Google Meet type on {@link #OWNER}, served by {@code findById}, with the owner's settings.
      */
-    private Booking pendingBooking() {
+    private MeetingType type(boolean requiresApproval) {
         var t = new MeetingType();
         t.id = TYPE_ID;
         t.ownerId = OWNER;
@@ -70,7 +75,7 @@ class BookingServiceWiringTest {
         t.slug = "approve";
         t.durationMinutes = 60;
         t.locationType = LocationType.GOOGLE_MEET;
-        t.requiresApproval = true;
+        t.requiresApproval = requiresApproval;
         when(meetingTypes.findById(TYPE_ID)).thenReturn(t);
         var s = new OwnerSettings();
         s.ownerId = OWNER;
@@ -78,6 +83,10 @@ class BookingServiceWiringTest {
         s.ownerEmail = "owner@example.com";
         s.timezone = "Europe/Amsterdam";
         when(ownerSettings.forOwner(OWNER)).thenReturn(s);
+        return t;
+    }
+
+    private static Booking booking(BookingStatus status) {
         var b = new Booking();
         b.id = BOOKING_ID;
         b.ownerId = OWNER;
@@ -87,10 +96,47 @@ class BookingServiceWiringTest {
         b.startUtc = SLOT_09;
         b.endUtc = SLOT_09.plusSeconds(3600);
         b.manageToken = "manage";
+        b.status = status;
+        return b;
+    }
+
+    /**
+     * A PENDING 09:00 request on an approval type, served by {@code lockForDecision}.
+     */
+    private Booking pendingBooking() {
+        type(true);
+        var b = booking(BookingStatus.PENDING);
         b.approvalToken = "approval";
-        b.status = BookingStatus.PENDING;
         when(bookings.lockForDecision(BOOKING_ID)).thenReturn(b);
         return b;
+    }
+
+    /**
+     * A CONFIRMED 09:00 booking whose Mirror event {@code eventId} lives at {@code ref}, served by its manage token.
+     */
+    private Booking confirmedWithEvent(boolean requiresApproval, CalendarRef ref, String eventId) {
+        type(requiresApproval);
+        var b = booking(BookingStatus.CONFIRMED);
+        b.eventId = eventId;
+        if (ref != null) {
+            b.calendarAccountId = ref.accountId();
+            b.calendarRemoteId = ref.remoteCalendarId();
+        }
+        when(bookings.findByManageToken(b.manageToken)).thenReturn(b);
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        return b;
+    }
+
+    /**
+     * The single host may take a one-hour booking at {@code slot}.
+     */
+    private void slotFree(Instant slot) {
+        var t = meetingTypes.findById(TYPE_ID);
+        when(meetingHosts.bookable(t)).thenReturn(true);
+        when(meetingHosts.hostOwnerIds(t)).thenReturn(List.of(OWNER));
+        var start = slot.atZone(ZoneOffset.UTC);
+        when(slotService.generateRawSlots(eq(t), eq(OWNER), any(), any(), any(), eq(60)))
+            .thenReturn(List.of(new TimeSlot(start, start.plusHours(1))));
     }
 
     private void createEventReturns(CreatedEvent created) {
@@ -200,5 +246,28 @@ class BookingServiceWiringTest {
         bookingService.decline(BOOKING_ID);
 
         assertThat(b.status).isEqualTo(BookingStatus.CANCELLED);
+    }
+
+    @Test
+    void rescheduleOfANonApprovalTypePatchesTheStoredCalendar() {
+        // The auto-confirm path patches the existing event via updateEvent instead of deleting it, and must
+        // address that patch at the booking's *stored* ref, not the owner's current write target.
+        CalendarRef ref = new CalendarRef(5L, "work@example.com");
+        Booking booked = confirmedWithEvent(false, ref, "evt-resched-auto");
+        slotFree(SLOT_10);
+
+        bookingService.reschedule(booked.manageToken, SLOT_10);
+
+        verify(calendarPort).updateEvent(eq(booked.ownerId), eq(ref), eq("evt-resched-auto"), any(), any(), any());
+    }
+
+    @Test
+    void updateDetailsPatchesTheStoredCalendar() {
+        CalendarRef ref = new CalendarRef(5L, "work@example.com");
+        Booking booked = confirmedWithEvent(false, ref, "evt-details");
+
+        bookingService.updateDetails(booked.manageToken, "New title", "New description", null, false);
+
+        verify(calendarPort).updateEventDetails(eq(booked.ownerId), eq(ref), eq("evt-details"), any(), any(), any());
     }
 }
