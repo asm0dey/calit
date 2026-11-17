@@ -48,6 +48,21 @@ class PersistenceAccessTest {
     }
 
     @Test
+    void flagsEntityFinderReachingPersistenceByMethodReference() {
+        assertThat(violations(EntityFinderByMethodRef.class, MethodRefEntity.class))
+            .anySatisfy(d -> assertThat(d)
+                .contains("EntityFinderByMethodRef.load()")
+                .contains("via site.asm0dey.calit.arch.fixtures.MethodRefEntity.byIds("));
+    }
+
+    @Test
+    void flagsFindByIdWithLock() {
+        assertThat(violations(RepositoryByIdWithLock.class))
+            .anySatisfy(d -> assertThat(d)
+                .contains("via io.quarkus.hibernate.orm.panache.PanacheRepositoryBase.findById("));
+    }
+
+    @Test
     void flagsEntityManagerCall() {
         assertThat(violations(EntityManagerCall.class))
             .anySatisfy(d -> assertThat(d).contains("via jakarta.persistence.EntityManager.flush("));

@@ -39,10 +39,13 @@ public final class PersistenceAccess {
             ResultSet.class
     );
     /**
-     * Repository calls a service may make: by-id lookups and lifecycle of a loaded entity.
+     * Repository calls a service may make: lifecycle of a loaded entity. By-id lookups and {@code delete} are allowed
+     * only in their one-parameter form (see {@link #allowedRepositoryCall}): their lock-mode overloads stay in
+     * repositories.
      */
     private static final Set<String> REPOSITORY_ALLOWLIST =
-            Set.of("findById", "findByIdOptional", "persist", "persistAndFlush", "flush", "isPersistent");
+            Set.of("persist", "persistAndFlush", "flush", "isPersistent");
+    private static final Set<String> ONE_PARAMETER_ALLOWLIST = Set.of("findById", "findByIdOptional", "delete");
     private static final DescribedPredicate<JavaClass> ASSIGNABLE_TO_REPOSITORY =
             assignableTo(PanacheRepositoryBase.class);
     /**
@@ -84,8 +87,11 @@ public final class PersistenceAccess {
                 || !visited.add(member)) {
             return false;
         }
-        return member.getCallsFromSelf().stream().anyMatch(call -> {
-            var next = call.getTarget();
+        // calls and method/constructor references, as the top level's getCodeUnitAccessesFromSelf()
+        Stream<JavaCodeUnitAccess<?>> accesses =
+                Stream.concat(member.getCallsFromSelf().stream(), member.getCodeUnitReferencesFromSelf().stream());
+        return accesses.anyMatch(access -> {
+            var next = access.getTarget();
             boolean sameClassStatic =
                     next
                 .resolveMember()
@@ -119,6 +125,6 @@ public final class PersistenceAccess {
 
     private static boolean allowedRepositoryCall(JavaCodeUnit member) {
         return REPOSITORY_ALLOWLIST.contains(member.getName())
-                || "delete".equals(member.getName()) && member.getRawParameterTypes().size() == 1;
+                || ONE_PARAMETER_ALLOWLIST.contains(member.getName()) && member.getRawParameterTypes().size() == 1;
     }
 }
