@@ -12,6 +12,7 @@ import site.asm0dey.calit.calendar.CaldavAccount;
 public class CaldavHttp {
     private static final int MAX_REDIRECTS = 5;
     private static final int MAX_BODY = 10 * 1024 * 1024;
+    private static final Set<String> RETRIED = Set.of("DELETE", "PROPFIND", "REPORT");
 
     public record Response(int status, Map<String, List<String>> headers, String body) {}
 
@@ -95,21 +96,32 @@ public class CaldavHttp {
      * dripping its body would otherwise hold the caller's thread. Bodies over {@link #MAX_BODY} bytes are refused.
      */
     private HttpResponse<String> execute(HttpRequest request) {
-        var future = client.sendAsync(
-                request,
-                HttpResponse.BodyHandlers.limiting(HttpResponse.BodyHandlers.ofString(), MAX_BODY)
-        );
-        try {
-            return future.get(config.timeout().toMillis(), TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            future.cancel(true);
-            throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "CalDAV server too slow", e);
-        } catch (InterruptedException e) {
-            future.cancel(true);
-            Thread.currentThread().interrupt();
-            throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "Interrupted", e);
-        } catch (ExecutionException e) {
-            throw failure(e.getCause());
+        for (int attempt = 0; ; attempt++) {
+            var future = client.sendAsync(
+                    request,
+                    HttpResponse.BodyHandlers.limiting(HttpResponse.BodyHandlers.ofString(), MAX_BODY)
+            );
+            try {
+                return future.get(config.timeout().toMillis(), TimeUnit.MILLISECONDS);
+            } catch (TimeoutException e) {
+                future.cancel(true);
+                throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "CalDAV server too slow", e);
+            } catch (InterruptedException e) {
+                future.cancel(true);
+                Thread.currentThread().interrupt();
+                throw new CaldavException(CaldavException.Reason.UNREACHABLE, 0, "Interrupted", e);
+            } catch (ExecutionException e) {
+                var failure = failure(e.getCause());
+                // the JDK pools a connection the server already closed (HTTP/1.0, idle timeout) and retries only
+                // GET/HEAD on it; do the same once for these idempotent methods. PUT is conditional, so a retry
+                // after a lost success would answer 412, and MKCALENDAR 405: those stay unretried.
+                if (attempt == 0
+                        && failure.reason() == CaldavException.Reason.UNREACHABLE
+                        && RETRIED.contains(request.method())) {
+                    continue;
+                }
+                throw failure;
+            }
         }
     }
 
