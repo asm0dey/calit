@@ -181,4 +181,52 @@ class BookingServiceBookWiringTest extends BookingServiceWiringFixture {
                     guestEmails
             ));
     }
+
+    @Test
+    void bookingAtAChosenLengthSetsTheEndAccordingly() {
+        MeetingType t = type(false);
+        t.durationMinutes = 30;
+        slotsFree(120, SLOT_09);
+        // 12-arg order: ownerId, slug, startUtc, name, email, answers, turnstileToken,
+        // altchaSolution, honeypot, locale, guestEmails, durationMinutes.
+        Booking b = bookingService.book(
+                OWNER,
+                t.slug,
+                SLOT_09,
+                "Ada",
+                "ada@example.test",
+                Map.of(),
+                null,
+                null,
+                null,
+                "en",
+                List.of(),
+                120
+        );
+
+        assertThat(Duration.between(b.startUtc, b.endUtc)).hasMinutes(120);
+    }
+
+    @Test
+    void theDefaultingOverloadStillBooksTheTypesOwnLength() {
+        MeetingType t = type(false);
+        t.durationMinutes = 30;
+        slotsFree(30, SLOT_09);
+
+        Booking b = bookingService.book(
+                OWNER,
+                t.slug,
+                SLOT_09,
+                "Ada",
+                "ada@example.test",
+                Map.of(),
+                null,
+                null,
+                null,
+                "en",
+                List.of()
+        );
+
+        assertThat(Duration.between(b.startUtc, b.endUtc)).hasMinutes(30);
+    }
 }

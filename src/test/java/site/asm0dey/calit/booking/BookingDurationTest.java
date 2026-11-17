@@ -61,38 +61,6 @@ class BookingDurationTest {
     }
 
     @Test
-    void bookingAtAChosenLengthSetsTheEndAccordingly() {
-        MeetingType t = seed("dur-book");
-        var slot = bookingService
-            .availableSlots(
-                    t,
-                    java.time.LocalDate.now(),
-                    java.time.LocalDate.now().plusDays(7),
-                    java.util.Set.of(),
-                    120
-            )
-            .getFirst();
-        // 12-arg order: ownerId, slug, startUtc, name, email, answers, turnstileToken,
-        // altchaSolution, honeypot, locale, guestEmails, durationMinutes.
-        Booking b = bookingService.book(
-                OWNER,
-                t.slug,
-                slot.start().toInstant(),
-                "Ada",
-                "ada@example.test",
-                Map.of(),
-                null,
-                null,
-                null,
-                "en",
-                List.of(),
-                120
-        );
-
-        assertThat(Duration.between(b.startUtc, b.endUtc)).hasMinutes(120);
-    }
-
-    @Test
     void aLengthOutsideTheAllowedSetIsRejected() {
         MeetingType t = seed("dur-reject");
         var slot = bookingService
@@ -118,29 +86,5 @@ class BookingDurationTest {
                     45
             ));
         assertThat(Booking.count()).as("a rejected duration must write no row").isEqualTo(before);
-    }
-
-    @Test
-    void theDefaultingOverloadStillBooksTheTypesOwnLength() {
-        MeetingType t = seed("dur-default");
-        var slot = bookingService
-            .availableSlots(t, java.time.LocalDate.now(), java.time.LocalDate.now().plusDays(7), java.util.Set.of())
-            .getFirst();
-
-        Booking b = bookingService.book(
-                OWNER,
-                t.slug,
-                slot.start().toInstant(),
-                "Ada",
-                "ada@example.test",
-                Map.of(),
-                null,
-                null,
-                null,
-                "en",
-                List.of()
-        );
-
-        assertThat(Duration.between(b.startUtc, b.endUtc)).hasMinutes(30);
     }
 }
