@@ -4,6 +4,7 @@ import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.MockMailbox;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -23,6 +24,8 @@ class PasswordResetFlowTest {
     private static final String ADMIN_EMAIL = "admin@example.com";
     @Inject
     MockMailbox mailbox;
+    @Inject
+    PasswordResetService resetService;
 
     @BeforeEach
     void init() {
@@ -92,6 +95,40 @@ class PasswordResetFlowTest {
             .post("/j_security_check")
             .then()
             .statusCode(302);
+    }
+
+    @Test
+    void usernameForNamesOnlyAStillValidTokenWithoutConsumingIt() {
+        var now = Instant.now();
+        var valid = resetService.issue(1L, now);
+        var expired = resetService.issue(1L, now.minus(Duration.ofHours(1)), Duration.ofMinutes(1));
+        assertThat(resetService.usernameFor(valid, now)).isEqualTo("admin");
+        assertThat(resetService.usernameFor(valid, now)).as("lookup does not consume").isEqualTo("admin");
+        assertThat(resetService.usernameFor(expired, now)).isNull();
+        assertThat(resetService.usernameFor("no-such-token", now)).isNull();
+        assertThat(resetService.usernameFor(" ", now)).isNull();
+        assertThat(resetService.usernameFor(null, now)).isNull();
+    }
+
+    @Test
+    void blankPasswordRetryKeepsTheUsernameAndAnUnknownTokenShowsNone() {
+        var token = resetService.issue(1L, Instant.now());
+        given()
+            .contentType("application/x-www-form-urlencoded")
+            .formParam("token", token)
+            .formParam("password", "")
+            .when()
+            .post("/reset-password")
+            .then()
+            .statusCode(400)
+            .body(containsString("value=\"admin\" readonly autocomplete=\"username\""));
+        given()
+            .when()
+            .get("/reset-password?token=no-such-token")
+            .then()
+            .statusCode(200)
+            .body(containsString("name=\"password\""))
+            .body(not(containsString("autocomplete=\"username\"")));
     }
 
     @Test

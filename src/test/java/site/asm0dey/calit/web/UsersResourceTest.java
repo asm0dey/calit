@@ -1,5 +1,6 @@
 package site.asm0dey.calit.web;
 
+import module java.base;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -76,7 +77,9 @@ class UsersResourceTest {
 
         var html = mailbox.getMailsSentTo("bob@example.com").getFirst().getHtml();
         assertThat(html).as("invite names the account").contains("Your username: bob");
-        var token = html.replaceAll("(?s).*/reset-password\\?token=([A-Za-z0-9_-]+).*", "$1");
+        var tok = Pattern.compile("/reset-password\\?token=([A-Za-z0-9_-]+)").matcher(html);
+        assertThat(tok.find()).as("invite carries an activation link").isTrue();
+        var token = tok.group(1);
         // The set-password page shows the username where password managers pick it up.
         given()
             .when()
