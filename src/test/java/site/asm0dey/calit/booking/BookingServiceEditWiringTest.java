@@ -223,4 +223,44 @@ class BookingServiceEditWiringTest extends BookingServiceWiringFixture {
         assertThat(booked.calendarRemoteId).isNull();
         assertThat(booked.calendarAccountId).isNull();
     }
+
+    @Test
+    void singleHostOwnerRescheduleOfApprovalTypeStaysConfirmed() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        createEventReturns(new CreatedEvent("evt-s", "meet-s", "cal-s", null));
+        MeetingType t = type(true);
+        slotsFree(60, SLOT_09, SLOT_10);
+
+        Booking b = book(t);
+        bookingService.approve(b.id);
+        assertThat(b.status).isEqualTo(BookingStatus.CONFIRMED);
+        // owner-initiated
+        bookingService.reschedule(b.manageToken, SLOT_10, null, true);
+
+        assertThat(b.status).as("owner-initiated reschedule stays confirmed").isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(b.startUtc).isEqualTo(SLOT_10);
+        assertThat(b.eventId).as("the event is patched in place, not dropped").isNotNull();
+        verify(calendarPort, times(1)).updateEvent(anyLong(), any(), eq("evt-s"), eq(SLOT_10), any(), any());
+        verify(calendarPort, never()).deleteEvent(anyLong(), any(), anyString());
+    }
+
+    @Test
+    void singleHostInviteeRescheduleOfApprovalTypeRevertsToPending() {
+        when(calendarPort.isConnected(anyLong())).thenReturn(true);
+        createEventReturns(new CreatedEvent("evt-s2", "meet-s2", "cal-s2", null));
+        MeetingType t = type(true);
+        slotsFree(60, SLOT_09, SLOT_10);
+
+        Booking b = book(t);
+        bookingService.approve(b.id);
+        assertThat(b.status).isEqualTo(BookingStatus.CONFIRMED);
+        // invitee-initiated (2-arg overload)
+        bookingService.reschedule(b.manageToken, SLOT_10);
+
+        assertThat(b.status).as("invitee-initiated reschedule reverts to pending").isEqualTo(BookingStatus.PENDING);
+        assertThat(b.eventId).as("prior event is deleted on re-request").isNull();
+        assertThat(b.meetLink).isNull();
+        verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), eq("evt-s2"));
+        verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any(), any());
+    }
 }
