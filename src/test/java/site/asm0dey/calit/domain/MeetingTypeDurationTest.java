@@ -5,9 +5,12 @@ import static site.asm0dey.calit.domain.MeetingTypeDuration.allowedDurations;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
+import jakarta.inject.Inject;
 
 @QuarkusTest
 class MeetingTypeDurationTest {
+    @Inject
+    MeetingTypeDurationRepository durationRepository;
     /**
      * Admin is always owner id 1 (DatabaseResetCallback reseeds it per test).
      */
@@ -61,9 +64,9 @@ class MeetingTypeDurationTest {
     void isAllowedAcceptsTheDefaultAndConfiguredLengthsOnly() {
         MeetingType t = seedType("allowed-check", 60);
         seedDuration(t.id, 120, null, null);
-        assertThat(MeetingTypeDuration.isAllowed(t, 60)).isTrue();
-        assertThat(MeetingTypeDuration.isAllowed(t, 120)).isTrue();
-        assertThat(MeetingTypeDuration.isAllowed(t, 45)).isFalse();
+        assertThat(durationRepository.isAllowed(t, 60)).isTrue();
+        assertThat(durationRepository.isAllowed(t, 120)).isTrue();
+        assertThat(durationRepository.isAllowed(t, 45)).isFalse();
     }
 
     @Test

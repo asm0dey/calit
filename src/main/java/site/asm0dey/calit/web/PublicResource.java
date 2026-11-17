@@ -1513,7 +1513,7 @@ public class PublicResource {
                 siteInfo.getContactEmail(),
                 detailsError,
                 siblings(booking, type, zone),
-                booking.setId == null ? 0 : BookingService.cancellableOfSet(booking.setId, type.ownerId).size()
+                booking.setId == null ? 0 : bookingService.cancellableOfSet(booking.setId, type.ownerId).size()
         );
     }
 

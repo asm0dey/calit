@@ -88,10 +88,6 @@ public class MeetingTypeDuration extends PanacheEntityBase {
         return allowedDurations(type).getFirst();
     }
 
-    public static boolean isAllowed(MeetingType type, int durationMinutes) {
-        return allowedDurations(type).contains(durationMinutes);
-    }
-
     /**
      * The buffer-override row for one length, or null when that length has none.
      */

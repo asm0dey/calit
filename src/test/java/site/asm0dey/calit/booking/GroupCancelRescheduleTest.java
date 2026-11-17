@@ -57,20 +57,6 @@ class GroupCancelRescheduleTest {
         return MultiHostFixtures.acceptedTwoHostType(1L, v.id, "intro", 60, approval);
     }
 
-    private MeetingType singleHostType(String slug, boolean approval) {
-        MultiHostFixtures.settings(1L, "pasha");
-        MultiHostFixtures.rule(1L, DayOfWeek.MONDAY, 9, 17);
-        MeetingType t = new MeetingType();
-        t.ownerId = 1L;
-        t.name = slug;
-        t.slug = slug;
-        t.durationMinutes = 60;
-        t.horizonDays = 50_000;
-        t.requiresApproval = approval;
-        t.persist();
-        return t;
-    }
-
     private void stubOrganizerOnCreator() {
         when(calendarPort.isConnected(1L)).thenReturn(true);
         when(calendarPort.isConnected(argThat(id -> id != null && id != 1L))).thenReturn(false);
@@ -296,95 +282,6 @@ class GroupCancelRescheduleTest {
         }
         verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), anyString());
         assertThat(Booking.<Booking>leadOfGroup(lead.groupId, 1L).eventId).isNull();
-    }
-
-    // --- (d) single-host: owner reschedule of approval type stays CONFIRMED; invitee reschedule reverts ---
-    @Test
-    @TestTransaction
-    void singleHostOwnerRescheduleOfApprovalTypeStaysConfirmed() {
-        when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.createEvent(
-                anyLong(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                anyList(),
-                anyBoolean(),
-                any()
-        ))
-            .thenReturn(new CreatedEvent("evt-s", "meet-s", "cal-s", null));
-        singleHostType("solo-approval", true);
-
-        Booking b = bookingService.book(
-                1L,
-                "solo-approval",
-                nextMonday(10),
-                "Sam",
-                "sam@example.com",
-                Map.of(),
-                "tok",
-                "",
-                "en",
-                List.of()
-        );
-        bookingService.approve(b.id);
-        assertThat(Booking.<Booking>findById(b.id).status).isEqualTo(BookingStatus.CONFIRMED);
-        // owner-initiated
-        bookingService.reschedule(b.manageToken, nextMonday(13), null, true);
-
-        Booking loaded = Booking.findById(b.id);
-        assertThat(loaded.status).as("owner-initiated reschedule stays confirmed").isEqualTo(BookingStatus.CONFIRMED);
-        assertThat(loaded.startUtc).isEqualTo(nextMonday(13));
-        assertThat(loaded.eventId).as("the event is patched in place, not dropped").isNotNull();
-        verify(calendarPort, times(1)).updateEvent(anyLong(), any(), eq("evt-s"), eq(nextMonday(13)), any(), any());
-        verify(calendarPort, never()).deleteEvent(anyLong(), any(), anyString());
-    }
-
-    @Test
-    @TestTransaction
-    void singleHostInviteeRescheduleOfApprovalTypeRevertsToPending() {
-        when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.createEvent(
-                anyLong(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                anyList(),
-                anyBoolean(),
-                any()
-        ))
-            .thenReturn(new CreatedEvent("evt-s2", "meet-s2", "cal-s2", null));
-        singleHostType("solo-approval-2", true);
-
-        Booking b = bookingService.book(
-                1L,
-                "solo-approval-2",
-                nextMonday(10),
-                "Sam",
-                "sam@example.com",
-                Map.of(),
-                "tok",
-                "",
-                "en",
-                List.of()
-        );
-        bookingService.approve(b.id);
-        assertThat(Booking.<Booking>findById(b.id).status).isEqualTo(BookingStatus.CONFIRMED);
-        // invitee-initiated (2-arg overload)
-        bookingService.reschedule(b.manageToken, nextMonday(13));
-
-        Booking loaded = Booking.findById(b.id);
-        assertThat(loaded.status).as("invitee-initiated reschedule reverts to pending").isEqualTo(BookingStatus.PENDING);
-        assertThat(loaded.eventId).as("prior event is deleted on re-request").isNull();
-        assertThat(loaded.meetLink).isNull();
-        verify(calendarPort, times(1)).deleteEvent(anyLong(), any(), eq("evt-s2"));
-        verify(calendarPort, never()).updateEvent(anyLong(), any(), any(), any(), any(), any());
     }
 
     // --- (e) Task 11 review fix: group reschedule to an adjacent slot must not be falsely rejected

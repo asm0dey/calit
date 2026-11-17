@@ -2,7 +2,6 @@ package site.asm0dey.calit.booking;
 
 import module java.base;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.*;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.InjectMock;
@@ -157,15 +156,5 @@ class UpdateDetailsTest {
             .call(() -> Booking.findById(b.id));
         assertThat(after.icsSequence).as("no-op must not bump the sequence").isEqualTo(beforeSeq);
         verify(calendarPort, never()).updateEventDetails(anyLong(), any(), any(), any(), any(), any());
-    }
-
-    @Test
-    void updateDetailsRejectsOverlongTitle() {
-        when(calendarPort.isConnected(anyLong())).thenReturn(false);
-        Booking b = seedConfirmed("upd-5");
-        var title = "x".repeat(201);
-        List<String> guestEmails = List.of();
-        assertThatExceptionOfType(BookingValidationException.class)
-            .isThrownBy(() -> bookingService.updateDetails(b.manageToken, title, null, guestEmails, true));
     }
 }

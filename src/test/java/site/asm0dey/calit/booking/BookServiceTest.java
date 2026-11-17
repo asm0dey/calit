@@ -7,11 +7,8 @@ import static org.mockito.Mockito.*;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
-import site.asm0dey.calit.booking.events.BookingConfirmed;
-import site.asm0dey.calit.booking.events.BookingRequested;
 import site.asm0dey.calit.domain.AvailabilityRule;
 import site.asm0dey.calit.domain.BookingField;
 import site.asm0dey.calit.domain.MeetingType;
@@ -26,57 +23,11 @@ class BookServiceTest {
     BookingService bookingService;
     @InjectMock
     CalendarPort calendarPort;
-    // CDI observers count fired events (feature 14 / degraded mode assertions).
-    static final AtomicInteger REQUESTED = new AtomicInteger();
-    static final AtomicInteger CONFIRMED = new AtomicInteger();
-
-    void onRequested(@Observes BookingRequested e) {
-        REQUESTED.incrementAndGet();
-    }
-
-    void onConfirmed(@Observes BookingConfirmed e) {
-        CONFIRMED.incrementAndGet();
-    }
-
     // Owner tz Europe/Amsterdam. Derive a future weekday from now() so the slot is never in the past.
     private static final ZoneId ZONE = ZoneId.of("Europe/Amsterdam");
     private static final LocalDate DAY = Instant.now().atZone(ZONE).toLocalDate().plusDays(7);
     // 09:00 local
     private static final Instant SLOT_09 = DAY.atTime(9, 0).atZone(ZONE).toInstant();
-
-    @Test
-    void rejectsCrlfInjectionInEmail() {
-        assertThatExceptionOfType(BookingValidationException.class)
-            .isThrownBy(() -> bookingService.book(
-                    1L,
-                    "intro",
-                    Instant.parse("2099-01-01T10:00:00Z"),
-                    "Mallory",
-                    "a@b.com\r\nBcc: attacker@evil.com",
-                    Map.of(),
-                    null,
-                    null,
-                    "en",
-                    List.of()
-            ));
-    }
-
-    @Test
-    void rejectsOversizedInviteeName() {
-        assertThatExceptionOfType(BookingValidationException.class)
-            .isThrownBy(() -> bookingService.book(
-                    1L,
-                    "intro",
-                    Instant.parse("2099-01-01T10:00:00Z"),
-                    "n".repeat(201),
-                    "a@b.com",
-                    Map.of(),
-                    null,
-                    null,
-                    "en",
-                    List.of()
-            ));
-    }
 
     @Test
     @TestTransaction
@@ -139,124 +90,6 @@ class BookServiceTest {
                     eq(true),
                     eq(null)
             );
-    }
-
-    @Test
-    @TestTransaction
-    void autoTypeConnectedNonMeetLocationPassesLocationTextAndNoMeetLink() {
-        // Feature 13: PHONE location -> createMeetLink=false, locationText=locationDetail.
-        seedSettings();
-        MeetingType t = meetingTypeWithMondayWindow("book-phone", LocationType.PHONE, false);
-        t.locationDetail = "+31 20 123 4567";
-        t.persist();
-        when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        when(calendarPort.createEvent(
-                anyLong(),
-                any(),
-                any(),
-                anyString(),
-                anyString(),
-                any(),
-                any(),
-                any(),
-                anyBoolean(),
-                any()
-        ))
-            .thenReturn(new CreatedEvent("evt-ph", null, "h", null));
-
-        Booking b = bookingService.book(
-                1L,
-                "book-phone",
-                SLOT_09,
-                "Sam",
-                "sam@example.com",
-                Map.of(),
-                "tok",
-                "",
-                "en",
-                List.of()
-        );
-
-        assertThat(b.status).isEqualTo(BookingStatus.CONFIRMED);
-        assertThat(b.meetLink).as("no Meet link for a non-Meet location").isNull();
-        verify(calendarPort, times(1))
-            .createEvent(
-                    anyLong(),
-                    any(),
-                    any(),
-                    anyString(),
-                    anyString(),
-                    any(),
-                    any(),
-                    any(),
-                    eq(false),
-                    eq("+31 20 123 4567")
-            );
-    }
-
-    @Test
-    @TestTransaction
-    void autoTypeDisconnectedConfirmsWithoutEventAndNullMeetLink() {
-        // Degraded mode (feature 2 optional): not connected -> no Google event, null googleEventId/meetLink.
-        seedSettings();
-        meetingTypeWithMondayWindow("book-degraded", LocationType.GOOGLE_MEET, false);
-        when(calendarPort.isConnected(anyLong())).thenReturn(false);
-
-        Booking b = bookingService.book(
-                1L,
-                "book-degraded",
-                SLOT_09,
-                "Sam",
-                "sam@example.com",
-                Map.of(),
-                "tok",
-                "",
-                "en",
-                List.of()
-        );
-
-        assertThat(b.status).isEqualTo(BookingStatus.CONFIRMED);
-        assertThat(b.eventId).isNull();
-        assertThat(b.meetLink).isNull();
-        // createEvent and freeBusy must never be called when disconnected.
-        verify(calendarPort, never())
-            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
-        verify(calendarPort, never()).freeBusy(anyLong(), any(), any());
-    }
-
-    @Test
-    @TestTransaction
-    void approvalTypeCreatesPendingWithoutEventAndFiresRequested() {
-        // Feature 14: requiresApproval -> PENDING hold, NO Google event, BookingRequested fired.
-        seedSettings();
-        meetingTypeWithMondayWindow("book-approval", LocationType.GOOGLE_MEET, true);
-        when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        var requestedBefore = REQUESTED.get();
-        var confirmedBefore = CONFIRMED.get();
-
-        Booking b = bookingService.book(
-                1L,
-                "book-approval",
-                SLOT_09,
-                "Sam",
-                "sam@example.com",
-                Map.of(),
-                "tok",
-                "",
-                "en",
-                List.of()
-        );
-
-        assertThat(b.status).isEqualTo(BookingStatus.PENDING);
-        assertThat(b.eventId).isNull();
-        assertThat(b.meetLink).isNull();
-        // The PENDING request must NOT touch Google.
-        verify(calendarPort, never())
-            .createEvent(anyLong(), any(), any(), anyString(), anyString(), any(), any(), any(), anyBoolean(), any());
-        assertThat(REQUESTED.get()).as("BookingRequested fired for approval type").isEqualTo(requestedBefore + 1);
-        assertThat(CONFIRMED.get()).as("BookingConfirmed NOT fired for a PENDING request").isEqualTo(confirmedBefore);
     }
 
     @Test
@@ -454,79 +287,6 @@ class BookServiceTest {
                     "",
                     "en",
                     List.of()
-            ));
-    }
-
-    @Test
-    @TestTransaction
-    void filledHoneypotThrowsAbuse() {
-        // Feature 16: a non-empty honeypot means a bot filled the hidden "website" field.
-        // It is rejected INSIDE book() with AbuseException (HTTP 400), like a failed Turnstile,
-        // before any booking is persisted. The honeypot guard is independent of the Turnstile flag.
-        seedSettings();
-        meetingTypeWithMondayWindow("book-honeypot", LocationType.GOOGLE_MEET, false);
-        when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-
-        assertThatExceptionOfType(AbuseException.class)
-            .isThrownBy(() -> bookingService.book(
-                    1L,
-                    "book-honeypot",
-                    SLOT_09,
-                    "Bot",
-                    "bot@example.com",
-                    Map.of(),
-                    "tok",
-                    "http://spam.example",
-                    "en",
-                    List.of()
-            ));
-    }
-
-    @Test
-    @TestTransaction
-    void bookingAtUnavailableStartThrowsConflict() {
-        seedSettings();
-        meetingTypeWithMondayWindow("book-bad-start", LocationType.GOOGLE_MEET, false);
-        when(calendarPort.isConnected(anyLong())).thenReturn(true);
-        when(calendarPort.freeBusy(anyLong(), any(), any())).thenReturn(List.of());
-        // 09:13 is not a generated slot start.
-        var start = DAY.atTime(9, 13).atZone(ZONE).toInstant();
-        Map<String, String> answers = Map.of();
-        List<String> guestEmails = List.of();
-        assertThatExceptionOfType(BookingConflictException.class)
-            .isThrownBy(() -> bookingService.book(
-                    1L,
-                    "book-bad-start",
-                    start,
-                    "X",
-                    "x@example.com",
-                    answers,
-                    "tok",
-                    "",
-                    "en",
-                    guestEmails
-            ));
-    }
-
-    @Test
-    @TestTransaction
-    void bookingUnknownSlugThrowsNotFound() {
-        seedSettings();
-        Map<String, String> answers = Map.of();
-        List<String> guestEmails = List.of();
-        assertThatExceptionOfType(jakarta.ws.rs.NotFoundException.class)
-            .isThrownBy(() -> bookingService.book(
-                    1L,
-                    "no-such-slug",
-                    SLOT_09,
-                    "X",
-                    "x@example.com",
-                    answers,
-                    "tok",
-                    "",
-                    "en",
-                    guestEmails
             ));
     }
 

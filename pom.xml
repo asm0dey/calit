@@ -30,6 +30,7 @@
     <test-order-plugin.version>0.1.1</test-order-plugin.version>
     <sonar-maven-plugin.version>5.9.0.7382</sonar-maven-plugin.version>
     <assertj.version>3.27.7</assertj.version>
+    <archunit.version>1.5.1</archunit.version>
     <ical4j.version>4.4.0</ical4j.version>
 
     <!-- SonarQube Cloud analysis (CI-based, via sonar-maven-plugin). The Maven scanner does
@@ -147,6 +148,12 @@
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>${assertj.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>${archunit.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- Code coverage: quarkus-jacoco writes target/jacoco-report/jacoco.xml (consumed by SonarQube) at the end of

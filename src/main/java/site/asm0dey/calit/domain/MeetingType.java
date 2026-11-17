@@ -139,16 +139,6 @@ public class MeetingType extends PanacheEntityBase {
     }
 
     /**
-     * True when this owner already has a *different* type using this slug.
-     */
-    public static boolean slugUsedByOwner(Long ownerId, String slug, Long excludeTypeId) {
-        if (excludeTypeId == null) {
-            return count("ownerId = ?1 and slug = ?2", ownerId, slug) > 0;
-        }
-        return count("ownerId = ?1 and slug = ?2 and id <> ?3", ownerId, slug, excludeTypeId) > 0;
-    }
-
-    /**
      * Resolves `/{urlOwnerId}/{slug}` for booking purposes: the owner's own type wins; otherwise a
      * multi-host type with that slug where {@code urlOwnerId} is an ACCEPTED co-host (a username
      * alias for the shared type). The slug-collision guard (co-hosting requires a free slug in the

@@ -12,6 +12,8 @@ import site.asm0dey.calit.user.TestOwners;
 
 @QuarkusTest
 class BookingSetQueryTest {
+    @Inject
+    BookingRepository bookingRepository;
     private static final Instant FROM = Instant.parse("2000-01-01T00:00:00Z");
     private static final Instant TO = Instant.parse("2100-01-01T00:00:00Z");
     @Inject
@@ -49,7 +51,7 @@ class BookingSetQueryTest {
         row(s, null, 1L, 1);
         row(s, null, 1L, 2);
         row(null, null, 1L, 3);
-        assertThat(Booking.countDistinctBookingsByEmailBetween("sam@x.com", FROM, TO)).isEqualTo(2);
+        assertThat(bookingRepository.countDistinctBookingsByEmailBetween("sam@x.com", FROM, TO)).isEqualTo(2);
     }
 
     @Test
@@ -63,7 +65,7 @@ class BookingSetQueryTest {
         row(s, g1, 2L, 1);
         row(s, g2, 1L, 2);
         row(s, g2, 2L, 3);
-        assertThat(Booking.countDistinctBookingsByEmailBetween("sam@x.com", FROM, TO)).isEqualTo(1);
+        assertThat(bookingRepository.countDistinctBookingsByEmailBetween("sam@x.com", FROM, TO)).isEqualTo(1);
     }
 
     @Test

@@ -6,9 +6,13 @@ import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
+import jakarta.inject.Inject;
 
 @QuarkusTest
 class BookingGuestTest {
+    @Inject
+    BookingGuestRepository guestRepository;
+
     private Long createBooking() {
         MeetingType t = new MeetingType();
         t.ownerId = 1L;
@@ -53,7 +57,7 @@ class BookingGuestTest {
         List<BookingGuest> active = BookingGuest.activeForBooking(bookingId);
         assertThat(active).hasSize(1);
         assertThat(active.getFirst().email).isEqualTo("ana@example.com");
-        assertThat(BookingGuest.allForBooking(bookingId)).hasSize(3);
+        assertThat(guestRepository.allForBooking(bookingId)).hasSize(3);
     }
 
     @Test
@@ -64,7 +68,7 @@ class BookingGuestTest {
 
         assertThat(BookingGuest.findByDeclineToken(g.declineToken).id).isEqualTo(g.id);
         // findInBooking is case-insensitive on email
-        assertThat(BookingGuest.findInBooking(bookingId, "ana@example.com").id).isEqualTo(g.id);
-        assertThat(BookingGuest.findInBooking(bookingId, "nobody@example.com")).isNull();
+        assertThat(guestRepository.findInBooking(bookingId, "ana@example.com").id).isEqualTo(g.id);
+        assertThat(guestRepository.findInBooking(bookingId, "nobody@example.com")).isNull();
     }
 }

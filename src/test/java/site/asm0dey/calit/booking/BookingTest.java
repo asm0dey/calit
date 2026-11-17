@@ -6,9 +6,13 @@ import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 import site.asm0dey.calit.domain.MeetingType;
+import jakarta.inject.Inject;
 
 @QuarkusTest
 class BookingTest {
+    @Inject
+    BookingRepository bookingRepository;
+
     // meeting_type_id is a real FK; create a MeetingType inside each @TestTransaction
     // and use its generated id (a literal id would violate the FK constraint — same pattern as AvailabilityRuleTest).
     private Long createMeetingType(String slug) {
@@ -47,7 +51,7 @@ class BookingTest {
             // 08:15-08:30 declined, ignored
             .plusSeconds(5400), BookingStatus.DECLINED);
         // Window 06:00-08:00 catches the CONFIRMED + PENDING holds, not CANCELLED/DECLINED.
-        List<Booking> hits = Booking.heldOverlapping(1L, base.minusSeconds(3600), base.plusSeconds(3600));
+        List<Booking> hits = bookingRepository.heldOverlapping(1L, base.minusSeconds(3600), base.plusSeconds(3600));
 
         assertThat(hits)
             .hasSize(2)

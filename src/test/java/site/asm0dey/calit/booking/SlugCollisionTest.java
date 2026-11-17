@@ -11,9 +11,12 @@ import site.asm0dey.calit.domain.MeetingType;
 import site.asm0dey.calit.domain.MeetingTypeHost;
 import site.asm0dey.calit.test.MultiHostFixtures;
 import site.asm0dey.calit.user.AppUser;
+import site.asm0dey.calit.domain.MeetingTypeRepository;
 
 @QuarkusTest
 class SlugCollisionTest {
+    @Inject
+    MeetingTypeRepository meetingTypeRepository;
     @Inject
     MeetingHosts meetingHosts;
 
@@ -32,9 +35,9 @@ class SlugCollisionTest {
     @TestTransaction
     void slugUsedByOwnerExcludesSelf() {
         MeetingType t = MultiHostFixtures.meetingType(1L, "intro", 30);
-        assertThat(MeetingType.slugUsedByOwner(1L, "intro", null)).isTrue();
+        assertThat(meetingTypeRepository.slugUsedByOwner(1L, "intro", null)).isTrue();
         // exclude the type itself
-        assertThat(MeetingType.slugUsedByOwner(1L, "intro", t.id)).isFalse();
+        assertThat(meetingTypeRepository.slugUsedByOwner(1L, "intro", t.id)).isFalse();
     }
 
     @Test

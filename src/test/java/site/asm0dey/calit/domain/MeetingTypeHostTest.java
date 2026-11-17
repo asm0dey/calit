@@ -13,6 +13,8 @@ import site.asm0dey.calit.user.TestOwners;
 @QuarkusTest
 class MeetingTypeHostTest {
     @Inject
+    MeetingTypeHostRepository hostRepository;
+    @Inject
     EntityManager em;
 
     @Test
@@ -28,9 +30,9 @@ class MeetingTypeHostTest {
         cohost.consentToken = UUID.randomUUID();
         cohost.persist();
 
-        assertThat(MeetingTypeHost.isMultiHost(t.id)).isTrue();
+        assertThat(hostRepository.isMultiHost(t.id)).isTrue();
         assertThat(MeetingTypeHost.forType(t.id)).hasSize(2);
-        assertThat(MeetingTypeHost.acceptedForType(t.id)).hasSize(1);
+        assertThat(hostRepository.acceptedForType(t.id)).hasSize(1);
         assertThat(MeetingTypeHost.findByConsentToken(cohost.consentToken.toString())).isNotNull();
         assertThat(MeetingTypeHost.find(t.id, 2L).ownerId).isEqualTo(2L);
     }
