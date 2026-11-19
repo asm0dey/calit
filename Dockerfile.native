@@ -37,7 +37,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 # JDK font manager fails to initialise ("Fontconfig head is null"), and that breaks Font.createFont
 # even for a TTF embedded in the binary. Packages deliberately unpinned, same reasoning as the
 # fontstack stage in Dockerfile (CVE-rich C parsers; Trivy + the CI smoke test gate the result).
-FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:1bd4c2dcd3c29e6a3fde3568a979237f911a27f0622751e63333df8a8684a736 AS fontstack
+FROM bellsoft/alpaquita-linux-base:stream-musl@sha256:04e4e54b5e11a6499e8e217217e562dc13516a5c94eda867e6d9abfec75e5156 AS fontstack
 RUN apk add --no-cache freetype fontconfig font-dejavu-core && fc-cache -f
 
 # --- Runtime stage: BellSoft hardened distroless Alpaquita musl — no shell, no apk, just the binary ---
