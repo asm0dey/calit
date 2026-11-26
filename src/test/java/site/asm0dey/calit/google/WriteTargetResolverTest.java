@@ -28,7 +28,7 @@ class WriteTargetResolverTest {
     @TestTransaction
     void aNullOwnerHasNoOverrideRatherThanThrowing() {
         MeetingType t = seedType(1L);
-        t.overrideAccountId = 1L;
+        t.overrideAccountId = seedCredential("sub-res-null-owner");
         t.overrideRemoteCalendarId = "work@example.com";
         // No owner means no override to read — never a NullPointerException.
         assertThat(resolver.writeOverride(null, t)).isNull();

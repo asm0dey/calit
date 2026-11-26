@@ -149,15 +149,16 @@ jobs:
       - name: Build the native binary and run the ITs against it
         run: ./mvnw --batch-mode --no-transfer-progress verify -Pnative
 
-      # A reflection/init error can be logged on a request that still answered. quarkus.log holds only
-      # the LAST app launch (the launcher deletes it on every start, and CaldavFlowIT's own test resource
-      # forces a relaunch), so also grep the failsafe reports: each launch's console output lands in the
-      # system-out of the class that started it.
+      # A reflection/init error can be logged on a request that still answered. Since Quarkus 4 every app
+      # launch logs to its own target/test-<id>/quarkus.log (CaldavFlowIT's test resource forces a
+      # relaunch), so grep them all, plus the failsafe reports, where each launch's console output lands.
       - name: Fail on native reflection/init errors in the app log
         run: |
-          test -s target/quarkus.log || { echo "::error::target/quarkus.log missing or empty"; exit 1; }
+          shopt -s nullglob
+          logs=(target/test-*/quarkus.log)
+          (( ${#logs[@]} )) && test -s "${logs[0]}" || { echo "::error::no app log under target/test-*/quarkus.log"; exit 1; }
           compgen -G 'target/failsafe-reports/TEST-*.xml' >/dev/null || { echo "::error::no failsafe reports"; exit 1; }
-          if grep -iE 'NoSuchMethodException|InstantiationException|no accessible default constructor|UnsupportedFeatureException' target/quarkus.log target/failsafe-reports/TEST-*.xml; then
+          if grep -iE 'NoSuchMethodException|InstantiationException|no accessible default constructor|UnsupportedFeatureException' "${logs[@]}" target/failsafe-reports/TEST-*.xml; then
             echo "::error::native reflection/init error in the app log"; exit 1
           fi
 
@@ -167,7 +168,7 @@ jobs:
         with:
           name: native-it-logs
           path: |
-            target/quarkus.log
+            target/test-*/quarkus.log
             target/failsafe-reports/
           if-no-files-found: ignore
           retention-days: 7

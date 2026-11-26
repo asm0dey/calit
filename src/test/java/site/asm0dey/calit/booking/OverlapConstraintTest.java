@@ -53,5 +53,7 @@ class OverlapConstraintTest {
         // GenerationType.IDENTITY forces an immediate insert on persist() (can't batch identity
         // inserts), so the exclusion-constraint violation surfaces here rather than at em.flush().
         assertThatExceptionOfType(PersistenceException.class).isThrownBy(() -> held(1L).persist());
+        // The failed insert leaves the session unusable; @TestTransaction flushes before rollback.
+        em.clear();
     }
 }
