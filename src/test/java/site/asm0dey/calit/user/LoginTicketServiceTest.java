@@ -69,6 +69,8 @@ class LoginTicketServiceTest {
         String raw = tickets.issue(uid, now);
         // User deleted between ticket issuance and consumption -> consume yields null.
         AppUser.deleteById(uid);
+        // As if committed elsewhere: ON DELETE CASCADE takes the ticket with the user.
+        AppUser.flush();
 
         assertThat(tickets.consume(raw, now.plusSeconds(5))).as("no user -> no login").isNull();
     }

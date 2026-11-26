@@ -24,7 +24,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
-    <quarkus.platform.version>3.40.1.2</quarkus.platform.version>
+    <quarkus.platform.version>4.0.1</quarkus.platform.version>
     <surefire-plugin.version>3.6.1</surefire-plugin.version>
     <jacoco-plugin.version>0.8.16</jacoco-plugin.version>
     <test-order-plugin.version>0.1.1</test-order-plugin.version>
@@ -72,19 +72,11 @@
 
   <dependencyManagement>
     <dependencies>
-      <!-- Pin ahead of quarkus-bom: 3.38.0 still ships jackson-core 2.22.0 (GHSA-r7wm-3cxj-wff9). -->
+      <!-- Pin ahead of quarkus-bom: 4.0.1 still ships jackson-core 2.21.8; 3.38.0 shipped 2.22.0 (GHSA-r7wm-3cxj-wff9). -->
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-core</artifactId>
         <version>2.23.0</version>
-      </dependency>
-      <!-- Pin ahead of quarkus-bom 3.40.1 (byte-buddy 1.18.8, Java <= 26): on JDK 27 that version reads Hibernate's
-           shared enhancer advice via the non-thread-safe Class-File API and augmentation fails at random.
-           1.18.10+ knows Java 27 and stays on ASM. Guarded by EntityEnhancerReaderTest; drop once the BOM catches up. -->
-      <dependency>
-        <groupId>net.bytebuddy</groupId>
-        <artifactId>byte-buddy</artifactId>
-        <version>1.18.17</version>
       </dependency>
       <!-- Pin ahead of google-api-client 2.9.1, which ships guava 33.6.0-jre (CVE-2026-102554, image Trivy gate). -->
       <dependency>
@@ -138,7 +130,7 @@
         <artifactId>quarkus-rest-csrf</artifactId>
     </dependency>
 
-    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-junit5</artifactId><scope>test</scope></dependency>
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-junit</artifactId><scope>test</scope></dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
@@ -190,7 +182,7 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-junit5-mockito</artifactId>
+      <artifactId>quarkus-junit-mockito</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
