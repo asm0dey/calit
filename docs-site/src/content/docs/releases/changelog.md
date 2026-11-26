@@ -17,6 +17,10 @@ Merged but not yet in a tagged release.
   package manager, like the JVM image. ([#356](https://github.com/asm0dey/calit/pull/356))
 - CalDAV `DELETE`, `PROPFIND` and `REPORT` are retried once when the server has closed a kept-alive connection,
   instead of failing as unreachable. ([#356](https://github.com/asm0dey/calit/pull/356))
+- Runs on Quarkus 4.0.1 (Hibernate ORM 8, Jakarta Persistence 4, Vert.x 5); `-native` images are built with
+  Liberica NIK 25.0.4. ([#371](https://github.com/asm0dey/calit/pull/371))
+- Semicolons in a query string are now literal characters, no longer parameter separators; calit's own links
+  never used them. ([#371](https://github.com/asm0dey/calit/pull/371))
 
 Upgrade: `docker exec … sh` no longer works on `-native` images; debug them with an ephemeral sidecar instead.
 
